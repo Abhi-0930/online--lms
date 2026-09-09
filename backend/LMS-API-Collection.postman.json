@@ -1,0 +1,1131 @@
+{
+	"info": {
+		"_postman_id": "lms-backend-api-collection",
+		"name": "LMS Backend API",
+		"description": "Enterprise Learning Management System Backend API Collection",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/health",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "4000",
+					"path": ["health"]
+				},
+				"description": "Check server health status"
+			},
+			"response": []
+		},
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"Password123!\",\n  \"fullName\": \"John Student\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/auth/register",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "auth", "register"]
+						},
+						"description": "Register a new user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"Password123!\",\n  \"deviceId\": \"device-12345\",\n  \"deviceName\": \"Chrome on Linux\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/auth/login",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "auth", "login"]
+						},
+						"description": "Login and get access token"
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/auth/logout",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "auth", "logout"]
+						},
+						"description": "Logout current session"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Active Devices",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/auth/devices",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "auth", "devices"]
+						},
+						"description": "Get list of active devices for current user"
+					},
+					"response": []
+				},
+				{
+					"name": "Revoke Device Session",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sessionToken\": \"{{sessionToken}}\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/auth/devices/revoke",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "auth", "devices", "revoke"]
+						},
+						"description": "Revoke a specific device session"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Courses",
+			"item": [
+				{
+					"name": "Get All Courses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/courses?page=1&limit=20&status=PUBLISHED",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "courses"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "status",
+									"value": "PUBLISHED"
+								}
+							]
+						},
+						"description": "Get all courses with pagination and filters"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Course by Slug",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/courses/introduction-to-web-development",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "courses", "introduction-to-web-development"]
+						},
+						"description": "Get detailed course information by slug"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Course",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"slug\": \"advanced-javascript\",\n  \"title\": \"Advanced JavaScript\",\n  \"subtitle\": \"Master modern JavaScript concepts\",\n  \"description\": \"A comprehensive course covering advanced JavaScript topics including closures, prototypes, async programming, and more.\",\n  \"coverImageUrl\": \"https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a\",\n  \"price\": 79.99,\n  \"status\": \"DRAFT\",\n  \"level\": \"INTERMEDIATE\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/courses",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "courses"]
+						},
+						"description": "Create a new course (Instructor/Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Course",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Advanced JavaScript - Updated\",\n  \"status\": \"PUBLISHED\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/courses/{{courseId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "courses", "{{courseId}}"]
+						},
+						"description": "Update course details (Instructor/Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Course",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/courses/{{courseId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "courses", "{{courseId}}"]
+						},
+						"description": "Delete a course (Instructor/Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Module",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Getting Started\",\n  \"description\": \"Introduction to the course\",\n  \"position\": 1\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/courses/{{courseId}}/modules",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "courses", "{{courseId}}", "modules"]
+						},
+						"description": "Create a module in a course (Instructor/Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Lesson",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Introduction to Variables\",\n  \"slug\": \"introduction-to-variables\",\n  \"type\": \"VIDEO\",\n  \"content\": \"Learn about variables in JavaScript\",\n  \"videoUrl\": \"https://example.com/video1\",\n  \"durationSeconds\": 600,\n  \"isFreePreview\": true,\n  \"position\": 1\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/modules/{{moduleId}}/lessons",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "modules", "{{moduleId}}", "lessons"]
+						},
+						"description": "Create a lesson in a module (Instructor/Admin only)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Progress & Enrollment",
+			"item": [
+				{
+					"name": "Enroll in Course",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"expiresAt\": \"2025-12-31T23:59:59Z\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/courses/{{courseId}}/enroll",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "courses", "{{courseId}}", "enroll"]
+						},
+						"description": "Enroll current user in a course"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Lesson Progress",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"isCompleted\": true,\n  \"watchTimeSeconds\": 450\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/lessons/{{lessonId}}/progress",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "lessons", "{{lessonId}}", "progress"]
+						},
+						"description": "Update progress for a specific lesson"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Course Progress",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/courses/{{courseId}}/progress",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "courses", "{{courseId}}", "progress"]
+						},
+						"description": "Get progress for a specific course"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Enrollments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/enrollments",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "enrollments"]
+						},
+						"description": "Get all enrollments for current user"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Roadmaps",
+			"item": [
+				{
+					"name": "Get All Roadmaps",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/roadmaps",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "roadmaps"]
+						},
+						"description": "Get all published roadmaps"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Roadmap by Slug",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/roadmaps/full-stack-web-developer",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "roadmaps", "full-stack-web-developer"]
+						},
+						"description": "Get roadmap details with user progress"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Roadmap",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"slug\": \"data-science-path\",\n  \"title\": \"Data Scientist Roadmap\",\n  \"description\": \"Complete path to becoming a data scientist\",\n  \"iconUrl\": \"https://example.com/icon.png\",\n  \"isPublished\": false\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/roadmaps",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "roadmaps"]
+						},
+						"description": "Create a new roadmap (Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Roadmap",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Data Scientist Roadmap - Updated\",\n  \"isPublished\": true\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/roadmaps/{{roadmapId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "roadmaps", "{{roadmapId}}"]
+						},
+						"description": "Update roadmap details (Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Add Item to Roadmap",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"courseId\": \"{{courseId}}\",\n  \"stepOrder\": 2,\n  \"isRequired\": true\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/roadmaps/{{roadmapId}}/items",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "roadmaps", "{{roadmapId}}", "items"]
+						},
+						"description": "Add a course to a roadmap (Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Roadmap Progress",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/roadmaps/{{roadmapId}}/progress",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "roadmaps", "{{roadmapId}}", "progress"]
+						},
+						"description": "Update user progress on a roadmap"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Cohorts",
+			"item": [
+				{
+					"name": "Get All Cohorts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/cohorts?courseId={{courseId}}&status=UPCOMING",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "cohorts"],
+							"query": [
+								{
+									"key": "courseId",
+									"value": "{{courseId}}",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "UPCOMING",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get all cohorts with optional filters"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Cohort by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/cohorts/{{cohortId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "cohorts", "{{cohortId}}"]
+						},
+						"description": "Get detailed cohort information"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Cohort",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"courseId\": \"{{courseId}}\",\n  \"name\": \"JavaScript Cohort - January 2025\",\n  \"description\": \"12-week intensive JavaScript bootcamp\",\n  \"startDate\": \"2025-01-15T09:00:00Z\",\n  \"endDate\": \"2025-04-15T18:00:00Z\",\n  \"instructorId\": \"{{instructorId}}\",\n  \"maxStudents\": 50,\n  \"imageUrl\": \"https://example.com/cohort-banner.jpg\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/cohorts",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "cohorts"]
+						},
+						"description": "Create a new cohort (Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Cohort",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"JavaScript Cohort - January 2025 (Updated)\",\n  \"status\": \"ONGOING\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/cohorts/{{cohortId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "cohorts", "{{cohortId}}"]
+						},
+						"description": "Update cohort details (Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Cohort",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/cohorts/{{cohortId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "cohorts", "{{cohortId}}"]
+						},
+						"description": "Delete a cohort (Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Enroll in Cohort",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cohortId\": \"{{cohortId}}\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/cohorts/enroll",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "cohorts", "enroll"]
+						},
+						"description": "Enroll current user in a cohort"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Cohort Enrollments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/cohorts/{{cohortId}}/enrollments",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "cohorts", "{{cohortId}}", "enrollments"]
+						},
+						"description": "Get all enrollments for a cohort (Admin/Instructor)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User's Cohorts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/cohorts/user/my-cohorts",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "cohorts", "user", "my-cohorts"]
+						},
+						"description": "Get all cohorts for current user"
+					},
+					"response": []
+				},
+				{
+					"name": "Leave Cohort",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/cohorts/{{cohortId}}/leave",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "cohorts", "{{cohortId}}", "leave"]
+						},
+						"description": "Leave a cohort"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Resources",
+			"item": [
+				{
+					"name": "Get Course Resources",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/resources/courses/{{courseId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "resources", "courses", "{{courseId}}"]
+						},
+						"description": "Get all resources for a course"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Lesson Resources",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/resources/lessons/{{lessonId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "resources", "lessons", "{{lessonId}}"]
+						},
+						"description": "Get all resources for a lesson"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Resource",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Course Slides\",\n  \"description\": \"Presentation slides for the course\",\n  \"url\": \"https://example.com/slides.pdf\",\n  \"type\": \"PDF\",\n  \"courseId\": \"{{courseId}}\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/resources",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "resources"]
+						},
+						"description": "Create a new resource (Instructor/Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Resource",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated Course Slides\",\n  \"url\": \"https://example.com/slides-v2.pdf\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/resources/{{resourceId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "resources", "{{resourceId}}"]
+						},
+						"description": "Update resource details (Instructor/Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Resource",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/resources/{{resourceId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "resources", "{{resourceId}}"]
+						},
+						"description": "Delete a resource (Instructor/Admin only)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Payments",
+			"item": [
+				{
+					"name": "Create Order - Course Enrollment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 999,\n  \"currency\": \"INR\",\n  \"type\": \"COURSE_ENROLLMENT\",\n  \"courseId\": \"{{courseId}}\",\n  \"receipt\": \"receipt_course_001\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/payments/create-order",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["payments", "create-order"]
+						},
+						"description": "Create a Razorpay order for course enrollment"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Order - Cohort Enrollment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 1999,\n  \"currency\": \"INR\",\n  \"type\": \"COHORT_ENROLLMENT\",\n  \"cohortId\": \"{{cohortId}}\",\n  \"receipt\": \"receipt_cohort_001\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/payments/create-order",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["payments", "create-order"]
+						},
+						"description": "Create a Razorpay order for cohort enrollment"
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderId\": \"{{razorpayOrderId}}\",\n  \"paymentId\": \"{{razorpayPaymentId}}\",\n  \"signature\": \"{{razorpaySignature}}\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/payments/verify",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["payments", "verify"]
+						},
+						"description": "Verify Razorpay payment signature"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Payment by Order ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/payments/{{razorpayOrderId}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["payments", "{{razorpayOrderId}}"]
+						},
+						"description": "Get payment details by Razorpay order ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Payments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/payments",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["payments"]
+						},
+						"description": "Get all payments for the authenticated user"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "sessionToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "courseId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "moduleId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "lessonId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "roadmapId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "resourceId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "cohortId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "instructorId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "razorpayOrderId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "razorpayPaymentId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "razorpaySignature",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

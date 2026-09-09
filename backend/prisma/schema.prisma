@@ -1,0 +1,373 @@
+// ==========================================
+// PRISMA SCHEMA FOR LMS BACKEND
+// Tech Stack: PostgreSQL (Neon DB), Prisma ORM
+// ==========================================
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  ALL_LEVELS
+}
+
+enum LessonType {
+  VIDEO
+  ARTICLE
+  QUIZ
+  ASSIGNMENT
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  SUSPENDED
+}
+
+enum CohortStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum ResourceType {
+  PDF
+  ZIP_CODE
+  EXTERNAL_LINK
+  VIDEO_RECORDING
+  FIGMA
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  COURSE_ENROLLMENT
+  COHORT_ENROLLMENT
+  SUBSCRIPTION
+}
+
+// ------------------------------------------
+// USER & AUTHENTICATION (WITH DEVICE LIMITS)
+// ------------------------------------------
+model User {
+  id              String                @id @default(uuid())
+  email           String                @unique
+  passwordHash    String
+  fullName        String
+  avatarUrl       String?
+  role            Role                  @default(STUDENT)
+  isEmailVerified Boolean               @default(false)
+  maxDevices      Int                   @default(2) // Configurable concurrent device limit
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  // Relations
+  devices         UserDevice[]
+  enrollments     Enrollment[]
+  lessonProgress  LessonProgress[]
+  activityLogs    ActivityLog[]
+  createdCourses  Course[]              @relation("InstructorCourses")
+  roadmapUsers    UserRoadmapProgress[]
+  cohortInstructor Cohort[]            @relation("CohortInstructor")
+  cohortEnrollments CohortEnrollment[]  @relation("CohortEnrollments")
+  payments        Payment[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model UserDevice {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId     String   // Client Fingerprint / Unique Hardware Identifier
+  deviceName   String   // e.g. "Chrome 120 on macOS"
+  ipAddress    String
+  userAgent    String
+  sessionToken String   @unique
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@index([sessionToken])
+}
+
+// ------------------------------------------
+// CONTENT CMS & COURSE STRUCTURE
+// ------------------------------------------
+model Course {
+  id            String        @id @default(uuid())
+  slug          String        @unique
+  title         String
+  subtitle      String?
+  description   String        @db.Text
+  coverImageUrl String?
+  price         Decimal       @default(0.00) @db.Decimal(10, 2)
+  status        CourseStatus  @default(DRAFT)
+  level         CourseLevel   @default(BEGINNER)
+  instructorId  String
+  instructor    User          @relation("InstructorCourses", fields: [instructorId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  modules       Module[]
+  enrollments   Enrollment[]
+  resources     Resource[]
+  roadmapItems  RoadmapItem[]
+  cohorts       Cohort[]
+  payments      Payment[]
+
+  @@index([slug])
+  @@index([status, level])
+  @@index([instructorId])
+}
+
+model Cohort {
+  id           String       @id @default(uuid())
+  courseId     String
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?      @db.Text
+  startDate    DateTime
+  endDate      DateTime
+  instructorId String
+  instructor   User         @relation("CohortInstructor", fields: [instructorId], references: [id])
+  maxStudents  Int          @default(50)
+  currentStudents Int       @default(0)
+  status       CohortStatus @default(UPCOMING)
+  imageUrl     String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  enrollments  CohortEnrollment[]
+  payments      Payment[]
+
+  @@index([courseId])
+  @@index([instructorId])
+  @@index([status, startDate])
+}
+
+model CohortEnrollment {
+  id        String   @id @default(uuid())
+  cohortId  String
+  cohort    Cohort   @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("CohortEnrollments", fields: [userId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime @default(now())
+  completedAt DateTime?
+
+  @@unique([cohortId, userId])
+  @@index([cohortId])
+  @@index([userId])
+}
+
+model Module {
+  id          String   @id @default(uuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  position    Int      @default(1) // Sorting order
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  lessons     Lesson[]
+
+  @@index([courseId, position])
+}
+
+model Lesson {
+  id              String       @id @default(uuid())
+  moduleId        String
+  module          Module       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title           String
+  slug            String
+  type            LessonType   @default(VIDEO)
+  content         String?      @db.Text // Markdown text / article body
+  videoUrl        String?      // Cloudflare Stream / Vimeo / S3 HLS URL
+  durationSeconds Int          @default(0)
+  isFreePreview   Boolean      @default(false)
+  position        Int          @default(1)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  progress        LessonProgress[]
+  resources       Resource[]
+
+  @@unique([moduleId, slug])
+  @@index([moduleId, position])
+}
+
+// ------------------------------------------
+// ENROLLMENTS & CHECKLIST PROGRESS
+// ------------------------------------------
+model Enrollment {
+  id          String           @id @default(uuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status      EnrollmentStatus @default(ACTIVE)
+  progressPct Float            @default(0.0) // 0.0 to 100.0%
+  enrolledAt  DateTime         @default(now())
+  expiresAt   DateTime?
+  completedAt DateTime?
+
+  @@unique([userId, courseId])
+  @@index([userId, status])
+  @@index([courseId])
+}
+
+model LessonProgress {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId         String
+  lesson           Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  isCompleted      Boolean   @default(false)
+  watchTimeSeconds Int       @default(0)
+  completedAt      DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([userId, lessonId])
+  @@index([userId, isCompleted])
+  @@index([lessonId])
+}
+
+// ------------------------------------------
+// RESOURCES & REFERENCES
+// ------------------------------------------
+model Resource {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  url         String
+  type        ResourceType @default(EXTERNAL_LINK)
+  courseId    String?
+  course      Course?      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonId    String?
+  lesson      Lesson?      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+
+  @@index([courseId])
+  @@index([lessonId])
+}
+
+// ------------------------------------------
+// LEARNING ROADMAPS
+// ------------------------------------------
+model Roadmap {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String   @db.Text
+  iconUrl     String?
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items        RoadmapItem[]
+  userProgress UserRoadmapProgress[]
+
+  @@index([slug])
+}
+
+model RoadmapItem {
+  id         String   @id @default(uuid())
+  roadmapId  String
+  roadmap    Roadmap  @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  stepOrder  Int      // Sequential order in roadmap path
+  isRequired Boolean  @default(true)
+
+  @@unique([roadmapId, courseId])
+  @@index([roadmapId, stepOrder])
+}
+
+model UserRoadmapProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roadmapId   String
+  roadmap     Roadmap  @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  progressPct Float    @default(0.0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, roadmapId])
+}
+
+// ------------------------------------------
+// AUDIT LOGS & STUDENT ACTIVITY
+// ------------------------------------------
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String   // e.g. "AUTH_LOGIN", "LESSON_COMPLETED", "DEVICE_REVOKED"
+  metadata  Json?    // IP, user agent, lesson details
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([action])
+}
+
+// ------------------------------------------
+// PAYMENTS & TRANSACTIONS
+// ------------------------------------------
+model Payment {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  razorpayOrderId String        @unique
+  razorpayPaymentId String?
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("INR")
+  status          PaymentStatus @default(PENDING)
+  type            PaymentType
+  courseId        String?
+  course          Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  cohortId        String?
+  cohort          Cohort?       @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  metadata        Json?         // Additional payment details
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([razorpayOrderId])
+  @@index([status])
+}
