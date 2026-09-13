@@ -1,0 +1,103 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --radius: 0.75rem;
+  --primary: #3157e8;
+  --primary-foreground: #ffffff;
+  --background: #f5f7fb;
+  --foreground: #17223d;
+  --card: #ffffff;
+  --card-foreground: #17223d;
+  --popover: #ffffff;
+  --popover-foreground: #17223d;
+  --secondary: #eef2ff;
+  --secondary-foreground: #3157e8;
+  --muted: #f1f3f8;
+  --muted-foreground: #7c87a4;
+  --accent: #eef2ff;
+  --accent-foreground: #3157e8;
+  --destructive: #ef8354;
+  --destructive-foreground: #ffffff;
+  --border: #e5e8f0;
+  --input: #e5e8f0;
+  --ring: #9db3ff;
+}
+
+.dark {
+  --primary: #5d7bff;
+  --primary-foreground: #ffffff;
+  --background: #0d1325;
+  --foreground: #f5f7fb;
+  --card: #182036;
+  --card-foreground: #f5f7fb;
+  --popover: #182036;
+  --popover-foreground: #f5f7fb;
+  --secondary: #26345e;
+  --secondary-foreground: #ffffff;
+  --muted: #202a45;
+  --muted-foreground: #9aa4bc;
+  --accent: #26345e;
+  --accent-foreground: #ffffff;
+  --destructive: #ef8354;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255,255,255,0.1);
+  --input: rgba(255,255,255,0.12);
+  --ring: #5d7bff;
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { min-width: 320px; background: var(--background); }
+  body { @apply bg-background text-foreground; margin: 0; min-width: 320px; font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; }
+  button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+  button:active, a:active { transform: scale(0.98); }
+  ::selection { background: #dce6ff; color: #17223d; }
+}
+
+@layer components {
+  .card-surface { @apply rounded-[18px] border border-[#e9ecf3] bg-white shadow-[0_8px_26px_rgba(23,34,61,0.045)] transition-colors dark:border-white/10 dark:bg-[#182036]; }
+  .button-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-[#3157e8] px-4 py-2.5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(49,87,232,0.22)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-[#2648d1]; }
+  .button-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-[#e2e6ef] bg-white px-4 py-2.5 text-xs font-bold text-[#52617f] transition-all duration-150 hover:-translate-y-0.5 hover:border-[#b9c8ff] hover:text-[#3157e8] dark:border-white/10 dark:bg-white/5 dark:text-white; }
+  .button-ghost-dark { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-bold text-white/75 transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white; }
+  .font-display { font-family: "Manrope", ui-sans-serif, system-ui, sans-serif; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { border-radius: 999px; background: #cbd3e3; }
+.dark ::-webkit-scrollbar-thumb { background: #384463; }
