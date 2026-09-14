@@ -380,26 +380,64 @@ export default function OnboardingPage() {
               </span>
             </div>
 
-            {/* Roles Grid (4 columns) */}
-            <div className="w-full max-w-[660px] grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
-              {filteredRoles.map((role) => {
-                const isSelected = selectedRoles.includes(role);
-                return (
+            {/* Roles Grid or Empty State */}
+            {filteredRoles.length > 0 ? (
+              <div className="w-full max-w-[660px] grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
+                {filteredRoles.map((role) => {
+                  const isSelected = selectedRoles.includes(role);
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => toggleRoleSelection(role)}
+                      className={`py-3.5 px-3 rounded-xl border text-[13.5px] font-medium text-center transition-all duration-150 cursor-pointer flex items-center justify-center min-h-[50px] leading-snug ${
+                        isSelected
+                          ? "border-[#1a73e8] bg-[#f0f7ff] text-[#1a73e8] font-semibold ring-2 ring-[#1a73e8]/15 shadow-xs"
+                          : "border-[#e2e8f0] bg-white text-slate-700 hover:border-[#cbd5e1] hover:bg-slate-50/60"
+                      }`}
+                    >
+                      {role}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="w-full max-w-[660px] flex flex-col items-center justify-center py-9 px-4 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 my-2">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                  <Search className="w-5 h-5 stroke-[1.75]" />
+                </div>
+                <p className="text-[15px] font-semibold text-slate-800 mb-1">
+                  No roles found for &ldquo;{roleSearch}&rdquo;
+                </p>
+                <p className="text-[13px] text-slate-500 mb-4 max-w-sm">
+                  Try searching with different keywords or add your specific role.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
-                    key={role}
                     type="button"
-                    onClick={() => toggleRoleSelection(role)}
-                    className={`py-3.5 px-3 rounded-xl border text-[13.5px] font-medium text-center transition-all duration-150 cursor-pointer flex items-center justify-center min-h-[50px] leading-snug ${
-                      isSelected
-                        ? "border-[#1a73e8] bg-[#f0f7ff] text-[#1a73e8] font-semibold ring-2 ring-[#1a73e8]/15 shadow-xs"
-                        : "border-[#e2e8f0] bg-white text-slate-700 hover:border-[#cbd5e1] hover:bg-slate-50/60"
-                    }`}
+                    onClick={() => setRoleSearch("")}
+                    className="px-4 py-2 rounded-xl text-[13px] font-medium text-[#1a73e8] bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
                   >
-                    {role}
+                    Clear search
                   </button>
-                );
-              })}
-            </div>
+                  {roleSearch.trim() && !selectedRoles.includes(roleSearch.trim()) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const customRole = roleSearch.trim();
+                        if (customRole) {
+                          setSelectedRoles((prev) => [...prev, customRole]);
+                          setRoleSearch("");
+                        }
+                      }}
+                      className="px-4 py-2 rounded-xl text-[13px] font-medium text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition-colors cursor-pointer shadow-2xs"
+                    >
+                      Add &ldquo;{roleSearch.trim()}&rdquo;
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* View More Roles Toggle (Only when not searching) */}
             {!roleSearch.trim() && (
