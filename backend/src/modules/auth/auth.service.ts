@@ -3,6 +3,7 @@ import argon2 from 'argon2';
 import { v4 as uuidv4 } from 'uuid';
 import { env } from '../../config/env';
 import logger from '../../utils/logger';
+import { sendPasswordResetOtpEmail, sendWelcomeEmail } from '../../utils/email';
 
 export class AuthService {
   constructor(private prisma: PrismaClient) {}
@@ -29,6 +30,12 @@ export class AuthService {
     });
 
     logger.info({ userId: user.id, email: user.email }, 'User registered');
+
+    // Trigger welcome email via Resend
+    sendWelcomeEmail({
+      to: user.email,
+      name: user.fullName,
+    }).catch((err) => logger.error({ err }, 'Failed sending welcome email in background'));
 
     return {
       user: {
@@ -433,6 +440,13 @@ export class AuthService {
     });
 
     logger.info({ email: normalizedEmail, otp }, 'Password reset OTP generated');
+
+    // Trigger transactional email via Resend
+    sendPasswordResetOtpEmail({
+      to: normalizedEmail,
+      code: otp,
+      name: user?.fullName,
+    }).catch((err) => logger.error({ err }, 'Failed sending reset email in background'));
 
     return {
       message: 'Verification code sent to email',

@@ -16,22 +16,7 @@ import { env } from '../../config/env';
 export default async function authController(fastify: FastifyInstance) {
   const authService = new AuthService(fastify.prisma);
 
-  // Google OAuth - Get Consent URL / Redirect to Google
-  fastify.get('/google', async (request, reply) => {
-    const query = request.query as any;
-    const authUrl = authService.getGoogleAuthUrl(query?.state);
-
-    if (query?.json === 'true' || request.headers.accept?.includes('application/json')) {
-      return reply.send({ url: authUrl });
-    }
-
-    return reply.redirect(authUrl);
-  });
-
-  // Google OAuth - Redirect Callback Handler
-  fastify.get('/google/callback', {
-    schema: googleCallbackSchema,
-  }, async (request, reply) => {
+  const handleGoogleCallback = async (request: any, reply: any) => {
     const query = request.query as any;
 
     if (query?.error) {
@@ -64,7 +49,7 @@ export default async function authController(fastify: FastifyInstance) {
         sessionToken: result.sessionToken,
       });
 
-      // If called from browser redirect, redirect to frontend with token
+      // Redirect to frontend with token
       const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
       redirectUrl.searchParams.set('token', accessToken);
       redirectUrl.searchParams.set('sessionToken', result.sessionToken);
@@ -78,7 +63,30 @@ export default async function authController(fastify: FastifyInstance) {
       }
       return reply.redirect(`${env.FRONTEND_URL}/login?error=AUTH_FAILED`);
     }
+  };
+
+  // Google OAuth - Get Consent URL / Redirect to Google OR Handle Callback
+  fastify.get('/google', async (request, reply) => {
+    const query = request.query as any;
+
+    // If Google redirected back to /google with code or error
+    if (query?.code || query?.error) {
+      return handleGoogleCallback(request, reply);
+    }
+
+    const authUrl = authService.getGoogleAuthUrl(query?.state);
+
+    if (query?.json === 'true' || request.headers.accept?.includes('application/json')) {
+      return reply.send({ url: authUrl });
+    }
+
+    return reply.redirect(authUrl);
   });
+
+  // Google OAuth - Redirect Callback Handler
+  fastify.get('/google/callback', {
+    schema: googleCallbackSchema,
+  }, handleGoogleCallback);
 
   // Google OAuth - Verify ID Token (For Single Sign-On / Mobile / One Tap)
   fastify.post('/google/token', {

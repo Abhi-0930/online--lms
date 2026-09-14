@@ -23,8 +23,12 @@ const prismaPlugin = fp(async (fastify) => {
     });
   }
 
-  await prisma.$connect();
-  logger.info('Prisma client connected');
+  try {
+    await prisma.$connect();
+    logger.info('Prisma client connected');
+  } catch (err: any) {
+    logger.warn({ err: err.message }, 'Prisma initial connection deferred; server running');
+  }
 
   fastify.decorate('prisma', prisma);
 
