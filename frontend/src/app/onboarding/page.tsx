@@ -248,18 +248,25 @@ export default function OnboardingPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Preload name if available from signup
+  // Preload name if available from secure session
   useEffect(() => {
-    try {
-      const existingUserStr = localStorage.getItem("lms_user");
-      if (existingUserStr) {
-        const parsed = JSON.parse(existingUserStr);
-        if (parsed?.name && !userName) {
-          setUserName(parsed.name);
+    async function loadSession() {
+      try {
+        const res = await fetch("http://localhost:4000/api/v1/auth/me", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.user?.fullName && !userName) {
+            setUserName(data.user.fullName);
+          }
         }
-      }
-    } catch {}
-  }, []);
+      } catch {}
+    }
+    loadSession();
+  }, [userName]);
 
   // Filter roles based on search
   const allAvailableRoles = showMoreRoles
@@ -351,29 +358,13 @@ export default function OnboardingPage() {
     setIsSubmitting(true);
 
     try {
-      localStorage.setItem("lms_user_education_status", selectedStudyOption);
-
-      const existingUserStr = localStorage.getItem("lms_user");
-      let userId: string | undefined;
-      if (existingUserStr) {
-        const parsed = JSON.parse(existingUserStr);
-        parsed.educationStatus = selectedStudyOption;
-        userId = parsed.id;
-        localStorage.setItem("lms_user", JSON.stringify(parsed));
-      }
-
-      const token = localStorage.getItem("lms_token");
-
-      // Save Step 1 to database table UserOnboarding
+      // Save Step 1 to database table UserOnboarding via authenticated cookie
       await fetch("http://localhost:4000/api/v1/onboarding/step-1", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           educationStatus: selectedStudyOption,
-          userId,
         }),
       }).catch(() => {});
 
@@ -391,29 +382,13 @@ export default function OnboardingPage() {
     setIsSubmitting(true);
 
     try {
-      localStorage.setItem("lms_user_target_roles", JSON.stringify(selectedRoles));
-
-      const existingUserStr = localStorage.getItem("lms_user");
-      let userId: string | undefined;
-      if (existingUserStr) {
-        const parsed = JSON.parse(existingUserStr);
-        parsed.targetRoles = selectedRoles;
-        userId = parsed.id;
-        localStorage.setItem("lms_user", JSON.stringify(parsed));
-      }
-
-      const token = localStorage.getItem("lms_token");
-
-      // Save Step 2 to database table UserOnboarding
+      // Save Step 2 to database table UserOnboarding via authenticated cookie
       await fetch("http://localhost:4000/api/v1/onboarding/step-2", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           targetRoles: selectedRoles,
-          userId,
         }),
       }).catch(() => {});
 
@@ -431,29 +406,13 @@ export default function OnboardingPage() {
     setIsSubmitting(true);
 
     try {
-      localStorage.setItem("lms_user_target_companies", JSON.stringify(selectedCompanies));
-
-      const existingUserStr = localStorage.getItem("lms_user");
-      let userId: string | undefined;
-      if (existingUserStr) {
-        const parsed = JSON.parse(existingUserStr);
-        parsed.targetCompanies = selectedCompanies;
-        userId = parsed.id;
-        localStorage.setItem("lms_user", JSON.stringify(parsed));
-      }
-
-      const token = localStorage.getItem("lms_token");
-
-      // Save Step 3 to database table UserOnboarding
+      // Save Step 3 to database table UserOnboarding via authenticated cookie
       await fetch("http://localhost:4000/api/v1/onboarding/step-3", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           targetCompanies: selectedCompanies,
-          userId,
         }),
       }).catch(() => {});
 
@@ -473,30 +432,13 @@ export default function OnboardingPage() {
     const cleanName = userName.trim();
 
     try {
-      localStorage.setItem("lms_user_name", cleanName);
-      localStorage.setItem("lms_onboarding_completed", "true");
-
-      const existingUserStr = localStorage.getItem("lms_user");
-      let userId: string | undefined;
-      if (existingUserStr) {
-        const parsed = JSON.parse(existingUserStr);
-        parsed.name = cleanName;
-        userId = parsed.id;
-        localStorage.setItem("lms_user", JSON.stringify(parsed));
-      }
-
-      const token = localStorage.getItem("lms_token");
-
       // Save Step 4 to database table UserOnboarding & mark isCompleted = true
       await fetch("http://localhost:4000/api/v1/onboarding/step-4", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           name: cleanName,
-          userId,
         }),
       }).catch(() => {});
 

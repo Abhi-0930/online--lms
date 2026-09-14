@@ -9,12 +9,8 @@ function OAuthCallbackContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    const role = searchParams.get("role");
-    const userId = searchParams.get("userId");
     const error = searchParams.get("error");
     const email = searchParams.get("email");
-
     const isNewUser = searchParams.get("isNewUser");
 
     if (error === "ACCOUNT_NOT_FOUND") {
@@ -23,20 +19,18 @@ function OAuthCallbackContent() {
       return;
     }
 
-    if (token) {
-      localStorage.setItem("lms_token", token);
-      if (userId) {
-        localStorage.setItem("lms_user", JSON.stringify({ id: userId, role }));
-      }
-      toast.success(isNewUser === "true" ? "Welcome! Account created successfully." : "Signed in with Google successfully!");
-      if (isNewUser === "true") {
-        router.push("/onboarding");
-      } else {
-        router.push("/dashboard");
-      }
+    if (error) {
+      toast.error("Google authentication failed. Please try again.");
+      router.push("/login");
+      return;
+    }
+
+    // Auth token is securely delivered via HttpOnly cookie
+    toast.success(isNewUser === "true" ? "Welcome! Account created successfully." : "Signed in with Google successfully!");
+    if (isNewUser === "true") {
+      router.push("/onboarding");
     } else {
-      toast.error("Google authentication failed");
-      router.push("/");
+      router.push("/dashboard");
     }
   }, [searchParams, router]);
 

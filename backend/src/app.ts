@@ -6,6 +6,7 @@ import authPlugin from './plugins/auth';
 import resendPlugin from './plugins/resend';
 import swaggerPlugin from './plugins/swagger';
 import cors from '@fastify/cors';
+import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
 import authRoutes from './modules/auth/auth.routes';
@@ -22,10 +23,18 @@ export async function createApp() {
     logger: logger as any,
   });
 
-  // Register CORS
+  // Register CORS (with credentials for secure cookies)
   await fastify.register(cors, {
-    origin: true,
+    origin: [env.FRONTEND_URL, 'http://localhost:3000', 'http://127.0.0.1:3000'],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  });
+
+  // Register Cookie Plugin
+  await fastify.register(cookie, {
+    secret: env.JWT_SECRET,
+    hook: 'onRequest',
   });
 
   // Register Rate Limiting

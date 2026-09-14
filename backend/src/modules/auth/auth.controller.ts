@@ -17,6 +17,25 @@ import logger from '../../utils/logger';
 export default async function authController(fastify: FastifyInstance) {
   const authService = new AuthService(fastify.prisma);
 
+  const setAuthCookie = (reply: any, token: string) => {
+    reply.setCookie('access_token', token, {
+      path: '/',
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+    });
+  };
+
+  const clearAuthCookie = (reply: any) => {
+    reply.clearCookie('access_token', {
+      path: '/',
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+  };
+
   const handleGoogleCallback = async (request: any, reply: any) => {
     const query = request.query as any;
 
@@ -51,12 +70,11 @@ export default async function authController(fastify: FastifyInstance) {
         sessionToken: result.sessionToken,
       });
 
-      // Redirect to frontend with token
+      // Set HttpOnly secure cookie for zero-localStorage vulnerability
+      setAuthCookie(reply, accessToken);
+
+      // Redirect to frontend callback
       const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
-      redirectUrl.searchParams.set('token', accessToken);
-      redirectUrl.searchParams.set('sessionToken', result.sessionToken);
-      redirectUrl.searchParams.set('userId', result.user.id);
-      redirectUrl.searchParams.set('role', result.user.role);
       if (result.isNewUser) {
         redirectUrl.searchParams.set('isNewUser', 'true');
       }
@@ -100,7 +118,7 @@ export default async function authController(fastify: FastifyInstance) {
     schema: googleCallbackSchema,
   }, handleGoogleCallback);
 
-  // Google OAuth - Verify ID Token (For Single Sign-On / Mobile / One Tap)
+  // Google OAuth - Verify ID Token
   fastify.post('/google/token', {
     schema: googleTokenSchema,
   }, async (request, reply) => {
@@ -122,6 +140,8 @@ export default async function authController(fastify: FastifyInstance) {
       role: result.user.role,
       sessionToken: result.sessionToken,
     });
+
+    setAuthCookie(reply, accessToken);
 
     return reply.send({
       ...result,
@@ -158,9 +178,58 @@ export default async function authController(fastify: FastifyInstance) {
       sessionToken: result.sessionToken,
     });
 
+    setAuthCookie(reply, accessToken);
+
     return reply.send({
       ...result,
       accessToken,
+    });
+  });
+
+  // Get Current Authenticated User (from HttpOnly Cookie / In-Memory Session)
+  fastify.get('/me', {
+    onRequest: [fastify.authenticate],
+  }, async (request, reply) => {
+    const user = request.user as any;
+    const dbUser = await fastify.prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        avatarUrl: true,
+        isEmailVerified: true,
+        createdAt: true,
+        onboarding: {
+          select: {
+            educationStatus: true,
+            targetDomain: true,
+            experienceLevel: true,
+            primaryGoal: true,
+            completedStep: true,
+            isCompleted: true,
+          },
+        },
+      },
+    });
+
+    if (!dbUser) {
+      return reply.status(404).send({ error: 'NotFound', message: 'User not found' });
+    }
+
+    return reply.send({
+      success: true,
+      user: {
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.fullName,
+        fullName: dbUser.fullName,
+        role: dbUser.role,
+        avatarUrl: dbUser.avatarUrl,
+        isEmailVerified: dbUser.isEmailVerified,
+        onboarding: dbUser.onboarding,
+      },
     });
   });
 
@@ -168,6 +237,7 @@ export default async function authController(fastify: FastifyInstance) {
     onRequest: [fastify.authenticate],
   }, async (request, reply) => {
     const user = request.user as any;
+    clearAuthCookie(reply);
     await authService.logout(user.id, user.sessionToken);
     return reply.send({ success: true });
   });

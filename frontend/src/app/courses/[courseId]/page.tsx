@@ -1,4 +1,5 @@
-import Home from "@/components/HomeView";
+import { redirect } from "next/navigation";
+import { createSecureUrl } from "@/lib/urlParams";
 
 export default async function CourseDetailPage({
   params,
@@ -6,5 +7,6 @@ export default async function CourseDetailPage({
   params: Promise<{ courseId: string }>;
 }) {
   const { courseId } = await params;
-  return <Home page="course-detail" courseId={courseId || "dsa-foundations"} />;
+  const secureUrl = createSecureUrl("/courses", { courseId: courseId || "dsa-foundations" });
+  redirect(secureUrl);
 }

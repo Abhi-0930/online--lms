@@ -23,12 +23,24 @@ declare module 'fastify' {
 const authPlugin: FastifyPluginAsync = async (fastify) => {
   fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const authHeader = request.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return reply.status(401).send({ error: 'Unauthorized', message: 'Missing token' });
+      let token: string | undefined;
+
+      // 1. Check HttpOnly cookie first
+      const cookieToken = (request as any).cookies?.access_token;
+      if (cookieToken) {
+        token = cookieToken;
+      } else {
+        // 2. Fallback to Authorization Bearer header
+        const authHeader = request.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          token = authHeader.substring(7);
+        }
       }
 
-      const token = authHeader.substring(7);
+      if (!token) {
+        return reply.status(401).send({ error: 'Unauthorized', message: 'Missing authentication token' });
+      }
+
       const decoded = fastify.jwt.verify<AuthenticatedUser>(token);
 
       // Validate session exists in database

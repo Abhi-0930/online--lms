@@ -10,6 +10,14 @@ export interface User {
   email?: string;
   avatarUrl?: string;
   role?: string;
+  onboarding?: {
+    educationStatus?: string | null;
+    targetDomain?: string | null;
+    experienceLevel?: string | null;
+    primaryGoal?: string | null;
+    completedStep?: number;
+    isCompleted?: boolean;
+  };
 }
 
 export function useAuth(options?: { redirectOnUnauthenticated?: boolean; redirectPath?: string }) {
@@ -17,14 +25,25 @@ export function useAuth(options?: { redirectOnUnauthenticated?: boolean; redirec
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUser = useCallback(() => {
+  const fetchUser = useCallback(async () => {
     try {
-      const stored = localStorage.getItem("lms_user");
-      if (stored) {
-        setUser(JSON.parse(stored));
-      } else {
-        setUser(null);
+      // Fetch authenticated profile via secure HttpOnly session cookie
+      const res = await fetch("http://localhost:4000/api/v1/auth/me", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.user) {
+          setUser(data.user);
+          setLoading(false);
+          return;
+        }
       }
+
+      setUser(null);
     } catch {
       setUser(null);
     } finally {
@@ -36,11 +55,22 @@ export function useAuth(options?: { redirectOnUnauthenticated?: boolean; redirec
     fetchUser();
   }, [fetchUser]);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("lms_token");
-    localStorage.removeItem("lms_user");
-    setUser(null);
-    router.push("/");
+  const logout = useCallback(async () => {
+    try {
+      await fetch("http://localhost:4000/api/v1/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {});
+    } finally {
+      // Clean up any remaining legacy localStorage keys
+      try {
+        localStorage.removeItem("lms_token");
+        localStorage.removeItem("lms_user");
+      } catch {}
+
+      setUser(null);
+      router.push("/");
+    }
   }, [router]);
 
   useEffect(() => {

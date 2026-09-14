@@ -114,18 +114,11 @@ function AuthForm({
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
       if (res.ok) {
-        const data = await res.json();
-        if (data.accessToken) {
-          localStorage.setItem("lms_token", data.accessToken);
-        }
-        localStorage.setItem(
-          "lms_user",
-          JSON.stringify(data.user || { email: formData.email })
-        );
         toast.success(
           isSignUp ? "Account created successfully!" : "Welcome back!"
         );
@@ -134,49 +127,16 @@ function AuthForm({
       }
 
       const errData = await res.json().catch(() => ({}));
-      if (errData.message) {
-        toast.error(errData.message);
-      } else {
-        localStorage.setItem(
-          "lms_user",
-          JSON.stringify({
-            name: formData.email.split("@")[0] || "Learner",
-            email: formData.email,
-          })
-        );
-        toast.success(
-          isSignUp ? "Account created successfully!" : "Signed in successfully!"
-        );
-        router.push(isSignUp ? "/onboarding" : "/dashboard");
-      }
+      toast.error(errData.message || (isSignUp ? "Registration failed" : "Invalid email or password"));
     } catch {
-      localStorage.setItem(
-        "lms_user",
-        JSON.stringify({
-          name: formData.email.split("@")[0] || "Learner",
-          email: formData.email,
-        })
-      );
-      toast.success(
-        isSignUp ? "Account created successfully!" : "Welcome back!"
-      );
-      router.push(isSignUp ? "/onboarding" : "/dashboard");
+      toast.error("Unable to connect to the authentication server");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = () => {
-    try {
-      window.location.href = `http://localhost:4000/api/v1/auth/google?state=${isSignUp ? "register" : "login"}`;
-    } catch {
-      localStorage.setItem(
-        "lms_user",
-        JSON.stringify({ name: "Google Learner", email: "learner@gmail.com" })
-      );
-      toast.success("Signed in with Google!");
-      router.push("/dashboard");
-    }
+    window.location.href = `http://localhost:4000/api/v1/auth/google?state=${isSignUp ? "register" : "login"}`;
   };
 
   return (
