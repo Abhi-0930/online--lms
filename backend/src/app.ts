@@ -15,6 +15,7 @@ import roadmapsRoutes from './modules/roadmaps/roadmaps.routes';
 import resourcesRoutes from './modules/resources/resources.routes';
 import cohortsRoutes from './modules/cohorts/cohorts.routes';
 import paymentRoutes from './modules/payments/payment.routes';
+import onboardingRoutes from './modules/onboarding/onboarding.routes';
 
 export async function createApp() {
   const fastify = Fastify({
@@ -53,6 +54,7 @@ export async function createApp() {
   await fastify.register(resourcesRoutes);
   await fastify.register(cohortsRoutes);
   await fastify.register(paymentRoutes);
+  await fastify.register(onboardingRoutes);
 
   // Health Check
   fastify.get('/health', async () => {

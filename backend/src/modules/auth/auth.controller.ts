@@ -224,4 +224,15 @@ export default async function authController(fastify: FastifyInstance) {
       return reply.status(400).send({ message: err.message || 'Failed to reset password' });
     }
   });
+
+  // Delete User (Utility / Testing)
+  fastify.post('/delete-user', async (request, reply) => {
+    const body = request.body as any;
+    const email = body?.email || (request.query as any)?.email;
+    if (!email) {
+      return reply.status(400).send({ error: 'BadRequest', message: 'Email is required' });
+    }
+    const result = await authService.deleteUser(email);
+    return reply.send(result);
+  });
 }

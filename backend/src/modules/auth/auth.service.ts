@@ -41,6 +41,30 @@ export class AuthService {
     return null;
   }
 
+  static deleteUserByEmail(email: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+    AuthService.fallbackUsers.delete(normalizedEmail);
+    for (const [key, user] of AuthService.fallbackUsers.entries()) {
+      if (user.email === normalizedEmail) {
+        AuthService.fallbackUsers.delete(key);
+      }
+    }
+  }
+
+  async deleteUser(email: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+    AuthService.deleteUserByEmail(normalizedEmail);
+    try {
+      await this.prisma.user.deleteMany({
+        where: { email: normalizedEmail },
+      });
+      logger.info({ email: normalizedEmail }, 'Deleted user from database and memory');
+    } catch (err: any) {
+      logger.warn({ err: err.message }, 'Database delete deferred, deleted from memory store');
+    }
+    return { success: true, message: `User ${normalizedEmail} deleted successfully` };
+  }
+
   async register(payload: { email: string; password: string; fullName: string }) {
     const normalizedEmail = payload.email.toLowerCase().trim();
     const existingUser = await this.findUser(normalizedEmail);

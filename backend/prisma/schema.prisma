@@ -100,10 +100,30 @@ model User {
   cohortInstructor Cohort[]            @relation("CohortInstructor")
   cohortEnrollments CohortEnrollment[]  @relation("CohortEnrollments")
   payments        Payment[]
+  onboarding      UserOnboarding?
 
   @@index([email])
   @@index([googleId])
   @@index([role])
+}
+
+model UserOnboarding {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  educationStatus String?   // "1st_year" | "2nd_year" | "3rd_year" | "4th_year" | "working_professional"
+  targetDomain    String?   // Step 2
+  experienceLevel String?   // Step 3
+  primaryGoal     String?   // Step 4
+  completedStep   Int       @default(1)
+  isCompleted     Boolean   @default(false)
+  completedAt     DateTime?
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([educationStatus])
 }
 
 model UserDevice {

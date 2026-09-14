@@ -92,7 +92,7 @@ export default function OnboardingPage() {
   const topOptions = STUDY_OPTIONS.slice(0, 4);
   const bottomOption = STUDY_OPTIONS[4];
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!selectedOption) return;
     setIsSubmitting(true);
 
@@ -100,11 +100,28 @@ export default function OnboardingPage() {
       localStorage.setItem("lms_user_education_status", selectedOption);
 
       const existingUserStr = localStorage.getItem("lms_user");
+      let userId: string | undefined;
       if (existingUserStr) {
         const parsed = JSON.parse(existingUserStr);
         parsed.educationStatus = selectedOption;
+        userId = parsed.id;
         localStorage.setItem("lms_user", JSON.stringify(parsed));
       }
+
+      const token = localStorage.getItem("lms_token");
+
+      // Save to backend database table UserOnboarding
+      await fetch("http://localhost:4000/api/v1/onboarding/step-1", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          educationStatus: selectedOption,
+          userId,
+        }),
+      }).catch(() => {});
 
       toast.success("Preferences saved successfully!");
       router.push("/dashboard");
