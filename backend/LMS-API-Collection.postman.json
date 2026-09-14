@@ -26,6 +26,58 @@
 			"name": "Authentication",
 			"item": [
 				{
+					"name": "Google OAuth - Get URL",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:4000/api/v1/auth/google?json=true",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "auth", "google"],
+							"query": [
+								{
+									"key": "json",
+									"value": "true"
+								}
+							]
+						},
+						"description": "Generate Google OAuth 2.0 Consent Screen URL"
+					},
+					"response": []
+				},
+				{
+					"name": "Google OAuth - Token Exchange",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"idToken\": \"GOOGLE_ID_TOKEN_HERE\",\n  \"deviceId\": \"test-device-uuid\",\n  \"deviceName\": \"Postman Web Client\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/v1/auth/google/token",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "4000",
+							"path": ["api", "v1", "auth", "google", "token"]
+						},
+						"description": "Authenticate user via Google ID token"
+					},
+					"response": []
+				},
+				{
 					"name": "Register User",
 					"request": {
 						"method": "POST",

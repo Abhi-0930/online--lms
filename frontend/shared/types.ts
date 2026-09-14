@@ -1,7 +1,11 @@
-/**
- * Unified type exports
- * Import shared types from this single entry point.
- */
+export type User = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  role?: string | null;
+  avatarUrl?: string | null;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+};
 
-export type * from "../drizzle/schema";
 export * from "./_core/errors";

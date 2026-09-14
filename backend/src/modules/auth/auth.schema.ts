@@ -49,3 +49,41 @@ export const deviceListSchema = {
     })
   ),
 };
+
+export const googleCallbackSchema = {
+  querystring: Type.Object({
+    code: Type.Optional(Type.String()),
+    state: Type.Optional(Type.String()),
+    error: Type.Optional(Type.String()),
+  }),
+};
+
+export const googleTokenSchema = {
+  body: Type.Object({
+    idToken: Type.String(),
+    deviceId: Type.String(),
+    deviceName: Type.String(),
+  }),
+};
+
+export const forgotPasswordSchema = {
+  body: Type.Object({
+    email: Type.String({ format: 'email' }),
+  }),
+};
+
+export const verifyOtpSchema = {
+  body: Type.Object({
+    email: Type.String({ format: 'email' }),
+    otp: Type.String({ minLength: 6, maxLength: 6 }),
+  }),
+};
+
+export const resetPasswordSchema = {
+  body: Type.Object({
+    email: Type.String({ format: 'email' }),
+    resetToken: Type.String(),
+    newPassword: Type.String({ minLength: 8 }),
+  }),
+};
+

@@ -1,10 +1,113 @@
 import { FastifyInstance } from 'fastify';
 import { AuthService } from './auth.service';
-import { registerSchema, loginSchema, revokeDeviceSchema } from './auth.schema';
+import {
+  registerSchema,
+  loginSchema,
+  revokeDeviceSchema,
+  googleCallbackSchema,
+  googleTokenSchema,
+  forgotPasswordSchema,
+  verifyOtpSchema,
+  resetPasswordSchema,
+} from './auth.schema';
 import { getClientIp } from '../../utils/device';
+import { env } from '../../config/env';
 
 export default async function authController(fastify: FastifyInstance) {
   const authService = new AuthService(fastify.prisma);
+
+  // Google OAuth - Get Consent URL / Redirect to Google
+  fastify.get('/google', async (request, reply) => {
+    const query = request.query as any;
+    const authUrl = authService.getGoogleAuthUrl(query?.state);
+
+    if (query?.json === 'true' || request.headers.accept?.includes('application/json')) {
+      return reply.send({ url: authUrl });
+    }
+
+    return reply.redirect(authUrl);
+  });
+
+  // Google OAuth - Redirect Callback Handler
+  fastify.get('/google/callback', {
+    schema: googleCallbackSchema,
+  }, async (request, reply) => {
+    const query = request.query as any;
+
+    if (query?.error) {
+      const frontendErrorUrl = `${env.FRONTEND_URL}/login?error=${encodeURIComponent(query.error)}`;
+      return reply.redirect(frontendErrorUrl);
+    }
+
+    if (!query?.code) {
+      return reply.status(400).send({ error: 'BadRequest', message: 'Missing authorization code' });
+    }
+
+    const ip = getClientIp(request.headers);
+    const userAgent = request.headers['user-agent'] || 'Unknown';
+    const deviceId = query?.deviceId || `web-${Buffer.from(userAgent + ip).toString('base64').substring(0, 16)}`;
+    const deviceName = query?.deviceName || 'Web Browser (Google OAuth)';
+
+    try {
+      const result = await authService.loginWithGoogleCallback({
+        code: query.code,
+        deviceId,
+        deviceName,
+        ip,
+        userAgent,
+      });
+
+      const accessToken = fastify.jwt.sign({
+        id: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        sessionToken: result.sessionToken,
+      });
+
+      // If called from browser redirect, redirect to frontend with token
+      const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
+      redirectUrl.searchParams.set('token', accessToken);
+      redirectUrl.searchParams.set('sessionToken', result.sessionToken);
+      redirectUrl.searchParams.set('userId', result.user.id);
+      redirectUrl.searchParams.set('role', result.user.role);
+
+      return reply.redirect(redirectUrl.toString());
+    } catch (err: any) {
+      if (err.code === 'DEVICE_LIMIT_REACHED' || err.statusCode === 409) {
+        return reply.redirect(`${env.FRONTEND_URL}/login?error=DEVICE_LIMIT_REACHED`);
+      }
+      return reply.redirect(`${env.FRONTEND_URL}/login?error=AUTH_FAILED`);
+    }
+  });
+
+  // Google OAuth - Verify ID Token (For Single Sign-On / Mobile / One Tap)
+  fastify.post('/google/token', {
+    schema: googleTokenSchema,
+  }, async (request, reply) => {
+    const body = request.body as any;
+    const ip = getClientIp(request.headers);
+    const userAgent = request.headers['user-agent'] || 'Unknown';
+
+    const result = await authService.loginWithGoogleIdToken({
+      idToken: body.idToken,
+      deviceId: body.deviceId,
+      deviceName: body.deviceName,
+      ip,
+      userAgent,
+    });
+
+    const accessToken = fastify.jwt.sign({
+      id: result.user.id,
+      email: result.user.email,
+      role: result.user.role,
+      sessionToken: result.sessionToken,
+    });
+
+    return reply.send({
+      ...result,
+      accessToken,
+    });
+  });
 
   fastify.post('/register', {
     schema: registerSchema,
@@ -65,5 +168,40 @@ export default async function authController(fastify: FastifyInstance) {
     const body = request.body as any;
     await authService.revokeDevice(user.id, body.sessionToken);
     return reply.send({ success: true });
+  });
+
+  // Forgot Password - Step 1: Request 6-digit OTP code
+  fastify.post('/forgot-password', {
+    schema: forgotPasswordSchema,
+  }, async (request, reply) => {
+    const body = request.body as any;
+    const result = await authService.requestPasswordReset(body.email);
+    return reply.send(result);
+  });
+
+  // Forgot Password - Step 2: Verify 6-digit OTP code
+  fastify.post('/verify-otp', {
+    schema: verifyOtpSchema,
+  }, async (request, reply) => {
+    const body = request.body as any;
+    try {
+      const result = await authService.verifyPasswordResetOtp(body.email, body.otp);
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.status(400).send({ message: err.message || 'Invalid verification code' });
+    }
+  });
+
+  // Forgot Password - Step 3: Reset password with resetToken
+  fastify.post('/reset-password', {
+    schema: resetPasswordSchema,
+  }, async (request, reply) => {
+    const body = request.body as any;
+    try {
+      const result = await authService.resetPassword(body.email, body.resetToken, body.newPassword);
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.status(400).send({ message: err.message || 'Failed to reset password' });
+    }
   });
 }

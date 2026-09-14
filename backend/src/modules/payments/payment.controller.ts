@@ -16,6 +16,7 @@ export async function paymentController(fastify: FastifyInstance) {
    */
   fastify.post('/payments/create-order', {
     onRequest: [fastify.authenticate],
+    schema: createOrderSchema,
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user as any;
     const body = request.body as CreateOrderInput;
@@ -73,6 +74,7 @@ export async function paymentController(fastify: FastifyInstance) {
    */
   fastify.post('/payments/verify', {
     onRequest: [fastify.authenticate],
+    schema: verifyPaymentSchema,
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = request.body as VerifyPaymentInput;
     const { orderId, paymentId, signature } = body;

@@ -80,7 +80,8 @@ enum PaymentType {
 model User {
   id              String                @id @default(uuid())
   email           String                @unique
-  passwordHash    String
+  googleId        String?               @unique
+  passwordHash    String?
   fullName        String
   avatarUrl       String?
   role            Role                  @default(STUDENT)
@@ -101,6 +102,7 @@ model User {
   payments        Payment[]
 
   @@index([email])
+  @@index([googleId])
   @@index([role])
 }
 

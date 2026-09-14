@@ -25,6 +25,12 @@ export const env = {
   // BetterStack (Log ingestion)
   BETTERSTACK_INGESTION_KEY: process.env.BETTERSTACK_INGESTION_KEY || '',
   BETTERSTACK_LOGS_URL: process.env.BETTERSTACK_LOGS_URL || 'https://in.logs.betterstack.com',
+
+  // Google OAuth 2.0
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+  GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:4000/api/v1/auth/google/callback',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
 };
 
 // Validate required environment variables
