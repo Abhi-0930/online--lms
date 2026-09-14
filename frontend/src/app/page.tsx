@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { COUNTRIES, DEFAULT_COUNTRY, type Country } from "@/lib/countries";
 import { CountryFlag } from "@/components/CountryFlag";
+import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
 
 function AuthForm({
   initialMode = "login",
@@ -23,15 +24,47 @@ function AuthForm({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const modeParam = searchParams?.get("mode");
-  const errorParam = searchParams?.get("error");
-  const emailParam = searchParams?.get("email");
+  const dataParam = searchParams?.get("data") || searchParams?.get("q");
+
+  const decoded = decodeDataParam<{
+    mode?: "login" | "register";
+    error?: string;
+    email?: string;
+  }>(dataParam);
+
+  const errorParam = decoded?.error || searchParams?.get("error");
+  const emailParam = decoded?.email || searchParams?.get("email");
 
   const [isSignUp, setIsSignUp] = useState(
-    initialMode === "register" || modeParam === "register" || errorParam === "ACCOUNT_NOT_FOUND"
+    decoded?.mode === "register" ||
+      initialMode === "register" ||
+      searchParams?.get("mode") === "register" ||
+      errorParam === "ACCOUNT_NOT_FOUND"
   );
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const setMode = (signUp: boolean) => {
+    setIsSignUp(signUp);
+    router.replace(
+      createSecureUrl("/", {
+        mode: signUp ? "register" : "login",
+        t: Date.now(),
+      })
+    );
+  };
+
+  // Ensure root URL is ALWAYS completely encrypted with tamper-resistant query params
+  useEffect(() => {
+    if (!dataParam) {
+      router.replace(
+        createSecureUrl("/", {
+          mode: isSignUp ? "register" : "login",
+          t: Date.now(),
+        })
+      );
+    }
+  }, [dataParam, isSignUp, router]);
 
   // Country code selector state
   const [selectedCountry, setSelectedCountry] = useState<Country>(DEFAULT_COUNTRY);
@@ -122,7 +155,7 @@ function AuthForm({
         toast.success(
           isSignUp ? "Account created successfully!" : "Welcome back!"
         );
-        router.push(isSignUp ? "/onboarding" : "/dashboard");
+        router.push(isSignUp ? createSecureUrl("/onboarding", { step: 1 }) : "/dashboard");
         return;
       }
 
@@ -190,7 +223,7 @@ function AuthForm({
             {isSignUp ? (
               <button
                 type="button"
-                onClick={() => setIsSignUp(false)}
+                onClick={() => setMode(false)}
                 className="text-[14px] font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
               >
                 Sign in
@@ -198,7 +231,7 @@ function AuthForm({
             ) : (
               <button
                 type="button"
-                onClick={() => setIsSignUp(true)}
+                onClick={() => setMode(true)}
                 className="text-[14px] font-medium text-gray-800 bg-white hover:bg-gray-50 border border-gray-200 px-4 py-1.5 rounded-xl transition-all shadow-sm active:scale-[0.98] cursor-pointer"
               >
                 Create account
@@ -447,7 +480,7 @@ function AuthForm({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setIsSignUp(true)}
+                  onClick={() => setMode(true)}
                   className="text-[14px] font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
                 >
                   Create account

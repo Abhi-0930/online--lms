@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowLeft, Search, ChevronDown, ChevronUp, Check, Loader2, User } from "lucide-react";
+import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
 
 interface StudyOption {
   id: string;
@@ -159,11 +160,9 @@ function CompanyLogo({ name, domain }: { name: string; domain?: string }) {
 
   const handleError = () => {
     if (!hasTriedFavicon) {
-      // Try Google Favicon CDN once
       setHasTriedFavicon(true);
       setImgSrc(`https://www.google.com/s2/favicons?domain=${primaryDomain}&sz=128`);
     } else {
-      // If logo cannot be loaded, show first letter
       setHasError(true);
     }
   };
@@ -224,9 +223,43 @@ function BriefcaseIcon({ color }: { color: string }) {
   );
 }
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const searchParams = useSearchParams();
+  const dataParam = searchParams?.get("data") || searchParams?.get("q");
+
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(() => {
+    if (dataParam) {
+      const decoded = decodeDataParam<{ step?: number }>(dataParam);
+      if (decoded?.step && decoded.step >= 1 && decoded.step <= 4) {
+        return decoded.step as 1 | 2 | 3 | 4;
+      }
+    }
+    return 1;
+  });
+
+  const updateStep = useCallback(
+    (newStep: 1 | 2 | 3 | 4) => {
+      setCurrentStep(newStep);
+      router.replace(createSecureUrl("/onboarding", { step: newStep }));
+    },
+    [router]
+  );
+
+  // Sync state from query params & ensure URL always carries the tamper-resistant Base64URL query
+  useEffect(() => {
+    if (dataParam) {
+      const decoded = decodeDataParam<{ step?: number }>(dataParam);
+      if (decoded?.step && decoded.step >= 1 && decoded.step <= 4) {
+        if (decoded.step !== currentStep) {
+          setCurrentStep(decoded.step as 1 | 2 | 3 | 4);
+        }
+      }
+    } else {
+      // Auto-encode bare /onboarding URL to /onboarding?data=...
+      router.replace(createSecureUrl("/onboarding", { step: currentStep }));
+    }
+  }, [dataParam, currentStep, router]);
 
   // Step 1 State
   const [selectedStudyOption, setSelectedStudyOption] = useState<string | null>(null);
@@ -368,9 +401,9 @@ export default function OnboardingPage() {
         }),
       }).catch(() => {});
 
-      setCurrentStep(2);
+      updateStep(2);
     } catch {
-      setCurrentStep(2);
+      updateStep(2);
     } finally {
       setIsSubmitting(false);
     }
@@ -392,9 +425,9 @@ export default function OnboardingPage() {
         }),
       }).catch(() => {});
 
-      setCurrentStep(3);
+      updateStep(3);
     } catch {
-      setCurrentStep(3);
+      updateStep(3);
     } finally {
       setIsSubmitting(false);
     }
@@ -416,9 +449,9 @@ export default function OnboardingPage() {
         }),
       }).catch(() => {});
 
-      setCurrentStep(4);
+      updateStep(4);
     } catch {
-      setCurrentStep(4);
+      updateStep(4);
     } finally {
       setIsSubmitting(false);
     }
@@ -469,7 +502,7 @@ export default function OnboardingPage() {
             {currentStep > 1 ? (
               <button
                 type="button"
-                onClick={() => setCurrentStep((prev) => ((prev - 1) as 1 | 2 | 3 | 4))}
+                onClick={() => updateStep(((currentStep - 1) as 1 | 2 | 3 | 4))}
                 className="flex items-center gap-1.5 text-[14px] font-medium text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -914,5 +947,19 @@ export default function OnboardingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen w-full bg-[#f8faff] flex items-center justify-center">
+          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <OnboardingContent />
+    </Suspense>
   );
 }

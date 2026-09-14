@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { createSecureUrl } from "@/lib/urlParams";
 
 function OAuthCallbackContent() {
   const router = useRouter();
@@ -28,7 +29,7 @@ function OAuthCallbackContent() {
     // Auth token is securely delivered via HttpOnly cookie
     toast.success(isNewUser === "true" ? "Welcome! Account created successfully." : "Signed in with Google successfully!");
     if (isNewUser === "true") {
-      router.push("/onboarding");
+      router.push(createSecureUrl("/onboarding", { step: 1 }));
     } else {
       router.push("/dashboard");
     }
