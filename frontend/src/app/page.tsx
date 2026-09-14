@@ -24,9 +24,11 @@ function AuthForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const modeParam = searchParams?.get("mode");
+  const errorParam = searchParams?.get("error");
+  const emailParam = searchParams?.get("email");
 
   const [isSignUp, setIsSignUp] = useState(
-    initialMode === "register" || modeParam === "register"
+    initialMode === "register" || modeParam === "register" || errorParam === "ACCOUNT_NOT_FOUND"
   );
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,9 +41,24 @@ function AuthForm({
 
   const [formData, setFormData] = useState({
     phone: "",
-    email: "",
+    email: emailParam || "",
     password: "",
   });
+
+  // Handle OAuth error callbacks
+  useEffect(() => {
+    if (errorParam === "ACCOUNT_NOT_FOUND") {
+      toast.error("No account found with this Google account. Please create an account first.");
+      setIsSignUp(true);
+      if (emailParam) {
+        setFormData((prev) => ({ ...prev, email: emailParam }));
+      }
+    } else if (errorParam === "DEVICE_LIMIT_REACHED") {
+      toast.error("Device limit reached for this account.");
+    } else if (errorParam === "AUTH_FAILED") {
+      toast.error("Authentication failed. Please try again.");
+    }
+  }, [errorParam, emailParam]);
 
   // Close country dropdown on outside click
   useEffect(() => {
@@ -151,7 +168,7 @@ function AuthForm({
 
   const handleGoogleLogin = () => {
     try {
-      window.location.href = "http://localhost:4000/api/v1/auth/google";
+      window.location.href = `http://localhost:4000/api/v1/auth/google?state=${isSignUp ? "register" : "login"}`;
     } catch {
       localStorage.setItem(
         "lms_user",

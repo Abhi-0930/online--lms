@@ -55,7 +55,11 @@ export const googleCallbackSchema = {
     code: Type.Optional(Type.String()),
     state: Type.Optional(Type.String()),
     error: Type.Optional(Type.String()),
-  }),
+    iss: Type.Optional(Type.String()),
+    scope: Type.Optional(Type.String()),
+    authuser: Type.Optional(Type.String()),
+    prompt: Type.Optional(Type.String()),
+  }, { additionalProperties: true }),
 };
 
 export const googleTokenSchema = {

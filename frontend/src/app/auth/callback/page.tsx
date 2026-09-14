@@ -12,6 +12,14 @@ function OAuthCallbackContent() {
     const token = searchParams.get("token");
     const role = searchParams.get("role");
     const userId = searchParams.get("userId");
+    const error = searchParams.get("error");
+    const email = searchParams.get("email");
+
+    if (error === "ACCOUNT_NOT_FOUND") {
+      toast.error("No account found with this Google account. Please create an account first.");
+      router.push(`/register${email ? `?email=${encodeURIComponent(email)}` : ""}`);
+      return;
+    }
 
     if (token) {
       localStorage.setItem("lms_token", token);

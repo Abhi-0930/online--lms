@@ -12,6 +12,7 @@ import {
 } from './auth.schema';
 import { getClientIp } from '../../utils/device';
 import { env } from '../../config/env';
+import logger from '../../utils/logger';
 
 export default async function authController(fastify: FastifyInstance) {
   const authService = new AuthService(fastify.prisma);
@@ -36,6 +37,7 @@ export default async function authController(fastify: FastifyInstance) {
     try {
       const result = await authService.loginWithGoogleCallback({
         code: query.code,
+        mode: query?.state,
         deviceId,
         deviceName,
         ip,
@@ -58,6 +60,13 @@ export default async function authController(fastify: FastifyInstance) {
 
       return reply.redirect(redirectUrl.toString());
     } catch (err: any) {
+      logger.error({ err, message: err.message, code: err.code, statusCode: err.statusCode }, 'Google OAuth error handled');
+      if (err.code === 'ACCOUNT_NOT_FOUND' || err.statusCode === 404) {
+        const redirectUrl = new URL(`${env.FRONTEND_URL}/register`);
+        redirectUrl.searchParams.set('error', 'ACCOUNT_NOT_FOUND');
+        if (err.email) redirectUrl.searchParams.set('email', err.email);
+        return reply.redirect(redirectUrl.toString());
+      }
       if (err.code === 'DEVICE_LIMIT_REACHED' || err.statusCode === 409) {
         return reply.redirect(`${env.FRONTEND_URL}/login?error=DEVICE_LIMIT_REACHED`);
       }
