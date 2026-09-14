@@ -129,7 +129,7 @@ function AuthForm({
         toast.success(
           isSignUp ? "Account created successfully!" : "Welcome back!"
         );
-        router.push("/dashboard");
+        router.push(isSignUp ? "/onboarding" : "/dashboard");
         return;
       }
 
@@ -147,7 +147,7 @@ function AuthForm({
         toast.success(
           isSignUp ? "Account created successfully!" : "Signed in successfully!"
         );
-        router.push("/dashboard");
+        router.push(isSignUp ? "/onboarding" : "/dashboard");
       }
     } catch {
       localStorage.setItem(
@@ -160,7 +160,7 @@ function AuthForm({
       toast.success(
         isSignUp ? "Account created successfully!" : "Welcome back!"
       );
-      router.push("/dashboard");
+      router.push(isSignUp ? "/onboarding" : "/dashboard");
     } finally {
       setIsLoading(false);
     }

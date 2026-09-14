@@ -339,6 +339,7 @@ export class AuthService {
   }) {
     const normalizedEmail = payload.email.toLowerCase().trim();
     let user = await this.findUser(normalizedEmail, payload.googleId);
+    const isNewUser = !user;
 
     if (!user) {
       // If the user attempted to login and does not have an account, require registration
@@ -456,6 +457,7 @@ export class AuthService {
         avatarUrl: user.avatarUrl,
       },
       sessionToken,
+      isNewUser,
     };
   }
 

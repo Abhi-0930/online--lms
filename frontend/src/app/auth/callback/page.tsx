@@ -15,6 +15,8 @@ function OAuthCallbackContent() {
     const error = searchParams.get("error");
     const email = searchParams.get("email");
 
+    const isNewUser = searchParams.get("isNewUser");
+
     if (error === "ACCOUNT_NOT_FOUND") {
       toast.error("No account found with this Google account. Please create an account first.");
       router.push(`/register${email ? `?email=${encodeURIComponent(email)}` : ""}`);
@@ -26,8 +28,12 @@ function OAuthCallbackContent() {
       if (userId) {
         localStorage.setItem("lms_user", JSON.stringify({ id: userId, role }));
       }
-      toast.success("Signed in with Google successfully!");
-      router.push("/dashboard");
+      toast.success(isNewUser === "true" ? "Welcome! Account created successfully." : "Signed in with Google successfully!");
+      if (isNewUser === "true") {
+        router.push("/onboarding");
+      } else {
+        router.push("/dashboard");
+      }
     } else {
       toast.error("Google authentication failed");
       router.push("/");

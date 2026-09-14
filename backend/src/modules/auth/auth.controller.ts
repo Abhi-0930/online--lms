@@ -57,6 +57,9 @@ export default async function authController(fastify: FastifyInstance) {
       redirectUrl.searchParams.set('sessionToken', result.sessionToken);
       redirectUrl.searchParams.set('userId', result.user.id);
       redirectUrl.searchParams.set('role', result.user.role);
+      if (result.isNewUser) {
+        redirectUrl.searchParams.set('isNewUser', 'true');
+      }
 
       return reply.redirect(redirectUrl.toString());
     } catch (err: any) {
