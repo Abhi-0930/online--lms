@@ -42,6 +42,43 @@ export class OnboardingService {
     return record;
   }
 
+  async saveStep2(userId: string, targetRoles: string[] | string) {
+    const rolesString = Array.isArray(targetRoles) ? targetRoles.join(', ') : targetRoles;
+    let record: any = OnboardingService.onboardingStore.get(userId) || {
+      id: uuidv4(),
+      userId,
+      completedStep: 2,
+      isCompleted: false,
+    };
+
+    record.targetDomain = rolesString;
+    record.completedStep = 2;
+    record.updatedAt = new Date();
+
+    try {
+      record = await this.prisma.userOnboarding.upsert({
+        where: { userId },
+        update: {
+          targetDomain: rolesString,
+          completedStep: 2,
+        },
+        create: {
+          id: uuidv4(),
+          userId,
+          targetDomain: rolesString,
+          completedStep: 2,
+          isCompleted: false,
+        },
+      });
+      logger.info({ userId, targetRoles: rolesString }, 'Saved Step 2 onboarding in database');
+    } catch (err: any) {
+      logger.warn({ err: err.message }, 'Database write deferred, saved step 2 in memory store');
+    }
+
+    OnboardingService.onboardingStore.set(userId, record);
+    return record;
+  }
+
   async getOnboarding(userId: string) {
     try {
       const record = await this.prisma.userOnboarding.findUnique({

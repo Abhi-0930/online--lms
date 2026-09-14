@@ -7,6 +7,13 @@ export const saveStep1Schema = {
   }),
 };
 
+export const saveStep2Schema = {
+  body: Type.Object({
+    targetRoles: Type.Union([Type.Array(Type.String()), Type.String()]),
+    userId: Type.Optional(Type.String()),
+  }),
+};
+
 export const onboardingResponseSchema = {
   200: Type.Object({
     id: Type.String(),
