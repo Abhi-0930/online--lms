@@ -14,6 +14,20 @@ export const saveStep2Schema = {
   }),
 };
 
+export const saveStep3Schema = {
+  body: Type.Object({
+    targetCompanies: Type.Union([Type.Array(Type.String()), Type.String()]),
+    userId: Type.Optional(Type.String()),
+  }),
+};
+
+export const saveStep4Schema = {
+  body: Type.Object({
+    name: Type.String(),
+    userId: Type.Optional(Type.String()),
+  }),
+};
+
 export const onboardingResponseSchema = {
   200: Type.Object({
     id: Type.String(),

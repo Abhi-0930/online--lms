@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Search, ChevronDown, ChevronUp, Check, Loader2, User } from "lucide-react";
 
 interface StudyOption {
   id: string;
   label: string;
   badgeBg: string;
   iconColor: string;
+}
+
+interface CompanyItem {
+  name: string;
+  domain: string;
 }
 
 const STUDY_OPTIONS: StudyOption[] = [
@@ -75,6 +80,116 @@ const MORE_ROLES = [
   "Engineering Manager",
 ];
 
+const POPULAR_COMPANIES: CompanyItem[] = [
+  { name: "Google", domain: "google.com" },
+  { name: "Microsoft", domain: "microsoft.com" },
+  { name: "Amazon", domain: "amazon.com" },
+  { name: "Apple", domain: "apple.com" },
+  { name: "Meta", domain: "meta.com" },
+  { name: "Netflix", domain: "netflix.com" },
+  { name: "Adobe", domain: "adobe.com" },
+  { name: "Salesforce", domain: "salesforce.com" },
+  { name: "TCS", domain: "tcs.com" },
+  { name: "Infosys", domain: "infosys.com" },
+  { name: "Wipro", domain: "wipro.com" },
+  { name: "Accenture", domain: "accenture.com" },
+  { name: "Deloitte", domain: "deloitte.com" },
+  { name: "Capgemini", domain: "capgemini.com" },
+  { name: "Cognizant", domain: "cognizant.com" },
+  { name: "IBM", domain: "ibm.com" },
+];
+
+const MORE_COMPANIES: CompanyItem[] = [
+  { name: "Uber", domain: "uber.com" },
+  { name: "Oracle", domain: "oracle.com" },
+  { name: "Cisco", domain: "cisco.com" },
+  { name: "Intel", domain: "intel.com" },
+  { name: "Nvidia", domain: "nvidia.com" },
+  { name: "Walmart", domain: "walmart.com" },
+  { name: "Flipkart", domain: "flipkart.com" },
+  { name: "Swiggy", domain: "swiggy.com" },
+  { name: "Zomato", domain: "zomato.com" },
+  { name: "Razorpay", domain: "razorpay.com" },
+  { name: "Atlassian", domain: "atlassian.com" },
+  { name: "Stripe", domain: "stripe.com" },
+  { name: "PayPal", domain: "paypal.com" },
+  { name: "Spotify", domain: "spotify.com" },
+  { name: "LinkedIn", domain: "linkedin.com" },
+  { name: "Goldman Sachs", domain: "goldmansachs.com" },
+  { name: "Morgan Stanley", domain: "morganstanley.com" },
+  { name: "JP Morgan", domain: "jpmorgan.com" },
+];
+
+const MONOGRAM_PALETTES = [
+  { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
+  { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-200" },
+  { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-200" },
+  { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200" },
+  { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-200" },
+  { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-200" },
+  { bg: "bg-cyan-50", text: "text-cyan-600", border: "border-cyan-200" },
+  { bg: "bg-teal-50", text: "text-teal-600", border: "border-teal-200" },
+];
+
+function getMonogramPalette(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % MONOGRAM_PALETTES.length;
+  return MONOGRAM_PALETTES[index];
+}
+
+function getCompanyInitial(name: string) {
+  const cleanName = name.trim();
+  return cleanName ? cleanName.charAt(0).toUpperCase() : "C";
+}
+
+function CompanyLogo({ name, domain }: { name: string; domain?: string }) {
+  const primaryDomain = domain || `${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`;
+  const [imgSrc, setImgSrc] = useState<string>(`https://logo.clearbit.com/${primaryDomain}`);
+  const [hasTriedFavicon, setHasTriedFavicon] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(`https://logo.clearbit.com/${primaryDomain}`);
+    setHasTriedFavicon(false);
+    setHasError(false);
+  }, [primaryDomain]);
+
+  const handleError = () => {
+    if (!hasTriedFavicon) {
+      // Try Google Favicon CDN once
+      setHasTriedFavicon(true);
+      setImgSrc(`https://www.google.com/s2/favicons?domain=${primaryDomain}&sz=128`);
+    } else {
+      // If logo cannot be loaded, show first letter
+      setHasError(true);
+    }
+  };
+
+  if (hasError) {
+    const palette = getMonogramPalette(name);
+    return (
+      <div
+        className={`w-6 h-6 rounded-md ${palette.bg} border ${palette.border} flex items-center justify-center ${palette.text} font-bold text-[12px] shrink-0 select-none shadow-2xs`}
+      >
+        {getCompanyInitial(name)}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imgSrc}
+      alt={`${name} logo`}
+      onError={handleError}
+      className="w-6 h-6 object-contain rounded-xs shrink-0"
+      loading="lazy"
+    />
+  );
+}
+
 function GraduationCapIcon({ color }: { color: string }) {
   return (
     <svg
@@ -111,7 +226,7 @@ function BriefcaseIcon({ color }: { color: string }) {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Step 1 State
   const [selectedStudyOption, setSelectedStudyOption] = useState<string | null>(null);
@@ -121,7 +236,30 @@ export default function OnboardingPage() {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [showMoreRoles, setShowMoreRoles] = useState(false);
 
+  // Step 3 State
+  const [companySearch, setCompanySearch] = useState("");
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [showMoreCompanies, setShowMoreCompanies] = useState(false);
+  const [apiSuggestions, setApiSuggestions] = useState<CompanyItem[]>([]);
+  const [isSearchingApi, setIsSearchingApi] = useState(false);
+
+  // Step 4 State
+  const [userName, setUserName] = useState("");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Preload name if available from signup
+  useEffect(() => {
+    try {
+      const existingUserStr = localStorage.getItem("lms_user");
+      if (existingUserStr) {
+        const parsed = JSON.parse(existingUserStr);
+        if (parsed?.name && !userName) {
+          setUserName(parsed.name);
+        }
+      }
+    } catch {}
+  }, []);
 
   // Filter roles based on search
   const allAvailableRoles = showMoreRoles
@@ -137,6 +275,73 @@ export default function OnboardingPage() {
   const toggleRoleSelection = (role: string) => {
     setSelectedRoles((prev) =>
       prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+    );
+  };
+
+  // Live Autocomplete API search with 200ms debouncing
+  useEffect(() => {
+    const query = companySearch.trim();
+    if (query.length < 2) {
+      setApiSuggestions([]);
+      setIsSearchingApi(false);
+      return;
+    }
+
+    setIsSearchingApi(true);
+    const timeoutId = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(query)}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const formatted: CompanyItem[] = data.map((item: { name?: string; domain?: string }) => ({
+              name: item.name || query,
+              domain: item.domain || `${(item.name || query).toLowerCase().replace(/[^a-z0-9]/g, "")}.com`,
+            }));
+            setApiSuggestions(formatted);
+          }
+        }
+      } catch {
+        // Silently fallback to local search
+      } finally {
+        setIsSearchingApi(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timeoutId);
+  }, [companySearch]);
+
+  // Filter companies based on search (merging local + live API suggestions)
+  const allAvailableCompanies = showMoreCompanies
+    ? [...POPULAR_COMPANIES, ...MORE_COMPANIES]
+    : POPULAR_COMPANIES;
+
+  const localMatches = companySearch.trim()
+    ? [...POPULAR_COMPANIES, ...MORE_COMPANIES].filter((c) =>
+        c.name.toLowerCase().includes(companySearch.toLowerCase().trim())
+      )
+    : allAvailableCompanies;
+
+  // Merge local matches and live API suggestions, eliminating duplicate company names
+  const filteredCompanies = companySearch.trim()
+    ? [
+        ...localMatches,
+        ...apiSuggestions.filter(
+          (apiComp) =>
+            !localMatches.some(
+              (loc) => loc.name.toLowerCase() === apiComp.name.toLowerCase()
+            )
+        ),
+      ]
+    : allAvailableCompanies;
+
+  const toggleCompanySelection = (companyName: string) => {
+    setSelectedCompanies((prev) =>
+      prev.includes(companyName)
+        ? prev.filter((c) => c !== companyName)
+        : [...prev, companyName]
     );
   };
 
@@ -180,7 +385,7 @@ export default function OnboardingPage() {
     }
   };
 
-  // Step 2 -> Next (or Dashboard)
+  // Step 2 -> Step 3
   const handleStep2Continue = async () => {
     if (selectedRoles.length === 0) return;
     setIsSubmitting(true);
@@ -212,7 +417,90 @@ export default function OnboardingPage() {
         }),
       }).catch(() => {});
 
-      toast.success("Preferences saved successfully!");
+      setCurrentStep(3);
+    } catch {
+      setCurrentStep(3);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Step 3 -> Step 4
+  const handleStep3Continue = async () => {
+    if (selectedCompanies.length === 0) return;
+    setIsSubmitting(true);
+
+    try {
+      localStorage.setItem("lms_user_target_companies", JSON.stringify(selectedCompanies));
+
+      const existingUserStr = localStorage.getItem("lms_user");
+      let userId: string | undefined;
+      if (existingUserStr) {
+        const parsed = JSON.parse(existingUserStr);
+        parsed.targetCompanies = selectedCompanies;
+        userId = parsed.id;
+        localStorage.setItem("lms_user", JSON.stringify(parsed));
+      }
+
+      const token = localStorage.getItem("lms_token");
+
+      // Save Step 3 to database table UserOnboarding
+      await fetch("http://localhost:4000/api/v1/onboarding/step-3", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          targetCompanies: selectedCompanies,
+          userId,
+        }),
+      }).catch(() => {});
+
+      setCurrentStep(4);
+    } catch {
+      setCurrentStep(4);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Step 4 -> Dashboard
+  const handleStep4Continue = async () => {
+    if (!userName.trim()) return;
+    setIsSubmitting(true);
+
+    const cleanName = userName.trim();
+
+    try {
+      localStorage.setItem("lms_user_name", cleanName);
+      localStorage.setItem("lms_onboarding_completed", "true");
+
+      const existingUserStr = localStorage.getItem("lms_user");
+      let userId: string | undefined;
+      if (existingUserStr) {
+        const parsed = JSON.parse(existingUserStr);
+        parsed.name = cleanName;
+        userId = parsed.id;
+        localStorage.setItem("lms_user", JSON.stringify(parsed));
+      }
+
+      const token = localStorage.getItem("lms_token");
+
+      // Save Step 4 to database table UserOnboarding & mark isCompleted = true
+      await fetch("http://localhost:4000/api/v1/onboarding/step-4", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          name: cleanName,
+          userId,
+        }),
+      }).catch(() => {});
+
+      toast.success(`Welcome to PrepPath, ${cleanName}!`);
       router.push("/dashboard");
     } catch {
       router.push("/dashboard");
@@ -239,7 +527,7 @@ export default function OnboardingPage() {
             {currentStep > 1 ? (
               <button
                 type="button"
-                onClick={() => setCurrentStep(1)}
+                onClick={() => setCurrentStep((prev) => ((prev - 1) as 1 | 2 | 3 | 4))}
                 className="flex items-center gap-1.5 text-[14px] font-medium text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -256,8 +544,16 @@ export default function OnboardingPage() {
                 currentStep >= 2 ? "bg-[#1a73e8]" : "bg-[#e2e8f0]"
               }`}
             />
-            <div className="w-9 h-1.5 rounded-full bg-[#e2e8f0]" />
-            <div className="w-9 h-1.5 rounded-full bg-[#e2e8f0]" />
+            <div
+              className={`w-9 h-1.5 rounded-full transition-colors duration-200 ${
+                currentStep >= 3 ? "bg-[#1a73e8]" : "bg-[#e2e8f0]"
+              }`}
+            />
+            <div
+              className={`w-9 h-1.5 rounded-full transition-colors duration-200 ${
+                currentStep >= 4 ? "bg-[#1a73e8]" : "bg-[#e2e8f0]"
+              }`}
+            />
           </div>
 
           <div className="w-24 text-right">
@@ -470,6 +766,208 @@ export default function OnboardingPage() {
                 {isSubmitting ? "Saving..." : "Continue"}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- */}
+        {/* STEP 3: What companies are you targeting? */}
+        {/* ---------------------------------------------------- */}
+        {currentStep === 3 && (
+          <div className="w-full flex flex-col items-center animate-fadeIn">
+            {/* Heading */}
+            <h1 className="text-[26px] sm:text-[30px] font-bold text-[#0f172a] text-center tracking-tight mb-6">
+              What companies are you targeting?
+            </h1>
+
+            {/* Search Bar */}
+            <div className="w-full max-w-[700px] relative mb-6">
+              <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={companySearch}
+                onChange={(e) => setCompanySearch(e.target.value)}
+                placeholder="Search companies (e.g. Google, Microsoft, Amazon...)"
+                className="w-full pl-11 pr-11 py-3 bg-[#f8fafc] border border-slate-200/90 rounded-xl text-[14px] text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#1a73e8] focus:ring-2 focus:ring-[#1a73e8]/15 transition-all"
+              />
+              {isSearchingApi && (
+                <Loader2 className="w-4 h-4 text-[#1a73e8] animate-spin absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              )}
+            </div>
+
+            {/* Popular Companies Heading */}
+            <div className="w-full max-w-[700px] text-left mb-3">
+              <span className="text-[13.5px] font-medium text-slate-500">
+                {companySearch.trim() ? "Matching companies" : "Popular companies"}
+              </span>
+            </div>
+
+            {/* Companies Grid or Empty State */}
+            {filteredCompanies.length > 0 ? (
+              <div className="w-full max-w-[700px] grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
+                {filteredCompanies.map((company) => {
+                  const isSelected = selectedCompanies.includes(company.name);
+                  return (
+                    <button
+                      key={company.name}
+                      type="button"
+                      onClick={() => toggleCompanySelection(company.name)}
+                      className={`py-3 px-3.5 rounded-xl border text-left transition-all duration-150 cursor-pointer flex items-center justify-between min-h-[52px] ${
+                        isSelected
+                          ? "border-[#1a73e8] bg-[#f0f7ff] ring-2 ring-[#1a73e8]/15 shadow-xs"
+                          : "border-[#e2e8f0] bg-white hover:border-[#cbd5e1] hover:bg-slate-50/50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 overflow-hidden pr-2">
+                        <CompanyLogo name={company.name} domain={company.domain} />
+                        <span className="text-[13.5px] font-medium text-slate-800 truncate">
+                          {company.name}
+                        </span>
+                      </div>
+
+                      {/* Custom Checkbox */}
+                      <div
+                        className={`w-4 h-4 rounded-[4px] border flex items-center justify-center shrink-0 transition-all ${
+                          isSelected
+                            ? "bg-[#1a73e8] border-[#1a73e8] text-white"
+                            : "border-slate-300 bg-white"
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="w-full max-w-[700px] flex flex-col items-center justify-center py-9 px-4 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 my-2">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                  <Search className="w-5 h-5 stroke-[1.75]" />
+                </div>
+                <p className="text-[15px] font-semibold text-slate-800 mb-1">
+                  No companies found for &ldquo;{companySearch}&rdquo;
+                </p>
+                <p className="text-[13px] text-slate-500 mb-4 max-w-sm">
+                  Try searching with a different name or add your specific dream company.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCompanySearch("")}
+                    className="px-4 py-2 rounded-xl text-[13px] font-medium text-[#1a73e8] bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
+                  >
+                    Clear search
+                  </button>
+                  {companySearch.trim() && !selectedCompanies.includes(companySearch.trim()) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const customCompany = companySearch.trim();
+                        if (customCompany) {
+                          setSelectedCompanies((prev) => [...prev, customCompany]);
+                          setCompanySearch("");
+                        }
+                      }}
+                      className="px-4 py-2 rounded-xl text-[13px] font-medium text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition-colors cursor-pointer shadow-2xs"
+                    >
+                      Add &ldquo;{companySearch.trim()}&rdquo;
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* View More Companies Toggle (Only when not searching) */}
+            {!companySearch.trim() && (
+              <button
+                type="button"
+                onClick={() => setShowMoreCompanies((prev) => !prev)}
+                className="flex items-center gap-1 text-[13.5px] font-medium text-[#1a73e8] hover:text-[#1557b0] transition-colors cursor-pointer my-4 select-none"
+              >
+                <span>{showMoreCompanies ? "View fewer companies" : "View more companies"}</span>
+                {showMoreCompanies ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
+            )}
+
+            {/* Continue Button */}
+            <div className="w-full flex justify-center mt-3">
+              <button
+                type="button"
+                onClick={handleStep3Continue}
+                disabled={selectedCompanies.length === 0 || isSubmitting}
+                className={`w-full max-w-[220px] py-3.5 px-8 rounded-xl text-[15px] font-medium transition-all duration-200 text-center ${
+                  selectedCompanies.length > 0 && !isSubmitting
+                    ? "bg-[#1a73e8] text-white hover:bg-[#1557b0] shadow-md shadow-[#1a73e8]/25 active:scale-[0.98] cursor-pointer"
+                    : "bg-[#c7dcfc] text-white cursor-not-allowed opacity-90"
+                }`}
+              >
+                {isSubmitting ? "Saving..." : "Continue"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- */}
+        {/* STEP 4: What should we call you? */}
+        {/* ---------------------------------------------------- */}
+        {currentStep === 4 && (
+          <div className="w-full flex flex-col items-center animate-fadeIn py-2">
+            {/* User Avatar Circle Icon */}
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#e8edfc] flex items-center justify-center mb-6 shadow-2xs">
+              <User className="w-10 h-10 sm:w-12 sm:h-12 text-[#4f6bf7] fill-[#4f6bf7]" />
+            </div>
+
+            {/* Heading */}
+            <h1 className="text-[26px] sm:text-[30px] font-bold text-[#0f172a] text-center tracking-tight mb-2">
+              What should we call you?
+            </h1>
+
+            {/* Subtitle */}
+            <p className="text-[14px] sm:text-[14.5px] text-slate-500 text-center mb-7">
+              This is how we&apos;ll address you across the platform.
+            </p>
+
+            {/* Input Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleStep4Continue();
+              }}
+              className="w-full flex flex-col items-center"
+            >
+              <div className="w-full max-w-[460px] relative mb-2">
+                <User className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="Enter your name"
+                  autoFocus
+                  className="w-full pl-11 pr-4 py-3.5 bg-[#f8fafc] border border-slate-200/90 rounded-xl text-[14.5px] text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#1a73e8] focus:ring-2 focus:ring-[#1a73e8]/15 transition-all"
+                />
+              </div>
+
+              {/* Helper text */}
+              <p className="text-[12.5px] text-slate-400 text-center mb-7">
+                You can always change this later.
+              </p>
+
+              {/* Continue Button */}
+              <button
+                type="submit"
+                disabled={!userName.trim() || isSubmitting}
+                className={`w-full max-w-[220px] py-3.5 px-8 rounded-xl text-[15px] font-medium transition-all duration-200 text-center ${
+                  userName.trim() && !isSubmitting
+                    ? "bg-[#1a73e8] text-white hover:bg-[#1557b0] shadow-md shadow-[#1a73e8]/25 active:scale-[0.98] cursor-pointer"
+                    : "bg-[#c7dcfc] text-white cursor-not-allowed opacity-90"
+                }`}
+              >
+                {isSubmitting ? "Completing..." : "Continue"}
+              </button>
+            </form>
           </div>
         )}
       </div>
