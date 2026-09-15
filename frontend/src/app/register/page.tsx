@@ -4,12 +4,13 @@ import { createSecureUrl } from "@/lib/urlParams";
 export default async function RegisterRoute({
   searchParams,
 }: {
-  searchParams: Promise<{ data?: string; q?: string; email?: string }>;
+  searchParams: Promise<{ data?: string; q?: string; email?: string; error?: string }>;
 }) {
-  const { email } = await searchParams;
+  const { email, error } = await searchParams;
   redirect(
     createSecureUrl("/", {
       mode: "register",
+      ...(error ? { error } : {}),
       ...(email ? { email } : {}),
       t: Date.now(),
     })

@@ -18,6 +18,8 @@ import cohortsRoutes from './modules/cohorts/cohorts.routes';
 import paymentRoutes from './modules/payments/payment.routes';
 import onboardingRoutes from './modules/onboarding/onboarding.routes';
 
+import adminRoutes from './modules/admin/admin.routes';
+
 export async function createApp() {
   const fastify = Fastify({
     logger: logger as any,
@@ -25,7 +27,13 @@ export async function createApp() {
 
   // Register CORS (with credentials for secure cookies)
   await fastify.register(cors, {
-    origin: [env.FRONTEND_URL, 'http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: [
+      env.FRONTEND_URL,
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:3001',
+      'http://127.0.0.1:3001',
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
@@ -64,6 +72,7 @@ export async function createApp() {
   await fastify.register(cohortsRoutes);
   await fastify.register(paymentRoutes);
   await fastify.register(onboardingRoutes);
+  await fastify.register(adminRoutes);
 
   // Health Check
   fastify.get('/health', async () => {

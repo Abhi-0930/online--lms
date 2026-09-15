@@ -1,6 +1,7 @@
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
+import AdminProfileDropdown from "./AdminProfileDropdown";
 import {
   Activity,
   BarChart3,
@@ -167,42 +168,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
 
           {!collapsed && (
-            <div className="mt-5 border-t border-[var(--app-line)] pt-4">
-              <button onClick={() => navigate("settings")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-slate-100 hover:text-[var(--app-ink)] dark:hover:bg-white/5">
+            <div className="mt-5 border-t border-[var(--app-line)] pt-4 space-y-1">
+              <button onClick={() => navigate("settings")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-slate-100 hover:text-[var(--app-ink)] dark:hover:bg-white/5 cursor-pointer">
                 <Settings className="h-[17px] w-[17px]" /> Settings
               </button>
-              <button className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-slate-100 hover:text-[var(--app-ink)] dark:hover:bg-white/5">
+              <button onClick={toggleTheme} className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-slate-100 hover:text-[var(--app-ink)] dark:hover:bg-white/5 cursor-pointer">
+                <span className="flex items-center gap-3">
+                  {theme === "dark" ? <Sun className="h-[17px] w-[17px]" /> : <Moon className="h-[17px] w-[17px]" />}
+                  <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+                </span>
+              </button>
+              <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-slate-100 hover:text-[var(--app-ink)] dark:hover:bg-white/5 cursor-pointer">
                 <LifeBuoy className="h-[17px] w-[17px]" /> Help center
               </button>
             </div>
           )}
 
-          <div className={cn("mt-5 flex items-center gap-3 border-t border-[var(--app-line)] pt-4", collapsed && "justify-center")}>
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm">{initials}</div>
-            {!collapsed && (
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="truncate text-[12px] font-bold">{displayName}</p>
-                  <span className="rounded-md bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">{roleLabel}</span>
-                </div>
-                <p className="truncate text-[11px] text-[var(--muted)]">{displayEmail}</p>
-              </div>
-            )}
-            {!collapsed && (
-              <button onClick={logout} title="Sign out" className="icon-button text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30" aria-label="Log out">
-                <LogOut className="h-3.5 w-3.5" />
-              </button>
+          <div className={cn("mt-4 border-t border-[var(--app-line)] pt-4", collapsed ? "flex justify-center" : "")}>
+            {collapsed ? (
+              <AdminProfileDropdown variant="topbar" align="start" />
+            ) : (
+              <AdminProfileDropdown variant="sidebar" align="start" />
             )}
           </div>
         </aside>
 
         <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-30 flex h-[76px] items-center gap-4 border-b border-[var(--app-line)] bg-[var(--app-bg)]/90 px-5 backdrop-blur-xl sm:px-8">
-            <button className="icon-button lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
-            <button className="icon-button hidden lg:grid" onClick={() => setCollapsed((value) => !value)} aria-label="Toggle sidebar">{collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}</button>
-            <div className="min-w-0 flex-1"><p className="truncate text-[11px] font-semibold text-[var(--muted)]">Workspace / <span className="text-[var(--app-ink)]">{activeLabel}</span></p><p className="mt-1 hidden text-xs text-[var(--muted)] sm:block">Keep your learning engine moving forward.</p></div>
-            <button onClick={toggleTheme} className="icon-button" aria-label="Toggle theme">{theme === "dark" ? <Sun className="h-[17px] w-[17px]" /> : <Moon className="h-[17px] w-[17px]" />}</button>
-          </header>
+          {/* Mobile hamburger floating toggle */}
+          <div className="lg:hidden fixed top-3.5 left-3.5 z-40">
+            <button className="icon-button bg-white shadow-md border border-[var(--app-line)] dark:bg-slate-900" onClick={() => setMobileOpen(true)} aria-label="Open navigation">
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
           <main>{children}</main>
         </div>
       </div>

@@ -16,7 +16,7 @@ function OAuthCallbackContent() {
 
     if (error === "ACCOUNT_NOT_FOUND") {
       toast.error("No account found with this Google account. Please create an account first.");
-      router.push(createSecureUrl("/", { mode: "register", ...(email ? { email } : {}), t: Date.now() }));
+      router.push(createSecureUrl("/", { mode: "register", error: "ACCOUNT_NOT_FOUND", ...(email ? { email } : {}), t: Date.now() }));
       return;
     }
 

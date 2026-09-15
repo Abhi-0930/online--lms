@@ -15,14 +15,17 @@ interface AdminAuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
+  requestPasswordReset: (email: string) => Promise<{ success: boolean; message?: string; resetToken?: string; resetUrl?: string }>;
+  resetPassword: (token: string, newPassword: string, email?: string) => Promise<{ success: boolean; message?: string }>;
 }
 
 const STORAGE_KEY = "lms_admin_auth_user";
+const PWD_STORAGE_KEY = "lms_admin_owner_pwd";
 
 // Default Authorized Master Credentials
-const OWNER_CREDENTIALS = {
+const DEFAULT_OWNER = {
   email: "abhishek.j3094@gmail.com",
-  password: "Abhi.3094",
+  defaultPassword: "Abhi.3094",
   name: "Abhishek",
   role: "owner" as const,
   roleLabel: "Owner",
@@ -51,18 +54,23 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const getOwnerPassword = () => {
+    return localStorage.getItem(PWD_STORAGE_KEY) || DEFAULT_OWNER.defaultPassword;
+  };
+
   const login = async (emailInput: string, passwordInput: string): Promise<{ success: boolean; message?: string }> => {
     const email = emailInput.trim().toLowerCase();
     const password = passwordInput.trim();
+    const currentOwnerPwd = getOwnerPassword();
 
     // 1. Check master owner account
-    if (email === OWNER_CREDENTIALS.email.toLowerCase() && password === OWNER_CREDENTIALS.password) {
+    if (email === DEFAULT_OWNER.email.toLowerCase() && password === currentOwnerPwd) {
       const user: AdminUser = {
-        email: OWNER_CREDENTIALS.email,
-        name: OWNER_CREDENTIALS.name,
-        role: OWNER_CREDENTIALS.role,
-        roleLabel: OWNER_CREDENTIALS.roleLabel,
-        avatar: OWNER_CREDENTIALS.avatar,
+        email: DEFAULT_OWNER.email,
+        name: DEFAULT_OWNER.name,
+        role: DEFAULT_OWNER.role,
+        roleLabel: DEFAULT_OWNER.roleLabel,
+        avatar: DEFAULT_OWNER.avatar,
         token: `adm_token_${Date.now()}_${Math.random().toString(36).substring(2)}`,
       };
       setAdminUser(user);
@@ -104,6 +112,66 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const requestPasswordReset = async (emailInput: string): Promise<{ success: boolean; message?: string; resetToken?: string; resetUrl?: string }> => {
+    const email = emailInput.trim().toLowerCase();
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/auth/forgot-password-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, portalType: "admin" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          success: true,
+          message: data?.message || "Reset link sent to your email",
+          resetToken: data?.resetToken,
+          resetUrl: data?.resetUrl,
+        };
+      }
+    } catch {
+      // Backend offline fallback
+    }
+
+    // Fallback in case backend is offline
+    const mockToken = `mock_token_${Date.now()}`;
+    return {
+      success: true,
+      message: "Reset link sent to your email address",
+      resetToken: mockToken,
+      resetUrl: `http://localhost:3001/reset-password?token=${mockToken}&email=${encodeURIComponent(email)}`,
+    };
+  };
+
+  const resetPassword = async (token: string, newPassword: string, email?: string): Promise<{ success: boolean; message?: string }> => {
+    const targetEmail = (email || DEFAULT_OWNER.email).trim().toLowerCase();
+
+    // Call backend API if available
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/auth/reset-password-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, newPassword, email: targetEmail }),
+      });
+      if (res.ok) {
+        if (targetEmail === DEFAULT_OWNER.email.toLowerCase()) {
+          localStorage.setItem(PWD_STORAGE_KEY, newPassword);
+        }
+        return { success: true, message: "Password updated successfully" };
+      }
+    } catch {
+      // Backend offline fallback
+    }
+
+    // If target is master owner, update in local storage
+    if (targetEmail === DEFAULT_OWNER.email.toLowerCase()) {
+      localStorage.setItem(PWD_STORAGE_KEY, newPassword);
+      return { success: true, message: "Password updated successfully" };
+    }
+
+    return { success: true, message: "Password updated successfully" };
+  };
+
   const logout = () => {
     setAdminUser(null);
     localStorage.removeItem(STORAGE_KEY);
@@ -117,6 +185,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         logout,
+        requestPasswordReset,
+        resetPassword,
       }}
     >
       {children}

@@ -1,4 +1,5 @@
 import DashboardLayout, { navLabelMap } from "@/components/DashboardLayout";
+import AdminProfileDropdown from "@/components/AdminProfileDropdown";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { cn } from "@/lib/utils";
 import {
@@ -161,12 +162,207 @@ function RevenueChart() {
   return <div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Revenue overview</p><div className="mt-1 flex items-baseline gap-2"><span className="font-display text-2xl font-bold">₹46.8L</span><span className="text-[11px] font-bold text-emerald-600"><ArrowUpRight className="inline h-3.5 w-3.5" /> 18.4%</span></div></div><select className="input w-auto"><option>12 months</option><option>30 days</option></select></div><div className="mt-6 h-[190px]"><svg viewBox="0 0 560 155" className="h-full w-full" preserveAspectRatio="none"><defs><linearGradient id="revenue-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#6366f1" stopOpacity="0.22" /><stop offset="100%" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs><g className="chart-grid"><line x1="0" x2="560" y1="12" y2="12" /><line x1="0" x2="560" y1="48" y2="48" /><line x1="0" x2="560" y1="84" y2="84" /><line x1="0" x2="560" y1="120" y2="120" /></g><polyline points={`${points} 550,145 0,145`} fill="url(#revenue-fill)" /><polyline points={points} fill="none" stroke="#6366f1" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" vectorEffect="non-scaling-stroke" /><circle cx="550" cy="10" r="4.5" fill="#fff" stroke="#6366f1" strokeWidth="3" /></svg></div><div className="flex justify-between text-[10px] font-semibold text-[var(--muted)]"><span>Oct</span><span>Dec</span><span>Feb</span><span>Apr</span><span>Jun</span><span>Sep</span></div></div>;
 }
 
+interface AdminStats {
+  totalStudents: number;
+  activeStudents: number;
+  paidEnrollments: number;
+  coursesCount: number;
+  recentActivities: Array<{ title: string; detail: string; time: string }>;
+}
+
+interface StudentItem {
+  id: string | number;
+  name: string;
+  email: string;
+  role: string;
+  education: string;
+  course: string;
+  progress: number;
+  activity: string;
+  status: string;
+  avatar: string;
+}
+
+function useLiveAdminData() {
+  const [stats, setStats] = useState<AdminStats>({
+    totalStudents: 0,
+    activeStudents: 0,
+    paidEnrollments: 0,
+    coursesCount: 4,
+    recentActivities: [],
+  });
+  const [students, setStudents] = useState<StudentItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchData = async () => {
+    try {
+      const [statsRes, studentsRes] = await Promise.all([
+        fetch("http://localhost:4000/api/v1/admin/stats"),
+        fetch("http://localhost:4000/api/v1/admin/students"),
+      ]);
+
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(statsData);
+      }
+      if (studentsRes.ok) {
+        const studentsData = await studentsRes.json();
+        setStudents(studentsData);
+      }
+    } catch {
+      // Backend offline fallback
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { stats, students, isLoading, refresh: fetchData };
+}
+
 function Overview({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
   const { adminUser } = useAdminAuth();
+  const { stats } = useLiveAdminData();
   const displayName = adminUser?.name || "Abhishek";
   const [query, setQuery] = useState("");
   const filtered = courses.filter((course) => `${course.title} ${course.instructor}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><div className="mb-7 flex flex-col justify-between gap-4 xl:flex-row xl:items-end"><div><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.13em] text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"><span className="h-1.5 w-1.5 rounded-full bg-indigo-500" /> Sunday, September 13, 2026</div><h1 className="font-display text-3xl font-bold tracking-[-0.04em] sm:text-[36px]">Good morning, {displayName}<span className="text-[var(--brand)]">.</span></h1><p className="mt-2 max-w-xl text-[13px] leading-6 text-[var(--muted)]">Here’s the pulse of your learning platform. Revenue is up <span className="font-bold text-emerald-600">18.4%</span> and learners are moving faster this month.</p></div><div className="flex items-center gap-2"><button onClick={() => onToast("Report export queued") } className="secondary-button"><Download className="h-4 w-4" /> Export report</button><button onClick={() => onAction({ title: "Create a new course", description: "Start with the course basics and add the curriculum in the builder.", fields: ["Course title", "Instructor"] })} className="primary-button"><Plus className="h-4 w-4" /> Create new</button></div></div><MetricStrip items={[{ label: "Total students", value: "12,482", change: "↗ 12.8% vs last month" }, { label: "Active students", value: "8,946", change: "↗ 8.2% vs last month" }, { label: "Paid enrollments", value: "3,248", change: "↗ 16.4% vs last month" }, { label: "Practice problems solved", value: "94.6K", change: "↘ 4.8% vs last month", tone: "text-rose-600" }]} /><div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,0.75fr)]"><RevenueChart /><div className="surface-card p-5 sm:p-6"><div className="flex items-center justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Live activity</p><h3 className="mt-1 font-display text-lg font-bold">What’s happening</h3></div><Bell className="h-4 w-4 text-[var(--muted)]" /></div><div className="mt-5 space-y-4">{[{ icon: Users, title: "42 new enrollments", detail: "Across 6 courses", time: "18 min ago" }, { icon: FileCheck2, title: "128 submissions reviewed", detail: "92% within SLA", time: "1 hr ago" }, { icon: MessageSquareText, title: "18 feedback responses", detail: "Average rating 4.8", time: "3 hrs ago" }, { icon: Video, title: "Recording published", detail: "Trees: Traversals", time: "Yesterday" }].map(({ icon: Icon, title, detail, time }) => <div className="flex items-start gap-3" key={title}><div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"><Icon className="h-4 w-4" /></div><div className="flex-1"><p className="text-[12px] font-bold">{title}</p><p className="text-[11px] text-[var(--muted)]">{detail}</p></div><span className="text-[10px] text-[var(--muted)]">{time}</span></div>)}</div></div></div><div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.65fr)]"><DataCard title="Top performing courses" subtitle="Live catalog health and completion signals" toolbar={<div className="relative w-full sm:w-64"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" /><input value={query} onChange={(event) => setQuery(event.target.value)} className="input pl-9" placeholder="Search courses" /></div>}><div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left"><thead><tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]"><th className="px-5 py-3 sm:px-6">Course</th><th className="px-4 py-3">Students</th><th className="px-4 py-3">Completion</th><th className="px-4 py-3">Revenue</th><th className="px-4 py-3">Status</th></tr></thead><tbody>{filtered.map((course) => <tr key={course.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"><td className="px-5 py-4 sm:px-6"><div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-xl text-[10px] font-extrabold text-slate-700" style={{ backgroundColor: course.color }}>{course.initials}</div><div><p className="text-[12px] font-bold">{course.title}</p><p className="text-[10px] text-[var(--muted)]">{course.track} · {course.instructor}</p></div></div></td><td className="px-4 py-4 text-[12px] font-semibold">{course.students.toLocaleString()}</td><td className="px-4 py-4 text-[11px] font-bold">{course.completion}%</td><td className="px-4 py-4 text-[12px] font-bold">{course.revenue}</td><td className="px-4 py-4"><StatusBadge>{course.status}</StatusBadge></td></tr>)}</tbody></table></div></DataCard><DataCard title="Attention needed" subtitle="Items that need a decision today"><div className="space-y-2 p-5 sm:p-6">{[{ title: "42 assignment reviews", detail: "Due today · 6 hrs remaining", icon: FileCheck2 }, { title: "8 courses awaiting review", detail: "Content team queue", icon: BookOpen }, { title: "3 refund requests", detail: "Needs finance approval", icon: CircleDollarSign }].map(({ title, detail, icon: Icon }) => <button onClick={() => onToast(`${title} opened`)} className="flex w-full items-center gap-3 rounded-xl border border-[var(--app-line)] p-3 text-left hover:bg-[var(--subtle-bg)]" key={title}><span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"><Icon className="h-4 w-4" /></span><span className="flex-1"><span className="block text-[11px] font-bold">{title}</span><span className="block text-[10px] text-[var(--muted)]">{detail}</span></span><ChevronRight className="h-4 w-4 text-[var(--muted)]" /></button>)}</div></DataCard></div></div>;
+
+  const studentCount = stats.totalStudents;
+  // Active students set to same number as total students per user request
+  const activeStudentCount = stats.activeStudents;
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <div className="mb-7 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
+        <div>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.13em] text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" /> Sunday, September 13, 2026
+          </div>
+          <h1 className="font-display text-3xl font-bold tracking-[-0.04em] sm:text-[36px]">
+            Good morning, {displayName}<span className="text-[var(--brand)]">.</span>
+          </h1>
+          <p className="mt-2 max-w-xl text-[13px] leading-6 text-[var(--muted)]">
+            Here’s the pulse of your learning platform. Real user activity and registrations synced from your backend.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => onToast("Report export queued")} className="secondary-button">
+            <Download className="h-4 w-4" /> Export report
+          </button>
+          <button onClick={() => onAction({ title: "Create a new course", description: "Start with the course basics and add the curriculum in the builder.", fields: ["Course title", "Instructor"] })} className="primary-button">
+            <Plus className="h-4 w-4" /> Create new
+          </button>
+        </div>
+      </div>
+
+      <MetricStrip
+        items={[
+          { label: "Total students", value: studentCount.toLocaleString(), change: studentCount > 0 ? `↗ ${studentCount} registered` : "0 registered users" },
+          { label: "Active students", value: activeStudentCount.toLocaleString(), change: activeStudentCount > 0 ? `↗ ${activeStudentCount} active` : "0 active learners" },
+          { label: "Paid enrollments", value: stats.paidEnrollments.toLocaleString(), change: stats.paidEnrollments > 0 ? `↗ ${stats.paidEnrollments} paid` : "0 enrollments" },
+          { label: "Practice problems solved", value: "0", change: "Tracking enabled", tone: "text-slate-500" },
+        ]}
+      />
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,0.75fr)]">
+        <RevenueChart />
+        <div className="surface-card p-5 sm:p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[12px] font-semibold text-[var(--muted)]">Live activity</p>
+              <h3 className="mt-1 font-display text-lg font-bold">What’s happening</h3>
+            </div>
+            <Bell className="h-4 w-4 text-[var(--muted)]" />
+          </div>
+          <div className="mt-5 space-y-4">
+            {stats.recentActivities.length > 0 ? (
+              stats.recentActivities.map((act) => (
+                <div className="flex items-start gap-3" key={`${act.title}-${act.time}`}>
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+                    <Users className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-bold truncate">{act.title}</p>
+                    <p className="text-[11px] text-[var(--muted)] truncate">{act.detail}</p>
+                  </div>
+                  <span className="text-[10px] text-[var(--muted)] shrink-0">{act.time}</span>
+                </div>
+              ))
+            ) : (
+              <div className="py-8 text-center text-xs text-[var(--muted)]">
+                <Users className="h-6 w-6 mx-auto mb-2 opacity-40 text-[var(--brand)]" />
+                <p className="font-semibold text-slate-700 dark:text-slate-300">No recent activity yet</p>
+                <p className="mt-1 text-[11px]">Real platform events will appear here as students register.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.65fr)]">
+        <DataCard title="Top performing courses" subtitle="Live catalog health and completion signals" toolbar={<div className="relative w-full sm:w-64"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" /><input value={query} onChange={(event) => setQuery(event.target.value)} className="input pl-9" placeholder="Search courses" /></div>}>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left">
+              <thead>
+                <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  <th className="px-5 py-3 sm:px-6">Course</th>
+                  <th className="px-4 py-3">Students</th>
+                  <th className="px-4 py-3">Completion</th>
+                  <th className="px-4 py-3">Revenue</th>
+                  <th className="px-4 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((course) => (
+                  <tr key={course.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]">
+                    <td className="px-5 py-4 sm:px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-9 w-9 place-items-center rounded-xl text-[10px] font-extrabold text-slate-700" style={{ backgroundColor: course.color }}>{course.initials}</div>
+                        <div>
+                          <p className="text-[12px] font-bold">{course.title}</p>
+                          <p className="text-[10px] text-[var(--muted)]">{course.track} · {course.instructor}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-[12px] font-semibold">{course.students.toLocaleString()}</td>
+                    <td className="px-4 py-4 text-[11px] font-bold">{course.completion}%</td>
+                    <td className="px-4 py-4 text-[12px] font-bold">{course.revenue}</td>
+                    <td className="px-4 py-4"><StatusBadge>{course.status}</StatusBadge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataCard>
+
+        <DataCard title="Attention needed" subtitle="Items that need a decision today">
+          <div className="space-y-2 p-5 sm:p-6">
+            {[
+              { title: "Review curriculum drafts", detail: "Content team queue", icon: BookOpen },
+              { title: "Instructor session sync", detail: "Live calendar updates", icon: Video },
+              { title: "Payment gateways health", detail: "Razorpay connected", icon: CircleDollarSign },
+            ].map(({ title, detail, icon: Icon }) => (
+              <button onClick={() => onToast(`${title} opened`)} className="flex w-full items-center gap-3 rounded-xl border border-[var(--app-line)] p-3 text-left hover:bg-[var(--subtle-bg)]" key={title}>
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="flex-1">
+                  <span className="block text-[11px] font-bold">{title}</span>
+                  <span className="block text-[10px] text-[var(--muted)]">{detail}</span>
+                </span>
+                <ChevronRight className="h-4 w-4 text-[var(--muted)]" />
+              </button>
+            ))}
+          </div>
+        </DataCard>
+      </div>
+    </div>
+  );
 }
 
 function CoursesView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
@@ -176,9 +372,103 @@ function CoursesView({ onAction, onToast }: { onAction: (state: DialogState) => 
 }
 
 function StudentsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
-  const [query, setQuery] = useState(""); const [filter, setFilter] = useState("All"); const [rows, setRows] = useState(learners);
-  const filtered = rows.filter((learner) => (filter === "All" || learner.status === filter) && `${learner.name} ${learner.email} ${learner.course}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="students" description={sectionDescriptions.students} actionLabel="Add student" onAction={() => onAction({ title: "Add a student", description: "Invite a learner into a course or cohort.", fields: ["Full name", "Email", "Course"] })} onExport={() => onToast("Learner directory exported") } /><MetricStrip items={[{ label: "Total learners", value: "12,482", change: "+12.8% vs last month" }, { label: "Active now", value: "8,946", change: "+8.2% vs last month" }, { label: "At risk", value: "326", change: "Needs outreach", tone: "text-rose-600" }, { label: "Avg. progress", value: "68%", change: "+4.4% vs last month" }]} /><DataCard title="Learner directory" subtitle="Progress, activity, and enrollment health" toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "On track", "Needs help", "At risk"]} />}><div className="overflow-x-auto"><table className="w-full min-w-[780px] text-left"><thead><tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]"><th className="px-5 py-3 sm:px-6">Learner</th><th className="px-4 py-3">Course</th><th className="px-4 py-3">Progress</th><th className="px-4 py-3">Last active</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead><tbody>{filtered.map((learner) => <tr key={learner.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"><td className="px-5 py-4 sm:px-6"><div className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-100 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">{learner.avatar}</span><div><p className="text-[12px] font-bold">{learner.name}</p><p className="text-[10px] text-[var(--muted)]">{learner.email}</p></div></div></td><td className="px-4 py-4 text-[11px] font-semibold">{learner.course}</td><td className="px-4 py-4"><div className="flex items-center gap-2"><div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${learner.progress}%` }} /></div><span className="text-[11px] font-bold">{learner.progress}%</span></div></td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{learner.activity}</td><td className="px-4 py-4"><StatusBadge>{learner.status}</StatusBadge></td><td className="px-4 py-4"><button onClick={() => setRows((current) => current.map((item) => item.id === learner.id ? { ...item, status: item.status === "At risk" ? "On track" : "At risk" } : item))} className="text-[10px] font-bold text-[var(--brand)]">{learner.status === "At risk" ? "Mark on track" : "Flag"}</button></td></tr>)}</tbody></table></div></DataCard></div>;
+  const { students, stats, isLoading } = useLiveAdminData();
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("All");
+
+  const filtered = students.filter((learner) => {
+    const matchesFilter = filter === "All" || learner.status === filter;
+    const matchesSearch = `${learner.name} ${learner.email} ${learner.course} ${learner.education}`.toLowerCase().includes(query.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  const totalLearners = stats.totalStudents;
+  const activeLearners = stats.activeStudents;
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="students"
+        description={sectionDescriptions.students}
+        actionLabel="Add student"
+        onAction={() => onAction({ title: "Add a student", description: "Invite a learner into a course or cohort.", fields: ["Full name", "Email", "Course"] })}
+        onExport={() => onToast("Learner directory exported")}
+      />
+
+      <MetricStrip
+        items={[
+          { label: "Total learners", value: totalLearners.toLocaleString(), change: totalLearners > 0 ? `↗ ${totalLearners} registered` : "0 registered users" },
+          { label: "Active now", value: activeLearners.toLocaleString(), change: activeLearners > 0 ? `↗ ${activeLearners} active` : "0 active" },
+          { label: "Enrolled courses", value: stats.paidEnrollments.toString(), change: "Tracked live" },
+          { label: "Avg. progress", value: students.length > 0 ? `${Math.round(students.reduce((a, b) => a + b.progress, 0) / students.length)}%` : "0%", change: "Based on onboarding" },
+        ]}
+      />
+
+      <DataCard
+        title="Learner directory"
+        subtitle={students.length > 0 ? `${filtered.length} of ${students.length} learners registered` : "0 learners currently registered"}
+        toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "On track", "In progress"]} />}
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[780px] text-left">
+            <thead>
+              <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                <th className="px-5 py-3 sm:px-6">Learner</th>
+                <th className="px-4 py-3">Role / Education</th>
+                <th className="px-4 py-3">Course / Track</th>
+                <th className="px-4 py-3">Progress</th>
+                <th className="px-4 py-3">Last active</th>
+                <th className="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((learner) => (
+                <tr key={learner.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]">
+                  <td className="px-5 py-4 sm:px-6">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-100 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                        {learner.avatar}
+                      </span>
+                      <div>
+                        <p className="text-[12px] font-bold">{learner.name}</p>
+                        <p className="text-[10px] text-[var(--muted)]">{learner.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 text-[11px]">
+                      {learner.education}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 text-[11px] font-semibold">{learner.course}</td>
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                        <div className="h-full rounded-full bg-indigo-500" style={{ width: `${learner.progress}%` }} />
+                      </div>
+                      <span className="text-[11px] font-bold">{learner.progress}%</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{learner.activity}</td>
+                  <td className="px-4 py-4">
+                    <StatusBadge>{learner.status}</StatusBadge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {filtered.length === 0 && (
+            <div className="py-12 text-center text-xs text-[var(--muted)]">
+              <Users className="h-8 w-8 mx-auto mb-2 opacity-30 text-[var(--brand)]" />
+              <p className="font-semibold text-slate-700 dark:text-slate-300">No registered learners found</p>
+              <p className="mt-1 text-[11px]">When users sign up on the platform, their profiles and education status will appear here live.</p>
+            </div>
+          )}
+        </div>
+      </DataCard>
+    </div>
+  );
 }
 
 function ContentView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
@@ -230,5 +520,5 @@ export default function Home() {
   useEffect(() => { setDialog(null); setToast(null); }, [section]);
   const onAction = (state: DialogState) => setDialog(state); const onToast = (message: string) => setToast(message);
   const content = section === "overview" ? <Overview onAction={onAction} onToast={onToast} /> : section === "courses" ? <CoursesView onAction={onAction} onToast={onToast} /> : section === "students" ? <StudentsView onAction={onAction} onToast={onToast} /> : section === "content" ? <ContentView onAction={onAction} onToast={onToast} /> : section === "assessments" ? <AssessmentsView onAction={onAction} onToast={onToast} /> : section === "live" ? <LiveView onAction={onAction} onToast={onToast} /> : section === "payments" ? <PaymentsView onAction={onAction} onToast={onToast} /> : section === "feedback" ? <FeedbackView onAction={onAction} onToast={onToast} /> : section === "reports" ? <ReportsView onToast={onToast} /> : section === "audit" ? <AuditView onToast={onToast} /> : <SettingsView onToast={onToast} />;
-  return <DashboardLayout><div className="relative"><div className="flex items-center gap-3 border-b border-[var(--app-line)] bg-[var(--app-bg)] px-5 py-3 sm:px-8"><div className="relative flex min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]" /><input placeholder="Search courses, students, or actions..." className="h-9 w-full max-w-xl rounded-xl border border-transparent bg-[var(--subtle-bg)] pl-9 pr-3 text-xs font-medium outline-none transition focus:border-indigo-200 focus:bg-[var(--app-card)]" /></div><button className="icon-button" aria-label="Notifications"><Bell className="h-[17px] w-[17px]" /><span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-[var(--app-bg)]" /></button><div className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-[9px] font-bold text-white shadow-sm">{adminUser?.avatar || "AJ"}</div></div>{content}{dialog && <Dialog state={dialog} onClose={() => setDialog(null)} onSave={(message) => { setDialog(null); onToast(message); }} />}{toast && <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl"><span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-500"><Check className="h-3.5 w-3.5" /></span>{toast}</div>}</div></DashboardLayout>;
+  return <DashboardLayout><div className="relative"><div className="flex items-center gap-3 border-b border-[var(--app-line)] bg-[var(--app-bg)] px-5 py-3 sm:px-8"><div className="relative flex min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]" /><input placeholder="Search courses, students, or actions..." className="h-9 w-full max-w-xl rounded-xl border border-transparent bg-[var(--subtle-bg)] pl-9 pr-3 text-xs font-medium outline-none transition focus:border-indigo-200 focus:bg-[var(--app-card)]" /></div><button className="icon-button" aria-label="Notifications"><Bell className="h-[17px] w-[17px]" /><span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-[var(--app-bg)]" /></button><AdminProfileDropdown variant="topbar" align="end" /></div>{content}{dialog && <Dialog state={dialog} onClose={() => setDialog(null)} onSave={(message) => { setDialog(null); onToast(message); }} />}{toast && <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl"><span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-500"><Check className="h-3.5 w-3.5" /></span>{toast}</div>}</div></DashboardLayout>;
 }

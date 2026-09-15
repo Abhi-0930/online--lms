@@ -14,6 +14,9 @@ import {
   Search,
   CheckCircle2,
   Circle,
+  AlertCircle,
+  UserX,
+  X,
 } from "lucide-react";
 import { COUNTRIES, DEFAULT_COUNTRY, type Country } from "@/lib/countries";
 import { CountryFlag } from "@/components/CountryFlag";
@@ -45,9 +48,16 @@ function AuthForm({
   );
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [alert, setAlert] = useState<{
+    type: "ACCOUNT_NOT_FOUND" | "ERROR" | "INFO";
+    title: string;
+    message: string;
+    email?: string;
+  } | null>(null);
 
   const setMode = (signUp: boolean) => {
     setIsSignUp(signUp);
+    setAlert(null);
     router.replace(
       createSecureUrl("/", {
         mode: signUp ? "register" : "login",
@@ -59,14 +69,18 @@ function AuthForm({
   // Ensure root URL is ALWAYS completely encrypted with tamper-resistant query params
   useEffect(() => {
     if (!dataParam) {
+      const rawError = searchParams?.get("error");
+      const rawEmail = searchParams?.get("email");
       router.replace(
         createSecureUrl("/", {
           mode: isSignUp ? "register" : "login",
+          ...(rawError ? { error: rawError } : {}),
+          ...(rawEmail ? { email: rawEmail } : {}),
           t: Date.now(),
         })
       );
     }
-  }, [dataParam, isSignUp, router]);
+  }, [dataParam, isSignUp, router, searchParams]);
 
   // Country code selector state
   const [selectedCountry, setSelectedCountry] = useState<Country>(DEFAULT_COUNTRY);
@@ -107,14 +121,30 @@ function AuthForm({
   // Handle OAuth error callbacks
   useEffect(() => {
     if (errorParam === "ACCOUNT_NOT_FOUND") {
+      setAlert({
+        type: "ACCOUNT_NOT_FOUND",
+        title: "Account Not Found",
+        message: "No account found with this Google account. Please create an account to get started.",
+        email: emailParam || undefined,
+      });
       toast.error("No account found with this Google account. Please create an account first.");
       setIsSignUp(true);
       if (emailParam) {
         setFormData((prev) => ({ ...prev, email: emailParam }));
       }
     } else if (errorParam === "DEVICE_LIMIT_REACHED") {
+      setAlert({
+        type: "ERROR",
+        title: "Device Limit Reached",
+        message: "You have reached the maximum allowed devices for this account.",
+      });
       toast.error("Device limit reached for this account.");
     } else if (errorParam === "AUTH_FAILED") {
+      setAlert({
+        type: "ERROR",
+        title: "Authentication Failed",
+        message: "Authentication failed. Please try again.",
+      });
       toast.error("Authentication failed. Please try again.");
     }
   }, [errorParam, emailParam]);
@@ -204,8 +234,33 @@ function AuthForm({
       }
 
       const errData = await res.json().catch(() => ({}));
-      toast.error(errData.message || (isSignUp ? "Registration failed" : "Invalid email or password"));
+      if (
+        res.status === 404 ||
+        errData.code === "ACCOUNT_NOT_FOUND" ||
+        errData.error === "ACCOUNT_NOT_FOUND" ||
+        errData.message?.toLowerCase().includes("no account found")
+      ) {
+        setAlert({
+          type: "ACCOUNT_NOT_FOUND",
+          title: "Account Not Found",
+          message: errData.message || "No account found with this email address. Please create an account to get started.",
+          email: formData.email,
+        });
+        toast.error(errData.message || "Account not found. Please create an account first.");
+      } else {
+        setAlert({
+          type: "ERROR",
+          title: isSignUp ? "Registration Failed" : "Sign In Failed",
+          message: errData.message || (isSignUp ? "Registration failed. Please try again." : "Invalid email or password. Please try again."),
+        });
+        toast.error(errData.message || (isSignUp ? "Registration failed" : "Invalid email or password"));
+      }
     } catch {
+      setAlert({
+        type: "ERROR",
+        title: "Connection Error",
+        message: "Unable to connect to the authentication server. Please check your connection and try again.",
+      });
       toast.error("Unable to connect to the authentication server");
     } finally {
       setIsLoading(false);
@@ -288,7 +343,7 @@ function AuthForm({
         <div className="flex-1 flex items-center justify-center py-2 shrink min-h-0">
           <div className="w-full max-w-[460px] bg-white rounded-[28px] p-7 sm:p-9 shadow-[0_20px_50px_rgba(0,0,0,0.06)] border border-gray-100/90">
             {/* Header Text */}
-            <div className="mb-6">
+            <div className="mb-5">
               <h1 className="text-[28px] sm:text-[32px] font-bold tracking-tight text-gray-900 leading-tight">
                 {isSignUp ? "Create your account" : "Welcome back"}
               </h1>
@@ -298,6 +353,87 @@ function AuthForm({
                   : "Sign in to continue your learning journey."}
               </p>
             </div>
+
+            {/* Dedicated Alert UI */}
+            {alert && (
+              <div
+                className={`mb-5 rounded-2xl p-4 border shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 ${
+                  alert.type === "ACCOUNT_NOT_FOUND"
+                    ? "bg-amber-50/90 border-amber-200/90 text-amber-900"
+                    : "bg-red-50/90 border-red-200/90 text-red-900"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl ${
+                      alert.type === "ACCOUNT_NOT_FOUND"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-red-100 text-red-600"
+                    }`}
+                  >
+                    {alert.type === "ACCOUNT_NOT_FOUND" ? (
+                      <UserX className="h-4 w-4 stroke-[2]" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 stroke-[2]" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4
+                      className={`text-[13.5px] font-bold ${
+                        alert.type === "ACCOUNT_NOT_FOUND"
+                          ? "text-amber-950"
+                          : "text-red-950"
+                      }`}
+                    >
+                      {alert.title}
+                    </h4>
+                    <p
+                      className={`mt-0.5 text-[12.5px] leading-relaxed ${
+                        alert.type === "ACCOUNT_NOT_FOUND"
+                          ? "text-amber-800/95"
+                          : "text-red-800/95"
+                      }`}
+                    >
+                      {alert.message}
+                    </p>
+                    {!isSignUp && alert.type === "ACCOUNT_NOT_FOUND" && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode(true);
+                            if (alert.email) {
+                              setFormData((prev) => ({
+                                ...prev,
+                                email: alert.email || prev.email,
+                              }));
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[12px] font-semibold transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                        >
+                          Create account
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAlert(null)}
+                          className="px-2.5 py-1.5 rounded-lg border border-amber-300 hover:bg-amber-100/60 text-amber-900 text-[12px] font-medium transition-all cursor-pointer"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAlert(null)}
+                    className="text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer transition-colors"
+                    title="Dismiss alert"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Login / Register Form */}
             <form onSubmit={handleFormSubmit} className="space-y-3.5">

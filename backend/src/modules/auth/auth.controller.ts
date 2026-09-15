@@ -178,26 +178,34 @@ export default async function authController(fastify: FastifyInstance) {
     const ip = getClientIp(request.headers);
     const userAgent = request.headers['user-agent'] || 'Unknown';
 
-    const result = await authService.login({
-      ...body,
-      ip,
-      userAgent,
-    });
+    try {
+      const result = await authService.login({
+        ...body,
+        ip,
+        userAgent,
+      });
 
-    // Generate JWT access token
-    const accessToken = fastify.jwt.sign({
-      id: result.user.id,
-      email: result.user.email,
-      role: result.user.role,
-      sessionToken: result.sessionToken,
-    });
+      // Generate JWT access token
+      const accessToken = fastify.jwt.sign({
+        id: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        sessionToken: result.sessionToken,
+      });
 
-    setAuthCookie(reply, accessToken);
+      setAuthCookie(reply, accessToken);
 
-    return reply.send({
-      ...result,
-      accessToken,
-    });
+      return reply.send({
+        ...result,
+        accessToken,
+      });
+    } catch (err: any) {
+      return reply.status(err.statusCode || 400).send({
+        error: err.code || 'InvalidCredentials',
+        message: err.message || 'Invalid email or password',
+        code: err.code || 'InvalidCredentials',
+      });
+    }
   });
 
   // Get Current Authenticated User (from HttpOnly Cookie / In-Memory Session)
@@ -348,6 +356,44 @@ export default async function authController(fastify: FastifyInstance) {
     const body = request.body as any;
     const result = await authService.requestPasswordReset(body.email);
     return reply.send(result);
+  });
+
+  // Forgot Password - Request Password Reset Link (via Resend)
+  fastify.post('/forgot-password-link', async (request, reply) => {
+    const body = request.body as any;
+    if (!body?.email) {
+      return reply.status(400).send({ error: 'BadRequest', message: 'Email is required' });
+    }
+    const result = await authService.requestPasswordResetLink(body.email, body.portalType || 'admin');
+    return reply.send(result);
+  });
+
+  // Verify Reset Token from Link
+  fastify.get('/verify-reset-token', async (request, reply) => {
+    const query = request.query as any;
+    if (!query?.token) {
+      return reply.status(400).send({ error: 'BadRequest', message: 'Token is required' });
+    }
+    try {
+      const result = await authService.verifyResetToken(query.token);
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.status(400).send({ error: 'InvalidToken', message: err.message || 'Invalid or expired token' });
+    }
+  });
+
+  // Reset Password via Link Token
+  fastify.post('/reset-password-link', async (request, reply) => {
+    const body = request.body as any;
+    if (!body?.token || !body?.newPassword) {
+      return reply.status(400).send({ error: 'BadRequest', message: 'Token and newPassword are required' });
+    }
+    try {
+      const result = await authService.resetPasswordWithToken(body.token, body.newPassword, body.email);
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.status(400).send({ error: 'ResetFailed', message: err.message || 'Failed to reset password' });
+    }
   });
 
   // Forgot Password - Step 2: Verify 6-digit OTP code

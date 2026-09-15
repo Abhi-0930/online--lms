@@ -4,6 +4,92 @@ import logger from './logger';
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
+export async function sendPasswordResetLinkEmail(params: {
+  to: string;
+  resetUrl: string;
+  name?: string;
+  portalType?: 'admin' | 'learner';
+}): Promise<boolean> {
+  const { to, resetUrl, name, portalType = 'admin' } = params;
+
+  logger.info({ to, resetUrl }, 'Processing password reset link email via Resend');
+
+  if (!resend || !env.RESEND_API_KEY || env.RESEND_API_KEY.startsWith('re_123456789')) {
+    logger.warn(
+      { to, resetUrl },
+      'Resend API key is a placeholder or not provided. Reset Link logged for development testing.'
+    );
+    return true;
+  }
+
+  try {
+    const portalName = portalType === 'admin' ? 'LearnHub Admin Portal' : 'LearnHub';
+    const { data, error } = await resend.emails.send({
+      from: env.EMAIL_FROM || 'LearnHub <onboarding@resend.dev>',
+      to: [to],
+      subject: `Reset your password - ${portalName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #0f172a; padding: 28px 12px; margin: 0; }
+            .container { max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 20px; padding: 36px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
+            .badge { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: #eaf2fd; border-radius: 14px; margin-bottom: 20px; }
+            .title { font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0; }
+            .subtitle { font-size: 14px; color: #64748b; line-height: 1.5; margin: 0 0 24px 0; }
+            .button { display: inline-block; background-color: #1a73e8; color: #ffffff !important; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-size: 14px; font-weight: 600; text-align: center; margin: 8px 0 24px 0; box-shadow: 0 4px 12px rgba(26,115,232,0.25); }
+            .note { font-size: 13px; color: #94a3b8; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 18px; margin-top: 20px; }
+            .footer { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 24px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="badge">
+              <span style="font-size: 24px;">📖</span>
+            </div>
+            <div style="font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px;">
+              ${portalName}
+            </div>
+            <h1 class="title">Password Reset Request</h1>
+            <p class="subtitle">
+              Hello${name ? ` ${name}` : ''},<br/>
+              We received a request to reset your password for your <strong>${portalName}</strong> account. Click the button below to set a new password:
+            </p>
+            <div style="text-align: center;">
+              <a href="${resetUrl}" class="button" target="_blank">Reset Password</a>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin-top: 8px;">
+              Or copy and paste this link into your browser:<br/>
+              <a href="${resetUrl}" style="color: #1a73e8; word-break: break-all; font-size: 12px;">${resetUrl}</a>
+            </p>
+            <div class="note">
+              This password reset link will expire in <strong>15 minutes</strong>.<br/>
+              If you didn't request a password reset, you can safely ignore this email — your password will remain unchanged.
+            </div>
+            <div class="footer">
+              © ${new Date().getFullYear()} LearnHub. All rights reserved.
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      logger.error({ error, to }, 'Resend failed to send password reset link email');
+      return false;
+    }
+
+    logger.info({ id: data?.id, to }, 'Password reset link email sent successfully via Resend');
+    return true;
+  } catch (err) {
+    logger.error({ err, to }, 'Unexpected error sending password reset link with Resend');
+    return false;
+  }
+}
+
 export async function sendPasswordResetOtpEmail(params: {
   to: string;
   code: string;
