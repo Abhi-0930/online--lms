@@ -1,10 +1,22 @@
 "use client";
 
-import { useState, useEffect, Suspense, useCallback } from "react";
+import { useState, useEffect, Suspense, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Search, ChevronDown, ChevronUp, Check, Loader2, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Loader2,
+  User,
+  BookOpen,
+  Home,
+  Lightbulb,
+} from "lucide-react";
 import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
+import { ConfettiAnimation } from "@/components/ConfettiAnimation";
 
 interface StudyOption {
   id: string;
@@ -223,23 +235,154 @@ function BriefcaseIcon({ color }: { color: string }) {
   );
 }
 
+function DotGrid({
+  cols = 5,
+  rows = 6,
+  className = "",
+}: {
+  cols?: number;
+  rows?: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`grid gap-3.5 opacity-30 select-none pointer-events-none ${className}`}
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
+      {Array.from({ length: cols * rows }).map((_, i) => (
+        <div key={i} className="w-1 h-1 rounded-full bg-slate-400" />
+      ))}
+    </div>
+  );
+}
+
+function ThankYouSuccessScreen({ onRedirect }: { onRedirect: () => void }) {
+  const TOTAL_DURATION_MS = 3000;
+  const [progressPct, setProgressPct] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState(3);
+  const redirectedRef = useRef(false);
+
+  useEffect(() => {
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min(100, (elapsed / TOTAL_DURATION_MS) * 100);
+      const remainingSec = Math.max(1, Math.ceil((TOTAL_DURATION_MS - elapsed) / 1000));
+      setProgressPct(pct);
+      setSecondsLeft(remainingSec);
+
+      if (elapsed >= TOTAL_DURATION_MS && !redirectedRef.current) {
+        redirectedRef.current = true;
+        clearInterval(interval);
+        onRedirect();
+      }
+    }, 40);
+
+    return () => clearInterval(interval);
+  }, [onRedirect]);
+
+  return (
+    <div className="min-h-screen w-full bg-white relative flex flex-col justify-between p-6 sm:p-10 overflow-hidden select-none">
+      {/* Decorative background glow orbs */}
+      <div className="absolute top-10 -left-20 w-[420px] h-[420px] bg-blue-50/80 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-20 -right-20 w-[480px] h-[480px] bg-blue-50/70 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Decorative dot matrix grids matching the screenshot */}
+      <div className="hidden md:block absolute left-8 top-1/2 -translate-y-1/2">
+        <DotGrid cols={5} rows={3} />
+      </div>
+      <div className="hidden md:block absolute right-8 top-1/3">
+        <DotGrid cols={5} rows={6} />
+      </div>
+
+      {/* Top Navbar */}
+      <header className="w-full flex items-center justify-between z-10">
+        {/* Left: LearnHub brand logo */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-[#1a73e8] flex items-center justify-center text-white shadow-xs">
+            <BookOpen className="w-4.5 h-4.5 stroke-[2.2]" />
+          </div>
+          <span className="font-bold text-[20px] tracking-tight text-slate-900">
+            LearnHub
+          </span>
+        </div>
+
+        {/* Right: Back to home */}
+        <button
+          type="button"
+          onClick={onRedirect}
+          className="flex items-center gap-1.5 text-[14px] font-medium text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+        >
+          <Home className="w-4 h-4 stroke-[1.8]" />
+          <span>Back to home</span>
+        </button>
+      </header>
+
+      {/* Center Hero Card */}
+      <main className="flex-1 flex flex-col items-center justify-center text-center z-10 py-6 max-w-xl mx-auto w-full">
+        {/* Party Popper Lottie Animation (0ms instant playback) */}
+        <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-full bg-[#f0f6ff]/70 flex items-center justify-center mb-6 overflow-hidden relative shadow-2xs">
+          <ConfettiAnimation className="scale-110" />
+        </div>
+
+        {/* Heading */}
+        <h1 className="text-[34px] sm:text-[42px] font-bold text-[#0f172a] tracking-tight mb-2.5">
+          Thank you!
+        </h1>
+
+        {/* Subtitles */}
+        <p className="text-[15px] sm:text-[16.5px] text-slate-600 leading-normal font-normal">
+          Your information has been saved.
+        </p>
+        <p className="text-[15px] sm:text-[16.5px] text-slate-600 leading-normal font-normal mb-8">
+          Redirecting you to your learning space...
+        </p>
+
+        {/* Smooth Animated Progress Bar */}
+        <div className="w-[280px] sm:w-[320px] h-2 bg-slate-200/80 rounded-full overflow-hidden mb-3">
+          <div
+            className="h-full bg-[#1a73e8] rounded-full transition-all duration-75 ease-linear"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+
+        {/* Countdown Subtext */}
+        <p className="text-[13px] sm:text-[13.5px] text-slate-500 font-medium">
+          Redirecting in {secondsLeft} second{secondsLeft === 1 ? "" : "s"}...
+        </p>
+
+        {/* Bottom Tip Badge */}
+        <div className="mt-8 px-5 py-3 rounded-2xl bg-[#f0f7ff] border border-[#d6e6fe] flex items-center gap-2.5 shadow-2xs">
+          <Lightbulb className="w-4.5 h-4.5 text-[#1a73e8] stroke-[2] shrink-0" />
+          <span className="text-[13.5px] sm:text-[14px] font-medium text-[#1e3a8a]">
+            Get ready to start your learning journey!
+          </span>
+        </div>
+      </main>
+
+      {/* Bottom spacer */}
+      <footer className="h-6 w-full shrink-0" />
+    </div>
+  );
+}
+
 function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dataParam = searchParams?.get("data") || searchParams?.get("q");
 
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(() => {
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(() => {
     if (dataParam) {
       const decoded = decodeDataParam<{ step?: number }>(dataParam);
-      if (decoded?.step && decoded.step >= 1 && decoded.step <= 4) {
-        return decoded.step as 1 | 2 | 3 | 4;
+      if (decoded?.step && decoded.step >= 1 && decoded.step <= 5) {
+        return decoded.step as 1 | 2 | 3 | 4 | 5;
       }
     }
     return 1;
   });
 
   const updateStep = useCallback(
-    (newStep: 1 | 2 | 3 | 4) => {
+    (newStep: 1 | 2 | 3 | 4 | 5) => {
       setCurrentStep(newStep);
       router.replace(createSecureUrl("/onboarding", { step: newStep }));
     },
@@ -250,9 +393,9 @@ function OnboardingContent() {
   useEffect(() => {
     if (dataParam) {
       const decoded = decodeDataParam<{ step?: number }>(dataParam);
-      if (decoded?.step && decoded.step >= 1 && decoded.step <= 4) {
+      if (decoded?.step && decoded.step >= 1 && decoded.step <= 5) {
         if (decoded.step !== currentStep) {
-          setCurrentStep(decoded.step as 1 | 2 | 3 | 4);
+          setCurrentStep(decoded.step as 1 | 2 | 3 | 4 | 5);
         }
       }
     } else {
@@ -475,14 +618,24 @@ function OnboardingContent() {
         }),
       }).catch(() => {});
 
-      toast.success(`Welcome to PrepPath, ${cleanName}!`);
-      router.push("/dashboard");
+      toast.success(`Welcome to LearnHub, ${cleanName}!`);
+      updateStep(5);
     } catch {
-      router.push("/dashboard");
+      updateStep(5);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (currentStep === 5) {
+    return (
+      <ThankYouSuccessScreen
+        onRedirect={() => {
+          router.push("/dashboard");
+        }}
+      />
+    );
+  }
 
   const topStudyOptions = STUDY_OPTIONS.slice(0, 4);
   const bottomStudyOption = STUDY_OPTIONS[4];
