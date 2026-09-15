@@ -19,4 +19,8 @@ export default async function adminController(fastify: FastifyInstance) {
   fastify.get('/students', async () => {
     return adminService.getAllStudents();
   });
+
+  fastify.get('/courses', async () => {
+    return adminService.getAllCourses();
+  });
 }

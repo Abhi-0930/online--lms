@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -253,9 +253,193 @@ function SidebarLink({ item, active, collapsed }: { item: NavItem; active: boole
   </Link>;
 }
 
+interface CustomDropdownProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: string[] | { label: string; value: string }[];
+  placeholder?: string;
+  className?: string;
+  icon?: React.ReactNode;
+}
+
+function CustomDropdown({
+  value,
+  onChange,
+  options,
+  placeholder,
+  className,
+  icon,
+}: CustomDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [open]);
+
+  const normalizedOptions = useMemo(() => {
+    return options.map((opt) =>
+      typeof opt === "string" ? { label: opt, value: opt } : opt
+    );
+  }, [options]);
+
+  const selectedOption = normalizedOptions.find((opt) => opt.value === value) || {
+    label: value || placeholder || "Select",
+    value,
+  };
+
+  return (
+    <div ref={ref} className={cx("relative inline-block text-left", className)}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={cx(
+          "flex h-10 items-center justify-between gap-2 rounded-xl border border-[#e5e8f0] bg-white px-3 text-xs font-bold text-[#5f6c8c] outline-none transition-all dark:border-white/10 dark:bg-white/5 dark:text-white cursor-pointer select-none",
+          open && "ring-2 ring-[#3157e8]/30 border-[#3157e8] shadow-sm"
+        )}
+      >
+        <span className="flex items-center gap-1.5 truncate">
+          {icon}
+          <span className="truncate">{selectedOption.label}</span>
+        </span>
+        <ChevronDown
+          className={cx(
+            "h-3.5 w-3.5 transition-transform duration-200 text-[#9aa4bc] shrink-0",
+            open && "rotate-180 text-[#3157e8]"
+          )}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[150px] rounded-xl border border-[#e5e8f0] bg-white p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-100 dark:border-white/10 dark:bg-[#1a2238]">
+          <div className="space-y-0.5">
+            {normalizedOptions.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={cx(
+                    "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold transition-colors cursor-pointer",
+                    isSelected
+                      ? "bg-[#eef2ff] font-bold text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white"
+                      : "text-[#5f6c8c] hover:bg-[#f1f3f8] dark:text-slate-200 dark:hover:bg-white/5"
+                  )}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-[#3157e8]" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LearnerProfileDropdown({ displayName, roleName, user, onLogout }: { displayName: string; roleName: string; user: any; onLogout: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-block text-left">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={cx(
+          "flex items-center gap-2 rounded-xl p-1.5 transition hover:bg-[#eef2ff] dark:hover:bg-white/10 cursor-pointer select-none",
+          open && "bg-[#eef2ff] ring-2 ring-[#3157e8]/20 dark:bg-white/10"
+        )}
+      >
+        <Avatar size="sm" name={displayName} />
+        <span className="hidden text-left lg:block">
+          <span className="block text-xs font-bold text-[#17223d] dark:text-white truncate max-w-[140px]">{displayName}</span>
+          <span className="block text-[10px] text-[#9aa4bc]">{roleName}</span>
+        </span>
+        <ChevronDown className={cx("hidden h-3.5 w-3.5 text-[#9aa4bc] transition-transform duration-200 lg:block", open && "rotate-180 text-[#3157e8]")} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-60 rounded-2xl border border-[#e5e8f0] bg-white p-2 shadow-2xl backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-100 dark:border-white/10 dark:bg-[#151c30]">
+          <div className="flex items-center gap-2.5 border-b border-[#edf0f6] p-2.5 pb-3 dark:border-white/10">
+            <Avatar size="sm" name={displayName} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-bold text-[#17223d] dark:text-white">{displayName}</p>
+              <p className="truncate text-[10px] text-[#9aa4bc]">{user?.email || "learner@example.com"}</p>
+              <span className="mt-1 inline-block rounded bg-[#e4f8ee] px-1.5 py-0.5 text-[9px] font-bold text-[#23a26d]">Active Learner</span>
+            </div>
+          </div>
+
+          <div className="space-y-0.5 py-1.5 border-b border-[#edf0f6] dark:border-white/10">
+            <Link
+              href={getSecureHref("/profile")}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-[#5f6c8c] transition hover:bg-[#eef2ff] hover:text-[#3157e8] dark:text-slate-200 dark:hover:bg-white/5"
+            >
+              <Users className="h-4 w-4 text-[#9aa4bc]" />
+              <span>Profile & Goals</span>
+            </Link>
+            <Link
+              href={getSecureHref("/my-courses")}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-[#5f6c8c] transition hover:bg-[#eef2ff] hover:text-[#3157e8] dark:text-slate-200 dark:hover:bg-white/5"
+            >
+              <BookOpen className="h-4 w-4 text-[#9aa4bc]" />
+              <span>My Enrolled Courses</span>
+            </Link>
+            <Link
+              href={getSecureHref("/progress")}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-[#5f6c8c] transition hover:bg-[#eef2ff] hover:text-[#3157e8] dark:text-slate-200 dark:hover:bg-white/5"
+            >
+              <LineChart className="h-4 w-4 text-[#9aa4bc]" />
+              <span>Learning Progress</span>
+            </Link>
+          </div>
+
+          <div className="pt-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onLogout();
+              }}
+              className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30 cursor-pointer"
+            >
+              <LockKeyhole className="h-4 w-4 text-rose-500" />
+              <span>Sign out</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Topbar({ onMenu }: { onMenu: () => void }) {
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [query, setQuery] = useState("");
   const displayName = resolveDisplayName(user);
   const roleName = resolveEducationStatus(user);
@@ -274,7 +458,7 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
       <Link href={getSecureHref("/notifications")} aria-label="Open notifications" className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] dark:hover:bg-white/10"><Bell className="h-[18px] w-[18px]" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ef8354] ring-2 ring-[#fbfcff] dark:ring-[#10172b]" /></Link>
       <button className="hidden h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] sm:inline-flex dark:hover:bg-white/10" onClick={toggleTheme}>{theme === "light" ? <Moon className="h-[17px] w-[17px]" /> : <Sun className="h-[17px] w-[17px]" />}</button>
       <div className="hidden h-7 w-px bg-[#e5e8f0] sm:block dark:bg-white/10" />
-      <Link href={getSecureHref("/profile")} className="flex items-center gap-2 rounded-xl p-1 transition hover:bg-[#eef2ff] dark:hover:bg-white/10"><Avatar size="sm" name={displayName} /><span className="hidden text-left lg:block"><span className="block text-xs font-bold text-[#17223d] dark:text-white truncate max-w-[140px]">{displayName}</span><span className="block text-[10px] text-[#9aa4bc]">{roleName}</span></span><ChevronDown className="hidden h-3.5 w-3.5 text-[#9aa4bc] lg:block" /></Link>
+      <LearnerProfileDropdown displayName={displayName} roleName={roleName} user={user} onLogout={logout} />
     </div>
   </header>;
 }
@@ -474,9 +658,91 @@ function AssignmentRow({ title, course, due, urgent }: { title: string; course: 
 function CoursesPage() {
   const [category, setCategory] = useState("All courses");
   const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState("Popular");
   const categories = ["All courses", "DSA", "Placement", "Web development", "System design"];
-  const filtered = courses.filter(course => (category === "All courses" || course.category === category) && course.title.toLowerCase().includes(query.toLowerCase()));
-  return <><PageHeader eyebrow="Explore the library" title="Find your next edge" description="Curated courses, guided practice, and real interview patterns to help you move with confidence." action={<button onClick={() => toast.info("Saved courses are coming next")} className="button-secondary"><Bookmark className="h-4 w-4" /> Saved courses</button>} /><div className="mb-6 flex flex-col gap-3 rounded-2xl border border-[#e5e8f0] bg-white p-3 shadow-[0_8px_20px_rgba(23,34,61,0.03)] dark:border-white/10 dark:bg-white/5 sm:flex-row"><div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa4bc]" /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search courses, skills, instructors" className="h-10 w-full rounded-xl bg-[#f5f7fb] pl-9 pr-3 text-sm outline-none placeholder:text-[#aeb6c8] focus:ring-4 focus:ring-[#3157e8]/10 dark:bg-white/5 dark:text-white" /></div><button onClick={() => toast.info("Sort options: Popular, newest, rating")} className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[#e5e8f0] px-4 text-xs font-bold text-[#5f6c8c] dark:border-white/10 dark:text-white"><ListChecks className="h-4 w-4" /> Sort: Popular <ChevronDown className="h-3.5 w-3.5" /></button></div><div className="mb-7 flex gap-2 overflow-x-auto pb-1">{categories.map(item => <button key={item} onClick={() => setCategory(item)} className={cx("whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition", category === item ? "bg-[#17223d] text-white dark:bg-[#3157e8]" : "bg-white text-[#7c87a4] hover:bg-[#eef2ff] dark:bg-white/5 dark:hover:bg-white/10")}>{item}</button>)}</div><div className="mb-4 flex items-center justify-between"><p className="text-xs font-semibold text-[#9aa4bc]">Showing <span className="text-[#17223d] dark:text-white">{filtered.length} courses</span></p><div className="hidden items-center gap-2 text-xs font-semibold text-[#9aa4bc] sm:flex"><span className="h-2 w-2 rounded-full bg-[#48c58a]" /> Updated weekly</div></div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{filtered.map(course => <CourseCard key={course.id} course={course} />)}{filtered.length === 0 && <div className="card-surface col-span-full p-10 text-center"><Search className="mx-auto h-8 w-8 text-[#c4cada]" /><p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No courses found</p><p className="mt-1 text-xs text-[#9aa4bc]">Try another keyword or category.</p></div>}</div></>;
+  const sortOptions = [
+    { label: "Sort: Popular", value: "Popular" },
+    { label: "Sort: Highest rated", value: "Rating" },
+    { label: "Sort: Price (Low to High)", value: "PriceLow" },
+    { label: "Sort: Price (High to Low)", value: "PriceHigh" },
+  ];
+
+  let filtered = courses.filter(course => (category === "All courses" || course.category === category) && course.title.toLowerCase().includes(query.toLowerCase()));
+  if (sortBy === "Rating") {
+    filtered = [...filtered].sort((a, b) => Number(b.rating) - Number(a.rating));
+  } else if (sortBy === "PriceLow") {
+    filtered = [...filtered].sort((a, b) => parseInt(a.price.replace(/[^\d]/g, "")) - parseInt(b.price.replace(/[^\d]/g, "")));
+  } else if (sortBy === "PriceHigh") {
+    filtered = [...filtered].sort((a, b) => parseInt(b.price.replace(/[^\d]/g, "")) - parseInt(a.price.replace(/[^\d]/g, "")));
+  }
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Explore the library"
+        title="Find your next edge"
+        description="Curated courses, guided practice, and real interview patterns to help you move with confidence."
+        action={
+          <button onClick={() => toast.info("Saved courses are coming next")} className="button-secondary">
+            <Bookmark className="h-4 w-4" /> Saved courses
+          </button>
+        }
+      />
+      <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-[#e5e8f0] bg-white p-3 shadow-[0_8px_20px_rgba(23,34,61,0.03)] dark:border-white/10 dark:bg-white/5 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa4bc]" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search courses, skills, instructors"
+            className="h-10 w-full rounded-xl bg-[#f5f7fb] pl-9 pr-3 text-sm outline-none placeholder:text-[#aeb6c8] focus:ring-4 focus:ring-[#3157e8]/10 dark:bg-white/5 dark:text-white"
+          />
+        </div>
+        <CustomDropdown
+          value={sortBy}
+          onChange={setSortBy}
+          options={sortOptions}
+          icon={<ListChecks className="h-4 w-4 text-[#9aa4bc]" />}
+        />
+      </div>
+      <div className="mb-7 flex gap-2 overflow-x-auto pb-1">
+        {categories.map((item) => (
+          <button
+            key={item}
+            onClick={() => setCategory(item)}
+            className={cx(
+              "whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition",
+              category === item
+                ? "bg-[#17223d] text-white dark:bg-[#3157e8]"
+                : "bg-white text-[#7c87a4] hover:bg-[#eef2ff] dark:bg-white/5 dark:hover:bg-white/10"
+            )}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-xs font-semibold text-[#9aa4bc]">
+          Showing <span className="text-[#17223d] dark:text-white">{filtered.length} courses</span>
+        </p>
+        <div className="hidden items-center gap-2 text-xs font-semibold text-[#9aa4bc] sm:flex">
+          <span className="h-2 w-2 rounded-full bg-[#48c58a]" /> Updated weekly
+        </div>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {filtered.map((course) => (
+          <CourseCard key={course.id} course={course} />
+        ))}
+        {filtered.length === 0 && (
+          <div className="card-surface col-span-full p-10 text-center">
+            <Search className="mx-auto h-8 w-8 text-[#c4cada]" />
+            <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No courses found</p>
+            <p className="mt-1 text-xs text-[#9aa4bc]">Try another keyword or category.</p>
+          </div>
+        )}
+      </div>
+    </>
+  );
 }
 
 function CourseCard({ course }: { course: typeof courses[number] }) { return <Link href={createSecureUrl("/courses", { courseId: course.id })} className="card-surface group overflow-hidden"><div className="relative h-44 overflow-hidden"><img src={course.image} alt={course.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#17223d]/80 via-transparent to-[#17223d]/5" /><div className="absolute left-4 top-4 flex gap-2"><span className="rounded-md bg-white/15 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">{course.category}</span><span className="rounded-md bg-[#17223d]/40 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">{course.level}</span></div><button onClick={e => { e.preventDefault(); toast.success("Course saved to your library"); }} className="absolute right-3 top-3 rounded-lg bg-black/20 p-2 text-white backdrop-blur-md hover:bg-black/40"><Bookmark className="h-4 w-4" /></button><div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white"><div><p className="text-[10px] text-white/60">By {course.instructor}</p><p className="mt-1 font-display text-xl font-bold tracking-[-0.04em]">{course.title}</p></div><div className="flex items-center gap-1 text-xs font-bold"><Star className="h-3.5 w-3.5 fill-[#ffca63] text-[#ffca63]" />{course.rating}</div></div></div><div className="p-4"><p className="line-clamp-2 min-h-[40px] text-sm leading-5 text-[#7c87a4]">{course.description}</p><div className="mt-4 flex items-center gap-3 text-[10px] font-semibold text-[#9aa4bc]"><span className="flex items-center gap-1"><Video className="h-3.5 w-3.5" />{course.lessons}</span><span className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{course.duration}</span><span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{course.students}</span></div><div className="mt-5 flex items-center justify-between"><span className="font-display text-lg font-bold text-[#17223d] dark:text-white">{course.price}</span><span className="flex items-center gap-1 text-xs font-bold text-[#3157e8]">View course <ArrowUpRight className="h-3.5 w-3.5" /></span></div></div></Link>; }
@@ -692,14 +958,591 @@ function PlayerPage() {
   );
 }
 
-function PracticePage() { const [difficulty, setDifficulty] = useState("All"); const [topic, setTopic] = useState("All topics"); const [saved, setSaved] = useState<string[]>([]); const filtered = problems.filter(p => (difficulty === "All" || p.difficulty === difficulty) && (topic === "All topics" || p.topic === topic)); return <><PageHeader eyebrow="Build your edge" title="Practice problems" description="A focused set of interview patterns. Solve a little every day, then review what you missed." action={<div className="flex items-center gap-2 rounded-xl bg-[#fff4db] px-3 py-2 text-xs font-bold text-[#b77917]"><Flame className="h-4 w-4" /> 7 day streak</div>} /><div className="grid gap-4 sm:grid-cols-3"><div className="card-surface p-5"><p className="text-xs font-semibold text-[#9aa4bc]">Solved this month</p><p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">24</p><div className="mt-3"><ProgressBar value={72} color="#23a26d" /></div><p className="mt-2 text-[10px] font-bold text-[#23a26d]">+8 from last month</p></div><div className="card-surface p-5"><p className="text-xs font-semibold text-[#9aa4bc]">Current accuracy</p><p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">78<span className="text-base">%</span></p><p className="mt-3 text-[10px] font-bold text-[#3157e8]">Top 18% of your cohort</p></div><div className="card-surface p-5"><p className="text-xs font-semibold text-[#9aa4bc]">Next milestone</p><p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">50 <span className="text-sm font-semibold text-[#9aa4bc]">solved</span></p><p className="mt-3 text-[10px] font-bold text-[#d68c20]">26 more to unlock badge</p></div></div><div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-2 overflow-x-auto pb-1">{["All", "Easy", "Medium", "Hard"].map(item => <button key={item} onClick={() => setDifficulty(item)} className={cx("rounded-full px-4 py-2 text-xs font-bold", difficulty === item ? "bg-[#17223d] text-white dark:bg-[#3157e8]" : "bg-white text-[#7c87a4] dark:bg-white/5")}>{item}</button>)}</div><select value={topic} onChange={e => setTopic(e.target.value)} className="h-10 rounded-xl border border-[#e5e8f0] bg-white px-3 text-xs font-bold text-[#5f6c8c] outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"><option>All topics</option>{["Arrays", "Strings", "Stack", "Trees", "Graphs"].map(item => <option key={item}>{item}</option>)}</select></div><div className="mt-5 card-surface overflow-hidden"><div className="hidden grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] gap-4 border-b border-[#edf0f6] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9aa4bc] dark:border-white/10 sm:grid"><span>Problem</span><span>Difficulty</span><span>Acceptance</span><span>Status</span><span /></div>{filtered.map(problem => <div key={problem.title} className="grid gap-3 border-b border-[#edf0f6] px-5 py-4 last:border-0 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] sm:items-center sm:gap-4"><div className="flex min-w-0 items-start gap-3"><span className={cx("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", problem.solved ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-[#f1f3f8] text-[#9aa4bc] dark:bg-white/10")}><Code2 className="h-3.5 w-3.5" /></span><div className="min-w-0"><Link href={createSecureUrl("/practice", { slug: problem.title.toLowerCase().replace(/\s+/g, "-") })} className="block truncate text-sm font-bold text-[#17223d] hover:text-[#3157e8] dark:text-white">{problem.title}</Link><p className="mt-1 text-[10px] text-[#9aa4bc]">{problem.topic} · {problem.attempts} attempts</p></div></div><span className={cx("w-fit rounded-md px-2 py-1 text-[10px] font-bold", problem.difficulty === "Easy" ? "bg-[#e4f8ee] text-[#23a26d]" : problem.difficulty === "Medium" ? "bg-[#fff4db] text-[#d68c20]" : "bg-[#fff0ed] text-[#ef8354]")}>{problem.difficulty}</span><span className="text-xs font-semibold text-[#7c87a4]">{problem.acceptance}</span><span className={cx("w-fit text-xs font-bold", problem.solved ? "text-[#23a26d]" : "text-[#9aa4bc]")}>{problem.solved ? "Solved" : "Not started"}</span><button onClick={() => setSaved(saved.includes(problem.title) ? saved.filter(item => item !== problem.title) : [...saved, problem.title])} className={cx("justify-self-start rounded-lg p-2", saved.includes(problem.title) ? "text-[#3157e8]" : "text-[#b6bfd0] hover:text-[#3157e8]")}><Bookmark className={cx("h-4 w-4", saved.includes(problem.title) && "fill-current")} /></button></div>)}</div></>; }
+function PracticePage() {
+  const [difficulty, setDifficulty] = useState("All");
+  const [topic, setTopic] = useState("All topics");
+  const [saved, setSaved] = useState<string[]>([]);
+  const filtered = problems.filter(
+    (p) =>
+      (difficulty === "All" || p.difficulty === difficulty) &&
+      (topic === "All topics" || p.topic === topic)
+  );
 
-function ProgressPage() { const bars = [44, 68, 52, 84, 72, 92, 60, 76, 48, 82, 70, 88, 62, 96]; return <><PageHeader eyebrow="Your momentum" title="Progress overview" description="See the habits behind your progress and the next small move to make." action={<button onClick={() => toast.success("Progress report downloaded")} className="button-secondary"><FileText className="h-4 w-4" /> Export report</button>} /><div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.65fr)]"><section className="card-surface p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-xs font-semibold text-[#9aa4bc]">Weekly activity</p><p className="mt-1 font-display text-2xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white">4h 20m <span className="text-xs font-semibold text-[#23a26d]">+18%</span></p></div><button className="flex items-center gap-1 text-xs font-bold text-[#7c87a4]">Last 14 days <ChevronDown className="h-3.5 w-3.5" /></button></div><div className="mt-9 flex h-[180px] items-end gap-2 sm:gap-3">{bars.map((height, index) => <div key={index} className="group flex flex-1 flex-col items-center gap-2"><div className="relative flex h-full w-full items-end"><span className={cx("block w-full rounded-t-lg transition hover:opacity-80", index === bars.length - 1 ? "bg-[#3157e8]" : "bg-[#dce6ff] dark:bg-[#3157e8]/30")} style={{ height: `${height}%` }} /><span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 rounded bg-[#17223d] px-1.5 py-1 text-[9px] font-bold text-white opacity-0 transition group-hover:opacity-100">{Math.round(height / 9)}m</span></div><span className="text-[9px] text-[#aab3c5]">{index % 2 === 0 ? `S${index / 2 + 1}` : ""}</span></div>)}</div></section><section className="relative overflow-hidden rounded-[22px] bg-[#17223d] p-6 text-white"><div className="absolute -right-8 -top-8 h-32 w-32 rounded-full border-[18px] border-[#3157e8]/30" /><Flame className="relative h-6 w-6 text-[#ffca63]" /><p className="relative mt-6 font-display text-4xl font-bold tracking-[-0.07em]">07</p><p className="relative mt-1 text-sm font-semibold">day learning streak</p><p className="relative mt-4 max-w-[190px] text-xs leading-5 text-white/55">You’re two days away from your longest streak this month.</p><div className="relative mt-6 flex gap-1.5">{["M", "T", "W", "T", "F", "S", "S"].map((day, index) => <div key={`${day}-${index}`} className="flex flex-1 flex-col items-center gap-2"><span className={cx("flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold", index < 6 ? "bg-[#ffca63] text-[#17223d]" : "bg-white/15 text-white/50")}>{index < 6 ? <Check className="h-3.5 w-3.5" /> : "·"}</span><span className="text-[9px] text-white/40">{day}</span></div>)}</div></section></div><div className="mt-8 grid gap-8 lg:grid-cols-2"><section><SectionTitle title="Course progress" link="My courses" href="/my-courses" /><div className="card-surface px-5">{courses.slice(0, 3).map(course => <div key={course.id} className="border-b border-[#edf0f6] py-5 last:border-0 dark:border-white/10"><div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef2ff] text-[#3157e8]"><BookOpen className="h-4 w-4" /></span><div className="min-w-0"><p className="truncate text-sm font-bold text-[#17223d] dark:text-white">{course.title}</p><p className="mt-1 text-[10px] text-[#9aa4bc]">{course.progress === 100 ? "Completed" : `${course.progress}% complete`}</p></div></div><span className="text-xs font-bold text-[#3157e8]">{course.progress}%</span></div><div className="mt-3"><ProgressBar value={course.progress} color={course.accent === "violet" ? "#7f5af0" : "#3157e8"} /></div></div>)}</div></section><section><SectionTitle title="Practice statistics" link="Practice" href="/practice" /><div className="card-surface grid grid-cols-3 divide-x divide-[#edf0f6] p-5 dark:divide-white/10"><div className="px-2 text-center"><p className="font-display text-3xl font-bold text-[#23a26d]">24</p><p className="mt-2 text-[10px] font-bold text-[#9aa4bc]">Easy solved</p></div><div className="px-2 text-center"><p className="font-display text-3xl font-bold text-[#d68c20]">15</p><p className="mt-2 text-[10px] font-bold text-[#9aa4bc]">Medium solved</p></div><div className="px-2 text-center"><p className="font-display text-3xl font-bold text-[#ef8354]">03</p><p className="mt-2 text-[10px] font-bold text-[#9aa4bc]">Hard solved</p></div></div><div className="mt-4 card-surface p-5"><div className="flex items-center justify-between"><p className="text-xs font-bold text-[#7c87a4]">Assignment health</p><span className="text-xs font-bold text-[#23a26d]">On track</span></div><div className="mt-5 flex items-center gap-4"><div className="relative h-20 w-20 rounded-full" style={{ background: "conic-gradient(#23a26d 0 62%, #ffca63 62% 80%, #eef1f6 80% 100%)" }}><div className="absolute inset-[8px] flex items-center justify-center rounded-full bg-white dark:bg-[#182036]"><span className="font-display text-lg font-bold text-[#17223d] dark:text-white">18</span></div></div><div className="space-y-2 text-[10px] font-semibold text-[#7c87a4]"><p><span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#23a26d]" />Submitted <b className="text-[#17223d] dark:text-white">18</b></p><p><span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#ffca63]" />Pending <b className="text-[#17223d] dark:text-white">05</b></p><p><span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#e1e5ed]" />Reviewed <b className="text-[#17223d] dark:text-white">11</b></p></div></div></div></section></div></>; }
+  return (
+    <>
+      <PageHeader
+        eyebrow="Build your edge"
+        title="Practice problems"
+        description="A focused set of interview patterns. Solve a little every day, then review what you missed."
+        action={
+          <div className="flex items-center gap-2 rounded-xl bg-[#fff4db] px-3 py-2 text-xs font-bold text-[#b77917]">
+            <Flame className="h-4 w-4" /> 7 day streak
+          </div>
+        }
+      />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="card-surface p-5">
+          <p className="text-xs font-semibold text-[#9aa4bc]">Solved this month</p>
+          <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">24</p>
+          <div className="mt-3">
+            <ProgressBar value={72} color="#23a26d" />
+          </div>
+          <p className="mt-2 text-[10px] font-bold text-[#23a26d]">+8 from last month</p>
+        </div>
+        <div className="card-surface p-5">
+          <p className="text-xs font-semibold text-[#9aa4bc]">Current accuracy</p>
+          <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">
+            78<span className="text-base">%</span>
+          </p>
+          <p className="mt-3 text-[10px] font-bold text-[#3157e8]">Top 18% of your cohort</p>
+        </div>
+        <div className="card-surface p-5">
+          <p className="text-xs font-semibold text-[#9aa4bc]">Next milestone</p>
+          <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">
+            50 <span className="text-sm font-semibold text-[#9aa4bc]">solved</span>
+          </p>
+          <p className="mt-3 text-[10px] font-bold text-[#d68c20]">26 more to unlock badge</p>
+        </div>
+      </div>
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {["All", "Easy", "Medium", "Hard"].map((item) => (
+            <button
+              key={item}
+              onClick={() => setDifficulty(item)}
+              className={cx(
+                "rounded-full px-4 py-2 text-xs font-bold",
+                difficulty === item
+                  ? "bg-[#17223d] text-white dark:bg-[#3157e8]"
+                  : "bg-white text-[#7c87a4] dark:bg-white/5"
+              )}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+        <CustomDropdown
+          value={topic}
+          onChange={setTopic}
+          options={["All topics", "Arrays", "Strings", "Stack", "Trees", "Graphs"]}
+          icon={<Code2 className="h-4 w-4 text-[#9aa4bc]" />}
+        />
+      </div>
+      <div className="mt-5 card-surface overflow-hidden">
+        <div className="hidden grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] gap-4 border-b border-[#edf0f6] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9aa4bc] dark:border-white/10 sm:grid">
+          <span>Problem</span>
+          <span>Difficulty</span>
+          <span>Acceptance</span>
+          <span>Status</span>
+          <span />
+        </div>
+        {filtered.map((problem) => (
+          <div
+            key={problem.title}
+            className="grid gap-3 border-b border-[#edf0f6] px-5 py-4 last:border-0 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] sm:items-center sm:gap-4"
+          >
+            <div className="flex min-w-0 items-start gap-3">
+              <span
+                className={cx(
+                  "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                  problem.solved
+                    ? "bg-[#e4f8ee] text-[#23a26d]"
+                    : "bg-[#f1f3f8] text-[#9aa4bc] dark:bg-white/10"
+                )}
+              >
+                <Code2 className="h-3.5 w-3.5" />
+              </span>
+              <div className="min-w-0">
+                <Link
+                  href={createSecureUrl("/practice", {
+                    slug: problem.title.toLowerCase().replace(/\s+/g, "-"),
+                  })}
+                  className="block truncate text-sm font-bold text-[#17223d] hover:text-[#3157e8] dark:text-white"
+                >
+                  {problem.title}
+                </Link>
+                <p className="mt-1 text-[10px] text-[#9aa4bc]">
+                  {problem.topic} · {problem.attempts} attempts
+                </p>
+              </div>
+            </div>
+            <span
+              className={cx(
+                "w-fit rounded-md px-2 py-1 text-[10px] font-bold",
+                problem.difficulty === "Easy"
+                  ? "bg-[#e4f8ee] text-[#23a26d]"
+                  : problem.difficulty === "Medium"
+                  ? "bg-[#fff4db] text-[#d68c20]"
+                  : "bg-[#fff0ed] text-[#ef8354]"
+              )}
+            >
+              {problem.difficulty}
+            </span>
+            <span className="text-xs font-semibold text-[#7c87a4]">{problem.acceptance}</span>
+            <span
+              className={cx(
+                "w-fit text-xs font-bold",
+                problem.solved ? "text-[#23a26d]" : "text-[#9aa4bc]"
+              )}
+            >
+              {problem.solved ? "Solved" : "Not started"}
+            </span>
+            <button
+              onClick={() =>
+                setSaved(
+                  saved.includes(problem.title)
+                    ? saved.filter((item) => item !== problem.title)
+                    : [...saved, problem.title]
+                )
+              }
+              className={cx(
+                "justify-self-start rounded-lg p-2",
+                saved.includes(problem.title) ? "text-[#3157e8]" : "text-[#b6bfd0] hover:text-[#3157e8]"
+              )}
+            >
+              <Bookmark className={cx("h-4 w-4", saved.includes(problem.title) && "fill-current")} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
 
-function AnnouncementsPage() { const announcements = [{ title: "Your next live clinic is this Thursday", category: "Live session", date: "Sep 12, 2025", body: "Bring one problem you got stuck on. We’ll break it down together and leave time for open Q&A." }, { title: "New practice set: trees & graphs", category: "New content", date: "Sep 09, 2025", body: "12 fresh problems are now available in the practice room, with hints written by your mentors." }, { title: "Mock interview week is open", category: "Important", date: "Sep 05, 2025", body: "Book your slot before September 20 and use the prep checklist to make the most of your 45 minutes." }]; return <><PageHeader eyebrow="Stay in the loop" title="Announcements" description="The latest from your instructors, cohort, and learning community." /><div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]"><div className="space-y-4">{announcements.map((item, index) => <article key={item.title} className="card-surface p-5 sm:p-6"><div className="flex gap-4"><span className={cx("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", index === 0 ? "bg-[#eaf0ff] text-[#3157e8]" : index === 1 ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-[#fff4db] text-[#d68c20]")}><Bell className="h-[18px] w-[18px]" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="rounded-md bg-[#f1f3f8] px-2 py-1 text-[10px] font-bold text-[#7c87a4] dark:bg-white/10">{item.category}</span><span className="text-[10px] text-[#aab3c5]">{item.date}</span></div><h2 className="mt-3 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">{item.title}</h2><p className="mt-2 text-sm leading-6 text-[#7c87a4]">{item.body}</p><button onClick={() => toast.success("Announcement marked as read")} className="mt-4 text-xs font-bold text-[#3157e8]">Mark as read</button></div></div></article>)}</div><aside className="card-surface h-fit p-5"><p className="text-xs font-bold text-[#7c87a4]">Upcoming reminders</p><div className="mt-4 space-y-4"><Reminder icon={AlarmClock} title="Arrays checkpoint" meta="Due tomorrow" color="amber" /><Reminder icon={Video} title="Live DSA clinic" meta="Thu, 7:30 PM" color="blue" /><Reminder icon={Target} title="Mock interview" meta="Book by Sep 20" color="violet" /></div></aside></div></>; }
+function ProgressPage() {
+  const [timeframe, setTimeframe] = useState("Last 14 days");
+  const bars =
+    timeframe === "Last 7 days"
+      ? [52, 84, 72, 92, 60, 76, 96]
+      : timeframe === "Last 30 days"
+      ? [35, 44, 56, 68, 52, 65, 84, 72, 92, 60, 76, 48, 82, 70, 88, 62, 96]
+      : [44, 68, 52, 84, 72, 92, 60, 76, 48, 82, 70, 88, 62, 96];
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Your momentum"
+        title="Progress overview"
+        description="See the habits behind your progress and the next small move to make."
+        action={
+          <button onClick={() => toast.success("Progress report downloaded")} className="button-secondary">
+            <FileText className="h-4 w-4" /> Export report
+          </button>
+        }
+      />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.65fr)]">
+        <section className="card-surface p-5 sm:p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold text-[#9aa4bc]">Weekly activity</p>
+              <p className="mt-1 font-display text-2xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white">
+                4h 20m <span className="text-xs font-semibold text-[#23a26d]">+18%</span>
+              </p>
+            </div>
+            <CustomDropdown
+              value={timeframe}
+              onChange={setTimeframe}
+              options={["Last 7 days", "Last 14 days", "Last 30 days", "This quarter"]}
+            />
+          </div>
+          <div className="mt-9 flex h-[180px] items-end gap-2 sm:gap-3">
+            {bars.map((height, index) => (
+              <div key={index} className="group flex flex-1 flex-col items-center gap-2">
+                <div className="relative flex h-full w-full items-end">
+                  <span
+                    className={cx(
+                      "block w-full rounded-t-lg transition hover:opacity-80",
+                      index === bars.length - 1
+                        ? "bg-[#3157e8]"
+                        : "bg-[#dce6ff] dark:bg-[#3157e8]/30"
+                    )}
+                    style={{ height: `${height}%` }}
+                  />
+                  <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 rounded bg-[#17223d] px-1.5 py-1 text-[9px] font-bold text-white opacity-0 transition group-hover:opacity-100">
+                    {Math.round(height / 9)}m
+                  </span>
+                </div>
+                <span className="text-[9px] text-[#aab3c5]">
+                  {index % 2 === 0 ? `S${index / 2 + 1}` : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="relative overflow-hidden rounded-[22px] bg-[#17223d] p-6 text-white">
+          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full border-[18px] border-[#3157e8]/30" />
+          <Flame className="relative h-6 w-6 text-[#ffca63]" />
+          <p className="relative mt-6 font-display text-4xl font-bold tracking-[-0.07em]">07</p>
+          <p className="relative mt-1 text-sm font-semibold">day learning streak</p>
+          <p className="relative mt-4 max-w-[190px] text-xs leading-5 text-white/55">
+            You’re two days away from your longest streak this month.
+          </p>
+          <div className="relative mt-6 flex gap-1.5">
+            {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => (
+              <div key={`${day}-${index}`} className="flex flex-1 flex-col items-center gap-2">
+                <span
+                  className={cx(
+                    "flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold",
+                    index < 6
+                      ? "bg-[#ffca63] text-[#17223d]"
+                      : "bg-white/15 text-white/50"
+                  )}
+                >
+                  {index < 6 ? <Check className="h-3.5 w-3.5" /> : "·"}
+                </span>
+                <span className="text-[9px] text-white/40">{day}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+      <div className="mt-8 grid gap-8 lg:grid-cols-2">
+        <section>
+          <SectionTitle title="Course progress" link="My courses" href="/my-courses" />
+          <div className="card-surface px-5">
+            {courses.slice(0, 3).map((course) => (
+              <div
+                key={course.id}
+                className="border-b border-[#edf0f6] py-5 last:border-0 dark:border-white/10"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef2ff] text-[#3157e8]">
+                      <BookOpen className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
+                        {course.title}
+                      </p>
+                      <p className="mt-1 text-[10px] text-[#9aa4bc]">
+                        {course.progress === 100
+                          ? "Completed"
+                          : `${course.progress}% complete`}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-[#3157e8]">{course.progress}%</span>
+                </div>
+                <div className="mt-3">
+                  <ProgressBar
+                    value={course.progress}
+                    color={course.accent === "violet" ? "#7f5af0" : "#3157e8"}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section>
+          <SectionTitle title="Practice statistics" link="Practice" href="/practice" />
+          <div className="card-surface grid grid-cols-3 divide-x divide-[#edf0f6] p-5 dark:divide-white/10">
+            <div className="px-2 text-center">
+              <p className="font-display text-3xl font-bold text-[#23a26d]">24</p>
+              <p className="mt-2 text-[10px] font-bold text-[#9aa4bc]">Easy solved</p>
+            </div>
+            <div className="px-2 text-center">
+              <p className="font-display text-3xl font-bold text-[#d68c20]">15</p>
+              <p className="mt-2 text-[10px] font-bold text-[#9aa4bc]">Medium solved</p>
+            </div>
+            <div className="px-2 text-center">
+              <p className="font-display text-3xl font-bold text-[#ef8354]">03</p>
+              <p className="mt-2 text-[10px] font-bold text-[#9aa4bc]">Hard solved</p>
+            </div>
+          </div>
+          <div className="mt-4 card-surface p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-[#7c87a4]">Assignment health</p>
+              <span className="text-xs font-bold text-[#23a26d]">On track</span>
+            </div>
+            <div className="mt-5 flex items-center gap-4">
+              <div
+                className="relative h-20 w-20 rounded-full"
+                style={{
+                  background:
+                    "conic-gradient(#23a26d 0 62%, #ffca63 62% 80%, #eef1f6 80% 100%)",
+                }}
+              >
+                <div className="absolute inset-[8px] flex items-center justify-center rounded-full bg-white dark:bg-[#182036]">
+                  <span className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                    18
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2 text-[10px] font-semibold text-[#7c87a4]">
+                <p>
+                  <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#23a26d]" />
+                  Submitted <b className="text-[#17223d] dark:text-white">18</b>
+                </p>
+                <p>
+                  <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#ffca63]" />
+                  Pending <b className="text-[#17223d] dark:text-white">05</b>
+                </p>
+                <p>
+                  <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#e1e5ed]" />
+                  Reviewed <b className="text-[#17223d] dark:text-white">11</b>
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
+
+function AnnouncementsPage() {
+  const announcements = [
+    {
+      title: "Your next live clinic is this Thursday",
+      category: "Live session",
+      date: "Sep 12, 2025",
+      body: "Bring one problem you got stuck on. We’ll break it down together and leave time for open Q&A.",
+    },
+    {
+      title: "New practice set: trees & graphs",
+      category: "New content",
+      date: "Sep 09, 2025",
+      body: "12 fresh problems are now available in the practice room, with hints written by your mentors.",
+    },
+    {
+      title: "Mock interview week is open",
+      category: "Important",
+      date: "Sep 05, 2025",
+      body: "Book your slot before September 20 and use the prep checklist to make the most of your 45 minutes.",
+    },
+  ];
+  return (
+    <>
+      <PageHeader
+        eyebrow="Stay in the loop"
+        title="Announcements"
+        description="The latest from your instructors, cohort, and learning community."
+      />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="space-y-4">
+          {announcements.map((item, index) => (
+            <article key={item.title} className="card-surface p-5 sm:p-6">
+              <div className="flex gap-4">
+                <span
+                  className={cx(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                    index === 0
+                      ? "bg-[#eaf0ff] text-[#3157e8]"
+                      : index === 1
+                      ? "bg-[#e4f8ee] text-[#23a26d]"
+                      : "bg-[#fff4db] text-[#d68c20]"
+                  )}
+                >
+                  <Bell className="h-[18px] w-[18px]" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md bg-[#f1f3f8] px-2 py-1 text-[10px] font-bold text-[#7c87a4] dark:bg-white/10">
+                      {item.category}
+                    </span>
+                    <span className="text-[10px] text-[#aab3c5]">{item.date}</span>
+                  </div>
+                  <h2 className="mt-3 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">
+                    {item.title}
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-[#7c87a4]">{item.body}</p>
+                  <button
+                    onClick={() => toast.success("Announcement marked as read")}
+                    className="mt-4 text-xs font-bold text-[#3157e8]"
+                  >
+                    Mark as read
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+        <aside className="card-surface h-fit p-5">
+          <p className="text-xs font-bold text-[#7c87a4]">Upcoming reminders</p>
+          <div className="mt-4 space-y-4">
+            <Reminder icon={AlarmClock} title="Arrays checkpoint" meta="Due tomorrow" color="amber" />
+            <Reminder icon={Video} title="Live DSA clinic" meta="Thu, 7:30 PM" color="blue" />
+            <Reminder icon={Target} title="Mock interview" meta="Book by Sep 20" color="violet" />
+          </div>
+        </aside>
+      </div>
+    </>
+  );
+}
 function Reminder({ icon: Icon, title, meta, color }: { icon: LucideIcon; title: string; meta: string; color: "amber" | "blue" | "violet" }) { const colors = { amber: "bg-[#fff4db] text-[#d68c20]", blue: "bg-[#eaf0ff] text-[#3157e8]", violet: "bg-[#f0eaff] text-[#7f5af0]" }; return <div className="flex items-center gap-3"><span className={cx("flex h-8 w-8 items-center justify-center rounded-lg", colors[color])}><Icon className="h-4 w-4" /></span><div><p className="text-xs font-bold text-[#17223d] dark:text-white">{title}</p><p className="mt-1 text-[10px] text-[#9aa4bc]">{meta}</p></div></div>; }
 
-function CommunityPage() { const [liked, setLiked] = useState<string[]>([]); const submissions = [{ name: "Nisha Verma", initials: "NV", problem: "Merge Intervals", language: "Python", time: "18 min ago", likes: 24, code: "intervals.sort(key=lambda x: x[0])" }, { name: "Kabir Rao", initials: "KR", problem: "Valid Parentheses", language: "JavaScript", time: "2 hours ago", likes: 18, code: "const stack = []; for (const char of s)" }, { name: "Ishita Sen", initials: "IS", problem: "Two Sum", language: "Java", time: "Yesterday", likes: 31, code: "Map<Integer, Integer> seen = new HashMap<>();" }]; return <><PageHeader eyebrow="Learn together" title="Community solutions" description="See how other learners think, explain, and improve their approach." action={<button onClick={() => toast.info("Use Practice to publish a solution")} className="button-primary"><Plus className="h-4 w-4" /> Share solution</button>} /><div className="mb-6 flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa4bc]" /><input placeholder="Search problem or learner" className="h-11 w-full rounded-xl border border-[#e5e8f0] bg-white pl-9 pr-3 text-sm outline-none focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white" /></div><button className="button-secondary"><Code2 className="h-4 w-4" /> Filter by topic <ChevronDown className="h-3.5 w-3.5" /></button></div><div className="space-y-4">{submissions.map(item => <article key={item.name} className="card-surface p-5 sm:p-6"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eaf0ff] text-xs font-bold text-[#3157e8]">{item.initials}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-bold text-[#17223d] dark:text-white">{item.name}</span><span className="text-xs text-[#9aa4bc]">shared a solution</span><span className="text-[10px] text-[#b0b8c8]">· {item.time}</span></div><div className="mt-3 flex flex-wrap items-center gap-2"><h2 className="font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">{item.problem}</h2><span className="rounded-md bg-[#f0eaff] px-2 py-1 text-[10px] font-bold text-[#7f5af0]">{item.language}</span></div><div className="mt-4 rounded-xl bg-[#17223d] p-4 font-mono text-xs leading-6 text-white/75"><p><span className="text-[#ffca63]">// clean approach</span></p><p>{item.code}</p><p><span className="text-[#7ed8ac]">return</span> result</p></div><div className="mt-4 flex items-center gap-5"><button onClick={() => setLiked(liked.includes(item.name) ? liked.filter(n => n !== item.name) : [...liked, item.name])} className={cx("flex items-center gap-1.5 text-xs font-bold", liked.includes(item.name) ? "text-[#3157e8]" : "text-[#9aa4bc]")}><ThumbsUp className={cx("h-4 w-4", liked.includes(item.name) && "fill-current")} /> {item.likes + (liked.includes(item.name) ? 1 : 0)}</button><button onClick={() => toast.info("Comment thread opened")} className="flex items-center gap-1.5 text-xs font-bold text-[#9aa4bc]"><MessageCircle className="h-4 w-4" /> Discuss</button><button onClick={() => toast.success("Code copied")} className="ml-auto flex items-center gap-1.5 text-xs font-bold text-[#9aa4bc]"><Copy className="h-4 w-4" /> Copy code</button></div></div></div></article>)}</div></>; }
+function CommunityPage() {
+  const [topicFilter, setTopicFilter] = useState("All topics");
+  const [query, setQuery] = useState("");
+  const [liked, setLiked] = useState<string[]>([]);
+  const submissions = [
+    {
+      name: "Nisha Verma",
+      initials: "NV",
+      problem: "Merge Intervals",
+      topic: "Arrays & Intervals",
+      language: "Python",
+      time: "18 min ago",
+      likes: 24,
+      code: "intervals.sort(key=lambda x: x[0])",
+    },
+    {
+      name: "Kabir Rao",
+      initials: "KR",
+      problem: "Valid Parentheses",
+      topic: "Stack & Queue",
+      language: "JavaScript",
+      time: "2 hours ago",
+      likes: 18,
+      code: "const stack = []; for (const char of s)",
+    },
+    {
+      name: "Ishita Sen",
+      initials: "IS",
+      problem: "Two Sum",
+      topic: "Arrays & Hashing",
+      language: "Java",
+      time: "Yesterday",
+      likes: 31,
+      code: "Map<Integer, Integer> seen = new HashMap<>();",
+    },
+    {
+      name: "Rohan V.",
+      initials: "RV",
+      problem: "Binary Tree Right Side View",
+      topic: "Trees & Graphs",
+      language: "C++",
+      time: "3 days ago",
+      likes: 42,
+      code: "vector<int> rightSideView(TreeNode* root) { ... }",
+    },
+  ];
+
+  const filteredSubmissions = submissions.filter((item) => {
+    const matchesTopic =
+      topicFilter === "All topics" ||
+      item.topic.toLowerCase().includes(topicFilter.toLowerCase()) ||
+      topicFilter.toLowerCase().includes(item.topic.toLowerCase());
+    const matchesQuery =
+      !query ||
+      item.problem.toLowerCase().includes(query.toLowerCase()) ||
+      item.name.toLowerCase().includes(query.toLowerCase());
+    return matchesTopic && matchesQuery;
+  });
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Learn together"
+        title="Community solutions"
+        description="See how other learners think, explain, and improve their approach."
+        action={
+          <button onClick={() => toast.info("Use Practice to publish a solution")} className="button-primary">
+            <Plus className="h-4 w-4" /> Share solution
+          </button>
+        }
+      />
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa4bc]" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search problem or learner"
+            className="h-11 w-full rounded-xl border border-[#e5e8f0] bg-white pl-9 pr-3 text-sm outline-none focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
+          />
+        </div>
+        <CustomDropdown
+          value={topicFilter}
+          onChange={setTopicFilter}
+          options={[
+            "All topics",
+            "Arrays & Intervals",
+            "Stack & Queue",
+            "Arrays & Hashing",
+            "Trees & Graphs",
+            "Dynamic Programming",
+          ]}
+          icon={<Code2 className="h-4 w-4 text-[#9aa4bc]" />}
+        />
+      </div>
+      <div className="space-y-4">
+        {filteredSubmissions.map((item) => (
+          <article key={item.name} className="card-surface p-5 sm:p-6">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eaf0ff] text-xs font-bold text-[#3157e8]">
+                {item.initials}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-bold text-[#17223d] dark:text-white">{item.name}</span>
+                  <span className="text-xs text-[#9aa4bc]">shared a solution</span>
+                  <span className="text-[10px] text-[#b0b8c8]">· {item.time}</span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <h2 className="font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">
+                    {item.problem}
+                  </h2>
+                  <span className="rounded-md bg-[#f0eaff] px-2 py-1 text-[10px] font-bold text-[#7f5af0]">
+                    {item.language}
+                  </span>
+                </div>
+                <div className="mt-4 rounded-xl bg-[#17223d] p-4 font-mono text-xs leading-6 text-white/75">
+                  <p>
+                    <span className="text-[#ffca63]">// clean approach</span>
+                  </p>
+                  <p>{item.code}</p>
+                  <p>
+                    <span className="text-[#7ed8ac]">return</span> result
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center gap-5">
+                  <button
+                    onClick={() =>
+                      setLiked(
+                        liked.includes(item.name)
+                          ? liked.filter((n) => n !== item.name)
+                          : [...liked, item.name]
+                      )
+                    }
+                    className={cx(
+                      "flex items-center gap-1.5 text-xs font-bold",
+                      liked.includes(item.name) ? "text-[#3157e8]" : "text-[#9aa4bc]"
+                    )}
+                  >
+                    <ThumbsUp
+                      className={cx("h-4 w-4", liked.includes(item.name) && "fill-current")}
+                    />{" "}
+                    {item.likes + (liked.includes(item.name) ? 1 : 0)}
+                  </button>
+                  <button
+                    onClick={() => toast.info("Comment thread opened")}
+                    className="flex items-center gap-1.5 text-xs font-bold text-[#9aa4bc]"
+                  >
+                    <MessageCircle className="h-4 w-4" /> Discuss
+                  </button>
+                  <button
+                    onClick={() => toast.success("Code copied")}
+                    className="ml-auto flex items-center gap-1.5 text-xs font-bold text-[#9aa4bc]"
+                  >
+                    <Copy className="h-4 w-4" /> Copy code
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+        ))}
+        {filteredSubmissions.length === 0 && (
+          <div className="card-surface p-10 text-center">
+            <Search className="mx-auto h-8 w-8 text-[#c4cada]" />
+            <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No solutions found</p>
+            <p className="mt-1 text-xs text-[#9aa4bc]">Try another filter or search term.</p>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
 
 function NotificationsPage() {
   const [read, setRead] = useState<string[]>([]);

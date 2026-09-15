@@ -66,7 +66,7 @@ export class AdminService {
     try {
       totalCourses = await this.prisma.course.count();
     } catch {
-      totalCourses = 4;
+      totalCourses = 0;
     }
 
     // Recent activity items
@@ -191,6 +191,55 @@ export class AdminService {
         status: progress > 50 ? 'On track' : 'In progress',
         avatar: this.getInitials(name, email),
         createdAt: u.createdAt || new Date().toISOString(),
+      };
+    });
+  }
+
+  async getAllCourses() {
+    let dbCourses: any[] = [];
+    try {
+      dbCourses = await this.prisma.course.findMany({
+        include: {
+          instructor: true,
+          enrollments: true,
+          modules: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch {
+      dbCourses = [];
+    }
+
+    if (dbCourses.length === 0) {
+      return [];
+    }
+
+    const students = await this.getAllStudents();
+
+    return dbCourses.map((course) => {
+      const courseStudents = students.filter((s) => {
+        const cName = (s.course || '').toLowerCase();
+        const title = course.title.toLowerCase();
+        return cName.includes(title) || title.includes(cName);
+      });
+
+      const count = courseStudents.length;
+      const avgProgress =
+        count > 0
+          ? Math.round(courseStudents.reduce((sum, s) => sum + (s.progress || 0), 0) / count)
+          : 0;
+
+      return {
+        id: course.id,
+        title: course.title,
+        track: course.subtitle || course.description?.slice(0, 30) || 'General track',
+        instructor: course.instructor?.fullName || 'Instructor',
+        students: count,
+        completion: avgProgress,
+        revenue: '₹0',
+        status: course.status === 'PUBLISHED' ? 'Published' : course.status === 'DRAFT' ? 'Draft' : 'Review',
+        color: '#dbeafe',
+        initials: course.title.slice(0, 3).toUpperCase(),
       };
     });
   }

@@ -51,12 +51,7 @@ type CourseStatus = "Published" | "Draft" | "Review";
 type Course = { id: number; title: string; track: string; instructor: string; students: number; completion: number; revenue: string; status: CourseStatus; color: string; initials: string };
 type DialogState = { title: string; description: string; fields: string[] } | null;
 
-const courses: Course[] = [
-  { id: 1, title: "Data Structures & Algorithms", track: "Interview prep · 42 modules", instructor: "Arjun Mehta", students: 1842, completion: 78, revenue: "₹18.6L", status: "Published", color: "#dbeafe", initials: "DSA" },
-  { id: 2, title: "System Design: Foundations", track: "Placement track · 18 modules", instructor: "Maya Rao", students: 936, completion: 64, revenue: "₹9.2L", status: "Published", color: "#ede9fe", initials: "SD" },
-  { id: 3, title: "Python for Problem Solving", track: "Programming · 26 modules", instructor: "Neel Shah", students: 1284, completion: 71, revenue: "₹12.4L", status: "Review", color: "#dcfce7", initials: "PY" },
-  { id: 4, title: "Competitive Programming Sprint", track: "Advanced · 12 modules", instructor: "Kavya Iyer", students: 544, completion: 52, revenue: "₹6.7L", status: "Draft", color: "#ffedd5", initials: "CP" },
-];
+const courses: Course[] = [];
 
 const learners = [
   { id: 1, name: "Aarav Sharma", email: "aarav.sharma@gmail.com", course: "DSA Mastery", progress: 92, activity: "12 min ago", status: "On track", avatar: "AS" },
@@ -143,8 +138,117 @@ function MetricStrip({ items }: { items: { label: string; value: string; change:
   return <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{items.map((item) => <div className="surface-card p-5" key={item.label}><div className="flex items-center justify-between"><p className="text-[11px] font-semibold text-[var(--muted)]">{item.label}</p><TrendingUp className="h-4 w-4 text-emerald-500" /></div><p className="mt-2 font-display text-2xl font-bold">{item.value}</p><p className={cn("mt-2 text-[10px] font-bold", item.tone || "text-emerald-600")}>{item.change}</p></div>)}</div>;
 }
 
+interface CustomDropdownProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: string[] | { label: string; value: string }[];
+  placeholder?: string;
+  className?: string;
+  icon?: React.ReactNode;
+}
+
+function CustomDropdown({
+  value,
+  onChange,
+  options,
+  placeholder,
+  className,
+  icon,
+}: CustomDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
+
+  const normalizedOptions = useMemo(() => {
+    return options.map((opt) =>
+      typeof opt === "string" ? { label: opt, value: opt } : opt
+    );
+  }, [options]);
+
+  const selectedOption = normalizedOptions.find((opt) => opt.value === value) || {
+    label: value || placeholder || "Select",
+    value,
+  };
+
+  return (
+    <div ref={dropdownRef} className={cn("relative inline-block text-left", className)}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={cn(
+          "input flex w-auto min-w-[130px] items-center justify-between gap-2 px-3 py-1.5 text-xs font-semibold cursor-pointer transition-all duration-150 select-none",
+          open && "ring-2 ring-[var(--brand)]/30 border-[var(--brand)] shadow-sm"
+        )}
+      >
+        <span className="flex items-center gap-2 truncate">
+          {icon}
+          <span className="truncate">{selectedOption.label}</span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 text-[var(--muted)] transition-transform duration-200 shrink-0",
+            open && "rotate-180 text-[var(--brand)]"
+          )}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[150px] w-full rounded-xl border border-[var(--app-line)] bg-[var(--app-card)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-100">
+          <div className="space-y-0.5">
+            {normalizedOptions.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold transition-colors cursor-pointer",
+                    isSelected
+                      ? "bg-indigo-50 font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"
+                      : "text-slate-700 hover:bg-[var(--subtle-bg)] dark:text-slate-200"
+                  )}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SearchToolbar({ query, setQuery, filter, setFilter, filters }: { query: string; setQuery: (value: string) => void; filter: string; setFilter: (value: string) => void; filters: string[] }) {
-  return <div className="flex flex-col gap-2 border-b border-[var(--app-line)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div className="relative w-full sm:max-w-xs"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search records" className="input pl-9" /></div><div className="flex items-center gap-2"><Filter className="h-3.5 w-3.5 text-[var(--muted)]" /><select value={filter} onChange={(event) => setFilter(event.target.value)} className="input w-auto min-w-[130px]">{filters.map((item) => <option key={item}>{item}</option>)}</select></div></div>;
+  return (
+    <div className="flex flex-col gap-2 border-b border-[var(--app-line)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="relative w-full sm:max-w-xs">
+        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search records" className="input pl-9" />
+      </div>
+      <div className="flex items-center gap-2">
+        <CustomDropdown value={filter} onChange={setFilter} options={filters} icon={<Filter className="h-3.5 w-3.5 text-[var(--muted)]" />} />
+      </div>
+    </div>
+  );
 }
 
 function DataCard({ children, title, subtitle, toolbar }: { children: React.ReactNode; title: string; subtitle?: string; toolbar?: React.ReactNode }) {
@@ -158,8 +262,49 @@ function Dialog({ state, onClose, onSave }: { state: DialogState; onClose: () =>
 }
 
 function RevenueChart() {
-  const points = "0,122 50,105 100,114 150,84 200,92 250,64 300,73 350,43 400,54 450,28 500,34 550,10";
-  return <div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Revenue overview</p><div className="mt-1 flex items-baseline gap-2"><span className="font-display text-2xl font-bold">₹46.8L</span><span className="text-[11px] font-bold text-emerald-600"><ArrowUpRight className="inline h-3.5 w-3.5" /> 18.4%</span></div></div><select className="input w-auto"><option>12 months</option><option>30 days</option></select></div><div className="mt-6 h-[190px]"><svg viewBox="0 0 560 155" className="h-full w-full" preserveAspectRatio="none"><defs><linearGradient id="revenue-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#6366f1" stopOpacity="0.22" /><stop offset="100%" stopColor="#6366f1" stopOpacity="0" /></linearGradient></defs><g className="chart-grid"><line x1="0" x2="560" y1="12" y2="12" /><line x1="0" x2="560" y1="48" y2="48" /><line x1="0" x2="560" y1="84" y2="84" /><line x1="0" x2="560" y1="120" y2="120" /></g><polyline points={`${points} 550,145 0,145`} fill="url(#revenue-fill)" /><polyline points={points} fill="none" stroke="#6366f1" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" vectorEffect="non-scaling-stroke" /><circle cx="550" cy="10" r="4.5" fill="#fff" stroke="#6366f1" strokeWidth="3" /></svg></div><div className="flex justify-between text-[10px] font-semibold text-[var(--muted)]"><span>Oct</span><span>Dec</span><span>Feb</span><span>Apr</span><span>Jun</span><span>Sep</span></div></div>;
+  const [timeRange, setTimeRange] = useState("12 months");
+  const points = "0,140 50,140 100,140 150,140 200,140 250,140 300,140 350,140 400,140 450,140 500,140 550,140";
+  return (
+    <div className="surface-card p-5 sm:p-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[12px] font-semibold text-[var(--muted)]">Revenue overview</p>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="font-display text-2xl font-bold">₹0</span>
+            <span className="text-[11px] font-bold text-slate-500">₹0 earned</span>
+          </div>
+        </div>
+        <CustomDropdown value={timeRange} onChange={setTimeRange} options={["12 months", "30 days"]} />
+      </div>
+      <div className="mt-6 h-[190px]">
+        <svg viewBox="0 0 560 155" className="h-full w-full" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="revenue-fill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <g className="chart-grid">
+            <line x1="0" x2="560" y1="12" y2="12" />
+            <line x1="0" x2="560" y1="48" y2="48" />
+            <line x1="0" x2="560" y1="84" y2="84" />
+            <line x1="0" x2="560" y1="120" y2="120" />
+          </g>
+          <polyline points={`${points} 550,140 0,140`} fill="url(#revenue-fill)" />
+          <polyline points={points} fill="none" stroke="#6366f1" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+          <circle cx="550" cy="140" r="4" fill="#fff" stroke="#6366f1" strokeWidth="2.5" />
+        </svg>
+      </div>
+      <div className="flex justify-between text-[10px] font-semibold text-[var(--muted)]">
+        <span>Oct</span>
+        <span>Dec</span>
+        <span>Feb</span>
+        <span>Apr</span>
+        <span>Jun</span>
+        <span>Sep</span>
+      </div>
+    </div>
+  );
 }
 
 interface AdminStats {
@@ -188,19 +333,21 @@ function useLiveAdminData() {
     totalStudents: 0,
     activeStudents: 0,
     paidEnrollments: 0,
-    coursesCount: 4,
+    coursesCount: 0,
     recentActivities: [],
   });
   const [students, setStudents] = useState<StudentItem[]>([]);
+  const [coursesList, setCoursesList] = useState<Course[]>(courses);
   const [isLoading, setIsLoading] = useState(true);
   const [isWsConnected, setIsWsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
   const fetchInitialSnapshot = async () => {
     try {
-      const [statsRes, studentsRes] = await Promise.all([
+      const [statsRes, studentsRes, coursesRes] = await Promise.all([
         fetch("http://localhost:4000/api/v1/admin/stats"),
         fetch("http://localhost:4000/api/v1/admin/students"),
+        fetch("http://localhost:4000/api/v1/admin/courses"),
       ]);
 
       if (statsRes.ok) {
@@ -210,6 +357,10 @@ function useLiveAdminData() {
       if (studentsRes.ok) {
         const studentsData = await studentsRes.json();
         setStudents(studentsData);
+      }
+      if (coursesRes.ok) {
+        const coursesData = await coursesRes.json();
+        setCoursesList(coursesData);
       }
     } catch {
       // Backend offline fallback
@@ -255,6 +406,9 @@ function useLiveAdminData() {
               if (payload.data?.students) {
                 setStudents(payload.data.students);
               }
+              if (payload.data?.courses) {
+                setCoursesList(payload.data.courses);
+              }
               setIsLoading(false);
             }
           } catch {
@@ -299,15 +453,16 @@ function useLiveAdminData() {
     }
   };
 
-  return { stats, students, isLoading, isWsConnected, refresh };
+  return { stats, students, courses: coursesList, isLoading, isWsConnected, refresh };
 }
 
 function Overview({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
   const { adminUser } = useAdminAuth();
-  const { stats, isWsConnected } = useLiveAdminData();
+  const { stats, courses: liveCourses, isWsConnected } = useLiveAdminData();
   const displayName = adminUser?.name || "Abhishek";
   const [query, setQuery] = useState("");
-  const filtered = courses.filter((course) => `${course.title} ${course.instructor}`.toLowerCase().includes(query.toLowerCase()));
+  const activeCourses = liveCourses && liveCourses.length > 0 ? liveCourses : courses;
+  const filtered = activeCourses.filter((course) => `${course.title} ${course.instructor}`.toLowerCase().includes(query.toLowerCase()));
 
   const studentCount = stats.totalStudents;
   // Active students set to same number as total students per user request
@@ -415,6 +570,13 @@ function Overview({ onAction, onToast }: { onAction: (state: DialogState) => voi
                 ))}
               </tbody>
             </table>
+            {filtered.length === 0 && (
+              <div className="py-12 text-center text-xs text-[var(--muted)]">
+                <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-30 text-[var(--brand)]" />
+                <p className="font-semibold text-slate-700 dark:text-slate-300">No courses available</p>
+                <p className="mt-1 text-[11px]">When courses are created in the system, catalog performance will appear here.</p>
+              </div>
+            )}
           </div>
         </DataCard>
 
@@ -444,9 +606,106 @@ function Overview({ onAction, onToast }: { onAction: (state: DialogState) => voi
 }
 
 function CoursesView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
-  const [query, setQuery] = useState(""); const [filter, setFilter] = useState("All"); const [rows, setRows] = useState(courses);
+  const { courses: liveCourses } = useLiveAdminData();
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("All");
+  const baseCourses = liveCourses && liveCourses.length > 0 ? liveCourses : courses;
+  const [localRows, setLocalRows] = useState<Course[] | null>(null);
+  const rows = localRows || baseCourses;
+
   const filtered = rows.filter((course) => (filter === "All" || course.status === filter) && `${course.title} ${course.instructor}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="courses" description={sectionDescriptions.courses} actionLabel="Create course" onAction={() => onAction({ title: "Create a new course", description: "Create the course shell, then continue to the curriculum builder.", fields: ["Course title", "Instructor", "Price"] })} onExport={() => onToast("Course catalog exported") } /><MetricStrip items={[{ label: "Published courses", value: "18", change: "+3 this quarter" }, { label: "In review", value: "8", change: "Needs content review", tone: "text-amber-600" }, { label: "Avg. completion", value: "71.4%", change: "+5.2% vs last month" }, { label: "Catalog revenue", value: "₹46.8L", change: "+18.4% vs last month" }]} /><DataCard title="Course catalog" subtitle={`${filtered.length} of ${rows.length} courses shown`} toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "Published", "Review", "Draft"]} />}><div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left"><thead><tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]"><th className="px-5 py-3 sm:px-6">Course</th><th className="px-4 py-3">Instructor</th><th className="px-4 py-3">Students</th><th className="px-4 py-3">Completion</th><th className="px-4 py-3">Revenue</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead><tbody>{filtered.map((course) => <tr key={course.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"><td className="px-5 py-4 sm:px-6"><div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-xl text-[10px] font-extrabold text-slate-700" style={{ backgroundColor: course.color }}>{course.initials}</div><div><p className="text-[12px] font-bold">{course.title}</p><p className="text-[10px] text-[var(--muted)]">{course.track}</p></div></div></td><td className="px-4 py-4 text-[11px] font-semibold">{course.instructor}</td><td className="px-4 py-4 text-[12px] font-bold">{course.students.toLocaleString()}</td><td className="px-4 py-4"><div className="flex items-center gap-2"><div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${course.completion}%` }} /></div><span className="text-[11px] font-bold">{course.completion}%</span></div></td><td className="px-4 py-4 text-[12px] font-bold">{course.revenue}</td><td className="px-4 py-4"><StatusBadge>{course.status}</StatusBadge></td><td className="px-4 py-4"><button onClick={() => setRows((current) => current.map((item) => item.id === course.id ? { ...item, status: item.status === "Published" ? "Draft" : "Published" } : item))} className="icon-button" title="Toggle publish status"><Ellipsis className="h-4 w-4" /></button></td></tr>)}</tbody></table>{filtered.length === 0 && <p className="p-10 text-center text-xs text-[var(--muted)]">No courses match your filters.</p>}</div></DataCard></div>;
+
+  const publishedCount = rows.filter((c) => c.status === "Published").length;
+  const reviewCount = rows.filter((c) => c.status === "Review").length;
+  const totalEnrolled = rows.reduce((acc, c) => acc + (c.students || 0), 0);
+  const avgCompletion = rows.length > 0 ? Math.round(rows.reduce((acc, c) => acc + (c.completion || 0), 0) / rows.length) : 0;
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="courses"
+        description={sectionDescriptions.courses}
+        actionLabel="Create course"
+        onAction={() => onAction({ title: "Create a new course", description: "Create the course shell, then continue to the curriculum builder.", fields: ["Course title", "Instructor", "Price"] })}
+        onExport={() => onToast("Course catalog exported")}
+      />
+      <MetricStrip
+        items={[
+          { label: "Published courses", value: publishedCount.toString(), change: `${publishedCount} active in catalog` },
+          { label: "In review", value: reviewCount.toString(), change: reviewCount > 0 ? `${reviewCount} need review` : "0 pending review", tone: reviewCount > 0 ? "text-amber-600" : "text-slate-500" },
+          { label: "Avg. completion", value: `${avgCompletion}%`, change: totalEnrolled > 0 ? `Across ${totalEnrolled} learners` : "0% completion baseline" },
+          { label: "Catalog revenue", value: "₹0", change: "₹0 earned", tone: "text-slate-500" },
+        ]}
+      />
+      <DataCard
+        title="Course catalog"
+        subtitle={`${filtered.length} of ${rows.length} courses shown`}
+        toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "Published", "Review", "Draft"]} />}
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[850px] text-left">
+            <thead>
+              <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                <th className="px-5 py-3 sm:px-6">Course</th>
+                <th className="px-4 py-3">Instructor</th>
+                <th className="px-4 py-3">Students</th>
+                <th className="px-4 py-3">Completion</th>
+                <th className="px-4 py-3">Revenue</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((course) => (
+                <tr key={course.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]">
+                  <td className="px-5 py-4 sm:px-6">
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-9 w-9 place-items-center rounded-xl text-[10px] font-extrabold text-slate-700" style={{ backgroundColor: course.color }}>{course.initials}</div>
+                      <div>
+                        <p className="text-[12px] font-bold">{course.title}</p>
+                        <p className="text-[10px] text-[var(--muted)]">{course.track}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-[11px] font-semibold">{course.instructor}</td>
+                  <td className="px-4 py-4 text-[12px] font-bold">{course.students.toLocaleString()}</td>
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${course.completion}%` }} />
+                      </div>
+                      <span className="text-[11px] font-bold">{course.completion}%</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-[12px] font-bold">{course.revenue}</td>
+                  <td className="px-4 py-4"><StatusBadge>{course.status}</StatusBadge></td>
+                  <td className="px-4 py-4">
+                    <button
+                      onClick={() => {
+                        const updated = rows.map((item) => (item.id === course.id ? { ...item, status: item.status === "Published" ? ("Draft" as CourseStatus) : ("Published" as CourseStatus) } : item));
+                        setLocalRows(updated);
+                      }}
+                      className="icon-button"
+                      title="Toggle publish status"
+                    >
+                      <Ellipsis className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filtered.length === 0 && (
+            <div className="py-12 text-center text-xs text-[var(--muted)]">
+              <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-30 text-[var(--brand)]" />
+              <p className="font-semibold text-slate-700 dark:text-slate-300">No courses in catalog</p>
+              <p className="mt-1 text-[11px]">Click &ldquo;Create course&rdquo; to build your first curriculum.</p>
+            </div>
+          )}
+        </div>
+      </DataCard>
+    </div>
+  );
 }
 
 function StudentsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
@@ -557,26 +816,27 @@ function ContentView({ onAction, onToast }: { onAction: (state: DialogState) => 
 
 function AssessmentsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
   const [filter, setFilter] = useState("All"); const [rows, setRows] = useState(assessments); const filtered = rows.filter((item) => filter === "All" || item.status === filter);
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="assessments" description={sectionDescriptions.assessments} actionLabel="Create assessment" onAction={() => onAction({ title: "Create an assessment", description: "Choose questions, scoring, timing, and visibility controls.", fields: ["Assessment title", "Assessment type", "Duration"] })} onExport={() => onToast("Assessment report exported") } /><MetricStrip items={[{ label: "Live assessments", value: "18", change: "+3 this week" }, { label: "Avg. pass rate", value: "74.8%", change: "+6.1%" }, { label: "Total attempts", value: "8,420", change: "+14.8%" }, { label: "Pending reviews", value: "128", change: "Due today", tone: "text-amber-600" }]} /><DataCard title="Assessment center" subtitle="Tests, mock exams, coding screens, and question banks" toolbar={<div className="flex items-center gap-2"><Filter className="h-3.5 w-3.5 text-[var(--muted)]" /><select className="input w-auto" value={filter} onChange={(event) => setFilter(event.target.value)}><option>All</option><option>Live</option><option>Closed</option><option>Draft</option></select></div>}><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left"><thead><tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]"><th className="px-5 py-3 sm:px-6">Assessment</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Questions</th><th className="px-4 py-3">Attempts</th><th className="px-4 py-3">Pass rate</th><th className="px-4 py-3">Schedule</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead><tbody>{filtered.map((item) => <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"><td className="px-5 py-4 sm:px-6"><p className="text-[12px] font-bold">{item.title}</p><p className="text-[10px] text-[var(--muted)]">Question bank · MCQ + coding</p></td><td className="px-4 py-4 text-[11px] font-semibold">{item.type}</td><td className="px-4 py-4 text-[12px] font-bold">{item.questions}</td><td className="px-4 py-4 text-[12px] font-bold">{item.attempts}</td><td className="px-4 py-4 text-[12px] font-bold">{item.passRate}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.date}</td><td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td><td className="px-4 py-4"><button onClick={() => setRows((current) => current.map((row) => row.id === item.id ? { ...row, status: row.status === "Live" ? "Closed" : "Live" } : row))} className="text-[10px] font-bold text-[var(--brand)]">{item.status === "Live" ? "Close" : "Publish"}</button></td></tr>)}</tbody></table></div></DataCard></div>;
+  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="assessments" description={sectionDescriptions.assessments} actionLabel="Create assessment" onAction={() => onAction({ title: "Create an assessment", description: "Choose questions, scoring, timing, and visibility controls.", fields: ["Assessment title", "Assessment type", "Duration"] })} onExport={() => onToast("Assessment report exported") } /><MetricStrip items={[{ label: "Live assessments", value: "18", change: "+3 this week" }, { label: "Avg. pass rate", value: "74.8%", change: "+6.1%" }, { label: "Total attempts", value: "8,420", change: "+14.8%" }, { label: "Pending reviews", value: "128", change: "Due today", tone: "text-amber-600" }]} /><DataCard title="Assessment center" subtitle="Tests, mock exams, coding screens, and question banks" toolbar={<div className="flex items-center gap-2"><CustomDropdown value={filter} onChange={setFilter} options={["All", "Live", "Closed", "Draft"]} icon={<Filter className="h-3.5 w-3.5 text-[var(--muted)]" />} /></div>}><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left"><thead><tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]"><th className="px-5 py-3 sm:px-6">Assessment</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Questions</th><th className="px-4 py-3">Attempts</th><th className="px-4 py-3">Pass rate</th><th className="px-4 py-3">Schedule</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead><tbody>{filtered.map((item) => <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"><td className="px-5 py-4 sm:px-6"><p className="text-[12px] font-bold">{item.title}</p><p className="text-[10px] text-[var(--muted)]">Question bank · MCQ + coding</p></td><td className="px-4 py-4 text-[11px] font-semibold">{item.type}</td><td className="px-4 py-4 text-[12px] font-bold">{item.questions}</td><td className="px-4 py-4 text-[12px] font-bold">{item.attempts}</td><td className="px-4 py-4 text-[12px] font-bold">{item.passRate}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.date}</td><td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td><td className="px-4 py-4"><button onClick={() => setRows((current) => current.map((row) => row.id === item.id ? { ...row, status: row.status === "Live" ? "Closed" : "Live" } : row))} className="text-[10px] font-bold text-[var(--brand)]">{item.status === "Live" ? "Close" : "Publish"}</button></td></tr>)}</tbody></table></div></DataCard></div>;
 }
 
 function LiveView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
   const [filter, setFilter] = useState("All"); const [rows, setRows] = useState(sessions); const filtered = rows.filter((item) => filter === "All" || item.status === filter);
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="live" description={sectionDescriptions.live} actionLabel="Schedule session" onAction={() => onAction({ title: "Schedule a live session", description: "Set the instructor, timing, meeting link, and attendance rules.", fields: ["Session title", "Date and time", "Instructor", "Meeting link"] })} onExport={() => onToast("Session calendar exported") } /><MetricStrip items={[{ label: "Upcoming sessions", value: "18", change: "+5 this week" }, { label: "Registered learners", value: "1,248", change: "+18.4%" }, { label: "Avg. attendance", value: "86%", change: "+3.2%" }, { label: "Recordings pending", value: "4", change: "Upload after class", tone: "text-amber-600" }]} /><DataCard title="Session calendar" subtitle="Live classes, office hours, and recorded sessions" toolbar={<div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-[var(--muted)]" /><select value={filter} onChange={(event) => setFilter(event.target.value)} className="input w-auto"><option>All</option><option>Upcoming</option><option>Completed</option></select></div>}><div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">{filtered.map((session) => <div className="rounded-2xl border border-[var(--app-line)] p-4" key={session.id}><div className="flex items-start justify-between"><span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"><Video className="h-4 w-4" /></span><StatusBadge>{session.status}</StatusBadge></div><h3 className="mt-4 text-[13px] font-bold">{session.title}</h3><p className="mt-1 text-[11px] text-[var(--muted)]">{session.course}</p><div className="mt-4 flex items-center justify-between text-[10px] font-semibold"><span className="inline-flex items-center gap-1.5 text-[var(--muted)]"><Clock3 className="h-3.5 w-3.5" />{session.time}</span><span>{session.attendees} registered</span></div><div className="mt-4 flex gap-2"><button onClick={() => onToast(`${session.title} opened`)} className="secondary-button flex-1 justify-center">Open</button><button onClick={() => setRows((current) => current.map((row) => row.id === session.id ? { ...row, status: row.status === "Upcoming" ? "Completed" : "Upcoming" } : row))} className="primary-button flex-1 justify-center">{session.status === "Upcoming" ? "Complete" : "Reopen"}</button></div></div>)}</div></DataCard></div>;
+  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="live" description={sectionDescriptions.live} actionLabel="Schedule session" onAction={() => onAction({ title: "Schedule a live session", description: "Set the instructor, timing, meeting link, and attendance rules.", fields: ["Session title", "Date and time", "Instructor", "Meeting link"] })} onExport={() => onToast("Session calendar exported") } /><MetricStrip items={[{ label: "Upcoming sessions", value: "18", change: "+5 this week" }, { label: "Registered learners", value: "1,248", change: "+18.4%" }, { label: "Avg. attendance", value: "86%", change: "+3.2%" }, { label: "Recordings pending", value: "4", change: "Upload after class", tone: "text-amber-600" }]} /><DataCard title="Session calendar" subtitle="Live classes, office hours, and recorded sessions" toolbar={<div className="flex items-center gap-2"><CustomDropdown value={filter} onChange={setFilter} options={["All", "Upcoming", "Completed"]} icon={<CalendarDays className="h-4 w-4 text-[var(--muted)]" />} /></div>}><div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">{filtered.map((session) => <div className="rounded-2xl border border-[var(--app-line)] p-4" key={session.id}><div className="flex items-start justify-between"><span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"><Video className="h-4 w-4" /></span><StatusBadge>{session.status}</StatusBadge></div><h3 className="mt-4 text-[13px] font-bold">{session.title}</h3><p className="mt-1 text-[11px] text-[var(--muted)]">{session.course}</p><div className="mt-4 flex items-center justify-between text-[10px] font-semibold"><span className="inline-flex items-center gap-1.5 text-[var(--muted)]"><Clock3 className="h-3.5 w-3.5" />{session.time}</span><span>{session.attendees} registered</span></div><div className="mt-4 flex gap-2"><button onClick={() => onToast(`${session.title} opened`)} className="secondary-button flex-1 justify-center">Open</button><button onClick={() => setRows((current) => current.map((row) => row.id === session.id ? { ...row, status: row.status === "Upcoming" ? "Completed" : "Upcoming" } : row))} className="primary-button flex-1 justify-center">{session.status === "Upcoming" ? "Complete" : "Reopen"}</button></div></div>)}</div></DataCard></div>;
 }
 
 function PaymentsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
   const [query, setQuery] = useState(""); const [filter, setFilter] = useState("All"); const [rows, setRows] = useState(payments); const filtered = rows.filter((item) => (filter === "All" || item.status === filter) && `${item.id} ${item.student} ${item.course}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="payments" description={sectionDescriptions.payments} actionLabel="Generate invoice" onAction={() => onAction({ title: "Generate an invoice", description: "Create and send a new invoice to a learner.", fields: ["Student", "Course", "Amount"] })} onExport={() => onToast("Transactions exported") } /><MetricStrip items={[{ label: "This month", value: "₹8.4L", change: "+22.6% vs last month" }, { label: "Total revenue", value: "₹46.8L", change: "+18.4%" }, { label: "Pending payouts", value: "₹1.2L", change: "14 items", tone: "text-amber-600" }, { label: "Refund requests", value: "3", change: "Needs review", tone: "text-rose-600" }]} /><DataCard title="Transactions" subtitle="Invoices, payment methods, and refund workflow" toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "Paid", "Refund requested"]} />}><div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left"><thead><tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]"><th className="px-5 py-3 sm:px-6">Invoice</th><th className="px-4 py-3">Student</th><th className="px-4 py-3">Course</th><th className="px-4 py-3">Amount</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Method</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead><tbody>{filtered.map((item) => <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"><td className="px-5 py-4 text-[11px] font-bold sm:px-6">{item.id}</td><td className="px-4 py-4 text-[11px] font-semibold">{item.student}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.course}</td><td className="px-4 py-4 text-[12px] font-bold">{item.amount}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.date}</td><td className="px-4 py-4 text-[11px]">{item.method}</td><td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td><td className="px-4 py-4"><button onClick={() => setRows((current) => current.map((row) => row.id === item.id ? { ...row, status: row.status === "Paid" ? "Refund requested" : "Paid" } : row))} className="text-[10px] font-bold text-[var(--brand)]">{item.status === "Paid" ? "Refund" : "Approve"}</button></td></tr>)}</tbody></table></div></DataCard></div>;
+  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="payments" description={sectionDescriptions.payments} actionLabel="Generate invoice" onAction={() => onAction({ title: "Generate an invoice", description: "Create and send a new invoice to a learner.", fields: ["Student", "Course", "Amount"] })} onExport={() => onToast("Transactions exported") } /><MetricStrip items={[{ label: "This month", value: "₹0", change: "₹0 this month" }, { label: "Total revenue", value: "₹0", change: "₹0 earned" }, { label: "Pending payouts", value: "₹0", change: "0 pending", tone: "text-slate-500" }, { label: "Refund requests", value: "0", change: "0 requests", tone: "text-slate-500" }]} /><DataCard title="Transactions" subtitle="Invoices, payment methods, and refund workflow" toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "Paid", "Refund requested"]} />}><div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left"><thead><tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]"><th className="px-5 py-3 sm:px-6">Invoice</th><th className="px-4 py-3">Student</th><th className="px-4 py-3">Course</th><th className="px-4 py-3">Amount</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Method</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead><tbody>{filtered.map((item) => <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"><td className="px-5 py-4 text-[11px] font-bold sm:px-6">{item.id}</td><td className="px-4 py-4 text-[11px] font-semibold">{item.student}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.course}</td><td className="px-4 py-4 text-[12px] font-bold">{item.amount}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.date}</td><td className="px-4 py-4 text-[11px]">{item.method}</td><td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td><td className="px-4 py-4"><button onClick={() => setRows((current) => current.map((row) => row.id === item.id ? { ...row, status: row.status === "Paid" ? "Refund requested" : "Paid" } : row))} className="text-[10px] font-bold text-[var(--brand)]">{item.status === "Paid" ? "Refund" : "Approve"}</button></td></tr>)}</tbody></table></div></DataCard></div>;
 }
 
 function FeedbackView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
   const [rows, setRows] = useState(feedback); const [filter, setFilter] = useState("All"); const filtered = rows.filter((item) => filter === "All" || item.status === filter);
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="feedback" description={sectionDescriptions.feedback} actionLabel="Review queue" onAction={() => onToast("Showing feedback that needs a response")} onExport={() => onToast("Feedback report exported") } /><MetricStrip items={[{ label: "Average rating", value: "4.8 / 5", change: "+0.3 this month" }, { label: "New feedback", value: "18", change: "Needs response", tone: "text-amber-600" }, { label: "Response rate", value: "92%", change: "+4.1%" }, { label: "Flagged items", value: "3", change: "Needs moderation", tone: "text-rose-600" }]} /><DataCard title="Feedback inbox" subtitle="Respond to learners and track instructor quality" toolbar={<div className="flex items-center gap-2"><MessageSquareText className="h-4 w-4 text-[var(--muted)]" /><select value={filter} onChange={(event) => setFilter(event.target.value)} className="input w-auto"><option>All</option><option>New</option><option>Open</option><option>Responded</option></select></div>}><div className="divide-y divide-[var(--app-line)]">{filtered.map((item) => <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:px-6" key={item.id}><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Star className="h-4 w-4 fill-current" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-[12px] font-bold">{item.student}</p><span className="text-[10px] text-[var(--muted)]">· {item.course}</span><span className="text-[10px] font-bold text-amber-600">{item.rating}.0</span></div><p className="mt-2 text-[12px] leading-5">{item.text}</p><p className="mt-2 text-[10px] text-[var(--muted)]">{item.category} · {item.date}</p></div><div className="flex items-center gap-2"><StatusBadge>{item.status}</StatusBadge><button onClick={() => setRows((current) => current.map((row) => row.id === item.id ? { ...row, status: row.status === "Responded" ? "Open" : "Responded" } : row))} className="secondary-button">{item.status === "Responded" ? "Reopen" : "Respond"}</button></div></div>)}</div></DataCard></div>;
+  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="feedback" description={sectionDescriptions.feedback} actionLabel="Review queue" onAction={() => onToast("Showing feedback that needs a response")} onExport={() => onToast("Feedback report exported") } /><MetricStrip items={[{ label: "Average rating", value: "4.8 / 5", change: "+0.3 this month" }, { label: "New feedback", value: "18", change: "Needs response", tone: "text-amber-600" }, { label: "Response rate", value: "92%", change: "+4.1%" }, { label: "Flagged items", value: "3", change: "Needs moderation", tone: "text-rose-600" }]} /><DataCard title="Feedback inbox" subtitle="Respond to learners and track instructor quality" toolbar={<div className="flex items-center gap-2"><CustomDropdown value={filter} onChange={setFilter} options={["All", "New", "Open", "Responded"]} icon={<MessageSquareText className="h-4 w-4 text-[var(--muted)]" />} /></div>}><div className="divide-y divide-[var(--app-line)]">{filtered.map((item) => <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:px-6" key={item.id}><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Star className="h-4 w-4 fill-current" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-[12px] font-bold">{item.student}</p><span className="text-[10px] text-[var(--muted)]">· {item.course}</span><span className="text-[10px] font-bold text-amber-600">{item.rating}.0</span></div><p className="mt-2 text-[12px] leading-5">{item.text}</p><p className="mt-2 text-[10px] text-[var(--muted)]">{item.category} · {item.date}</p></div><div className="flex items-center gap-2"><StatusBadge>{item.status}</StatusBadge><button onClick={() => setRows((current) => current.map((row) => row.id === item.id ? { ...row, status: row.status === "Responded" ? "Open" : "Responded" } : row))} className="secondary-button">{item.status === "Responded" ? "Reopen" : "Respond"}</button></div></div>)}</div></DataCard></div>;
 }
 
 function ReportsView({ onToast }: { onToast: (message: string) => void }) {
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="reports" description={sectionDescriptions.reports} actionLabel="Build report" onAction={() => onToast("Report builder opened")} onExport={() => onToast("Analytics exported as CSV")} /><MetricStrip items={[{ label: "Engagement rate", value: "71.8%", change: "+8.4%" }, { label: "Course completion", value: "68.2%", change: "+5.2%" }, { label: "Learner retention", value: "84.6%", change: "+2.1%" }, { label: "Placement rate", value: "76.4%", change: "+11.8%" }]} /><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Learning engagement</p><h2 className="mt-1 font-display text-lg font-bold">Weekly active learners</h2></div><select className="input w-auto"><option>Last 30 days</option><option>Last 90 days</option></select></div><div className="mt-7 h-56 flex items-end gap-2">{[46, 61, 52, 74, 68, 86, 78, 91, 72, 84, 88, 95].map((height, index) => <div key={index} className="group flex flex-1 flex-col justify-end gap-2"><div className="w-full rounded-t-lg bg-indigo-200 transition-all group-hover:bg-indigo-500 dark:bg-indigo-900/60" style={{ height: `${height}%` }} /><span className="text-center text-[9px] text-[var(--muted)]">W{index + 1}</span></div>)}</div></div><div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Course completion</p><h2 className="mt-1 font-display text-lg font-bold">Where learners drop off</h2></div><BarChart3 className="h-5 w-5 text-[var(--brand)]" /></div><div className="mt-6 space-y-5">{[{ label: "DSA Mastery", value: 78, color: "bg-indigo-500" }, { label: "System Design", value: 64, color: "bg-violet-500" }, { label: "Python for Problem Solving", value: 71, color: "bg-emerald-500" }, { label: "Competitive Programming", value: 52, color: "bg-amber-500" }].map((item) => <div key={item.label}><div className="flex justify-between text-[11px] font-bold"><span>{item.label}</span><span>{item.value}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className={cn("h-full rounded-full", item.color)} style={{ width: `${item.value}%` }} /></div></div>)}</div></div></div><DataCard title="Saved reports" subtitle="Reusable exports for your leadership and instructor teams" toolbar={<button onClick={() => onToast("New report template created")} className="secondary-button"><Plus className="h-4 w-4" /> Add template</button>}><div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">{["Monthly executive pulse", "Placement readiness", "Instructor performance"].map((report) => <button onClick={() => onToast(`${report} generated`)} className="rounded-xl border border-[var(--app-line)] p-4 text-left hover:bg-[var(--subtle-bg)]" key={report}><BarChart3 className="h-4 w-4 text-[var(--brand)]" /><p className="mt-4 text-[12px] font-bold">{report}</p><p className="mt-1 text-[10px] text-[var(--muted)]">Run report · CSV / PDF</p></button>)}</div></DataCard></div>;
+  const [timeRange, setTimeRange] = useState("Last 30 days");
+  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="reports" description={sectionDescriptions.reports} actionLabel="Build report" onAction={() => onToast("Report builder opened")} onExport={() => onToast("Analytics exported as CSV")} /><MetricStrip items={[{ label: "Engagement rate", value: "71.8%", change: "+8.4%" }, { label: "Course completion", value: "68.2%", change: "+5.2%" }, { label: "Learner retention", value: "84.6%", change: "+2.1%" }, { label: "Placement rate", value: "76.4%", change: "+11.8%" }]} /><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Learning engagement</p><h2 className="mt-1 font-display text-lg font-bold">Weekly active learners</h2></div><CustomDropdown value={timeRange} onChange={setTimeRange} options={["Last 30 days", "Last 90 days"]} /></div><div className="mt-7 h-56 flex items-end gap-2">{[46, 61, 52, 74, 68, 86, 78, 91, 72, 84, 88, 95].map((height, index) => <div key={index} className="group flex flex-1 flex-col justify-end gap-2"><div className="w-full rounded-t-lg bg-indigo-200 transition-all group-hover:bg-indigo-500 dark:bg-indigo-900/60" style={{ height: `${height}%` }} /><span className="text-center text-[9px] text-[var(--muted)]">W{index + 1}</span></div>)}</div></div><div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Course completion</p><h2 className="mt-1 font-display text-lg font-bold">Where learners drop off</h2></div><BarChart3 className="h-5 w-5 text-[var(--brand)]" /></div><div className="mt-6 space-y-5">{[{ label: "DSA Mastery", value: 78, color: "bg-indigo-500" }, { label: "System Design", value: 64, color: "bg-violet-500" }, { label: "Python for Problem Solving", value: 71, color: "bg-emerald-500" }, { label: "Competitive Programming", value: 52, color: "bg-amber-500" }].map((item) => <div key={item.label}><div className="flex justify-between text-[11px] font-bold"><span>{item.label}</span><span>{item.value}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className={cn("h-full rounded-full", item.color)} style={{ width: `${item.value}%` }} /></div></div>)}</div></div></div><DataCard title="Saved reports" subtitle="Reusable exports for your leadership and instructor teams" toolbar={<button onClick={() => onToast("New report template created")} className="secondary-button"><Plus className="h-4 w-4" /> Add template</button>}><div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">{["Monthly executive pulse", "Placement readiness", "Instructor performance"].map((report) => <button onClick={() => onToast(`${report} generated`)} className="rounded-xl border border-[var(--app-line)] p-4 text-left hover:bg-[var(--subtle-bg)]" key={report}><BarChart3 className="h-4 w-4 text-[var(--brand)]" /><p className="mt-4 text-[12px] font-bold">{report}</p><p className="mt-1 text-[10px] text-[var(--muted)]">Run report · CSV / PDF</p></button>)}</div></DataCard></div>;
 }
 
 function AuditView({ onToast }: { onToast: (message: string) => void }) {
