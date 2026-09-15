@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { env } from '../../config/env';
 import logger from '../../utils/logger';
 import { sendPasswordResetLinkEmail, sendPasswordResetOtpEmail, sendWelcomeEmail } from '../../utils/email';
+import { AdminWsBroadcaster } from '../admin/admin.ws';
 
 export class AuthService {
   constructor(private prisma: PrismaClient) {}
@@ -65,6 +66,8 @@ export class AuthService {
     } catch (err: any) {
       logger.warn({ err: err.message }, 'Database delete deferred, deleted from memory store');
     }
+    // Broadcast real-time update to all connected Admin WebSocket clients
+    AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
     return { success: true, message: `User ${normalizedEmail} deleted successfully` };
   }
 
@@ -107,6 +110,9 @@ export class AuthService {
 
     AuthService.fallbackUsers.set(normalizedEmail, user);
     logger.info({ userId: user.id, email: user.email }, 'User registered');
+
+    // Broadcast real-time update to all connected Admin WebSocket clients
+    AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
 
     // Trigger welcome email via Resend
     sendWelcomeEmail({
@@ -490,6 +496,9 @@ export class AuthService {
     }
 
     logger.info({ userId: user.id, email: user.email }, 'User logged in via Google OAuth');
+
+    // Broadcast real-time update to all connected Admin WebSocket clients
+    AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
 
     return {
       user: {

@@ -1,15 +1,21 @@
 import { FastifyInstance } from 'fastify';
 import { AdminService } from './admin.service';
+import { AdminWsBroadcaster } from './admin.ws';
 
 export default async function adminController(fastify: FastifyInstance) {
   const adminService = new AdminService(fastify.prisma);
 
-  // Get real dashboard overview stats
+  // Real-time WebSocket connection for Admin Panel
+  fastify.get('/ws', { websocket: true }, (connection) => {
+    const ws = (connection as any).socket || connection;
+    AdminWsBroadcaster.addClient(ws, fastify.prisma);
+  });
+
+  // REST fallback / initial snapshot endpoints
   fastify.get('/stats', async () => {
     return adminService.getDashboardStats();
   });
 
-  // Get real list of all students / registered platform users
   fastify.get('/students', async () => {
     return adminService.getAllStudents();
   });

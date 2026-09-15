@@ -33,8 +33,10 @@
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^2.1.0",
     "@fastify/type-provider-typebox": "^4.0.0",
+    "@fastify/websocket": "^8.2.0",
     "@prisma/client": "^5.18.0",
     "@sinclair/typebox": "^0.33.10",
+    "@types/ws": "^8.18.1",
     "argon2": "^0.40.3",
     "bcrypt": "^5.1.1",
     "dotenv": "^16.4.5",
@@ -45,6 +47,7 @@
     "razorpay": "^2.9.8",
     "resend": "^3.5.0",
     "uuid": "^10.0.0",
+    "ws": "^8.21.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {

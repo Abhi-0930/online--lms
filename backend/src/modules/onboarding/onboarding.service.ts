@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
 import { AuthService } from '../auth/auth.service';
+import { AdminWsBroadcaster } from '../admin/admin.ws';
 
 export class OnboardingService {
   constructor(private prisma: PrismaClient) {}
@@ -52,6 +53,9 @@ export class OnboardingService {
       }
     }
 
+    // Broadcast real-time update to all connected Admin WebSocket clients
+    AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
+
     return record;
   }
 
@@ -97,6 +101,9 @@ export class OnboardingService {
       }
     }
 
+    // Broadcast real-time update to all connected Admin WebSocket clients
+    AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
+
     return record;
   }
 
@@ -141,6 +148,9 @@ export class OnboardingService {
         AuthService.fallbackUsers.set(email, u);
       }
     }
+
+    // Broadcast real-time update to all connected Admin WebSocket clients
+    AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
 
     return record;
   }
@@ -200,6 +210,10 @@ export class OnboardingService {
         AuthService.fallbackUsers.set(email, u);
       }
     }
+
+    // Broadcast real-time update to all connected Admin WebSocket clients
+    AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
+
     return record;
   }
 

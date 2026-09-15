@@ -9,6 +9,7 @@ import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
+import websocketPlugin from '@fastify/websocket';
 import authRoutes from './modules/auth/auth.routes';
 import coursesRoutes from './modules/courses/courses.routes';
 import progressRoutes from './modules/progress/progress.routes';
@@ -62,6 +63,7 @@ export async function createApp() {
   await fastify.register(authPlugin);
   await fastify.register(resendPlugin);
   await fastify.register(swaggerPlugin);
+  await fastify.register(websocketPlugin);
 
   // Register Routes
   await fastify.register(authRoutes);

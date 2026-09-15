@@ -45,7 +45,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 
 type CourseStatus = "Published" | "Draft" | "Review";
 type Course = { id: number; title: string; track: string; instructor: string; students: number; completion: number; revenue: string; status: CourseStatus; color: string; initials: string };
@@ -193,8 +193,10 @@ function useLiveAdminData() {
   });
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isWsConnected, setIsWsConnected] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
 
-  const fetchData = async () => {
+  const fetchInitialSnapshot = async () => {
     try {
       const [statsRes, studentsRes] = await Promise.all([
         fetch("http://localhost:4000/api/v1/admin/stats"),
@@ -217,17 +219,92 @@ function useLiveAdminData() {
   };
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 8000);
-    return () => clearInterval(interval);
+    // Immediate initial snapshot load
+    fetchInitialSnapshot();
+
+    let socket: WebSocket | null = null;
+    let reconnectTimer: any = null;
+    let isMounted = true;
+
+    const connectWebSocket = () => {
+      if (!isMounted) return;
+
+      try {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const host = window.location.hostname || "localhost";
+        const wsUrl = `${protocol}//${host}:4000/api/v1/admin/ws`;
+
+        socket = new WebSocket(wsUrl);
+        wsRef.current = socket;
+
+        socket.onopen = () => {
+          if (!isMounted) return;
+          setIsWsConnected(true);
+          // Request snapshot confirmation
+          socket?.send(JSON.stringify({ type: "REFRESH" }));
+        };
+
+        socket.onmessage = (event) => {
+          if (!isMounted) return;
+          try {
+            const payload = JSON.parse(event.data);
+            if (payload.type === "INITIAL_DATA" || payload.type === "DATA_UPDATE") {
+              if (payload.data?.stats) {
+                setStats(payload.data.stats);
+              }
+              if (payload.data?.students) {
+                setStudents(payload.data.students);
+              }
+              setIsLoading(false);
+            }
+          } catch {
+            // Ignore non-json frames
+          }
+        };
+
+        socket.onclose = () => {
+          if (!isMounted) return;
+          setIsWsConnected(false);
+          // Exponential / 4s reconnect backoff without polling HTTP
+          reconnectTimer = setTimeout(connectWebSocket, 4000);
+        };
+
+        socket.onerror = () => {
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.close();
+          }
+        };
+      } catch {
+        reconnectTimer = setTimeout(connectWebSocket, 5000);
+      }
+    };
+
+    connectWebSocket();
+
+    return () => {
+      isMounted = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (socket) {
+        socket.onclose = null;
+        socket.close();
+      }
+    };
   }, []);
 
-  return { stats, students, isLoading, refresh: fetchData };
+  const refresh = () => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "REFRESH" }));
+    } else {
+      fetchInitialSnapshot();
+    }
+  };
+
+  return { stats, students, isLoading, isWsConnected, refresh };
 }
 
 function Overview({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
   const { adminUser } = useAdminAuth();
-  const { stats } = useLiveAdminData();
+  const { stats, isWsConnected } = useLiveAdminData();
   const displayName = adminUser?.name || "Abhishek";
   const [query, setQuery] = useState("");
   const filtered = courses.filter((course) => `${course.title} ${course.instructor}`.toLowerCase().includes(query.toLowerCase()));
@@ -241,7 +318,8 @@ function Overview({ onAction, onToast }: { onAction: (state: DialogState) => voi
       <div className="mb-7 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.13em] text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" /> Sunday, September 13, 2026
+            <span className={`h-1.5 w-1.5 rounded-full ${isWsConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+            {isWsConnected ? "Live WebSocket Connected" : "Connecting Live Stream"} · Sunday, September 13, 2026
           </div>
           <h1 className="font-display text-3xl font-bold tracking-[-0.04em] sm:text-[36px]">
             Good morning, {displayName}<span className="text-[var(--brand)]">.</span>

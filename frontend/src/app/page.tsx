@@ -121,33 +121,32 @@ function AuthForm({
   // Handle OAuth error callbacks
   useEffect(() => {
     if (errorParam === "ACCOUNT_NOT_FOUND") {
-      setAlert({
-        type: "ACCOUNT_NOT_FOUND",
-        title: "Account Not Found",
-        message: "No account found with this Google account. Please create an account to get started.",
-        email: emailParam || undefined,
-      });
       toast.error("No account found with this Google account. Please create an account first.");
       setIsSignUp(true);
+      setAlert(null);
       if (emailParam) {
         setFormData((prev) => ({ ...prev, email: emailParam }));
       }
     } else if (errorParam === "DEVICE_LIMIT_REACHED") {
-      setAlert({
-        type: "ERROR",
-        title: "Device Limit Reached",
-        message: "You have reached the maximum allowed devices for this account.",
-      });
+      if (!isSignUp) {
+        setAlert({
+          type: "ERROR",
+          title: "Device Limit Reached",
+          message: "You have reached the maximum allowed devices for this account.",
+        });
+      }
       toast.error("Device limit reached for this account.");
     } else if (errorParam === "AUTH_FAILED") {
-      setAlert({
-        type: "ERROR",
-        title: "Authentication Failed",
-        message: "Authentication failed. Please try again.",
-      });
+      if (!isSignUp) {
+        setAlert({
+          type: "ERROR",
+          title: "Authentication Failed",
+          message: "Authentication failed. Please try again.",
+        });
+      }
       toast.error("Authentication failed. Please try again.");
     }
-  }, [errorParam, emailParam]);
+  }, [errorParam, emailParam, isSignUp]);
 
   // Close country dropdown on outside click
   useEffect(() => {
@@ -354,8 +353,8 @@ function AuthForm({
               </p>
             </div>
 
-            {/* Dedicated Alert UI */}
-            {alert && (
+            {/* Dedicated Alert UI (Only on Sign In) */}
+            {!isSignUp && alert && (
               <div
                 className={`mb-5 rounded-2xl p-4 border shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 ${
                   alert.type === "ACCOUNT_NOT_FOUND"
