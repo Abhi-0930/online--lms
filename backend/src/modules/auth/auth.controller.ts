@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { AuthService } from './auth.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import {
   registerSchema,
   loginSchema,
@@ -273,6 +274,31 @@ export default async function authController(fastify: FastifyInstance) {
       }
     }
 
+    let userOnboarding = dbUser.onboarding || OnboardingService.getOnboardingRecord(dbUser.id);
+    if (!userOnboarding) {
+      for (const record of OnboardingService.onboardingStore.values()) {
+        if (record.userId === dbUser.id || record.userId === dbUser.email) {
+          userOnboarding = record;
+          break;
+        }
+      }
+    }
+
+    if (!userOnboarding) {
+      try {
+        const found = await fastify.prisma.userOnboarding.findFirst({
+          where: {
+            OR: [
+              { userId: dbUser.id },
+              { userId: dbUser.email },
+            ],
+          },
+          orderBy: { updatedAt: 'desc' },
+        });
+        if (found) userOnboarding = found;
+      } catch {}
+    }
+
     return reply.send({
       success: true,
       user: {
@@ -283,7 +309,7 @@ export default async function authController(fastify: FastifyInstance) {
         role: dbUser.role || 'STUDENT',
         avatarUrl: dbUser.avatarUrl,
         isEmailVerified: Boolean(dbUser.isEmailVerified),
-        onboarding: dbUser.onboarding,
+        onboarding: userOnboarding,
       },
     });
   });

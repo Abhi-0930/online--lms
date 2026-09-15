@@ -20,6 +20,9 @@ export class AuthService {
             { email: normalizedEmail },
           ],
         },
+        include: {
+          onboarding: true,
+        },
       });
       if (user) {
         AuthService.fallbackUsers.set(normalizedEmail, user);
@@ -71,6 +74,16 @@ export class AuthService {
 
     if (existingUser) {
       throw new Error('User already exists');
+    }
+
+    if (payload.password.length < 8) {
+      throw new Error('Password must be at least 8 characters long');
+    }
+    if (!/[A-Z]/.test(payload.password)) {
+      throw new Error('Password must contain at least one capital letter');
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(payload.password)) {
+      throw new Error('Password must contain at least one special character');
     }
 
     const passwordHash = await argon2.hash(payload.password);
@@ -568,6 +581,16 @@ export class AuthService {
     if (Date.now() > record.expiresAt) {
       AuthService.otpStore.delete(normalizedEmail);
       throw new Error('Reset session expired. Please request a new code.');
+    }
+
+    if (newPassword.length < 8) {
+      throw new Error('Password must be at least 8 characters long');
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      throw new Error('Password must contain at least one capital letter');
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(newPassword)) {
+      throw new Error('Password must contain at least one special character');
     }
 
     const user = await this.findUser(normalizedEmail);

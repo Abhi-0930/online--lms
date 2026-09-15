@@ -419,17 +419,32 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  // Password Validation Rules
+  // Password Validation Rules: Min 8, 1 Capital letter, 1 Special character
   const hasMinLength = newPassword.length >= 8;
-  const hasNumber = /\d/.test(newPassword);
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
-  const isPasswordValid = hasMinLength && hasNumber && hasSpecialChar;
+  const hasCapital = /[A-Z]/.test(newPassword);
+  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(newPassword);
+  const isPasswordValid = hasMinLength && hasCapital && hasSpecialChar;
+  const hasStartedTyping = newPassword.length > 0;
+
+  const passwordBorderClass = hasStartedTyping
+    ? isPasswordValid
+      ? "border-emerald-500 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100"
+      : "border-red-500 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-100"
+    : "border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100";
 
   // Handle Step 3: Reset Password
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isPasswordValid) {
-      toast.error("Please meet all password strength requirements");
+      if (!hasMinLength) {
+        toast.error("Password must be at least 8 characters long");
+      } else if (!hasCapital) {
+        toast.error("Password must contain at least one capital letter (A-Z)");
+      } else if (!hasSpecialChar) {
+        toast.error("Password must contain at least one special character");
+      } else {
+        toast.error("Please meet all password strength requirements");
+      }
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -668,8 +683,8 @@ export default function ForgotPasswordPage() {
                     <label className="block text-[13px] font-medium text-gray-700 mb-1">
                       New password
                     </label>
-                    <div className="relative flex items-center rounded-xl border border-gray-200 bg-white px-3.5 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all h-[46px]">
-                      <Lock className="w-4.5 h-4.5 text-gray-400 mr-2.5 shrink-0" />
+                    <div className={`relative flex items-center rounded-xl border bg-white px-3.5 py-3 transition-all h-[46px] ${passwordBorderClass}`}>
+                      <Lock className={`w-4.5 h-4.5 mr-2.5 shrink-0 transition-colors ${hasStartedTyping ? (isPasswordValid ? "text-emerald-500" : "text-red-500") : "text-gray-400"}`} />
                       <input
                         type={showPassword ? "text" : "password"}
                         placeholder="Enter new password"
@@ -693,13 +708,13 @@ export default function ForgotPasswordPage() {
                         {hasMinLength ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Circle className="w-3.5 h-3.5 text-gray-300" />}
                         <span>At least 8 characters</span>
                       </div>
-                      <div className={`flex items-center gap-1.5 ${hasNumber ? "text-emerald-600 font-medium" : "text-gray-500"}`}>
-                        {hasNumber ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Circle className="w-3.5 h-3.5 text-gray-300" />}
-                        <span>Include a number</span>
+                      <div className={`flex items-center gap-1.5 ${hasCapital ? "text-emerald-600 font-medium" : "text-gray-500"}`}>
+                        {hasCapital ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Circle className="w-3.5 h-3.5 text-gray-300" />}
+                        <span>At least one capital letter (A-Z)</span>
                       </div>
                       <div className={`flex items-center gap-1.5 ${hasSpecialChar ? "text-emerald-600 font-medium" : "text-gray-500"}`}>
                         {hasSpecialChar ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Circle className="w-3.5 h-3.5 text-gray-300" />}
-                        <span>Include a special character</span>
+                        <span>At least one special character (!@#$%...)</span>
                       </div>
                     </div>
                   </div>

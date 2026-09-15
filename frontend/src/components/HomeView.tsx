@@ -6,7 +6,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { toast } from "sonner";
 import { createSecureUrl } from "@/lib/urlParams";
-import { resolveDisplayName, resolveFirstName } from "@/lib/nameUtils";
+import { resolveDisplayName, resolveFirstName, resolveEducationStatus } from "@/lib/nameUtils";
 import {
   AlarmClock,
   ArrowDownRight,
@@ -250,7 +250,7 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const displayName = resolveDisplayName(user);
-  const roleName = user?.role ? (user.role.charAt(0) + user.role.slice(1).toLowerCase()) : "Student";
+  const roleName = resolveEducationStatus(user);
 
   return <header className="sticky top-0 z-30 flex h-[78px] items-center justify-between border-b border-[#e5e8f0]/90 bg-[#fbfcff]/90 px-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#10172b]/90 sm:px-6 lg:px-8">
     <div className="flex min-w-0 items-center gap-3">
@@ -580,7 +580,7 @@ function ProfilePage() {
   const firstName = resolveFirstName(user);
   const lastName = nameParts.slice(1).join(" ") || "";
   const roleDisplay = user?.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()) : "Student";
-  const educationStatus = user?.onboarding?.educationStatus || "Computer science student";
+  const educationStatus = resolveEducationStatus(user);
 
   return (
     <>
@@ -603,7 +603,7 @@ function ProfilePage() {
             </h2>
             <p className="mt-1 text-xs text-[#9aa4bc] truncate max-w-[200px]">{email}</p>
             <span className="mt-3 rounded-full bg-[#e4f8ee] px-3 py-1 text-[10px] font-bold text-[#23a26d]">
-              Active {roleDisplay.toLowerCase()}
+              Active {educationStatus.toLowerCase().includes("professional") ? "professional" : educationStatus.toLowerCase().includes("year") ? `${educationStatus} student` : roleDisplay.toLowerCase()}
             </span>
           </div>
           <div className="mt-6 grid grid-cols-3 divide-x divide-[#edf0f6] dark:divide-white/10">

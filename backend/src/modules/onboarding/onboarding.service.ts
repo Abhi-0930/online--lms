@@ -7,7 +7,11 @@ export class OnboardingService {
   constructor(private prisma: PrismaClient) {}
 
   // In-memory fallback store when PostgreSQL is offline
-  private static onboardingStore = new Map<string, any>();
+  public static onboardingStore = new Map<string, any>();
+
+  public static getOnboardingRecord(userId: string): any {
+    return OnboardingService.onboardingStore.get(userId) || null;
+  }
 
   async saveStep1(userId: string, educationStatus: string) {
     let record: any = {
@@ -40,6 +44,14 @@ export class OnboardingService {
     }
 
     OnboardingService.onboardingStore.set(userId, record);
+
+    for (const [email, u] of AuthService.fallbackUsers.entries()) {
+      if (u.id === userId) {
+        u.onboarding = { ...(u.onboarding || {}), ...record, educationStatus };
+        AuthService.fallbackUsers.set(email, u);
+      }
+    }
+
     return record;
   }
 
@@ -77,6 +89,14 @@ export class OnboardingService {
     }
 
     OnboardingService.onboardingStore.set(userId, record);
+
+    for (const [email, u] of AuthService.fallbackUsers.entries()) {
+      if (u.id === userId) {
+        u.onboarding = { ...(u.onboarding || {}), ...record, targetDomain: rolesString };
+        AuthService.fallbackUsers.set(email, u);
+      }
+    }
+
     return record;
   }
 
@@ -114,6 +134,14 @@ export class OnboardingService {
     }
 
     OnboardingService.onboardingStore.set(userId, record);
+
+    for (const [email, u] of AuthService.fallbackUsers.entries()) {
+      if (u.id === userId) {
+        u.onboarding = { ...(u.onboarding || {}), ...record, experienceLevel: companiesString };
+        AuthService.fallbackUsers.set(email, u);
+      }
+    }
+
     return record;
   }
 
@@ -138,14 +166,6 @@ export class OnboardingService {
           where: { id: userId },
           data: { fullName: name },
         }).catch(() => {});
-
-        for (const [email, u] of AuthService.fallbackUsers.entries()) {
-          if (u.id === userId) {
-            u.fullName = name;
-            u.name = name;
-            AuthService.fallbackUsers.set(email, u);
-          }
-        }
       }
 
       record = await this.prisma.userOnboarding.upsert({
@@ -171,6 +191,15 @@ export class OnboardingService {
     }
 
     OnboardingService.onboardingStore.set(userId, record);
+
+    for (const [email, u] of AuthService.fallbackUsers.entries()) {
+      if (u.id === userId) {
+        u.fullName = name;
+        u.name = name;
+        u.onboarding = { ...(u.onboarding || {}), ...record, primaryGoal: name };
+        AuthService.fallbackUsers.set(email, u);
+      }
+    }
     return record;
   }
 

@@ -12,6 +12,8 @@ import {
   Smartphone,
   ChevronDown,
   Search,
+  CheckCircle2,
+  Circle,
 } from "lucide-react";
 import { COUNTRIES, DEFAULT_COUNTRY, type Country } from "@/lib/countries";
 import { CountryFlag } from "@/components/CountryFlag";
@@ -78,6 +80,30 @@ function AuthForm({
     password: "",
   });
 
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+  const [isPasswordHovered, setIsPasswordHovered] = useState(false);
+
+  // Password Strength Validation Rules: Min 8, 1 Capital letter, 1 Special character
+  const password = formData.password;
+  const hasMinLength = password.length >= 8;
+  const hasCapital = /[A-Z]/.test(password);
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password);
+  const isPasswordValid = hasMinLength && hasCapital && hasSpecial;
+  const hasStartedTyping = password.length > 0;
+
+  // Real-time border color for password input only: red if less validated, green if good
+  const passwordBorderClass = isSignUp
+    ? hasStartedTyping
+      ? isPasswordValid
+        ? "border-emerald-500 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100"
+        : "border-red-500 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-100"
+      : "border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100"
+    : "border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100";
+
+  const passwordTooltipTitle = isSignUp
+    ? `Password Requirements:\n${hasMinLength ? "✓" : "✗"} Minimum 8 characters\n${hasCapital ? "✓" : "✗"} At least 1 capital letter (A-Z)\n${hasSpecial ? "✓" : "✗"} At least 1 special character (!@#$%^&*...)`
+    : undefined;
+
   // Handle OAuth error callbacks
   useEffect(() => {
     if (errorParam === "ACCOUNT_NOT_FOUND") {
@@ -123,6 +149,20 @@ function AuthForm({
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isSignUp && !isPasswordValid) {
+      if (!hasMinLength) {
+        toast.error("Password must be at least 8 characters long");
+      } else if (!hasCapital) {
+        toast.error("Password must contain at least one capital letter (A-Z)");
+      } else if (!hasSpecial) {
+        toast.error("Password must contain at least one special character");
+      } else {
+        toast.error("Please meet all password strength requirements");
+      }
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -363,17 +403,33 @@ function AuthForm({
               </div>
 
               {/* Password */}
-              <div>
-                <div className="relative flex items-center rounded-xl border border-gray-200 bg-white px-3.5 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all h-[48px]">
-                  <Lock className="w-5 h-5 text-gray-400 mr-2.5 shrink-0 stroke-[1.8]" />
+              <div
+                className="relative"
+                onMouseEnter={() => setIsPasswordHovered(true)}
+                onMouseLeave={() => setIsPasswordHovered(false)}
+              >
+                <div
+                  className={`relative flex items-center rounded-xl border bg-white px-3.5 py-3 transition-all duration-150 h-[48px] ${passwordBorderClass}`}
+                >
+                  <Lock
+                    className={`w-5 h-5 mr-2.5 shrink-0 stroke-[1.8] transition-colors ${
+                      isSignUp && hasStartedTyping
+                        ? isPasswordValid
+                          ? "text-emerald-500"
+                          : "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  />
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
                     placeholder="Password"
                     value={formData.password}
                     onChange={handleInputChange}
+                    onFocus={() => setIsPasswordFocused(true)}
+                    onBlur={() => setIsPasswordFocused(false)}
+                    title={passwordTooltipTitle}
                     required
-                    minLength={8}
                     className="w-full bg-transparent text-[14px] text-gray-800 placeholder:text-gray-400 outline-none pr-8"
                   />
                   <button
@@ -388,12 +444,86 @@ function AuthForm({
                     )}
                   </button>
                 </div>
-                {/* Helper text for register */}
+
+                {/* Password strength checklist / hover tooltip */}
                 {isSignUp && (
-                  <p className="text-[12px] text-gray-500 mt-1 pl-1 font-normal">
-                    Use 8 or more characters with a mix of letters, numbers and
-                    symbols.
-                  </p>
+                  <div
+                    className={`mt-2 rounded-xl p-3 border transition-all duration-200 ${
+                      hasStartedTyping
+                        ? isPasswordValid
+                          ? "bg-emerald-50/70 border-emerald-200 shadow-sm"
+                          : "bg-red-50/50 border-red-200 shadow-sm"
+                        : "bg-gray-50/80 border-gray-100"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[12px] font-semibold text-gray-700">
+                        {hasStartedTyping ? (
+                          isPasswordValid ? (
+                            <span className="text-emerald-700">✓ All requirements met</span>
+                          ) : (
+                            <span className="text-red-700">Required validation:</span>
+                          )
+                        ) : (
+                          <span>Password requirements:</span>
+                        )}
+                      </span>
+                      {hasStartedTyping && (
+                        <span
+                          className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                            isPasswordValid
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {isPasswordValid
+                            ? "Strong"
+                            : `${[hasMinLength, hasCapital, hasSpecial].filter(Boolean).length}/3 completed`}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1 text-[12px]">
+                      <div
+                        className={`flex items-center gap-1.5 transition-colors ${
+                          hasMinLength ? "text-emerald-700 font-medium" : "text-gray-500"
+                        }`}
+                      >
+                        {hasMinLength ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <Circle className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        )}
+                        <span>Minimum 8 characters</span>
+                      </div>
+
+                      <div
+                        className={`flex items-center gap-1.5 transition-colors ${
+                          hasCapital ? "text-emerald-700 font-medium" : "text-gray-500"
+                        }`}
+                      >
+                        {hasCapital ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <Circle className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        )}
+                        <span>At least one capital letter (A-Z)</span>
+                      </div>
+
+                      <div
+                        className={`flex items-center gap-1.5 transition-colors ${
+                          hasSpecial ? "text-emerald-700 font-medium" : "text-gray-500"
+                        }`}
+                      >
+                        {hasSpecial ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <Circle className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        )}
+                        <span>At least one special character (!@#$%^&*...)</span>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
