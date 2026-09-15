@@ -1,4 +1,4 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import {
@@ -67,7 +67,7 @@ function getHash() {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useAuth();
+  const { adminUser, logout } = useAdminAuth();
   const { theme, toggleTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -79,14 +79,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => window.removeEventListener("hashchange", syncHash);
   }, []);
 
-  const displayName = user?.name || "Ava Patel";
-  const displayEmail = user?.email || "ava@skillforge.dev";
-  const initials = displayName
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const displayName = adminUser?.name || "Abhishek";
+  const displayEmail = adminUser?.email || "abhishek.j3094@gmail.com";
+  const roleLabel = adminUser?.roleLabel || "Owner";
+  const initials = adminUser?.avatar || "AJ";
 
   const activeLabel = useMemo(() => navLabelMap[activeSection] || "Overview", [activeSection]);
 
@@ -115,13 +111,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
           <div className={cn("mb-7 flex items-center", collapsed ? "justify-center" : "justify-between")}>
             <button onClick={() => navigate("overview")} className="flex items-center gap-3 text-left">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[var(--brand)] text-white shadow-lg shadow-indigo-200/40">
-                <BrainCircuit className="h-5 w-5" />
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#1a73e8] text-white shadow-md shadow-blue-500/20">
+                <BookOpen className="h-5 w-5" />
               </span>
               {!collapsed && (
                 <span>
-                  <span className="block font-display text-[17px] font-bold tracking-tight text-[var(--app-ink)]">Skillforge</span>
-                  <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Admin workspace</span>
+                  <span className="block font-display text-[17px] font-bold tracking-tight text-[var(--app-ink)]">LearnHub</span>
+                  <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Admin Workspace</span>
                 </span>
               )}
             </button>
@@ -182,9 +178,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
 
           <div className={cn("mt-5 flex items-center gap-3 border-t border-[var(--app-line)] pt-4", collapsed && "justify-center")}>
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-amber-200 to-orange-300 text-xs font-bold text-orange-900">{initials}</div>
-            {!collapsed && <div className="min-w-0 flex-1"><p className="truncate text-[12px] font-bold">{displayName}</p><p className="truncate text-[11px] text-[var(--muted)]">{displayEmail}</p></div>}
-            {!collapsed && user && <button onClick={logout} className="icon-button" aria-label="Log out"><LogOut className="h-3.5 w-3.5" /></button>}
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm">{initials}</div>
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate text-[12px] font-bold">{displayName}</p>
+                  <span className="rounded-md bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">{roleLabel}</span>
+                </div>
+                <p className="truncate text-[11px] text-[var(--muted)]">{displayEmail}</p>
+              </div>
+            )}
+            {!collapsed && (
+              <button onClick={logout} title="Sign out" className="icon-button text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30" aria-label="Log out">
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </aside>
 

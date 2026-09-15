@@ -1,5 +1,6 @@
+import { redirect } from "next/navigation";
 import Home from "@/components/HomeView";
-import { decodeDataParam } from "@/lib/urlParams";
+import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
 
 export default async function PracticePage({
   searchParams,
@@ -7,7 +8,11 @@ export default async function PracticePage({
   searchParams: Promise<{ data?: string; q?: string }>;
 }) {
   const { data, q } = await searchParams;
-  const decoded = decodeDataParam<{ slug?: string; problemId?: string }>(data || q);
+  const decoded = decodeDataParam<{ slug?: string; problemId?: string; v?: string }>(data || q);
+
+  if (!decoded) {
+    redirect(createSecureUrl("/practice", { v: "practice", t: Date.now() }));
+  }
 
   return <Home page="practice" problemSlug={decoded?.slug || decoded?.problemId} />;
 }

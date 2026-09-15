@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createSecureUrl } from "@/lib/urlParams";
 
 export interface User {
   id?: string;
@@ -69,13 +70,13 @@ export function useAuth(options?: { redirectOnUnauthenticated?: boolean; redirec
       } catch {}
 
       setUser(null);
-      router.push("/");
+      router.push(createSecureUrl("/", { mode: "login", t: Date.now() }));
     }
   }, [router]);
 
   useEffect(() => {
     if (options?.redirectOnUnauthenticated && !loading && !user) {
-      router.push(options.redirectPath || "/");
+      router.push(createSecureUrl(options.redirectPath || "/", { mode: "login", t: Date.now() }));
     }
   }, [options, loading, user, router]);
 

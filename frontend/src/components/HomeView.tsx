@@ -7,6 +7,14 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { toast } from "sonner";
 import { createSecureUrl } from "@/lib/urlParams";
 import { resolveDisplayName, resolveFirstName, resolveEducationStatus } from "@/lib/nameUtils";
+
+function getSecureHref(path: string, params?: Record<string, any>) {
+  if (!path || path === "#" || path.startsWith("http")) return path;
+  return createSecureUrl(path, {
+    v: path.replace(/^\//, "") || "dashboard",
+    ...params,
+  });
+}
 import {
   AlarmClock,
   ArrowDownRight,
@@ -171,7 +179,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 function Logo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/dashboard" className="flex items-center gap-3 min-w-0 group">
+    <Link href={getSecureHref("/dashboard")} className="flex items-center gap-3 min-w-0 group">
       <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-[#3157e8] text-white shadow-[0_8px_18px_rgba(49,87,232,0.3)] transition-transform duration-200 group-hover:-rotate-3">
         <span className="absolute h-4 w-4 rounded-[5px] border-[2px] border-white/90" />
         <span className="absolute h-1.5 w-1.5 rounded-full bg-white" />
@@ -238,7 +246,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
 
 function SidebarLink({ item, active, collapsed }: { item: NavItem; active: boolean; collapsed: boolean }) {
   const Icon = item.icon;
-  return <Link href={item.href} className={cx("group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-150", collapsed ? "justify-center" : "", active ? "bg-[#eaf0ff] text-[#3157e8] dark:bg-[#26345e] dark:text-white" : "text-[#7c87a4] hover:bg-[#f2f5fb] hover:text-[#17223d] dark:hover:bg-white/5 dark:hover:text-white")} title={collapsed ? item.label : undefined}>
+  return <Link href={getSecureHref(item.href)} className={cx("group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-150", collapsed ? "justify-center" : "", active ? "bg-[#eaf0ff] text-[#3157e8] dark:bg-[#26345e] dark:text-white" : "text-[#7c87a4] hover:bg-[#f2f5fb] hover:text-[#17223d] dark:hover:bg-white/5 dark:hover:text-white")} title={collapsed ? item.label : undefined}>
     {active && <span className="absolute bottom-2 left-0 top-2 w-0.5 rounded-r-full bg-[#3157e8]" />}
     <Icon className={cx("h-[18px] w-[18px] shrink-0", active ? "stroke-[2.4]" : "stroke-[1.8]")} />
     {!collapsed && <><span className="truncate">{item.label}</span>{item.badge && <span className="ml-auto rounded-md bg-[#dce6ff] px-1.5 py-0.5 text-[10px] text-[#3157e8] dark:bg-[#3157e8]/30 dark:text-white">{item.badge}</span>}</>}
@@ -263,10 +271,10 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
       </div>
     </div>
     <div className="flex items-center gap-2 sm:gap-4">
-      <Link href="/notifications" aria-label="Open notifications" className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] dark:hover:bg-white/10"><Bell className="h-[18px] w-[18px]" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ef8354] ring-2 ring-[#fbfcff] dark:ring-[#10172b]" /></Link>
+      <Link href={getSecureHref("/notifications")} aria-label="Open notifications" className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] dark:hover:bg-white/10"><Bell className="h-[18px] w-[18px]" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ef8354] ring-2 ring-[#fbfcff] dark:ring-[#10172b]" /></Link>
       <button className="hidden h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] sm:inline-flex dark:hover:bg-white/10" onClick={toggleTheme}>{theme === "light" ? <Moon className="h-[17px] w-[17px]" /> : <Sun className="h-[17px] w-[17px]" />}</button>
       <div className="hidden h-7 w-px bg-[#e5e8f0] sm:block dark:bg-white/10" />
-      <Link href="/profile" className="flex items-center gap-2 rounded-xl p-1 transition hover:bg-[#eef2ff] dark:hover:bg-white/10"><Avatar size="sm" name={displayName} /><span className="hidden text-left lg:block"><span className="block text-xs font-bold text-[#17223d] dark:text-white truncate max-w-[140px]">{displayName}</span><span className="block text-[10px] text-[#9aa4bc]">{roleName}</span></span><ChevronDown className="hidden h-3.5 w-3.5 text-[#9aa4bc] lg:block" /></Link>
+      <Link href={getSecureHref("/profile")} className="flex items-center gap-2 rounded-xl p-1 transition hover:bg-[#eef2ff] dark:hover:bg-white/10"><Avatar size="sm" name={displayName} /><span className="hidden text-left lg:block"><span className="block text-xs font-bold text-[#17223d] dark:text-white truncate max-w-[140px]">{displayName}</span><span className="block text-[10px] text-[#9aa4bc]">{roleName}</span></span><ChevronDown className="hidden h-3.5 w-3.5 text-[#9aa4bc] lg:block" /></Link>
     </div>
   </header>;
 }
@@ -275,7 +283,7 @@ function MobileNav() {
   const location = usePathname() || "";
   const items = [{ label: "Home", href: "/", icon: LayoutDashboard }, { label: "Learn", href: "/my-courses", icon: BookOpen }, { label: "Practice", href: "/practice", icon: Code2 }, { label: "Progress", href: "/progress", icon: LineChart }];
   return <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[72px] items-center justify-around border-t border-[#e5e8f0] bg-[#fbfcff]/95 px-2 pb-1 backdrop-blur-xl dark:border-white/10 dark:bg-[#10172b]/95 lg:hidden">
-    {items.map(({ label, href, icon: Icon }) => { const active = href === "/" ? location === "/" : location.startsWith(href); return <Link key={href} href={href} className={cx("flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-[10px] font-bold transition", active ? "text-[#3157e8]" : "text-[#9aa4bc]")}><Icon className={cx("h-[19px] w-[19px]", active && "stroke-[2.5]")} /><span>{label}</span>{active && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-[#3157e8]" />}</Link> })}
+    {items.map(({ label, href, icon: Icon }) => { const active = href === "/" ? location === "/" : location.startsWith(href); return <Link key={href} href={getSecureHref(href)} className={cx("flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-[10px] font-bold transition", active ? "text-[#3157e8]" : "text-[#9aa4bc]")}><Icon className={cx("h-[19px] w-[19px]", active && "stroke-[2.5]")} /><span>{label}</span>{active && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-[#3157e8]" />}</Link> })}
   </nav>;
 }
 
@@ -298,7 +306,8 @@ function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string;
 }
 
 function SectionTitle({ title, link, href = "#" }: { title: string; link?: string; href?: string }) {
-  return <div className="mb-4 flex items-center justify-between"><h2 className="font-display text-[17px] font-bold tracking-[-0.02em] text-[#17223d] dark:text-white">{title}</h2>{link && <Link href={href} className="flex items-center gap-1 text-xs font-bold text-[#3157e8] hover:gap-2 transition-all">{link}<ArrowRight className="h-3.5 w-3.5" /></Link>}</div>;
+  const secureHref = href === "#" ? "#" : getSecureHref(href);
+  return <div className="mb-4 flex items-center justify-between"><h2 className="font-display text-[17px] font-bold tracking-[-0.02em] text-[#17223d] dark:text-white">{title}</h2>{link && <Link href={secureHref} className="flex items-center gap-1 text-xs font-bold text-[#3157e8] hover:gap-2 transition-all">{link}<ArrowRight className="h-3.5 w-3.5" /></Link>}</div>;
 }
 
 function StatCard({ icon: Icon, value, label, trend, color }: { icon: LucideIcon; value: string; label: string; trend: string; color: "blue" | "violet" | "amber" | "emerald" }) {
@@ -345,10 +354,10 @@ function Dashboard() {
               You’re building momentum. One focused session today can keep your placement prep on track.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link href="/learn" className="button-primary">
+              <Link href={getSecureHref("/learn")} className="button-primary">
                 <Play className="h-3.5 w-3.5 fill-current" /> Resume learning
               </Link>
-              <Link href="/progress" className="button-ghost-dark">
+              <Link href={getSecureHref("/progress")} className="button-ghost-dark">
                 View progress <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -406,7 +415,7 @@ function Dashboard() {
             </div>
           </div>
           <Link
-            href="/learn"
+            href={getSecureHref("/learn")}
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#f1f4fb] py-3 text-xs font-bold text-[#3157e8] transition hover:bg-[#e6ebfb] dark:bg-white/5 dark:hover:bg-white/10"
           >
             Continue lesson <ArrowRight className="h-3.5 w-3.5" />
@@ -421,7 +430,7 @@ function Dashboard() {
       </div>
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)]">
         <section>
-          <SectionTitle title="Continue your learning" link="Browse all" href="/my-courses" />
+          <SectionTitle title="Continue your learning" link="Browse all" href={getSecureHref("/my-courses")} />
           <div className="grid gap-4 md:grid-cols-2">
             <CourseProgressCard course={courses[0]} />
             <CourseProgressCard course={courses[1]} />
@@ -457,9 +466,9 @@ function CourseProgressCard({ course }: { course: typeof courses[number] }) {
 
 function ActivityRow({ item, last }: { item: typeof activity[number]; last: boolean }) { const Icon = item.icon; const colors = { blue: "bg-[#eaf0ff] text-[#3157e8]", emerald: "bg-[#e4f8ee] text-[#23a26d]", violet: "bg-[#f0eaff] text-[#7f5af0]", amber: "bg-[#fff4db] text-[#d68c20]" }; return <div className="flex items-center gap-3 py-4"><span className={cx("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", colors[item.color as keyof typeof colors])}><Icon className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-[#17223d] dark:text-white">{item.title}</p><p className="mt-0.5 truncate text-xs text-[#9aa4bc]">{item.subtitle}</p></div><span className="shrink-0 text-[10px] font-medium text-[#a5aec2]">{item.time}</span>{!last && <span className="sr-only">divider</span>}</div>; }
 
-function UpcomingSessions() { return <section><SectionTitle title="Upcoming sessions" link="Calendar" href="/announcements" /><div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10"><SessionRow day="18" month="SEP" title="Live DSA clinic" meta="Thursday · 7:30 PM" tone="blue" /><SessionRow day="21" month="SEP" title="Mock interview #02" meta="Sunday · 11:00 AM" tone="violet" /><SessionRow day="24" month="SEP" title="Guest session: Google" meta="Wednesday · 6:00 PM" tone="amber" /></div></section>; }
+function UpcomingSessions() { return <section><SectionTitle title="Upcoming sessions" link="Calendar" href={getSecureHref("/announcements")} /><div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10"><SessionRow day="18" month="SEP" title="Live DSA clinic" meta="Thursday · 7:30 PM" tone="blue" /><SessionRow day="21" month="SEP" title="Mock interview #02" meta="Sunday · 11:00 AM" tone="violet" /><SessionRow day="24" month="SEP" title="Guest session: Google" meta="Wednesday · 6:00 PM" tone="amber" /></div></section>; }
 function SessionRow({ day, month, title, meta, tone }: { day: string; month: string; title: string; meta: string; tone: "blue" | "violet" | "amber" }) { const tones = { blue: "bg-[#eaf0ff] text-[#3157e8]", violet: "bg-[#f0eaff] text-[#7f5af0]", amber: "bg-[#fff4db] text-[#d68c20]" }; return <div className="flex items-center gap-3 py-4"><div className={cx("flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl", tones[tone])}><span className="text-[9px] font-bold uppercase">{month}</span><span className="font-display text-lg font-bold leading-4">{day}</span></div><div className="min-w-0"><p className="truncate text-sm font-bold text-[#17223d] dark:text-white">{title}</p><p className="mt-1 text-xs text-[#9aa4bc]">{meta}</p></div><ChevronRight className="ml-auto h-4 w-4 shrink-0 text-[#c4cada]" /></div>; }
-function AssignmentsWidget() { return <section><SectionTitle title="Pending assignments" link="See all" href="/assignments" /><div className="card-surface px-5"><AssignmentRow title="Arrays checkpoint" course="DSA Foundations" due="Due tomorrow" urgent /><AssignmentRow title="System design reflection" course="Placement Sprint" due="Due in 4 days" /><AssignmentRow title="Portfolio review" course="Frontend Interview Lab" due="Due Sep 28" /></div></section>; }
+function AssignmentsWidget() { return <section><SectionTitle title="Pending assignments" link="See all" href={getSecureHref("/assignments")} /><div className="card-surface px-5"><AssignmentRow title="Arrays checkpoint" course="DSA Foundations" due="Due tomorrow" urgent /><AssignmentRow title="System design reflection" course="Placement Sprint" due="Due in 4 days" /><AssignmentRow title="Portfolio review" course="Frontend Interview Lab" due="Due Sep 28" /></div></section>; }
 function AssignmentRow({ title, course, due, urgent }: { title: string; course: string; due: string; urgent?: boolean }) { return <div className="flex items-start gap-3 border-b border-[#edf0f6] py-4 last:border-0 dark:border-white/10"><span className={cx("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", urgent ? "bg-[#fff0ed] text-[#ef8354]" : "bg-[#f0f2f8] text-[#7c87a4] dark:bg-white/10")}><ClipboardCheck className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-[#17223d] dark:text-white">{title}</p><p className="mt-1 truncate text-[10px] text-[#9aa4bc]">{course}</p></div><span className={cx("shrink-0 text-[10px] font-bold", urgent ? "text-[#ef8354]" : "text-[#9aa4bc]")}>{due}</span></div>; }
 
 function CoursesPage() {
@@ -476,16 +485,212 @@ function CourseDetail({ courseId }: { courseId: string }) {
   const course = courses.find(item => item.id === courseId) || courses[0];
   const [openModule, setOpenModule] = useState(0);
   const modules = [{ title: "Getting started with problem solving", lessons: 6, duration: "42 min", complete: 6 }, { title: "Arrays & Hashing", lessons: 8, duration: "1h 26 min", complete: 8 }, { title: "Sliding Window Patterns", lessons: 7, duration: "1h 18 min", complete: 3 }, { title: "Two pointers & stacks", lessons: 6, duration: "1h 04 min", complete: 0 }, { title: "Trees, graphs & recursion", lessons: 9, duration: "2h 10 min", complete: 0 }];
-  return <><Link href="/courses" className="mb-6 inline-flex items-center gap-2 text-xs font-bold text-[#7c87a4] hover:text-[#3157e8]"><ArrowLeft className="h-4 w-4" /> Back to courses</Link><section className="relative overflow-hidden rounded-[26px] bg-[#17223d] p-6 text-white sm:p-10"><div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url(${course.image})`, backgroundSize: "cover", backgroundPosition: "center" }} /><div className="absolute inset-0 bg-[#17223d]/85" /><div className="relative z-10 max-w-3xl"><div className="mb-5 flex flex-wrap items-center gap-2"><span className="rounded-md bg-[#3157e8] px-2.5 py-1 text-[10px] font-bold">{course.category}</span><span className="rounded-md bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/70">{course.level}</span></div><h1 className="font-display text-3xl font-bold tracking-[-0.05em] sm:text-5xl">{course.title}</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">{course.description} Learn a repeatable framework for breaking down unfamiliar problems, communicating trade-offs, and shipping answers you can stand behind.</p><div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 text-xs font-semibold text-white/65"><span className="flex items-center gap-1.5"><Star className="h-3.5 w-3.5 fill-[#ffca63] text-[#ffca63]" /> {course.rating} rating</span><span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {course.students} learners</span><span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /> {course.duration}</span><span className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5" /> Certificate included</span></div><div className="mt-8 flex flex-wrap items-center gap-3"><Link href="/learn" className="button-primary"><Play className="h-4 w-4 fill-current" /> Continue course</Link><button onClick={() => toast.success("You're on the course waitlist")} className="button-ghost-dark"><Bookmark className="h-4 w-4" /> Save for later</button></div></div></section><div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_350px]"><div className="space-y-8"><section><SectionTitle title="What you’ll learn" /><div className="grid gap-3 sm:grid-cols-2">{["Think in patterns instead of memorizing solutions", "Write clean, testable code under time pressure", "Choose the right data structure with confidence", "Explain your approach like an interviewer can follow"].map(item => <div key={item} className="flex gap-3 rounded-xl bg-white p-4 text-sm font-semibold leading-5 text-[#52617f] shadow-[0_6px_15px_rgba(23,34,61,0.03)] dark:bg-white/5 dark:text-white/75"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#23a26d]" />{item}</div>)}</div></section><section><SectionTitle title="Course curriculum" /><div className="card-surface overflow-hidden">{modules.map((module, index) => <div key={module.title} className="border-b border-[#edf0f6] last:border-0 dark:border-white/10"><button onClick={() => setOpenModule(openModule === index ? -1 : index)} className="flex w-full items-center gap-3 p-4 text-left sm:p-5"><span className={cx("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold", module.complete === module.lessons ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-[#eef2ff] text-[#3157e8]")}>{module.complete === module.lessons ? <Check className="h-4 w-4" /> : String(index + 1).padStart(2, "0")}</span><span className="min-w-0 flex-1"><span className="block text-sm font-bold text-[#17223d] dark:text-white">{module.title}</span><span className="mt-1 block text-xs text-[#9aa4bc]">{module.lessons} lessons · {module.duration}</span></span><ChevronDown className={cx("h-4 w-4 text-[#9aa4bc] transition-transform", openModule === index && "rotate-180")} /></button>{openModule === index && <div className="border-t border-[#edf0f6] bg-[#fafbfe] px-5 pb-4 pt-2 dark:border-white/10 dark:bg-white/[0.02]">{Array.from({ length: Math.min(module.lessons, 4) }).map((_, lessonIndex) => <Link href={lessonIndex < module.complete ? "/learn" : "#"} key={lessonIndex} className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm hover:bg-[#f0f3fb] dark:hover:bg-white/5"><span className={cx("flex h-6 w-6 items-center justify-center rounded-full", lessonIndex < module.complete ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-white text-[#9aa4bc] dark:bg-white/10")}>{lessonIndex < module.complete ? <Check className="h-3 w-3" /> : <Play className="h-3 w-3" />}</span><span className="flex-1 text-xs font-semibold text-[#5f6c8c] dark:text-white/70">{module.title} · Lesson {lessonIndex + 1}</span><span className="text-[10px] text-[#9aa4bc]">{12 + lessonIndex * 4} min</span></Link>)}</div>}</div>)}</div></section></div><aside className="space-y-5"><div className="card-surface p-5"><p className="text-xs font-bold text-[#7c87a4]">Your progress</p><div className="mt-4 flex items-end justify-between"><span className="font-display text-4xl font-bold tracking-[-0.06em] text-[#17223d] dark:text-white">{course.progress}%</span><span className="mb-1 text-xs font-semibold text-[#9aa4bc]">18 / 26 lessons</span></div><div className="mt-4"><ProgressBar value={course.progress} /></div><p className="mt-4 text-xs leading-5 text-[#9aa4bc]">You’re ahead of 72% of learners in this cohort. Keep that momentum.</p><Link href="/progress" className="mt-5 flex items-center justify-center gap-2 text-xs font-bold text-[#3157e8]">Open progress report <ArrowRight className="h-3.5 w-3.5" /></Link></div><div className="card-surface p-5"><p className="text-xs font-bold text-[#7c87a4]">Meet your instructor</p><div className="mt-4 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#dce6ff] text-sm font-bold text-[#3157e8]">MP</span><div><p className="text-sm font-bold text-[#17223d] dark:text-white">{course.instructor}</p><p className="mt-0.5 text-xs text-[#9aa4bc]">Senior Engineering Coach</p></div></div><p className="mt-4 text-xs leading-5 text-[#7c87a4]">Former product engineer who has coached 4,000+ students through their first technical role.</p></div></aside></div></>;
+  return <><Link href={getSecureHref("/courses")} className="mb-6 inline-flex items-center gap-2 text-xs font-bold text-[#7c87a4] hover:text-[#3157e8]"><ArrowLeft className="h-4 w-4" /> Back to courses</Link><section className="relative overflow-hidden rounded-[26px] bg-[#17223d] p-6 text-white sm:p-10"><div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url(${course.image})`, backgroundSize: "cover", backgroundPosition: "center" }} /><div className="absolute inset-0 bg-[#17223d]/85" /><div className="relative z-10 max-w-3xl"><div className="mb-5 flex flex-wrap items-center gap-2"><span className="rounded-md bg-[#3157e8] px-2.5 py-1 text-[10px] font-bold">{course.category}</span><span className="rounded-md bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/70">{course.level}</span></div><h1 className="font-display text-3xl font-bold tracking-[-0.05em] sm:text-5xl">{course.title}</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">{course.description} Learn a repeatable framework for breaking down unfamiliar problems, communicating trade-offs, and shipping answers you can stand behind.</p><div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 text-xs font-semibold text-white/65"><span className="flex items-center gap-1.5"><Star className="h-3.5 w-3.5 fill-[#ffca63] text-[#ffca63]" /> {course.rating} rating</span><span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {course.students} learners</span><span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /> {course.duration}</span><span className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5" /> Certificate included</span></div><div className="mt-8 flex flex-wrap items-center gap-3"><Link href={getSecureHref("/learn")} className="button-primary"><Play className="h-4 w-4 fill-current" /> Continue course</Link><button onClick={() => toast.success("You're on the course waitlist")} className="button-ghost-dark"><Bookmark className="h-4 w-4" /> Save for later</button></div></div></section><div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_350px]"><div className="space-y-8"><section><SectionTitle title="What you’ll learn" /><div className="grid gap-3 sm:grid-cols-2">{["Think in patterns instead of memorizing solutions", "Write clean, testable code under time pressure", "Choose the right data structure with confidence", "Explain your approach like an interviewer can follow"].map(item => <div key={item} className="flex gap-3 rounded-xl bg-white p-4 text-sm font-semibold leading-5 text-[#52617f] shadow-[0_6px_15px_rgba(23,34,61,0.03)] dark:bg-white/5 dark:text-white/75"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#23a26d]" />{item}</div>)}</div></section><section><SectionTitle title="Course curriculum" /><div className="card-surface overflow-hidden">{modules.map((module, index) => <div key={module.title} className="border-b border-[#edf0f6] last:border-0 dark:border-white/10"><button onClick={() => setOpenModule(openModule === index ? -1 : index)} className="flex w-full items-center gap-3 p-4 text-left sm:p-5"><span className={cx("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold", module.complete === module.lessons ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-[#eef2ff] text-[#3157e8]")}>{module.complete === module.lessons ? <Check className="h-4 w-4" /> : String(index + 1).padStart(2, "0")}</span><span className="min-w-0 flex-1"><span className="block text-sm font-bold text-[#17223d] dark:text-white">{module.title}</span><span className="mt-1 block text-xs text-[#9aa4bc]">{module.lessons} lessons · {module.duration}</span></span><ChevronDown className={cx("h-4 w-4 text-[#9aa4bc] transition-transform", openModule === index && "rotate-180")} /></button>{openModule === index && <div className="border-t border-[#edf0f6] bg-[#fafbfe] px-5 pb-4 pt-2 dark:border-white/10 dark:bg-white/[0.02]">{Array.from({ length: Math.min(module.lessons, 4) }).map((_, lessonIndex) => <Link href={lessonIndex < module.complete ? getSecureHref("/learn") : "#"} key={lessonIndex} className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm hover:bg-[#f0f3fb] dark:hover:bg-white/5"><span className={cx("flex h-6 w-6 items-center justify-center rounded-full", lessonIndex < module.complete ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-white text-[#9aa4bc] dark:bg-white/10")}>{lessonIndex < module.complete ? <Check className="h-3 w-3" /> : <Play className="h-3 w-3" />}</span><span className="flex-1 text-xs font-semibold text-[#5f6c8c] dark:text-white/70">{module.title} · Lesson {lessonIndex + 1}</span><span className="text-[10px] text-[#9aa4bc]">{12 + lessonIndex * 4} min</span></Link>)}</div>}</div>)}</div></section></div><aside className="space-y-5"><div className="card-surface p-5"><p className="text-xs font-bold text-[#7c87a4]">Your progress</p><div className="mt-4 flex items-end justify-between"><span className="font-display text-4xl font-bold tracking-[-0.06em] text-[#17223d] dark:text-white">{course.progress}%</span><span className="mb-1 text-xs font-semibold text-[#9aa4bc]">18 / 26 lessons</span></div><div className="mt-4"><ProgressBar value={course.progress} /></div><p className="mt-4 text-xs leading-5 text-[#9aa4bc]">You’re ahead of 72% of learners in this cohort. Keep that momentum.</p><Link href={getSecureHref("/progress")} className="mt-5 flex items-center justify-center gap-2 text-xs font-bold text-[#3157e8]">Open progress report <ArrowRight className="h-3.5 w-3.5" /></Link></div><div className="card-surface p-5"><p className="text-xs font-bold text-[#7c87a4]">Meet your instructor</p><div className="mt-4 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#dce6ff] text-sm font-bold text-[#3157e8]">MP</span><div><p className="text-sm font-bold text-[#17223d] dark:text-white">{course.instructor}</p><p className="mt-0.5 text-xs text-[#9aa4bc]">Senior Engineering Coach</p></div></div><p className="mt-4 text-xs leading-5 text-[#7c87a4]">Former product engineer who has coached 4,000+ students through their first technical role.</p></div></aside></div></>;
 }
 
 function MyCoursesPage() { const [filter, setFilter] = useState("All"); const filtered = courses.filter(c => filter === "All" || (filter === "In progress" ? c.progress > 0 && c.progress < 100 : filter === "Completed" ? c.progress === 100 : true)); return <><PageHeader eyebrow="Your library" title="My learning" description="Pick up where you left off, or make space for a new skill." action={<div className="flex gap-2 rounded-xl bg-white p-1 shadow-sm dark:bg-white/5">{["All", "In progress", "Completed"].map(item => <button key={item} onClick={() => setFilter(item)} className={cx("rounded-lg px-3 py-2 text-xs font-bold", filter === item ? "bg-[#17223d] text-white dark:bg-[#3157e8]" : "text-[#9aa4bc]")}>{item}</button>)}</div>} /><div className="mb-8 grid gap-4 md:grid-cols-3"><div className="card-surface flex items-center gap-4 p-5"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#eaf0ff] text-[#3157e8]"><BookOpen className="h-5 w-5" /></span><div><p className="font-display text-2xl font-bold text-[#17223d] dark:text-white">04</p><p className="text-xs text-[#9aa4bc]">Courses enrolled</p></div></div><div className="card-surface flex items-center gap-4 p-5"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fff4db] text-[#d68c20]"><Flame className="h-5 w-5" /></span><div><p className="font-display text-2xl font-bold text-[#17223d] dark:text-white">07 days</p><p className="text-xs text-[#9aa4bc]">Current streak</p></div></div><div className="card-surface flex items-center gap-4 p-5"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e4f8ee] text-[#23a26d]"><Award className="h-5 w-5" /></span><div><p className="font-display text-2xl font-bold text-[#17223d] dark:text-white">01</p><p className="text-xs text-[#9aa4bc]">Certificate earned</p></div></div></div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{filtered.map(course => <MyCourseCard key={course.id} course={course} />)}</div></>; }
-function MyCourseCard({ course }: { course: typeof courses[number] }) { return <div className="card-surface group overflow-hidden"><div className="relative h-36 overflow-hidden"><img src={course.image} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#17223d]/75 to-transparent" /><span className="absolute bottom-3 left-4 rounded-md bg-white/15 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">{course.progress === 100 ? "Completed" : "In progress"}</span></div><div className="p-5"><h3 className="font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">{course.title}</h3><p className="mt-1 text-xs text-[#9aa4bc]">Last opened 2 hours ago</p><div className="mt-5 flex items-center justify-between text-xs font-bold"><span className="text-[#7c87a4]">Course progress</span><span className="text-[#3157e8]">{course.progress}%</span></div><div className="mt-2"><ProgressBar value={course.progress} color={course.accent === "violet" ? "#7f5af0" : course.accent === "amber" ? "#d68c20" : "#3157e8"} /></div><Link href={course.progress ? "/learn" : createSecureUrl("/courses", { courseId: course.id })} className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-[#eef2ff] py-3 text-xs font-bold text-[#3157e8] transition hover:bg-[#e2e9ff] dark:bg-[#3157e8]/20 dark:text-white">{course.progress ? "Continue learning" : "Start course"}<ArrowRight className="h-3.5 w-3.5" /></Link></div></div>; }
+function MyCourseCard({ course }: { course: typeof courses[number] }) { return <div className="card-surface group overflow-hidden"><div className="relative h-36 overflow-hidden"><img src={course.image} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#17223d]/75 to-transparent" /><span className="absolute bottom-3 left-4 rounded-md bg-white/15 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">{course.progress === 100 ? "Completed" : "In progress"}</span></div><div className="p-5"><h3 className="font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">{course.title}</h3><p className="mt-1 text-xs text-[#9aa4bc]">Last opened 2 hours ago</p><div className="mt-5 flex items-center justify-between text-xs font-bold"><span className="text-[#7c87a4]">Course progress</span><span className="text-[#3157e8]">{course.progress}%</span></div><div className="mt-2"><ProgressBar value={course.progress} color={course.accent === "violet" ? "#7f5af0" : course.accent === "amber" ? "#d68c20" : "#3157e8"} /></div><Link href={course.progress ? getSecureHref("/learn") : createSecureUrl("/courses", { courseId: course.id })} className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-[#eef2ff] py-3 text-xs font-bold text-[#3157e8] transition hover:bg-[#e2e9ff] dark:bg-[#3157e8]/20 dark:text-white">{course.progress ? "Continue learning" : "Start course"}<ArrowRight className="h-3.5 w-3.5" /></Link></div></div>; }
 
 function PlayerPage() {
-  const [tab, setTab] = useState("Notes"); const [completed, setCompleted] = useState(false); const [moduleOpen, setModuleOpen] = useState(1); const [note, setNote] = useState("");
+  const [tab, setTab] = useState("Notes");
+  const [completed, setCompleted] = useState(false);
+  const [moduleOpen, setModuleOpen] = useState(1);
+  const [note, setNote] = useState("");
   const lessons = ["Welcome & how to think in patterns", "Arrays: the mental model", "Sliding Window Patterns", "Two pointers: a visual guide", "Stacks in the real world", "Checkpoint: arrays & strings"];
-  return <div className="-mx-4 -mt-7 lg:-mx-8"><div className="border-b border-[#e5e8f0] bg-[#fbfcff] px-4 py-4 dark:border-white/10 dark:bg-[#10172b] sm:px-6 lg:px-8"><Link href="/my-courses" className="inline-flex items-center gap-2 text-xs font-bold text-[#7c87a4] hover:text-[#3157e8]"><ArrowLeft className="h-4 w-4" /> Back to my learning</Link><div className="mt-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#3157e8]">DSA Foundations · Module 03</p><h1 className="mt-1 font-display text-xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white sm:text-2xl">Sliding Window Patterns</h1><p className="mt-1 text-xs text-[#9aa4bc]">Lesson 03 of 07 · 12 min remaining</p></div><button onClick={() => { setCompleted(!completed); toast.success(completed ? "Lesson marked incomplete" : "Lesson complete — nice work!"); }} className={cx("flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition", completed ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-[#3157e8] text-white shadow-[0_7px_16px_rgba(49,87,232,0.25)]")}>{completed ? <CheckCircle2 className="h-4 w-4" /> : <Check className="h-4 w-4" />} {completed ? "Completed" : "Mark as complete"}</button></div></div><div className="grid min-h-[620px] lg:grid-cols-[minmax(0,1fr)_350px]"><div className="p-4 sm:p-6 lg:p-8"><div className="video-frame relative flex aspect-video min-h-[270px] items-center justify-center overflow-hidden rounded-[22px] bg-[#111a33] shadow-[0_18px_36px_rgba(23,34,61,0.18)] sm:min-h-[420px]"><div className="absolute inset-0 opacity-25" style={{ backgroundImage: `radial-gradient(circle at 30% 30%, #3157e8, transparent 35%), radial-gradient(circle at 70% 70%, #7f5af0, transparent 32%)` }} /><div className="relative z-10 flex flex-col items-center"><span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#3157e8] shadow-[0_12px_30px_rgba(0,0,0,0.22)]"><Play className="ml-1 h-7 w-7 fill-current" /></span><p className="text-sm font-bold text-white">Sliding window, made visual</p><p className="mt-1 text-xs text-white/45">Video lesson · 12:48</p></div><div className="absolute bottom-0 left-0 right-0 px-5 pb-4"><div className="mb-3 h-1 overflow-hidden rounded-full bg-white/15"><span className="block h-full w-[42%] rounded-full bg-[#ffca63]" /></div><div className="flex items-center justify-between text-white/55"><div className="flex items-center gap-4"><button onClick={() => toast.info("Playing lesson")}><Play className="h-4 w-4 fill-current" /></button><span className="text-[10px]">05:22 / 12:48</span></div><div className="flex items-center gap-4"><button onClick={() => toast.info("Playback speed: 1.25x")} className="text-[10px] font-bold">1x</button><button><Settings2 className="h-4 w-4" /></button><button><span className="text-xs">⛶</span></button></div></div></div></div><div className="mt-6 flex gap-1 overflow-x-auto border-b border-[#e5e8f0] dark:border-white/10">{["Notes", "Resources", "Practice problems", "Assignments", "Discussion"].map(item => <button key={item} onClick={() => setTab(item)} className={cx("whitespace-nowrap border-b-2 px-3 pb-3 text-xs font-bold transition", tab === item ? "border-[#3157e8] text-[#3157e8]" : "border-transparent text-[#9aa4bc] hover:text-[#17223d] dark:hover:text-white")}>{item}</button>)}</div><div className="pt-6">{tab === "Notes" && <div className="max-w-2xl"><div className="mb-5 flex items-center justify-between"><h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">My notes</h2><button onClick={() => toast.success("Notes exported as PDF")} className="flex items-center gap-2 text-xs font-bold text-[#3157e8]"><FileText className="h-3.5 w-3.5" /> Download PDF</button></div><p className="text-sm leading-7 text-[#5f6c8c] dark:text-white/65">The window represents the current range we’re evaluating. Expand it when the constraint is valid, and shrink it when it isn’t. The trick is to define the invariant before writing a line of code.</p><div className="my-5 rounded-xl border border-[#dfe5f3] bg-[#f5f7fb] p-4 font-mono text-xs leading-6 text-[#52617f] dark:border-white/10 dark:bg-white/5 dark:text-white/70"><p><span className="text-[#7f5af0]">while</span> right &lt; n:</p><p className="pl-4">window.add(s[right])</p><p className="pl-4"><span className="text-[#7f5af0]">while</span> invalid(window):</p><p className="pl-8">window.remove(s[left])</p><p className="pl-8">left += 1</p><p className="pl-4">answer = max(answer, right - left + 1)</p><p className="pl-4">right += 1</p></div><textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Add a private note to this lesson..." className="min-h-[110px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white" /><div className="mt-3 flex justify-end"><button onClick={() => { if (note.trim()) { toast.success("Note saved"); setNote(""); } }} className="button-secondary"><Plus className="h-4 w-4" /> Save note</button></div></div>}{tab !== "Notes" && <div className="rounded-2xl bg-[#f7f9fc] p-8 text-center dark:bg-white/5"><FolderOpen className="mx-auto h-8 w-8 text-[#c4cada]" /><h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">{tab} for this lesson</h3><p className="mt-1 text-xs text-[#9aa4bc]">Your cohort resources and conversations will show up here.</p><button onClick={() => toast.info("This workspace is ready for your cohort content")} className="mt-5 button-secondary">Explore space</button></div>}</div></div><aside className="border-t border-[#e5e8f0] bg-[#fbfcff] dark:border-white/10 dark:bg-[#10172b] lg:border-l lg:border-t-0"><div className="flex items-center justify-between border-b border-[#e5e8f0] px-5 py-4 dark:border-white/10"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#3157e8]">Course contents</p><p className="mt-1 text-sm font-bold text-[#17223d] dark:text-white">DSA Foundations</p></div><span className="text-xs font-bold text-[#3157e8]">68%</span></div><div className="max-h-[640px] overflow-y-auto p-3">{["Foundations", "Sliding Window Patterns", "Stacks & Queues", "Trees & Graphs"].map((module, moduleIndex) => <div key={module} className="mb-2 overflow-hidden rounded-xl border border-[#edf0f6] dark:border-white/10"><button onClick={() => setModuleOpen(moduleOpen === moduleIndex ? -1 : moduleIndex)} className="flex w-full items-center gap-2 bg-white px-3 py-3 text-left dark:bg-white/5"><ChevronDown className={cx("h-3.5 w-3.5 text-[#9aa4bc] transition-transform", moduleOpen === moduleIndex && "rotate-180")} /><span className="flex-1 text-xs font-bold text-[#17223d] dark:text-white">{module}</span><span className="text-[10px] text-[#9aa4bc]">{moduleIndex === 1 ? "3/7" : moduleIndex === 0 ? "6/6" : "0/6"}</span></button>{moduleOpen === moduleIndex && <div className="border-t border-[#edf0f6] p-1 dark:border-white/10">{(moduleIndex === 1 ? lessons : ["Introduction", "Key concepts", "Checkpoint"]).map((lesson, index) => <Link key={lesson} href={index === 2 && moduleIndex === 1 ? "/learn" : "#"} className={cx("flex items-center gap-2 rounded-lg px-2 py-2.5 text-xs", moduleIndex === 1 && index === 2 ? "bg-[#eaf0ff] text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white" : "text-[#7c87a4] hover:bg-[#f5f7fb] dark:hover:bg-white/5")}><span className={cx("flex h-5 w-5 items-center justify-center rounded-full", index < (moduleIndex === 0 ? 3 : moduleIndex === 1 ? 3 : 0) ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-[#f1f3f8] text-[#aab3c5] dark:bg-white/10")}><Check className="h-3 w-3" /></span><span className="min-w-0 flex-1 truncate">{lesson}</span>{index === 2 && moduleIndex === 1 ? <Play className="h-3 w-3 fill-current" /> : <span className="text-[9px]">{10 + index * 3}m</span>}</Link>)}</div>}</div>)}</div></aside></div></div>; }
+  return (
+    <div className="-mx-4 -mt-7 lg:-mx-8">
+      <div className="border-b border-[#e5e8f0] bg-[#fbfcff] px-4 py-4 dark:border-white/10 dark:bg-[#10172b] sm:px-6 lg:px-8">
+        <Link href={getSecureHref("/my-courses")} className="inline-flex items-center gap-2 text-xs font-bold text-[#7c87a4] hover:text-[#3157e8]">
+          <ArrowLeft className="h-4 w-4" /> Back to my learning
+        </Link>
+        <div className="mt-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#3157e8]">DSA Foundations · Module 03</p>
+            <h1 className="mt-1 font-display text-xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white sm:text-2xl">Sliding Window Patterns</h1>
+            <p className="mt-1 text-xs text-[#9aa4bc]">Lesson 03 of 07 · 12 min remaining</p>
+          </div>
+          <button
+            onClick={() => {
+              setCompleted(!completed);
+              toast.success(completed ? "Lesson marked incomplete" : "Lesson complete — nice work!");
+            }}
+            className={cx(
+              "flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition",
+              completed ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-[#3157e8] text-white shadow-[0_7px_16px_rgba(49,87,232,0.25)]"
+            )}
+          >
+            {completed ? <CheckCircle2 className="h-4 w-4" /> : <Check className="h-4 w-4" />}{" "}
+            {completed ? "Completed" : "Mark as complete"}
+          </button>
+        </div>
+      </div>
+      <div className="grid min-h-[620px] lg:grid-cols-[minmax(0,1fr)_350px]">
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="video-frame relative flex aspect-video min-h-[270px] items-center justify-center overflow-hidden rounded-[22px] bg-[#111a33] shadow-[0_18px_36px_rgba(23,34,61,0.18)] sm:min-h-[420px]">
+            <div
+              className="absolute inset-0 opacity-25"
+              style={{
+                backgroundImage: `radial-gradient(circle at 30% 30%, #3157e8, transparent 35%), radial-gradient(circle at 70% 70%, #7f5af0, transparent 32%)`,
+              }}
+            />
+            <div className="relative z-10 flex flex-col items-center">
+              <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#3157e8] shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
+                <Play className="ml-1 h-7 w-7 fill-current" />
+              </span>
+              <p className="text-sm font-bold text-white">Sliding window, made visual</p>
+              <p className="mt-1 text-xs text-white/45">Video lesson · 12:48</p>
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
+              <div className="mb-3 h-1 overflow-hidden rounded-full bg-white/15">
+                <span className="block h-full w-[42%] rounded-full bg-[#ffca63]" />
+              </div>
+              <div className="flex items-center justify-between text-white/55">
+                <div className="flex items-center gap-4">
+                  <button onClick={() => toast.info("Playing lesson")}>
+                    <Play className="h-4 w-4 fill-current" />
+                  </button>
+                  <span className="text-[10px]">05:22 / 12:48</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <button onClick={() => toast.info("Playback speed: 1.25x")} className="text-[10px] font-bold">
+                    1x
+                  </button>
+                  <button>
+                    <Settings2 className="h-4 w-4" />
+                  </button>
+                  <button>
+                    <span className="text-xs">⛶</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 flex gap-1 overflow-x-auto border-b border-[#e5e8f0] dark:border-white/10">
+            {["Notes", "Resources", "Practice problems", "Assignments", "Discussion"].map((item) => (
+              <button
+                key={item}
+                onClick={() => setTab(item)}
+                className={cx(
+                  "whitespace-nowrap border-b-2 px-3 pb-3 text-xs font-bold transition",
+                  tab === item
+                    ? "border-[#3157e8] text-[#3157e8]"
+                    : "border-transparent text-[#9aa4bc] hover:text-[#17223d] dark:hover:text-white"
+                )}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          <div className="pt-6">
+            {tab === "Notes" && (
+              <div className="max-w-2xl">
+                <div className="mb-5 flex items-center justify-between">
+                  <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">My notes</h2>
+                  <button onClick={() => toast.success("Notes exported as PDF")} className="flex items-center gap-2 text-xs font-bold text-[#3157e8]">
+                    <FileText className="h-3.5 w-3.5" /> Download PDF
+                  </button>
+                </div>
+                <p className="text-sm leading-7 text-[#5f6c8c] dark:text-white/65">
+                  The window represents the current range we’re evaluating. Expand it when the constraint is valid, and shrink it when it isn’t. The trick is to define the invariant before writing a line of code.
+                </p>
+                <div className="my-5 rounded-xl border border-[#dfe5f3] bg-[#f5f7fb] p-4 font-mono text-xs leading-6 text-[#52617f] dark:border-white/10 dark:bg-white/5 dark:text-white/70">
+                  <p><span className="text-[#7f5af0]">while</span> right &lt; n:</p>
+                  <p className="pl-4">window.add(s[right])</p>
+                  <p className="pl-4"><span className="text-[#7f5af0]">while</span> invalid(window):</p>
+                  <p className="pl-8">window.remove(s[left])</p>
+                  <p className="pl-8">left += 1</p>
+                  <p className="pl-4">answer = max(answer, right - left + 1)</p>
+                  <p className="pl-4">right += 1</p>
+                </div>
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Add a private note to this lesson..."
+                  className="min-h-[110px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                />
+                <div className="mt-3 flex justify-end">
+                  <button
+                    onClick={() => {
+                      if (note.trim()) {
+                        toast.success("Note saved");
+                        setNote("");
+                      }
+                    }}
+                    className="button-secondary"
+                  >
+                    <Plus className="h-4 w-4" /> Save note
+                  </button>
+                </div>
+              </div>
+            )}
+            {tab !== "Notes" && (
+              <div className="rounded-2xl bg-[#f7f9fc] p-8 text-center dark:bg-white/5">
+                <FolderOpen className="mx-auto h-8 w-8 text-[#c4cada]" />
+                <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">{tab} for this lesson</h3>
+                <p className="mt-1 text-xs text-[#9aa4bc]">Your cohort resources and conversations will show up here.</p>
+                <button onClick={() => toast.info("This workspace is ready for your cohort content")} className="mt-5 button-secondary">
+                  Explore space
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        <aside className="border-t border-[#e5e8f0] bg-[#fbfcff] dark:border-white/10 dark:bg-[#10172b] lg:border-l lg:border-t-0">
+          <div className="flex items-center justify-between border-b border-[#e5e8f0] px-5 py-4 dark:border-white/10">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#3157e8]">Course contents</p>
+              <p className="mt-1 text-sm font-bold text-[#17223d] dark:text-white">DSA Foundations</p>
+            </div>
+            <span className="text-xs font-bold text-[#3157e8]">68%</span>
+          </div>
+          <div className="max-h-[640px] overflow-y-auto p-3">
+            {["Foundations", "Sliding Window Patterns", "Stacks & Queues", "Trees & Graphs"].map((module, moduleIndex) => (
+              <div key={module} className="mb-2 overflow-hidden rounded-xl border border-[#edf0f6] dark:border-white/10">
+                <button
+                  onClick={() => setModuleOpen(moduleOpen === moduleIndex ? -1 : moduleIndex)}
+                  className="flex w-full items-center gap-2 bg-white px-3 py-3 text-left dark:bg-white/5"
+                >
+                  <ChevronDown className={cx("h-3.5 w-3.5 text-[#9aa4bc] transition-transform", moduleOpen === moduleIndex && "rotate-180")} />
+                  <span className="flex-1 text-xs font-bold text-[#17223d] dark:text-white">{module}</span>
+                  <span className="text-[10px] text-[#9aa4bc]">{moduleIndex === 1 ? "3/7" : moduleIndex === 0 ? "6/6" : "0/6"}</span>
+                </button>
+                {moduleOpen === moduleIndex && (
+                  <div className="border-t border-[#edf0f6] p-1 dark:border-white/10">
+                    {(moduleIndex === 1 ? lessons : ["Introduction", "Key concepts", "Checkpoint"]).map((lesson, index) => (
+                      <Link
+                        key={lesson}
+                        href={index === 2 && moduleIndex === 1 ? getSecureHref("/learn") : "#"}
+                        className={cx(
+                          "flex items-center gap-2 rounded-lg px-2 py-2.5 text-xs",
+                          moduleIndex === 1 && index === 2
+                            ? "bg-[#eaf0ff] text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white"
+                            : "text-[#7c87a4] hover:bg-[#f5f7fb] dark:hover:bg-white/5"
+                        )}
+                      >
+                        <span
+                          className={cx(
+                            "flex h-5 w-5 items-center justify-center rounded-full",
+                            index < (moduleIndex === 0 ? 3 : moduleIndex === 1 ? 3 : 0)
+                              ? "bg-[#e4f8ee] text-[#23a26d]"
+                              : "bg-[#f1f3f8] text-[#aab3c5] dark:bg-white/10"
+                          )}
+                        >
+                          <Check className="h-3 w-3" />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">{lesson}</span>
+                        {index === 2 && moduleIndex === 1 ? <Play className="h-3 w-3 fill-current" /> : <span className="text-[9px]">{10 + index * 3}m</span>}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
 
 function PracticePage() { const [difficulty, setDifficulty] = useState("All"); const [topic, setTopic] = useState("All topics"); const [saved, setSaved] = useState<string[]>([]); const filtered = problems.filter(p => (difficulty === "All" || p.difficulty === difficulty) && (topic === "All topics" || p.topic === topic)); return <><PageHeader eyebrow="Build your edge" title="Practice problems" description="A focused set of interview patterns. Solve a little every day, then review what you missed." action={<div className="flex items-center gap-2 rounded-xl bg-[#fff4db] px-3 py-2 text-xs font-bold text-[#b77917]"><Flame className="h-4 w-4" /> 7 day streak</div>} /><div className="grid gap-4 sm:grid-cols-3"><div className="card-surface p-5"><p className="text-xs font-semibold text-[#9aa4bc]">Solved this month</p><p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">24</p><div className="mt-3"><ProgressBar value={72} color="#23a26d" /></div><p className="mt-2 text-[10px] font-bold text-[#23a26d]">+8 from last month</p></div><div className="card-surface p-5"><p className="text-xs font-semibold text-[#9aa4bc]">Current accuracy</p><p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">78<span className="text-base">%</span></p><p className="mt-3 text-[10px] font-bold text-[#3157e8]">Top 18% of your cohort</p></div><div className="card-surface p-5"><p className="text-xs font-semibold text-[#9aa4bc]">Next milestone</p><p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">50 <span className="text-sm font-semibold text-[#9aa4bc]">solved</span></p><p className="mt-3 text-[10px] font-bold text-[#d68c20]">26 more to unlock badge</p></div></div><div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-2 overflow-x-auto pb-1">{["All", "Easy", "Medium", "Hard"].map(item => <button key={item} onClick={() => setDifficulty(item)} className={cx("rounded-full px-4 py-2 text-xs font-bold", difficulty === item ? "bg-[#17223d] text-white dark:bg-[#3157e8]" : "bg-white text-[#7c87a4] dark:bg-white/5")}>{item}</button>)}</div><select value={topic} onChange={e => setTopic(e.target.value)} className="h-10 rounded-xl border border-[#e5e8f0] bg-white px-3 text-xs font-bold text-[#5f6c8c] outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"><option>All topics</option>{["Arrays", "Strings", "Stack", "Trees", "Graphs"].map(item => <option key={item}>{item}</option>)}</select></div><div className="mt-5 card-surface overflow-hidden"><div className="hidden grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] gap-4 border-b border-[#edf0f6] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9aa4bc] dark:border-white/10 sm:grid"><span>Problem</span><span>Difficulty</span><span>Acceptance</span><span>Status</span><span /></div>{filtered.map(problem => <div key={problem.title} className="grid gap-3 border-b border-[#edf0f6] px-5 py-4 last:border-0 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] sm:items-center sm:gap-4"><div className="flex min-w-0 items-start gap-3"><span className={cx("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", problem.solved ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-[#f1f3f8] text-[#9aa4bc] dark:bg-white/10")}><Code2 className="h-3.5 w-3.5" /></span><div className="min-w-0"><Link href={createSecureUrl("/practice", { slug: problem.title.toLowerCase().replace(/\s+/g, "-") })} className="block truncate text-sm font-bold text-[#17223d] hover:text-[#3157e8] dark:text-white">{problem.title}</Link><p className="mt-1 text-[10px] text-[#9aa4bc]">{problem.topic} · {problem.attempts} attempts</p></div></div><span className={cx("w-fit rounded-md px-2 py-1 text-[10px] font-bold", problem.difficulty === "Easy" ? "bg-[#e4f8ee] text-[#23a26d]" : problem.difficulty === "Medium" ? "bg-[#fff4db] text-[#d68c20]" : "bg-[#fff0ed] text-[#ef8354]")}>{problem.difficulty}</span><span className="text-xs font-semibold text-[#7c87a4]">{problem.acceptance}</span><span className={cx("w-fit text-xs font-bold", problem.solved ? "text-[#23a26d]" : "text-[#9aa4bc]")}>{problem.solved ? "Solved" : "Not started"}</span><button onClick={() => setSaved(saved.includes(problem.title) ? saved.filter(item => item !== problem.title) : [...saved, problem.title])} className={cx("justify-self-start rounded-lg p-2", saved.includes(problem.title) ? "text-[#3157e8]" : "text-[#b6bfd0] hover:text-[#3157e8]")}><Bookmark className={cx("h-4 w-4", saved.includes(problem.title) && "fill-current")} /></button></div>)}</div></>; }
 
@@ -569,7 +774,7 @@ function NotificationsPage() {
   );
 }
 
-function AssignmentsPage() { const [submitted, setSubmitted] = useState(false); return <><PageHeader eyebrow="Show your work" title="Assignments" description="Turn your practice into proof with thoughtful submissions and mentor feedback." /><div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"><section className="card-surface p-5 sm:p-7"><div className="flex items-start gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fff0ed] text-[#ef8354]"><ClipboardCheck className="h-5 w-5" /></span><div><span className="rounded-md bg-[#fff0ed] px-2 py-1 text-[10px] font-bold text-[#ef8354]">Due tomorrow</span><h2 className="mt-3 font-display text-2xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white">Arrays checkpoint</h2><p className="mt-1 text-xs text-[#9aa4bc]">DSA Foundations · Module 02</p></div></div><div className="mt-7 rounded-xl bg-[#f7f9fc] p-5 dark:bg-white/5"><p className="text-sm font-bold text-[#17223d] dark:text-white">Instructions</p><p className="mt-2 text-sm leading-6 text-[#7c87a4]">Choose two array problems from this module and explain your approach, complexity, and one edge case you intentionally handled. Include code that another learner could review.</p></div><label className="mt-6 block text-xs font-bold text-[#52617f] dark:text-white/80">Your submission</label><textarea placeholder="Paste your explanation or solution here..." className="mt-2 min-h-[150px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white" /><div className="mt-4 grid gap-3 sm:grid-cols-2"><button onClick={() => toast.info("File upload opened")} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#cbd4e5] py-4 text-xs font-bold text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"><Plus className="h-4 w-4" /> Attach a file</button><button onClick={() => toast.info("GitHub link field ready")} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#cbd4e5] py-4 text-xs font-bold text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"><Github className="h-4 w-4" /> Add GitHub link</button></div><div className="mt-6 flex justify-end"><button onClick={() => { setSubmitted(true); toast.success("Assignment submitted for review"); }} className="button-primary"><Send className="h-4 w-4" /> {submitted ? "Submitted" : "Submit assignment"}</button></div></section><aside className="space-y-5"><div className="card-surface p-5"><p className="text-xs font-bold text-[#7c87a4]">Submission history</p><div className="mt-4 space-y-4"><div className="flex items-start gap-3"><span className="mt-0.5 h-2 w-2 rounded-full bg-[#23a26d]" /><div><p className="text-xs font-bold text-[#17223d] dark:text-white">Placement reflection</p><p className="mt-1 text-[10px] text-[#9aa4bc]">Reviewed · Sep 08, 2025</p></div></div><div className="flex items-start gap-3"><span className="mt-0.5 h-2 w-2 rounded-full bg-[#ffca63]" /><div><p className="text-xs font-bold text-[#17223d] dark:text-white">Portfolio review</p><p className="mt-1 text-[10px] text-[#9aa4bc]">Pending · Sep 04, 2025</p></div></div></div></div><div className="rounded-2xl bg-[#eaf0ff] p-5 dark:bg-[#3157e8]/20"><Headphones className="h-5 w-5 text-[#3157e8]" /><p className="mt-4 text-sm font-bold text-[#17223d] dark:text-white">Need a second pair of eyes?</p><p className="mt-2 text-xs leading-5 text-[#5f6c8c] dark:text-white/65">Ask your cohort in Community or bring the question to your next clinic.</p><Link href="/community" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#3157e8]">Open community <ArrowRight className="h-3.5 w-3.5" /></Link></div></aside></div></>; }
+function AssignmentsPage() { const [submitted, setSubmitted] = useState(false); return <><PageHeader eyebrow="Show your work" title="Assignments" description="Turn your practice into proof with thoughtful submissions and mentor feedback." /><div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"><section className="card-surface p-5 sm:p-7"><div className="flex items-start gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fff0ed] text-[#ef8354]"><ClipboardCheck className="h-5 w-5" /></span><div><span className="rounded-md bg-[#fff0ed] px-2 py-1 text-[10px] font-bold text-[#ef8354]">Due tomorrow</span><h2 className="mt-3 font-display text-2xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white">Arrays checkpoint</h2><p className="mt-1 text-xs text-[#9aa4bc]">DSA Foundations · Module 02</p></div></div><div className="mt-7 rounded-xl bg-[#f7f9fc] p-5 dark:bg-white/5"><p className="text-sm font-bold text-[#17223d] dark:text-white">Instructions</p><p className="mt-2 text-sm leading-6 text-[#7c87a4]">Choose two array problems from this module and explain your approach, complexity, and one edge case you intentionally handled. Include code that another learner could review.</p></div><label className="mt-6 block text-xs font-bold text-[#52617f] dark:text-white/80">Your submission</label><textarea placeholder="Paste your explanation or solution here..." className="mt-2 min-h-[150px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white" /><div className="mt-4 grid gap-3 sm:grid-cols-2"><button onClick={() => toast.info("File upload opened")} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#cbd4e5] py-4 text-xs font-bold text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"><Plus className="h-4 w-4" /> Attach a file</button><button onClick={() => toast.info("GitHub link field ready")} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#cbd4e5] py-4 text-xs font-bold text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"><Github className="h-4 w-4" /> Add GitHub link</button></div><div className="mt-6 flex justify-end"><button onClick={() => { setSubmitted(true); toast.success("Assignment submitted for review"); }} className="button-primary"><Send className="h-4 w-4" /> {submitted ? "Submitted" : "Submit assignment"}</button></div></section><aside className="space-y-5"><div className="card-surface p-5"><p className="text-xs font-bold text-[#7c87a4]">Submission history</p><div className="mt-4 space-y-4"><div className="flex items-start gap-3"><span className="mt-0.5 h-2 w-2 rounded-full bg-[#23a26d]" /><div><p className="text-xs font-bold text-[#17223d] dark:text-white">Placement reflection</p><p className="mt-1 text-[10px] text-[#9aa4bc]">Reviewed · Sep 08, 2025</p></div></div><div className="flex items-start gap-3"><span className="mt-0.5 h-2 w-2 rounded-full bg-[#ffca63]" /><div><p className="text-xs font-bold text-[#17223d] dark:text-white">Portfolio review</p><p className="mt-1 text-[10px] text-[#9aa4bc]">Pending · Sep 04, 2025</p></div></div></div></div><div className="rounded-2xl bg-[#eaf0ff] p-5 dark:bg-[#3157e8]/20"><Headphones className="h-5 w-5 text-[#3157e8]" /><p className="mt-4 text-sm font-bold text-[#17223d] dark:text-white">Need a second pair of eyes?</p><p className="mt-2 text-xs leading-5 text-[#5f6c8c] dark:text-white/65">Ask your cohort in Community or bring the question to your next clinic.</p><Link href={getSecureHref("/community")} className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#3157e8]">Open community <ArrowRight className="h-3.5 w-3.5" /></Link></div></aside></div></>; }
 
 function ProfilePage() {
   const { theme, toggleTheme } = useTheme();
@@ -690,7 +895,7 @@ function FeedbackPage() { const [rating, setRating] = useState(0); return <><Pag
 
 function NotesPage() { return <><PageHeader eyebrow="Capture your thinking" title="Notes" description="Your private course notes, collected in one calm place." action={<button onClick={() => toast.success("New note created")} className="button-primary"><Plus className="h-4 w-4" /> New note</button>} /><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{["Sliding Window Patterns", "The anatomy of a good interview answer", "Trees: recursive vs iterative"].map((title, i) => <article key={title} className="card-surface p-5"><div className="flex items-start justify-between"><span className={cx("flex h-9 w-9 items-center justify-center rounded-xl", i === 0 ? "bg-[#eaf0ff] text-[#3157e8]" : i === 1 ? "bg-[#f0eaff] text-[#7f5af0]" : "bg-[#e4f8ee] text-[#23a26d]")}><FileText className="h-4 w-4" /></span><button onClick={() => toast.info("Note actions opened")} className="text-[#9aa4bc]"><MoreHorizontal className="h-4 w-4" /></button></div><h2 className="mt-5 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">{title}</h2><p className="mt-2 line-clamp-3 text-sm leading-6 text-[#7c87a4]">A short, memorable way to frame the idea before writing code. Capture the invariant first, then test it on a tiny example.</p><div className="mt-5 flex items-center justify-between text-[10px] font-semibold text-[#9aa4bc]"><span>Updated {i + 1} day{i ? "s" : ""} ago</span><span className="flex items-center gap-1"><Bookmark className="h-3 w-3 fill-current text-[#3157e8]" /> Saved</span></div></article>)}</div></>; }
 
-function NotFoundLike() { return <div className="card-surface mx-auto max-w-lg p-10 text-center"><CircleHelp className="mx-auto h-10 w-10 text-[#3157e8]" /><h1 className="mt-4 font-display text-2xl font-bold text-[#17223d] dark:text-white">This space is being prepared</h1><p className="mt-2 text-sm leading-6 text-[#7c87a4]">The learning path is ready to grow here. Use the navigation to explore the rest of CodePath.</p><Link href="/" className="mt-6 inline-flex button-primary">Back to dashboard</Link></div>; }
+function NotFoundLike() { return <div className="card-surface mx-auto max-w-lg p-10 text-center"><CircleHelp className="mx-auto h-10 w-10 text-[#3157e8]" /><h1 className="mt-4 font-display text-2xl font-bold text-[#17223d] dark:text-white">This space is being prepared</h1><p className="mt-2 text-sm leading-6 text-[#7c87a4]">The learning path is ready to grow here. Use the navigation to explore the rest of CodePath.</p><Link href={getSecureHref("/dashboard")} className="mt-6 inline-flex button-primary">Back to dashboard</Link></div>; }
 
 export default function Home({
   page = "dashboard",

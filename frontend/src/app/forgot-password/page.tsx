@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Circle,
 } from "lucide-react";
+import { createSecureUrl } from "@/lib/urlParams";
 
 // ==========================================
 // ILLUSTRATION COMPONENTS (Vector SVG Art)
@@ -277,7 +278,7 @@ export default function ForgotPasswordPage() {
   useEffect(() => {
     if (step === 4) {
       if (redirectTimer <= 0) {
-        router.push("/login");
+        router.push(createSecureUrl("/", { mode: "login", t: Date.now() }));
         return;
       }
       const timeout = setTimeout(() => {
@@ -501,7 +502,7 @@ export default function ForgotPasswordPage() {
 
         {/* Back to Login Button */}
         <Link
-          href="/login"
+          href={createSecureUrl("/", { mode: "login", t: Date.now() })}
           className="flex items-center gap-1.5 text-[14px] font-medium text-gray-600 hover:text-gray-900 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -559,7 +560,7 @@ export default function ForgotPasswordPage() {
                 <div className="mt-6 text-[13.5px] text-gray-500">
                   Remember your password?{" "}
                   <Link
-                    href="/login"
+                    href={createSecureUrl("/", { mode: "login", t: Date.now() })}
                     className="font-semibold text-blue-600 hover:text-blue-700 transition-colors"
                   >
                     Login
@@ -784,7 +785,7 @@ export default function ForgotPasswordPage() {
 
               <button
                 type="button"
-                onClick={() => router.push("/login")}
+                onClick={() => router.push(createSecureUrl("/", { mode: "login", t: Date.now() }))}
                 className="w-full max-w-xs mt-7 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-[0.98] cursor-pointer text-[14.5px] flex items-center justify-center gap-2"
               >
                 <span>Go to login</span>

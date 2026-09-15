@@ -16,13 +16,13 @@ function OAuthCallbackContent() {
 
     if (error === "ACCOUNT_NOT_FOUND") {
       toast.error("No account found with this Google account. Please create an account first.");
-      router.push(`/register${email ? `?email=${encodeURIComponent(email)}` : ""}`);
+      router.push(createSecureUrl("/", { mode: "register", ...(email ? { email } : {}), t: Date.now() }));
       return;
     }
 
     if (error) {
       toast.error("Google authentication failed. Please try again.");
-      router.push("/login");
+      router.push(createSecureUrl("/", { mode: "login", t: Date.now() }));
       return;
     }
 
@@ -31,7 +31,7 @@ function OAuthCallbackContent() {
     if (isNewUser === "true") {
       router.push(createSecureUrl("/onboarding", { step: 1 }));
     } else {
-      router.push("/dashboard");
+      router.push(createSecureUrl("/dashboard", { v: "dashboard", t: Date.now() }));
     }
   }, [searchParams, router]);
 

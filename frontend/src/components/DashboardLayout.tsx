@@ -38,6 +38,7 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
+import { createSecureUrl } from "@/lib/urlParams";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -87,7 +88,7 @@ export default function DashboardLayout({
             </p>
           </div>
           <Button
-            onClick={() => router.push("/")}
+            onClick={() => router.push(createSecureUrl("/", { mode: "login", t: Date.now() }))}
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >
@@ -188,7 +189,7 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div
                   className="flex items-center gap-2 min-w-0 cursor-pointer"
-                  onClick={() => router.push("/dashboard")}
+                  onClick={() => router.push(createSecureUrl("/dashboard", { v: "dashboard", t: Date.now() }))}
                 >
                   <div className="flex items-center justify-center text-primary">
                     <svg
@@ -221,7 +222,7 @@ function DashboardLayoutContent({
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      onClick={() => router.push(item.path)}
+                      onClick={() => router.push(createSecureUrl(item.path, { v: item.path.replace(/^\//, '') || 'dashboard', t: Date.now() }))}
                       tooltip={item.label}
                       className="h-10 transition-all font-normal"
                     >
@@ -257,7 +258,7 @@ function DashboardLayoutContent({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem
-                  onClick={() => router.push("/profile")}
+                  onClick={() => router.push(createSecureUrl("/profile", { v: "profile", t: Date.now() }))}
                   className="cursor-pointer"
                 >
                   <Settings className="mr-2 h-4 w-4" />

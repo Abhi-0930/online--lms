@@ -195,7 +195,11 @@ function AuthForm({
         toast.success(
           isSignUp ? "Account created successfully!" : "Welcome back!"
         );
-        router.push(isSignUp ? createSecureUrl("/onboarding", { step: 1 }) : "/dashboard");
+        router.push(
+          isSignUp
+            ? createSecureUrl("/onboarding", { step: 1 })
+            : createSecureUrl("/dashboard", { v: "dashboard", t: Date.now() })
+        );
         return;
       }
 
@@ -531,7 +535,7 @@ function AuthForm({
               {!isSignUp && (
                 <div className="flex justify-end pt-0.5">
                   <Link
-                    href="/forgot-password"
+                    href={createSecureUrl("/forgot-password", { v: "forgot-password", t: Date.now() })}
                     className="text-[13.5px] font-medium text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
                   >
                     Forgot password?
