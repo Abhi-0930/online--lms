@@ -1,35 +1,49 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyRequest } from 'fastify';
 import { OnboardingService } from './onboarding.service';
 import { saveStep1Schema, saveStep2Schema, saveStep3Schema, saveStep4Schema } from './onboarding.schema';
 
 export default async function onboardingController(fastify: FastifyInstance) {
   const onboardingService = new OnboardingService(fastify.prisma);
 
-  // Save Step 1: Education Status
-  fastify.post('/step-1', {
-    schema: saveStep1Schema,
-  }, async (request, reply) => {
-    const body = request.body as any;
-    
-    // Extract userId from JWT auth header or request body
-    let userId = body.userId;
+  function extractUserId(request: FastifyRequest): string {
+    // 1. Check HttpOnly cookie
+    try {
+      const cookieToken = (request as any).cookies?.access_token;
+      if (cookieToken) {
+        const decoded: any = fastify.jwt.verify(cookieToken);
+        if (decoded?.id) return decoded.id;
+      }
+    } catch {}
+
+    // 2. Check Authorization Bearer header
     try {
       const authHeader = request.headers.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
         const decoded: any = fastify.jwt.verify(token);
-        if (decoded?.id) {
-          userId = decoded.id;
-        }
+        if (decoded?.id) return decoded.id;
       }
-    } catch {
-      // If token verification fails, use body.userId or default
-    }
+    } catch {}
 
-    if (!userId) {
-      userId = `guest-${Date.now()}`;
-    }
+    // 3. Check request.user if set
+    if ((request as any).user?.id) return (request as any).user.id;
 
+    // 4. Check body or query userId
+    const bodyUserId = (request.body as any)?.userId;
+    if (bodyUserId) return bodyUserId;
+
+    const queryUserId = (request.query as any)?.userId;
+    if (queryUserId) return queryUserId;
+
+    return `guest-${Date.now()}`;
+  }
+
+  // Save Step 1: Education Status
+  fastify.post('/step-1', {
+    schema: saveStep1Schema,
+  }, async (request, reply) => {
+    const body = request.body as any;
+    const userId = extractUserId(request);
     const result = await onboardingService.saveStep1(userId, body.educationStatus);
     return reply.send({
       success: true,
@@ -42,25 +56,7 @@ export default async function onboardingController(fastify: FastifyInstance) {
     schema: saveStep2Schema,
   }, async (request, reply) => {
     const body = request.body as any;
-
-    let userId = body.userId;
-    try {
-      const authHeader = request.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        const decoded: any = fastify.jwt.verify(token);
-        if (decoded?.id) {
-          userId = decoded.id;
-        }
-      }
-    } catch {
-      // If token verification fails, use body.userId or default
-    }
-
-    if (!userId) {
-      userId = `guest-${Date.now()}`;
-    }
-
+    const userId = extractUserId(request);
     const result = await onboardingService.saveStep2(userId, body.targetRoles);
     return reply.send({
       success: true,
@@ -73,25 +69,7 @@ export default async function onboardingController(fastify: FastifyInstance) {
     schema: saveStep3Schema,
   }, async (request, reply) => {
     const body = request.body as any;
-
-    let userId = body.userId;
-    try {
-      const authHeader = request.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        const decoded: any = fastify.jwt.verify(token);
-        if (decoded?.id) {
-          userId = decoded.id;
-        }
-      }
-    } catch {
-      // If token verification fails, use body.userId or default
-    }
-
-    if (!userId) {
-      userId = `guest-${Date.now()}`;
-    }
-
+    const userId = extractUserId(request);
     const result = await onboardingService.saveStep3(userId, body.targetCompanies);
     return reply.send({
       success: true,
@@ -104,25 +82,7 @@ export default async function onboardingController(fastify: FastifyInstance) {
     schema: saveStep4Schema,
   }, async (request, reply) => {
     const body = request.body as any;
-
-    let userId = body.userId;
-    try {
-      const authHeader = request.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        const decoded: any = fastify.jwt.verify(token);
-        if (decoded?.id) {
-          userId = decoded.id;
-        }
-      }
-    } catch {
-      // If token verification fails, use body.userId or default
-    }
-
-    if (!userId) {
-      userId = `guest-${Date.now()}`;
-    }
-
+    const userId = extractUserId(request);
     const result = await onboardingService.saveStep4(userId, body.name);
     return reply.send({
       success: true,
@@ -132,21 +92,8 @@ export default async function onboardingController(fastify: FastifyInstance) {
 
   // Get Onboarding Status
   fastify.get('/', async (request, reply) => {
-    let userId = (request.query as any)?.userId;
-    try {
-      const authHeader = request.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        const decoded: any = fastify.jwt.verify(token);
-        if (decoded?.id) {
-          userId = decoded.id;
-        }
-      }
-    } catch {
-      // Fall through
-    }
-
-    if (!userId) {
+    const userId = extractUserId(request);
+    if (!userId || userId.startsWith('guest-')) {
       return reply.status(400).send({ error: 'BadRequest', message: 'User ID is required' });
     }
 

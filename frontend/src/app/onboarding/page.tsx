@@ -16,6 +16,7 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
+import { resolveDisplayName } from "@/lib/nameUtils";
 import { ConfettiAnimation } from "@/components/ConfettiAnimation";
 
 interface StudyOption {
@@ -435,8 +436,11 @@ function OnboardingContent() {
         });
         if (res.ok) {
           const data = await res.json();
-          if (data?.user?.fullName && !userName) {
-            setUserName(data.user.fullName);
+          if (data?.user && !userName) {
+            const resolved = resolveDisplayName(data.user);
+            if (resolved && resolved.toLowerCase() !== "learner") {
+              setUserName(resolved);
+            }
           }
         }
       } catch {}

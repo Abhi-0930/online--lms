@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
+import { AuthService } from '../auth/auth.service';
 
 export class OnboardingService {
   constructor(private prisma: PrismaClient) {}
@@ -137,6 +138,14 @@ export class OnboardingService {
           where: { id: userId },
           data: { fullName: name },
         }).catch(() => {});
+
+        for (const [email, u] of AuthService.fallbackUsers.entries()) {
+          if (u.id === userId) {
+            u.fullName = name;
+            u.name = name;
+            AuthService.fallbackUsers.set(email, u);
+          }
+        }
       }
 
       record = await this.prisma.userOnboarding.upsert({

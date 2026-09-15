@@ -154,7 +154,20 @@ export default async function authController(fastify: FastifyInstance) {
   }, async (request, reply) => {
     const body = request.body as any;
     const result = await authService.register(body);
-    return reply.status(201).send(result);
+
+    const accessToken = fastify.jwt.sign({
+      id: result.user.id,
+      email: result.user.email,
+      role: result.user.role,
+      sessionToken: result.sessionToken,
+    });
+
+    setAuthCookie(reply, accessToken);
+
+    return reply.status(201).send({
+      ...result,
+      accessToken,
+    });
   });
 
   fastify.post('/login', {
@@ -191,31 +204,73 @@ export default async function authController(fastify: FastifyInstance) {
     onRequest: [fastify.authenticate],
   }, async (request, reply) => {
     const user = request.user as any;
-    const dbUser = await fastify.prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        role: true,
-        avatarUrl: true,
-        isEmailVerified: true,
-        createdAt: true,
-        onboarding: {
-          select: {
-            educationStatus: true,
-            targetDomain: true,
-            experienceLevel: true,
-            primaryGoal: true,
-            completedStep: true,
-            isCompleted: true,
+    let dbUser: any = null;
+
+    try {
+      dbUser = await fastify.prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          role: true,
+          avatarUrl: true,
+          isEmailVerified: true,
+          createdAt: true,
+          onboarding: {
+            select: {
+              educationStatus: true,
+              targetDomain: true,
+              experienceLevel: true,
+              primaryGoal: true,
+              completedStep: true,
+              isCompleted: true,
+            },
           },
         },
-      },
-    });
+      });
+    } catch {}
 
     if (!dbUser) {
-      return reply.status(404).send({ error: 'NotFound', message: 'User not found' });
+      for (const u of AuthService.fallbackUsers.values()) {
+        if (u.id === user.id || u.email === user.email) {
+          dbUser = u;
+          break;
+        }
+      }
+    }
+
+    // If still not found in memory, construct from verified token payload
+    if (!dbUser && user?.email) {
+      dbUser = {
+        id: user.id,
+        email: user.email,
+        fullName: user.email.split('@')[0],
+        role: user.role || 'STUDENT',
+        isEmailVerified: false,
+      };
+    }
+
+    if (!dbUser) {
+      return reply.status(401).send({ error: 'Unauthorized', message: 'User not found' });
+    }
+
+    let rawName = dbUser.onboarding?.primaryGoal || dbUser.fullName || dbUser.name;
+    if (!rawName || rawName.trim().toLowerCase() === 'learner') {
+      rawName = dbUser.email ? dbUser.email.split('@')[0] : 'Learner';
+    }
+
+    let resolvedName = 'Learner';
+    if (rawName && rawName.trim().toLowerCase() !== 'learner') {
+      const cleaned = rawName.replace(/[._-]+/g, ' ').replace(/\d+/g, '').trim();
+      if (cleaned) {
+        resolvedName = cleaned
+          .split(/\s+/)
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ');
+      } else {
+        resolvedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+      }
     }
 
     return reply.send({
@@ -223,11 +278,11 @@ export default async function authController(fastify: FastifyInstance) {
       user: {
         id: dbUser.id,
         email: dbUser.email,
-        name: dbUser.fullName,
-        fullName: dbUser.fullName,
-        role: dbUser.role,
+        name: resolvedName,
+        fullName: resolvedName,
+        role: dbUser.role || 'STUDENT',
         avatarUrl: dbUser.avatarUrl,
-        isEmailVerified: dbUser.isEmailVerified,
+        isEmailVerified: Boolean(dbUser.isEmailVerified),
         onboarding: dbUser.onboarding,
       },
     });

@@ -6,6 +6,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { toast } from "sonner";
 import { createSecureUrl } from "@/lib/urlParams";
+import { resolveDisplayName, resolveFirstName } from "@/lib/nameUtils";
 import {
   AlarmClock,
   ArrowDownRight,
@@ -180,9 +181,19 @@ function Logo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function Avatar({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+function Avatar({ size = "md", name }: { size?: "sm" | "md" | "lg"; name?: string }) {
+  const { user } = useAuth();
+  const userName = resolveDisplayName(name || user);
+  const initials = userName
+    .trim()
+    .split(/\s+/)
+    .map((n) => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "L";
   const sizeClass = size === "lg" ? "h-16 w-16 text-xl" : size === "sm" ? "h-8 w-8 text-[11px]" : "h-10 w-10 text-sm";
-  return <span className={cx("inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#f7c7a4] via-[#d88f72] to-[#5b3349] font-semibold text-white ring-2 ring-white dark:ring-[#182036]", sizeClass)}>AM</span>;
+  return <span className={cx("inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#3157e8] via-[#567bf5] to-[#7f5af0] font-semibold text-white ring-2 ring-white dark:ring-[#182036]", sizeClass)}>{initials}</span>;
 }
 
 function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed: (value: boolean) => void }) {
@@ -236,7 +247,11 @@ function SidebarLink({ item, active, collapsed }: { item: NavItem; active: boole
 
 function Topbar({ onMenu }: { onMenu: () => void }) {
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
+  const displayName = resolveDisplayName(user);
+  const roleName = user?.role ? (user.role.charAt(0) + user.role.slice(1).toLowerCase()) : "Student";
+
   return <header className="sticky top-0 z-30 flex h-[78px] items-center justify-between border-b border-[#e5e8f0]/90 bg-[#fbfcff]/90 px-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#10172b]/90 sm:px-6 lg:px-8">
     <div className="flex min-w-0 items-center gap-3">
       <button onClick={onMenu} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#5b6788] hover:bg-[#eef2ff] lg:hidden dark:hover:bg-white/10"><Menu className="h-5 w-5" /></button>
@@ -251,7 +266,7 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
       <Link href="/notifications" aria-label="Open notifications" className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] dark:hover:bg-white/10"><Bell className="h-[18px] w-[18px]" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ef8354] ring-2 ring-[#fbfcff] dark:ring-[#10172b]" /></Link>
       <button className="hidden h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] sm:inline-flex dark:hover:bg-white/10" onClick={toggleTheme}>{theme === "light" ? <Moon className="h-[17px] w-[17px]" /> : <Sun className="h-[17px] w-[17px]" />}</button>
       <div className="hidden h-7 w-px bg-[#e5e8f0] sm:block dark:bg-white/10" />
-      <Link href="/profile" className="flex items-center gap-2 rounded-xl p-1 transition hover:bg-[#eef2ff] dark:hover:bg-white/10"><Avatar size="sm" /><span className="hidden text-left lg:block"><span className="block text-xs font-bold text-[#17223d] dark:text-white">Alex Morgan</span><span className="block text-[10px] text-[#9aa4bc]">Student</span></span><ChevronDown className="hidden h-3.5 w-3.5 text-[#9aa4bc] lg:block" /></Link>
+      <Link href="/profile" className="flex items-center gap-2 rounded-xl p-1 transition hover:bg-[#eef2ff] dark:hover:bg-white/10"><Avatar size="sm" name={displayName} /><span className="hidden text-left lg:block"><span className="block text-xs font-bold text-[#17223d] dark:text-white truncate max-w-[140px]">{displayName}</span><span className="block text-[10px] text-[#9aa4bc]">{roleName}</span></span><ChevronDown className="hidden h-3.5 w-3.5 text-[#9aa4bc] lg:block" /></Link>
     </div>
   </header>;
 }
@@ -266,8 +281,10 @@ function MobileNav() {
 
 function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const location = usePathname() || "";
+  const { user } = useAuth();
+  const displayName = resolveDisplayName(user);
   if (!open) return null;
-  return <div className="fixed inset-0 z-[60] lg:hidden"><button aria-label="Close menu" onClick={onClose} className="absolute inset-0 bg-[#17223d]/40 backdrop-blur-sm" /><aside className="relative flex h-full w-[82%] max-w-[310px] flex-col bg-[#fbfcff] shadow-2xl dark:bg-[#10172b]"><div className="flex h-[78px] items-center justify-between border-b border-[#e5e8f0] px-6 dark:border-white/10"><Logo /><button onClick={onClose} className="rounded-lg p-2 text-[#7c87a4] hover:bg-[#eef2ff]"><X className="h-5 w-5" /></button></div><div className="flex-1 px-4 py-6"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>{[...navItems, ...utilityItems].map((item) => <div key={item.href} onClick={onClose}><SidebarLink item={item} active={item.href === "/" ? location === "/" : location.startsWith(item.href)} collapsed={false} /></div>)}</div><div className="border-t border-[#e5e8f0] p-5 dark:border-white/10"><div className="flex items-center gap-3"><Avatar /><div><p className="text-sm font-bold text-[#17223d] dark:text-white">Alex Morgan</p><p className="text-xs text-[#9aa4bc]">7 day learning streak</p></div></div></div></aside></div>;
+  return <div className="fixed inset-0 z-[60] lg:hidden"><button aria-label="Close menu" onClick={onClose} className="absolute inset-0 bg-[#17223d]/40 backdrop-blur-sm" /><aside className="relative flex h-full w-[82%] max-w-[310px] flex-col bg-[#fbfcff] shadow-2xl dark:bg-[#10172b]"><div className="flex h-[78px] items-center justify-between border-b border-[#e5e8f0] px-6 dark:border-white/10"><Logo /><button onClick={onClose} className="rounded-lg p-2 text-[#7c87a4] hover:bg-[#eef2ff]"><X className="h-5 w-5" /></button></div><div className="flex-1 px-4 py-6"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>{[...navItems, ...utilityItems].map((item) => <div key={item.href} onClick={onClose}><SidebarLink item={item} active={item.href === "/" ? location === "/" : location.startsWith(item.href)} collapsed={false} /></div>)}</div><div className="border-t border-[#e5e8f0] p-5 dark:border-white/10"><div className="flex items-center gap-3"><Avatar name={displayName} /><div><p className="text-sm font-bold text-[#17223d] dark:text-white truncate max-w-[180px]">{displayName}</p><p className="text-xs text-[#9aa4bc]">7 day learning streak</p></div></div></div></aside></div>;
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
@@ -295,17 +312,143 @@ function ProgressBar({ value, color = "#3157e8" }: { value: number; color?: stri
 
 function Dashboard() {
   const [showAll, setShowAll] = useState(false);
-  return <>
-    <div className="mb-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
-      <section className="relative min-h-[230px] overflow-hidden rounded-[24px] bg-[#17223d] p-6 text-white shadow-[0_18px_34px_rgba(23,34,61,0.16)] sm:p-8"><div className="absolute -right-20 -top-24 h-72 w-72 rounded-full border-[34px] border-[#3157e8]/20" /><div className="absolute right-28 -bottom-28 h-64 w-64 rounded-full border-[1px] border-white/10" /><div className="relative z-10 max-w-xl"><div className="mb-6 flex items-center gap-2 text-xs font-semibold text-white/50"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#3157e8] text-white"><Sparkles className="h-3.5 w-3.5" /></span> Sunday, September 14, 2025</div><h1 className="font-display text-[28px] font-bold leading-tight tracking-[-0.05em] sm:text-[35px]">Good morning, Alex<span className="text-[#ffca63]">.</span></h1><p className="mt-3 max-w-sm text-sm leading-6 text-white/60">You’re building momentum. One focused session today can keep your placement prep on track.</p><div className="mt-7 flex flex-wrap items-center gap-3"><Link href="/learn" className="button-primary"><Play className="h-3.5 w-3.5 fill-current" /> Resume learning</Link><Link href="/progress" className="button-ghost-dark">View progress <ArrowRight className="h-3.5 w-3.5" /></Link></div></div><div className="absolute bottom-7 right-8 hidden w-40 md:block"><div className="mb-2 flex items-end justify-between"><span className="text-xs font-semibold text-white/50">Weekly focus</span><span className="font-display text-2xl font-bold">4.2h</span></div><div className="flex h-10 items-end gap-1.5">{[45, 65, 32, 85, 58, 76, 25].map((h, i) => <span key={i} className={cx("flex-1 rounded-t-md", i === 6 ? "bg-[#ffca63]" : "bg-white/20")} style={{ height: `${h}%` }} />)}</div><div className="mt-2 flex justify-between text-[9px] text-white/35"><span>M</span><span>W</span><span>F</span><span>S</span></div></div></section>
-      <section className="card-surface flex flex-col justify-between p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-xs font-bold text-[#7c87a4]">Current focus</p><h2 className="mt-1 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">DSA Foundations</h2></div><span className="rounded-lg bg-[#eaf0ff] px-2 py-1 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">68% done</span></div><div className="mt-6"><div className="mb-3 flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#17223d] text-white"><Code2 className="h-5 w-5" /></span><div className="min-w-0"><p className="truncate text-sm font-bold text-[#17223d] dark:text-white">Sliding Window Patterns</p><p className="mt-0.5 text-xs text-[#9aa4bc]">Module 04 · Lesson 03</p></div></div><ProgressBar value={68} /><div className="mt-2 flex justify-between text-[10px] font-semibold text-[#9aa4bc]"><span>18 of 26 lessons</span><span>12 min left</span></div></div><Link href="/learn" className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#f1f4fb] py-3 text-xs font-bold text-[#3157e8] transition hover:bg-[#e6ebfb] dark:bg-white/5 dark:hover:bg-white/10">Continue lesson <ArrowRight className="h-3.5 w-3.5" /></Link></section>
-    </div>
-    <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4"><StatCard icon={BookOpen} value="04" label="Courses enrolled" trend="+1 this month" color="blue" /><StatCard icon={ClipboardCheck} value="18" label="Assignments submitted" trend="+4 this week" color="violet" /><StatCard icon={Code2} value="42" label="Problems solved" trend="+12% vs last week" color="amber" /><StatCard icon={Clock3} value="26h 40m" label="Total watch time" trend="+3h 20m" color="emerald" /></div>
-    <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)]">
-      <section><SectionTitle title="Continue your learning" link="Browse all" href="/my-courses" /><div className="grid gap-4 md:grid-cols-2"><CourseProgressCard course={courses[0]} /><CourseProgressCard course={courses[1]} /></div><div className="mt-8"><SectionTitle title="Activity timeline" link={showAll ? "Show less" : "View all activity"} href="#" /><div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10">{activity.slice(0, showAll ? 4 : 3).map((item, i) => <ActivityRow key={item.title} item={item} last={i === (showAll ? 3 : 2)} />)}<button onClick={() => setShowAll(!showAll)} className="flex w-full items-center justify-center gap-2 py-4 text-xs font-bold text-[#3157e8]">{showAll ? "Show less" : "Load older activity"}<ChevronDown className={cx("h-3.5 w-3.5 transition-transform", showAll && "rotate-180")} /></button></div></div></section>
-      <aside className="space-y-8"><UpcomingSessions /><AssignmentsWidget /></aside>
-    </div>
-  </>;
+  const { user } = useAuth();
+  const displayName = resolveDisplayName(user);
+  const firstName = resolveFirstName(user);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const todayFormatted = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return (
+    <>
+      <div className="mb-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
+        <section className="relative min-h-[230px] overflow-hidden rounded-[24px] bg-[#17223d] p-6 text-white shadow-[0_18px_34px_rgba(23,34,61,0.16)] sm:p-8">
+          <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full border-[34px] border-[#3157e8]/20" />
+          <div className="absolute right-28 -bottom-28 h-64 w-64 rounded-full border-[1px] border-white/10" />
+          <div className="relative z-10 max-w-xl">
+            <div className="mb-6 flex items-center gap-2 text-xs font-semibold text-white/50">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#3157e8] text-white">
+                <Sparkles className="h-3.5 w-3.5" />
+              </span>{" "}
+              {todayFormatted}
+            </div>
+            <h1 className="font-display text-[28px] font-bold leading-tight tracking-[-0.05em] sm:text-[35px]">
+              {greeting}, {firstName}<span className="text-[#ffca63]">.</span>
+            </h1>
+            <p className="mt-3 max-w-sm text-sm leading-6 text-white/60">
+              You’re building momentum. One focused session today can keep your placement prep on track.
+            </p>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <Link href="/learn" className="button-primary">
+                <Play className="h-3.5 w-3.5 fill-current" /> Resume learning
+              </Link>
+              <Link href="/progress" className="button-ghost-dark">
+                View progress <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+          <div className="absolute bottom-7 right-8 hidden w-40 md:block">
+            <div className="mb-2 flex items-end justify-between">
+              <span className="text-xs font-semibold text-white/50">Weekly focus</span>
+              <span className="font-display text-2xl font-bold">4.2h</span>
+            </div>
+            <div className="flex h-10 items-end gap-1.5">
+              {[45, 65, 32, 85, 58, 76, 25].map((h, i) => (
+                <span
+                  key={i}
+                  className={cx("flex-1 rounded-t-md", i === 6 ? "bg-[#ffca63]" : "bg-white/20")}
+                  style={{ height: `${h}%` }}
+                />
+              ))}
+            </div>
+            <div className="mt-2 flex justify-between text-[9px] text-white/35">
+              <span>M</span>
+              <span>W</span>
+              <span>F</span>
+              <span>S</span>
+            </div>
+          </div>
+        </section>
+        <section className="card-surface flex flex-col justify-between p-5 sm:p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold text-[#7c87a4]">Current focus</p>
+              <h2 className="mt-1 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">
+                DSA Foundations
+              </h2>
+            </div>
+            <span className="rounded-lg bg-[#eaf0ff] px-2 py-1 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">
+              68% done
+            </span>
+          </div>
+          <div className="mt-6">
+            <div className="mb-3 flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#17223d] text-white">
+                <Code2 className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
+                  Sliding Window Patterns
+                </p>
+                <p className="mt-0.5 text-xs text-[#9aa4bc]">Module 04 · Lesson 03</p>
+              </div>
+            </div>
+            <ProgressBar value={68} />
+            <div className="mt-2 flex justify-between text-[10px] font-semibold text-[#9aa4bc]">
+              <span>18 of 26 lessons</span>
+              <span>12 min left</span>
+            </div>
+          </div>
+          <Link
+            href="/learn"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#f1f4fb] py-3 text-xs font-bold text-[#3157e8] transition hover:bg-[#e6ebfb] dark:bg-white/5 dark:hover:bg-white/10"
+          >
+            Continue lesson <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </section>
+      </div>
+      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <StatCard icon={BookOpen} value="04" label="Courses enrolled" trend="+1 this month" color="blue" />
+        <StatCard icon={ClipboardCheck} value="18" label="Assignments submitted" trend="+4 this week" color="violet" />
+        <StatCard icon={Code2} value="42" label="Problems solved" trend="+12% vs last week" color="amber" />
+        <StatCard icon={Clock3} value="26h 40m" label="Total watch time" trend="+3h 20m" color="emerald" />
+      </div>
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)]">
+        <section>
+          <SectionTitle title="Continue your learning" link="Browse all" href="/my-courses" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <CourseProgressCard course={courses[0]} />
+            <CourseProgressCard course={courses[1]} />
+          </div>
+          <div className="mt-8">
+            <SectionTitle title="Activity timeline" link={showAll ? "Show less" : "View all activity"} href="#" />
+            <div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10">
+              {activity.slice(0, showAll ? 4 : 3).map((item, i) => (
+                <ActivityRow key={item.title} item={item} last={i === (showAll ? 3 : 2)} />
+              ))}
+              <button
+                onClick={() => setShowAll(!showAll)}
+                className="flex w-full items-center justify-center gap-2 py-4 text-xs font-bold text-[#3157e8]"
+              >
+                {showAll ? "Show less" : "Load older activity"}
+                <ChevronDown className={cx("h-3.5 w-3.5 transition-transform", showAll && "rotate-180")} />
+              </button>
+            </div>
+          </div>
+        </section>
+        <aside className="space-y-8">
+          <UpcomingSessions />
+          <AssignmentsWidget />
+        </aside>
+      </div>
+    </>
+  );
 }
 
 function CourseProgressCard({ course }: { course: typeof courses[number] }) {
@@ -353,12 +496,194 @@ function Reminder({ icon: Icon, title, meta, color }: { icon: LucideIcon; title:
 
 function CommunityPage() { const [liked, setLiked] = useState<string[]>([]); const submissions = [{ name: "Nisha Verma", initials: "NV", problem: "Merge Intervals", language: "Python", time: "18 min ago", likes: 24, code: "intervals.sort(key=lambda x: x[0])" }, { name: "Kabir Rao", initials: "KR", problem: "Valid Parentheses", language: "JavaScript", time: "2 hours ago", likes: 18, code: "const stack = []; for (const char of s)" }, { name: "Ishita Sen", initials: "IS", problem: "Two Sum", language: "Java", time: "Yesterday", likes: 31, code: "Map<Integer, Integer> seen = new HashMap<>();" }]; return <><PageHeader eyebrow="Learn together" title="Community solutions" description="See how other learners think, explain, and improve their approach." action={<button onClick={() => toast.info("Use Practice to publish a solution")} className="button-primary"><Plus className="h-4 w-4" /> Share solution</button>} /><div className="mb-6 flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa4bc]" /><input placeholder="Search problem or learner" className="h-11 w-full rounded-xl border border-[#e5e8f0] bg-white pl-9 pr-3 text-sm outline-none focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white" /></div><button className="button-secondary"><Code2 className="h-4 w-4" /> Filter by topic <ChevronDown className="h-3.5 w-3.5" /></button></div><div className="space-y-4">{submissions.map(item => <article key={item.name} className="card-surface p-5 sm:p-6"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eaf0ff] text-xs font-bold text-[#3157e8]">{item.initials}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-bold text-[#17223d] dark:text-white">{item.name}</span><span className="text-xs text-[#9aa4bc]">shared a solution</span><span className="text-[10px] text-[#b0b8c8]">· {item.time}</span></div><div className="mt-3 flex flex-wrap items-center gap-2"><h2 className="font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">{item.problem}</h2><span className="rounded-md bg-[#f0eaff] px-2 py-1 text-[10px] font-bold text-[#7f5af0]">{item.language}</span></div><div className="mt-4 rounded-xl bg-[#17223d] p-4 font-mono text-xs leading-6 text-white/75"><p><span className="text-[#ffca63]">// clean approach</span></p><p>{item.code}</p><p><span className="text-[#7ed8ac]">return</span> result</p></div><div className="mt-4 flex items-center gap-5"><button onClick={() => setLiked(liked.includes(item.name) ? liked.filter(n => n !== item.name) : [...liked, item.name])} className={cx("flex items-center gap-1.5 text-xs font-bold", liked.includes(item.name) ? "text-[#3157e8]" : "text-[#9aa4bc]")}><ThumbsUp className={cx("h-4 w-4", liked.includes(item.name) && "fill-current")} /> {item.likes + (liked.includes(item.name) ? 1 : 0)}</button><button onClick={() => toast.info("Comment thread opened")} className="flex items-center gap-1.5 text-xs font-bold text-[#9aa4bc]"><MessageCircle className="h-4 w-4" /> Discuss</button><button onClick={() => toast.success("Code copied")} className="ml-auto flex items-center gap-1.5 text-xs font-bold text-[#9aa4bc]"><Copy className="h-4 w-4" /> Copy code</button></div></div></div></article>)}</div></>; }
 
-function NotificationsPage() { const [read, setRead] = useState<string[]>([]); const notifications = [{ id: "1", title: "Maya shared a new clinic recording", body: "Sliding Window Patterns · 42 min", time: "12 min ago", icon: Video, color: "blue" }, { id: "2", title: "Assignment deadline tomorrow", body: "Arrays checkpoint · DSA Foundations", time: "3 hours ago", icon: AlarmClock, color: "amber" }, { id: "3", title: "Your submission was reviewed", body: "Nice work on the edge cases, Alex.", time: "Yesterday", icon: CheckCircle2, color: "emerald" }, { id: "4", title: "You moved up in the cohort", body: "You’re now in the top 20% for weekly activity.", time: "Yesterday", icon: Trophy, color: "violet" }]; return <><PageHeader eyebrow="Stay on top" title="Notifications" description="A single place for new lessons, feedback, and important dates." action={<button onClick={() => setRead(notifications.map(n => n.id))} className="button-secondary"><Check className="h-4 w-4" /> Mark all as read</button>} /><div className="card-surface overflow-hidden">{notifications.map(item => { const Icon = item.icon; const isRead = read.includes(item.id); return <div key={item.id} className={cx("flex gap-4 border-b border-[#edf0f6] p-5 last:border-0 dark:border-white/10", !isRead && "bg-[#fbfcff] dark:bg-white/[0.02]")}><span className={cx("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", item.color === "blue" ? "bg-[#eaf0ff] text-[#3157e8]" : item.color === "amber" ? "bg-[#fff4db] text-[#d68c20]" : item.color === "emerald" ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-[#f0eaff] text-[#7f5af0]")}><Icon className="h-[18px] w-[18px]" /></span><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-3"><div><p className={cx("text-sm", isRead ? "font-semibold text-[#7c87a4]" : "font-bold text-[#17223d] dark:text-white")}>{item.title}</p><p className="mt-1 text-xs text-[#9aa4bc]">{item.body}</p></div><span className="shrink-0 text-[10px] text-[#aab3c5]">{item.time}</span></div>{!isRead && <button onClick={() => setRead([...read, item.id])} className="mt-3 text-[10px] font-bold text-[#3157e8]">Mark as read</button>}</div></div> })}</div></>; }
+function NotificationsPage() {
+  const [read, setRead] = useState<string[]>([]);
+  const { user } = useAuth();
+  const displayName = resolveDisplayName(user);
+  const firstName = resolveFirstName(user);
+  const notifications = [
+    { id: "1", title: "Maya shared a new clinic recording", body: "Sliding Window Patterns · 42 min", time: "12 min ago", icon: Video, color: "blue" },
+    { id: "2", title: "Assignment deadline tomorrow", body: "Arrays checkpoint · DSA Foundations", time: "3 hours ago", icon: AlarmClock, color: "amber" },
+    { id: "3", title: "Your submission was reviewed", body: `Nice work on the edge cases, ${firstName}.`, time: "Yesterday", icon: CheckCircle2, color: "emerald" },
+    { id: "4", title: "You moved up in the cohort", body: "You’re now in the top 20% for weekly activity.", time: "Yesterday", icon: Trophy, color: "violet" },
+  ];
+  return (
+    <>
+      <PageHeader
+        eyebrow="Stay on top"
+        title="Notifications"
+        description="A single place for new lessons, feedback, and important dates."
+        action={
+          <button onClick={() => setRead(notifications.map((n) => n.id))} className="button-secondary">
+            <Check className="h-4 w-4" /> Mark all as read
+          </button>
+        }
+      />
+      <div className="card-surface overflow-hidden">
+        {notifications.map((item) => {
+          const Icon = item.icon;
+          const isRead = read.includes(item.id);
+          return (
+            <div
+              key={item.id}
+              className={cx(
+                "flex gap-4 border-b border-[#edf0f6] p-5 last:border-0 dark:border-white/10",
+                !isRead && "bg-[#fbfcff] dark:bg-white/[0.02]"
+              )}
+            >
+              <span
+                className={cx(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                  item.color === "blue"
+                    ? "bg-[#eaf0ff] text-[#3157e8]"
+                    : item.color === "amber"
+                    ? "bg-[#fff4db] text-[#d68c20]"
+                    : item.color === "emerald"
+                    ? "bg-[#e4f8ee] text-[#23a26d]"
+                    : "bg-[#f0eaff] text-[#7f5af0]"
+                )}
+              >
+                <Icon className="h-[18px] w-[18px]" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className={cx("text-sm", isRead ? "font-semibold text-[#7c87a4]" : "font-bold text-[#17223d] dark:text-white")}>
+                      {item.title}
+                    </p>
+                    <p className="mt-1 text-xs text-[#9aa4bc]">{item.body}</p>
+                  </div>
+                  <span className="shrink-0 text-[10px] text-[#aab3c5]">{item.time}</span>
+                </div>
+                {!isRead && (
+                  <button onClick={() => setRead([...read, item.id])} className="mt-3 text-[10px] font-bold text-[#3157e8]">
+                    Mark as read
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
 
 function AssignmentsPage() { const [submitted, setSubmitted] = useState(false); return <><PageHeader eyebrow="Show your work" title="Assignments" description="Turn your practice into proof with thoughtful submissions and mentor feedback." /><div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"><section className="card-surface p-5 sm:p-7"><div className="flex items-start gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fff0ed] text-[#ef8354]"><ClipboardCheck className="h-5 w-5" /></span><div><span className="rounded-md bg-[#fff0ed] px-2 py-1 text-[10px] font-bold text-[#ef8354]">Due tomorrow</span><h2 className="mt-3 font-display text-2xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white">Arrays checkpoint</h2><p className="mt-1 text-xs text-[#9aa4bc]">DSA Foundations · Module 02</p></div></div><div className="mt-7 rounded-xl bg-[#f7f9fc] p-5 dark:bg-white/5"><p className="text-sm font-bold text-[#17223d] dark:text-white">Instructions</p><p className="mt-2 text-sm leading-6 text-[#7c87a4]">Choose two array problems from this module and explain your approach, complexity, and one edge case you intentionally handled. Include code that another learner could review.</p></div><label className="mt-6 block text-xs font-bold text-[#52617f] dark:text-white/80">Your submission</label><textarea placeholder="Paste your explanation or solution here..." className="mt-2 min-h-[150px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white" /><div className="mt-4 grid gap-3 sm:grid-cols-2"><button onClick={() => toast.info("File upload opened")} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#cbd4e5] py-4 text-xs font-bold text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"><Plus className="h-4 w-4" /> Attach a file</button><button onClick={() => toast.info("GitHub link field ready")} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#cbd4e5] py-4 text-xs font-bold text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"><Github className="h-4 w-4" /> Add GitHub link</button></div><div className="mt-6 flex justify-end"><button onClick={() => { setSubmitted(true); toast.success("Assignment submitted for review"); }} className="button-primary"><Send className="h-4 w-4" /> {submitted ? "Submitted" : "Submit assignment"}</button></div></section><aside className="space-y-5"><div className="card-surface p-5"><p className="text-xs font-bold text-[#7c87a4]">Submission history</p><div className="mt-4 space-y-4"><div className="flex items-start gap-3"><span className="mt-0.5 h-2 w-2 rounded-full bg-[#23a26d]" /><div><p className="text-xs font-bold text-[#17223d] dark:text-white">Placement reflection</p><p className="mt-1 text-[10px] text-[#9aa4bc]">Reviewed · Sep 08, 2025</p></div></div><div className="flex items-start gap-3"><span className="mt-0.5 h-2 w-2 rounded-full bg-[#ffca63]" /><div><p className="text-xs font-bold text-[#17223d] dark:text-white">Portfolio review</p><p className="mt-1 text-[10px] text-[#9aa4bc]">Pending · Sep 04, 2025</p></div></div></div></div><div className="rounded-2xl bg-[#eaf0ff] p-5 dark:bg-[#3157e8]/20"><Headphones className="h-5 w-5 text-[#3157e8]" /><p className="mt-4 text-sm font-bold text-[#17223d] dark:text-white">Need a second pair of eyes?</p><p className="mt-2 text-xs leading-5 text-[#5f6c8c] dark:text-white/65">Ask your cohort in Community or bring the question to your next clinic.</p><Link href="/community" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#3157e8]">Open community <ArrowRight className="h-3.5 w-3.5" /></Link></div></aside></div></>; }
 
-function ProfilePage() { const { theme, toggleTheme } = useTheme(); const { logout } = useAuth(); return <><PageHeader eyebrow="Your account" title="Profile & settings" description="Keep your learning space personal, focused, and notification-light." action={<button onClick={() => toast.success("Profile changes saved")} className="button-primary"><Check className="h-4 w-4" /> Save changes</button>} /><div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]"><aside className="card-surface h-fit p-5"><div className="flex flex-col items-center text-center"><Avatar size="lg" /><h2 className="mt-4 font-display text-lg font-bold text-[#17223d] dark:text-white">Alex Morgan</h2><p className="mt-1 text-xs text-[#9aa4bc]">alex.morgan@example.com</p><span className="mt-3 rounded-full bg-[#e4f8ee] px-3 py-1 text-[10px] font-bold text-[#23a26d]">Active learner</span></div><div className="mt-6 grid grid-cols-3 divide-x divide-[#edf0f6] dark:divide-white/10"><div className="text-center"><p className="font-display text-lg font-bold text-[#17223d] dark:text-white">04</p><p className="mt-1 text-[9px] text-[#9aa4bc]">Courses</p></div><div className="text-center"><p className="font-display text-lg font-bold text-[#17223d] dark:text-white">42</p><p className="mt-1 text-[9px] text-[#9aa4bc]">Solved</p></div><div className="text-center"><p className="font-display text-lg font-bold text-[#17223d] dark:text-white">07</p><p className="mt-1 text-[9px] text-[#9aa4bc]">Streak</p></div></div><button onClick={() => { logout(); toast.success("Signed out successfully"); }} className="mt-5 w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/20">Sign out</button></aside><section className="space-y-5"><div className="card-surface p-5 sm:p-6"><h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">Profile information</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><Field label="First name" value="Alex" /><Field label="Last name" value="Morgan" /><Field label="Email address" value="alex.morgan@example.com" /><Field label="Current role" value="Computer science student" /></div></div><div className="card-surface p-5 sm:p-6"><h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">Preferences</h2><div className="mt-4 divide-y divide-[#edf0f6] dark:divide-white/10"><PreferenceRow icon={theme === "light" ? Sun : Moon} title="Appearance" description={`Use ${theme} mode across your learning space`} control={<button onClick={toggleTheme} className="rounded-lg bg-[#eef2ff] px-3 py-2 text-xs font-bold text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white">{theme === "light" ? "Light" : "Dark"}</button>} /><PreferenceRow icon={Bell} title="Learning reminders" description="A gentle nudge when it’s time to practice" control={<span className="h-5 w-9 rounded-full bg-[#3157e8] p-1"><span className="ml-4 block h-3 w-3 rounded-full bg-white" /></span>} /><PreferenceRow icon={MessageCircle} title="Community updates" description="Replies, likes, and cohort conversations" control={<span className="h-5 w-9 rounded-full bg-[#3157e8] p-1"><span className="ml-4 block h-3 w-3 rounded-full bg-white" /></span>} /></div></div></section></div></>; }
-function Field({ label, value }: { label: string; value: string }) { return <label><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9aa4bc]">{label}</span><input defaultValue={value} className="mt-2 h-11 w-full rounded-xl border border-[#e5e8f0] bg-white px-3 text-sm font-semibold text-[#17223d] outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white" /></label>; }
+function ProfilePage() {
+  const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
+  const displayName = resolveDisplayName(user);
+  const email = user?.email || "learner@example.com";
+  const nameParts = displayName.trim().split(/\s+/);
+  const firstName = resolveFirstName(user);
+  const lastName = nameParts.slice(1).join(" ") || "";
+  const roleDisplay = user?.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()) : "Student";
+  const educationStatus = user?.onboarding?.educationStatus || "Computer science student";
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Your account"
+        title="Profile & settings"
+        description="Keep your learning space personal, focused, and notification-light."
+        action={
+          <button onClick={() => toast.success("Profile changes saved")} className="button-primary">
+            <Check className="h-4 w-4" /> Save changes
+          </button>
+        }
+      />
+      <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <aside className="card-surface h-fit p-5">
+          <div className="flex flex-col items-center text-center">
+            <Avatar size="lg" name={displayName} />
+            <h2 className="mt-4 font-display text-lg font-bold text-[#17223d] dark:text-white truncate max-w-[200px]">
+              {displayName}
+            </h2>
+            <p className="mt-1 text-xs text-[#9aa4bc] truncate max-w-[200px]">{email}</p>
+            <span className="mt-3 rounded-full bg-[#e4f8ee] px-3 py-1 text-[10px] font-bold text-[#23a26d]">
+              Active {roleDisplay.toLowerCase()}
+            </span>
+          </div>
+          <div className="mt-6 grid grid-cols-3 divide-x divide-[#edf0f6] dark:divide-white/10">
+            <div className="text-center">
+              <p className="font-display text-lg font-bold text-[#17223d] dark:text-white">04</p>
+              <p className="mt-1 text-[9px] text-[#9aa4bc]">Courses</p>
+            </div>
+            <div className="text-center">
+              <p className="font-display text-lg font-bold text-[#17223d] dark:text-white">42</p>
+              <p className="mt-1 text-[9px] text-[#9aa4bc]">Solved</p>
+            </div>
+            <div className="text-center">
+              <p className="font-display text-lg font-bold text-[#17223d] dark:text-white">07</p>
+              <p className="mt-1 text-[9px] text-[#9aa4bc]">Streak</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              logout();
+              toast.success("Signed out successfully");
+            }}
+            className="mt-5 w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/20"
+          >
+            Sign out
+          </button>
+        </aside>
+        <section className="space-y-5">
+          <div className="card-surface p-5 sm:p-6">
+            <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">Profile information</h2>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <Field label="First name" value={firstName} />
+              <Field label="Last name" value={lastName} />
+              <Field label="Email address" value={email} />
+              <Field label="Current role / Education" value={educationStatus} />
+            </div>
+          </div>
+          <div className="card-surface p-5 sm:p-6">
+            <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">Preferences</h2>
+            <div className="mt-4 divide-y divide-[#edf0f6] dark:divide-white/10">
+              <PreferenceRow
+                icon={theme === "light" ? Sun : Moon}
+                title="Appearance"
+                description={`Use ${theme} mode across your learning space`}
+                control={
+                  <button
+                    onClick={toggleTheme}
+                    className="rounded-lg bg-[#eef2ff] px-3 py-2 text-xs font-bold text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white"
+                  >
+                    {theme === "light" ? "Light" : "Dark"}
+                  </button>
+                }
+              />
+              <PreferenceRow
+                icon={Bell}
+                title="Learning reminders"
+                description="A gentle nudge when it’s time to practice"
+                control={
+                  <span className="h-5 w-9 rounded-full bg-[#3157e8] p-1">
+                    <span className="ml-4 block h-3 w-3 rounded-full bg-white" />
+                  </span>
+                }
+              />
+              <PreferenceRow
+                icon={MessageCircle}
+                title="Community updates"
+                description="Replies, likes, and cohort conversations"
+                control={
+                  <span className="h-5 w-9 rounded-full bg-[#3157e8] p-1">
+                    <span className="ml-4 block h-3 w-3 rounded-full bg-white" />
+                  </span>
+                }
+              />
+            </div>
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
+function Field({ label, value }: { label: string; value: string }) { return <label><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#9aa4bc]">{label}</span><input defaultValue={value} key={value} className="mt-2 h-11 w-full rounded-xl border border-[#e5e8f0] bg-white px-3 text-sm font-semibold text-[#17223d] outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white" /></label>; }
 function PreferenceRow({ icon: Icon, title, description, control }: { icon: LucideIcon; title: string; description: string; control: React.ReactNode }) { return <div className="flex items-center gap-3 py-4"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f1f3f8] text-[#7c87a4] dark:bg-white/10"><Icon className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="text-sm font-bold text-[#17223d] dark:text-white">{title}</p><p className="mt-1 text-xs text-[#9aa4bc]">{description}</p></div>{control}</div>; }
 
 function FeedbackPage() { const [rating, setRating] = useState(0); return <><PageHeader eyebrow="Help us teach better" title="Feedback & reviews" description="Your honest notes help us make the course more useful for the next learner." /><div className="mx-auto max-w-2xl card-surface p-6 sm:p-8"><div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fff4db] text-[#d68c20]"><Star className="h-5 w-5" /></span><div><p className="text-xs text-[#9aa4bc]">Reviewing</p><p className="text-sm font-bold text-[#17223d] dark:text-white">DSA Foundations</p></div></div><div className="mt-8"><label className="text-xs font-bold text-[#52617f] dark:text-white/80">How would you rate the course?</label><div className="mt-3 flex gap-2">{[1, 2, 3, 4, 5].map(value => <button key={value} onClick={() => setRating(value)} className={cx("rounded-lg p-2 transition", value <= rating ? "text-[#ffb629]" : "text-[#c4cada]")}><Star className={cx("h-7 w-7", value <= rating && "fill-current")} /></button>)}</div></div><label className="mt-7 block text-xs font-bold text-[#52617f] dark:text-white/80">What’s one thing we should keep or improve?</label><textarea placeholder="Tell us about the teaching, content, or platform experience..." className="mt-2 min-h-[150px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white" /><button onClick={() => toast.success("Thanks — your feedback was shared with the team")} className="mt-5 w-full button-primary"><Send className="h-4 w-4" /> Submit feedback</button></div></>; }

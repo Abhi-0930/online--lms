@@ -8,7 +8,7 @@ import { sendPasswordResetOtpEmail, sendWelcomeEmail } from '../../utils/email';
 export class AuthService {
   constructor(private prisma: PrismaClient) {}
 
-  private static fallbackUsers = new Map<string, any>();
+  public static fallbackUsers = new Map<string, any>();
 
   private async findUser(email: string, googleId?: string): Promise<any | null> {
     const normalizedEmail = email.toLowerCase().trim();
@@ -101,6 +101,8 @@ export class AuthService {
       name: user.fullName,
     }).catch((err) => logger.error({ err }, 'Failed sending welcome email in background'));
 
+    const sessionToken = uuidv4();
+
     return {
       user: {
         id: user.id,
@@ -108,6 +110,7 @@ export class AuthService {
         name: user.fullName,
         role: user.role,
       },
+      sessionToken,
     };
   }
 
