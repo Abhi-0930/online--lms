@@ -12,8 +12,10 @@ import {
   Megaphone,
   Check,
   ArrowRight,
+  ArrowLeft,
   X,
   Search,
+  ChevronDown,
 } from "lucide-react";
 
 export interface ContentTypeOption {
@@ -24,6 +26,13 @@ export interface ContentTypeOption {
   icon: React.ElementType;
   iconBg: string;
   iconColor: string;
+}
+
+export interface CreatedContentPayload {
+  title: string;
+  type: string;
+  parent: string;
+  description: string;
 }
 
 const CONTENT_TYPES: ContentTypeOption[] = [
@@ -110,6 +119,15 @@ const CONTENT_TYPES: ContentTypeOption[] = [
   },
 ];
 
+const DEFAULT_COURSES = [
+  "DSA Mastery",
+  "Fullstack Next.js & GraphQL Masterclass",
+  "DSA Placement Program",
+  "System Design",
+  "Python for Problem Solving",
+  "Placement Prep",
+];
+
 const RECENT_ITEMS = [
   {
     id: "rec_1",
@@ -131,11 +149,39 @@ const RECENT_ITEMS = [
   },
 ];
 
+function getTitlePlaceholder(typeId: string): string {
+  switch (typeId) {
+    case "module":
+      return "e.g. Arrays";
+    case "lesson":
+      return "e.g. Binary Search Deep Dive";
+    case "notes_pdf":
+      return "e.g. Recursion & Backtracking Worksheet";
+    case "practice_problem":
+      return "e.g. Two Sum & Sliding Window";
+    case "assignment":
+      return "e.g. Build an E-commerce API";
+    case "assessment":
+      return "e.g. Graph Algorithms Screen";
+    case "resource":
+      return "e.g. Resume Template · FAANG Ready";
+    case "announcement":
+      return "e.g. Weekly Live Q&A Session";
+    default:
+      return "e.g. Arrays";
+  }
+}
+
 interface AddContentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onContinue: (selectedType: string, typeInfo: ContentTypeOption) => void;
+  onContinue: (
+    selectedType: string,
+    typeInfo: ContentTypeOption,
+    details?: CreatedContentPayload
+  ) => void;
   onOpenCourseBuilder?: () => void;
+  availableCourses?: string[];
 }
 
 export default function AddContentModal({
@@ -143,9 +189,17 @@ export default function AddContentModal({
   onClose,
   onContinue,
   onOpenCourseBuilder,
+  availableCourses = DEFAULT_COURSES,
 }: AddContentModalProps) {
-  const [selectedType, setSelectedType] = useState<string>("resource");
+  const [step, setStep] = useState<"select_type" | "create_form">("select_type");
+  const [selectedType, setSelectedType] = useState<string>("module");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Step 2 Form States
+  const [formTitle, setFormTitle] = useState("");
+  const [formContentType, setFormContentType] = useState<string>("module");
+  const [formAttachTo, setFormAttachTo] = useState<string>(availableCourses[0] || "DSA Mastery");
+  const [formDescription, setFormDescription] = useState("");
 
   const filteredTypes = useMemo(() => {
     if (!searchQuery.trim()) return CONTENT_TYPES;
@@ -158,22 +212,54 @@ export default function AddContentModal({
     );
   }, [searchQuery]);
 
+  const currentTypeOption = useMemo(() => {
+    return (
+      CONTENT_TYPES.find((t) => t.id === (step === "create_form" ? formContentType : selectedType)) ||
+      CONTENT_TYPES[0]
+    );
+  }, [selectedType, formContentType, step]);
+
   if (!isOpen) return null;
 
-  const handleContinue = () => {
+  const handleClose = () => {
+    setStep("select_type");
+    setFormTitle("");
+    setFormDescription("");
+    onClose();
+  };
+
+  const handleProceedToForm = () => {
     const option = CONTENT_TYPES.find((t) => t.id === selectedType) || CONTENT_TYPES[0];
     if (selectedType === "course" && onOpenCourseBuilder) {
-      onClose();
+      handleClose();
       onOpenCourseBuilder();
       return;
     }
-    onContinue(selectedType, option);
+    setFormContentType(selectedType);
+    setFormTitle("");
+    setFormDescription("");
+    setStep("create_form");
+  };
+
+  const handleFinalSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const typeOption = CONTENT_TYPES.find((t) => t.id === formContentType) || currentTypeOption;
+    const finalTitle = formTitle.trim() || `${typeOption.title} - ${formAttachTo}`;
+
+    onContinue(formContentType, typeOption, {
+      title: finalTitle,
+      type: typeOption.title,
+      parent: formAttachTo,
+      description: formDescription.trim(),
+    });
+
+    handleClose();
   };
 
   return (
     <div
       className="fixed inset-0 z-50 overflow-hidden bg-slate-900/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10">
         <div
@@ -187,14 +273,16 @@ export default function AddContentModal({
                 Content Workspace
               </div>
               <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                Add Content
+                {step === "create_form" ? `Create ${currentTypeOption.title}` : "Add Content"}
               </h2>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Select the type of content you want to create.
+                {step === "create_form"
+                  ? "Add the details and publish when you are ready."
+                  : "Select the type of content you want to create."}
               </p>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="grid h-8 w-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-slate-200 transition-colors"
               aria-label="Close drawer"
             >
@@ -202,162 +290,284 @@ export default function AddContentModal({
             </button>
           </div>
 
-        {/* Search Bar */}
-        <div className="px-6 pt-4 pb-2 shrink-0">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search content type"
-              className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.03] pl-10 pr-9 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
+          {/* Step 1: Choose Content Type */}
+          {step === "select_type" && (
+            <>
+              {/* Search Bar */}
+              <div className="px-6 pt-4 pb-2 shrink-0">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search content type"
+                    className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.03] pl-10 pr-9 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
 
-        {/* Scrollable Content Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-3 space-y-5">
-          {/* Section: Choose a content type */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                Choose a content type
-              </h3>
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-                {filteredTypes.length} types
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3.5">
-              Start with a lightweight workflow. You can add learning assets later.
-            </p>
+              {/* Scrollable Content Body */}
+              <div className="flex-1 overflow-y-auto px-6 py-3 space-y-5">
+                {/* Section: Choose a content type */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                      Choose a content type
+                    </h3>
+                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                      {filteredTypes.length} types
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3.5">
+                    Start with a lightweight workflow. You can add learning assets later.
+                  </p>
 
-            {/* Grid of 9 types */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {filteredTypes.map((type) => {
-                const isSelected = selectedType === type.id;
-                const Icon = type.icon;
-                return (
-                  <button
-                    key={type.id}
-                    type="button"
-                    onClick={() => setSelectedType(type.id)}
-                    className={cn(
-                      "group relative flex flex-col justify-between p-4 rounded-2xl text-left transition-all",
-                      isSelected
-                        ? "border-2 border-indigo-600 bg-indigo-50/30 dark:border-indigo-500 dark:bg-indigo-950/20 shadow-sm"
-                        : "border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/[0.02] hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50/50 dark:hover:bg-white/[0.04]"
-                    )}
-                  >
-                    {isSelected && (
-                      <div className="absolute top-3.5 right-3.5 h-5 w-5 rounded-full bg-indigo-600 dark:bg-indigo-500 grid place-items-center text-white shadow-sm animate-in zoom-in-75 duration-150">
-                        <Check className="h-3 w-3 stroke-[3]" />
-                      </div>
-                    )}
-
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <div
+                  {/* Grid of 9 types */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {filteredTypes.map((type) => {
+                      const isSelected = selectedType === type.id;
+                      const Icon = type.icon;
+                      return (
+                        <button
+                          key={type.id}
+                          type="button"
+                          onClick={() => setSelectedType(type.id)}
                           className={cn(
-                            "grid h-9 w-9 shrink-0 place-items-center rounded-xl",
-                            type.iconBg,
-                            type.iconColor
+                            "group relative flex flex-col justify-between p-4 rounded-2xl text-left transition-all",
+                            isSelected
+                              ? "border-2 border-indigo-600 bg-indigo-50/30 dark:border-indigo-500 dark:bg-indigo-950/20 shadow-sm"
+                              : "border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/[0.02] hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50/50 dark:hover:bg-white/[0.04]"
                           )}
                         >
-                          <Icon className="h-4 w-4" />
+                          {isSelected && (
+                            <div className="absolute top-3.5 right-3.5 h-5 w-5 rounded-full bg-indigo-600 dark:bg-indigo-500 grid place-items-center text-white shadow-sm animate-in zoom-in-75 duration-150">
+                              <Check className="h-3 w-3 stroke-[3]" />
+                            </div>
+                          )}
+
+                          <div>
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={cn(
+                                  "grid h-9 w-9 shrink-0 place-items-center rounded-xl",
+                                  type.iconBg,
+                                  type.iconColor
+                                )}
+                              >
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                                {type.title}
+                              </h4>
+                            </div>
+
+                            <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                              {type.description}
+                            </p>
+                          </div>
+
+                          <p className="mt-3 text-[10px] font-medium text-slate-400 dark:text-slate-500 truncate">
+                            {type.tags}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {filteredTypes.length === 0 && (
+                    <div className="py-8 text-center text-xs text-slate-400">
+                      No content types matching &ldquo;{searchQuery}&rdquo;
+                    </div>
+                  )}
+                </div>
+
+                {/* Section: Recently created */}
+                <div className="pt-2">
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white mb-2.5">
+                    Recently created
+                  </h3>
+                  <div className="space-y-2">
+                    {RECENT_ITEMS.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.01] hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={cn(
+                              "grid h-8 w-8 shrink-0 place-items-center rounded-xl",
+                              item.iconBg,
+                              item.iconColor
+                            )}
+                          >
+                            <item.icon className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 dark:text-white">
+                              {item.title}
+                            </p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                              {item.detail}
+                            </p>
+                          </div>
                         </div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                          {type.title}
-                        </h4>
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40">
+                          {item.status}
+                        </span>
                       </div>
-
-                      <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-                        {type.description}
-                      </p>
-                    </div>
-
-                    <p className="mt-3 text-[10px] font-medium text-slate-400 dark:text-slate-500 truncate">
-                      {type.tags}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-
-            {filteredTypes.length === 0 && (
-              <div className="py-8 text-center text-xs text-slate-400">
-                No content types matching &ldquo;{searchQuery}&rdquo;
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Section: Recently created */}
-          <div className="pt-2">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-white mb-2.5">
-              Recently created
-            </h3>
-            <div className="space-y-2">
-              {RECENT_ITEMS.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.01] hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors"
+              {/* Footer Actions */}
+              <div className="flex items-center justify-between border-t border-slate-100 dark:border-white/5 px-6 py-4 bg-slate-50/50 dark:bg-white/[0.02] shrink-0">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="rounded-xl border border-slate-200/90 dark:border-white/10 px-5 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "grid h-8 w-8 shrink-0 place-items-center rounded-xl",
-                        item.iconBg,
-                        item.iconColor
-                      )}
-                    >
-                      <item.icon className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">
-                        {item.title}
-                      </p>
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                        {item.detail}
-                      </p>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleProceedToForm}
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-6 py-2 text-xs font-bold text-white transition-all shadow-sm active:scale-95"
+                >
+                  <span>Continue</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Step 2: Create Details Form */}
+          {step === "create_form" && (
+            <form onSubmit={handleFinalSubmit} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+                {/* Back to content types selector */}
+                <button
+                  type="button"
+                  onClick={() => setStep("select_type")}
+                  className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <span>Change content type</span>
+                </button>
+
+                {/* Title Input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                    {currentTypeOption.title} title
+                  </label>
+                  <input
+                    type="text"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    placeholder={getTitlePlaceholder(formContentType)}
+                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] px-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Two Column Row: Content type & Attach to */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Content type Dropdown */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                      Content type
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={formContentType}
+                        onChange={(e) => setFormContentType(e.target.value)}
+                        className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] px-4 py-2.5 pr-9 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
+                      >
+                        {CONTENT_TYPES.filter((t) => t.id !== "course").map((t) => (
+                          <option
+                            key={t.id}
+                            value={t.id}
+                            className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white"
+                          >
+                            {t.title}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40">
-                    {item.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-between border-t border-slate-100 dark:border-white/5 px-6 py-4 bg-slate-50/50 dark:bg-white/[0.02] shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-200/90 dark:border-white/10 px-5 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleContinue}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-6 py-2 text-xs font-bold text-white transition-all shadow-sm active:scale-95"
-          >
-            <span>Continue</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </button>
+                  {/* Attach to Dropdown */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                      Attach to
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={formAttachTo}
+                        onChange={(e) => setFormAttachTo(e.target.value)}
+                        className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] px-4 py-2.5 pr-9 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
+                      >
+                        {availableCourses.map((c) => (
+                          <option
+                            key={c}
+                            value={c}
+                            className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white"
+                          >
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description Textarea */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                    Description
+                  </label>
+                  <textarea
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    placeholder="Add a short description for learners"
+                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-h-[140px] resize-y"
+                  />
+                </div>
+              </div>
+
+              {/* Pinned Footer */}
+              <div className="flex items-center justify-between border-t border-slate-100 dark:border-white/5 px-6 py-4 bg-slate-50/50 dark:bg-white/[0.02] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setStep("select_type")}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 dark:border-white/10 px-5 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <span>Back</span>
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-6 py-2 text-xs font-bold text-white transition-all shadow-sm active:scale-95"
+                >
+                  <Check className="h-3.5 w-3.5 stroke-[3]" />
+                  <span>Create {currentTypeOption.title}</span>
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 }

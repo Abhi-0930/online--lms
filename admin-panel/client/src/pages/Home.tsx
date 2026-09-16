@@ -1191,13 +1191,19 @@ function ContentView({
       `${item.title} ${item.parent} ${item.owner}`.toLowerCase().includes(query.toLowerCase())
   );
 
-  const handleContinueAddContent = (selectedType: string, typeInfo: ContentTypeOption) => {
+  const handleContinueAddContent = (
+    selectedType: string,
+    typeInfo: ContentTypeOption,
+    details?: { title: string; type: string; parent: string; description: string }
+  ) => {
     if (selectedType === "course" && onCreateCourse) {
       setIsAddContentOpen(false);
       onCreateCourse();
       return;
     }
 
+    const title = details?.title || `${typeInfo.title}: New Asset`;
+    const parent = details?.parent || "DSA Mastery";
     const typeName =
       typeInfo.title === "Notes / PDF"
         ? "PDF"
@@ -1207,9 +1213,9 @@ function ContentView({
 
     const newItem = {
       id: Date.now(),
-      title: `${typeInfo.title}: New Asset`,
+      title,
       type: typeName,
-      parent: "DSA Placement Program",
+      parent,
       owner: "Admin Team",
       status: "Published",
       updated: "Just now",
@@ -1217,7 +1223,7 @@ function ContentView({
 
     setRows((current) => [newItem, ...current]);
     setIsAddContentOpen(false);
-    onToast(`${typeInfo.title} created and added to content library!`);
+    onToast(`${title} created and published to content library!`);
   };
 
   return (
