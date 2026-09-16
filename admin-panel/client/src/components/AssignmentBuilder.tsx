@@ -3,9 +3,11 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
   ArrowRight,
+  Calendar,
   Check,
   ChevronDown,
   ClipboardCheck,
+  Clock,
   Code2,
   FileText,
   GripVertical,
@@ -39,7 +41,9 @@ export interface AssignmentData {
   problemsCount: number;
   problemsList: AssignmentProblemItem[];
   releaseDate: string;
+  startTime?: string;
   deadline: string;
+  deadlineTime?: string;
   allowLate: boolean;
   latePenalty: string;
   resources: Array<{ id: number; name: string; size?: string; url?: string }>;
@@ -101,6 +105,151 @@ interface AssignmentBuilderProps {
   availableCourses?: string[];
 }
 
+interface CustomDropdownProps {
+  value: string;
+  onChange: (val: string) => void;
+  options: Array<{ value: string; label: string } | string>;
+  placeholder?: string;
+  className?: string;
+  buttonClassName?: string;
+  menuClassName?: string;
+  align?: "left" | "right";
+  disabled?: boolean;
+}
+
+function CustomDropdown({
+  value,
+  onChange,
+  options,
+  placeholder,
+  className,
+  buttonClassName,
+  menuClassName,
+  align = "left",
+  disabled = false,
+}: CustomDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const formattedOptions = useMemo(
+    () =>
+      options.map((opt) =>
+        typeof opt === "string" ? { value: opt, label: opt } : opt
+      ),
+    [options]
+  );
+
+  const selectedOption = formattedOptions.find((opt) => opt.value === value);
+  const displayLabel = selectedOption ? selectedOption.label : placeholder || value || "Select...";
+
+  return (
+    <div ref={containerRef} className={cn("relative inline-block", className)}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={cn(
+          "w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2.5 hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all cursor-pointer shadow-xs select-none",
+          isOpen && "ring-2 ring-indigo-500/20 border-indigo-500 bg-white dark:bg-[#151926] shadow-sm",
+          disabled && "opacity-50 cursor-not-allowed",
+          buttonClassName
+        )}
+      >
+        <span className="truncate text-left">{displayLabel}</span>
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform duration-200",
+            isOpen && "rotate-180 text-indigo-600 dark:text-indigo-400"
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          className={cn(
+            "absolute z-50 mt-1.5 min-w-[170px] w-full max-h-60 overflow-y-auto rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150",
+            align === "right" ? "right-0" : "left-0",
+            menuClassName
+          )}
+        >
+          {formattedOptions.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition cursor-pointer select-none",
+                  isSelected
+                    ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-bold"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-white/5"
+                )}
+              >
+                <span className="truncate">{opt.label}</span>
+                {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400 ml-2" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatScheduleDateTime(dateStr: string, timeStr: string) {
+  if (!dateStr) return "";
+  let formattedDate = dateStr;
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    if (parts[0].length === 2 && parts[2].length === 4) {
+      // DD-MM-YYYY format
+      const day = parseInt(parts[0], 10);
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const year = parts[2];
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec"];
+      if (months[monthIdx]) {
+        formattedDate = `${day} ${months[monthIdx]} ${year}`;
+      }
+    }
+  }
+
+  let formattedTime = timeStr || "";
+  if (timeStr && timeStr.includes(":")) {
+    const [h, m] = timeStr.split(":");
+    const hours = parseInt(h, 10);
+    const suffix = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
+    formattedTime = `${hour12}:${m} ${suffix}`;
+  }
+
+  return formattedTime ? `${formattedDate}, ${formattedTime}` : formattedDate;
+}
+
 export default function AssignmentBuilder({
   initialData,
   onClose,
@@ -108,9 +257,10 @@ export default function AssignmentBuilder({
   onPublish,
   availableCourses = DEFAULT_COURSES,
 }: AssignmentBuilderProps) {
-  const [activeStep, setActiveStep] = useState(3);
+  const [activeStep, setActiveStep] = useState(4);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [modalDifficulty, setModalDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
 
   // Bank problems repository
   const [problemsBank, setProblemsBank] = useState<AssignmentProblemItem[]>(INITIAL_PROBLEMS_BANK);
@@ -129,9 +279,11 @@ export default function AssignmentBuilder({
     difficulty: initialData?.difficulty || "Medium",
     problemsCount: 3,
     problemsList: INITIAL_PROBLEMS_BANK.filter((p) => p.isAdded),
-    releaseDate: initialData?.releaseDate || "16 Sept 2026",
-    deadline: initialData?.deadline || "22 Sept 2026",
-    allowLate: initialData?.allowLate ?? true,
+    releaseDate: initialData?.releaseDate || "15-09-2026",
+    startTime: initialData?.startTime || "18:00",
+    deadline: initialData?.deadline || "22-09-2026",
+    deadlineTime: initialData?.deadlineTime || "23:59",
+    allowLate: initialData?.allowLate ?? false,
     latePenalty: initialData?.latePenalty || "10% per day",
     resources: initialData?.resources || [
       { id: 1, name: "Arrays_Problem_Solving_CheatSheet.pdf", size: "1.4 MB" },
@@ -393,40 +545,27 @@ export default function AssignmentBuilder({
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
                         Target Course <span className="text-rose-500">*</span>
                       </label>
-                      <div className="relative">
-                        <select
-                          value={data.course}
-                          onChange={(e) => setData({ ...data, course: e.target.value })}
-                          className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 pr-9 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer font-medium"
-                        >
-                          {availableCourses.map((c) => (
-                            <option key={c} value={c} className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white">
-                              {c}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      </div>
+                      <CustomDropdown
+                        value={data.course}
+                        onChange={(val) => {
+                          const newModules = DEFAULT_MODULES[val] || ["General"];
+                          setData({ ...data, course: val, module: newModules[0] || "" });
+                        }}
+                        options={availableCourses}
+                        buttonClassName="py-3"
+                      />
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
                         Target Module <span className="text-rose-500">*</span>
                       </label>
-                      <div className="relative">
-                        <select
-                          value={data.module}
-                          onChange={(e) => setData({ ...data, module: e.target.value })}
-                          className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 pr-9 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer font-medium"
-                        >
-                          {availableModules.map((m) => (
-                            <option key={m} value={m} className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white">
-                              {m}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      </div>
+                      <CustomDropdown
+                        value={data.module}
+                        onChange={(val) => setData({ ...data, module: val })}
+                        options={availableModules}
+                        buttonClassName="py-3"
+                      />
                     </div>
                   </div>
 
@@ -509,38 +648,33 @@ export default function AssignmentBuilder({
                     </div>
 
                     {/* Difficulties Dropdown */}
-                    <div className="relative w-full sm:w-auto shrink-0">
-                      <select
-                        value={difficultyFilter}
-                        onChange={(e) => setDifficultyFilter(e.target.value)}
-                        className="w-full sm:w-auto appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 pr-8 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none transition cursor-pointer"
-                      >
-                        <option value="All difficulties">All difficulties</option>
-                        <option value="Easy">Easy</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Hard">Hard</option>
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                    </div>
+                    <CustomDropdown
+                      value={difficultyFilter}
+                      onChange={setDifficultyFilter}
+                      options={["All difficulties", "Easy", "Medium", "Hard"]}
+                      className="w-full sm:w-auto shrink-0"
+                      buttonClassName="min-w-[145px]"
+                      align="right"
+                    />
 
                     {/* Topics Dropdown */}
-                    <div className="relative w-full sm:w-auto shrink-0">
-                      <select
-                        value={topicFilter}
-                        onChange={(e) => setTopicFilter(e.target.value)}
-                        className="w-full sm:w-auto appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 pr-8 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none transition cursor-pointer"
-                      >
-                        <option value="All topics">All topics</option>
-                        <option value="Array">Array</option>
-                        <option value="HashMap">HashMap</option>
-                        <option value="Kadane">Kadane</option>
-                        <option value="Sliding Window">Sliding Window</option>
-                        <option value="Trees">Trees</option>
-                        <option value="Graphs">Graphs</option>
-                        <option value="Stack">Stack</option>
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                    </div>
+                    <CustomDropdown
+                      value={topicFilter}
+                      onChange={setTopicFilter}
+                      options={[
+                        "All topics",
+                        "Array",
+                        "HashMap",
+                        "Kadane",
+                        "Sliding Window",
+                        "Trees",
+                        "Graphs",
+                        "Stack",
+                      ]}
+                      className="w-full sm:w-auto shrink-0"
+                      buttonClassName="min-w-[130px]"
+                      align="right"
+                    />
                   </div>
 
                   {/* Problems Cards List */}
@@ -610,87 +744,144 @@ export default function AssignmentBuilder({
                 </div>
               )}
 
-              {/* Step 4: Schedule */}
+              {/* Step 4: Schedule (Matched to User Screenshot) */}
               {activeStep === 4 && (
                 <div className="space-y-6">
+                  {/* Step Header */}
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                      Schedule & Deadlines
+                    <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                      Assignment Schedule
                     </h2>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Configure release dates, submission deadlines, and late penalty policies.
+                      Set the assignment availability window and late submission rules.
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
-                        Release Date
-                      </label>
-                      <input
-                        type="text"
-                        value={data.releaseDate}
-                        onChange={(e) => setData({ ...data, releaseDate: e.target.value })}
-                        placeholder="16 Sept 2026"
-                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-medium"
-                      />
+                  {/* Date & Time Inputs */}
+                  <div className="space-y-4">
+                    {/* Row 1: Start Date & Start Time */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                          Assignment Start Date
+                        </label>
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            value={data.releaseDate}
+                            onChange={(e) => setData({ ...data, releaseDate: e.target.value })}
+                            placeholder="15-09-2026"
+                            className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
+                          />
+                          <Calendar className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                          Assignment Start Time
+                        </label>
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            value={data.startTime || "18:00"}
+                            onChange={(e) => setData({ ...data, startTime: e.target.value })}
+                            placeholder="18:00"
+                            className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
+                          />
+                          <Clock className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
-                        Submission Deadline <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={data.deadline}
-                        onChange={(e) => setData({ ...data, deadline: e.target.value })}
-                        placeholder="22 Sept 2026"
-                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-medium"
-                      />
+                    {/* Row 2: Submission Deadline & Deadline Time */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                          Submission Deadline
+                        </label>
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            value={data.deadline}
+                            onChange={(e) => setData({ ...data, deadline: e.target.value })}
+                            placeholder="22-09-2026"
+                            className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
+                          />
+                          <Calendar className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                          Submission Deadline Time
+                        </label>
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            value={data.deadlineTime || "23:59"}
+                            onChange={(e) => setData({ ...data, deadlineTime: e.target.value })}
+                            placeholder="23:59"
+                            className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
+                          />
+                          <Clock className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">
-                          Allow late submissions
-                        </p>
-                        <p className="text-[11px] text-slate-400">
-                          Students can still submit after the deadline with a configured penalty.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setData({ ...data, allowLate: !data.allowLate })}
+                  {/* Row 3: Allow late submission pill toggle card */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setData({ ...data, allowLate: !data.allowLate })}
+                      className="inline-flex items-center gap-4 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-5 py-3 text-xs font-bold text-slate-800 dark:text-slate-200 shadow-xs hover:border-slate-300 dark:hover:border-white/20 transition cursor-pointer select-none"
+                    >
+                      <span>Allow late submission</span>
+                      <div
                         className={cn(
-                          "relative h-6 w-11 rounded-full transition-colors cursor-pointer",
-                          data.allowLate ? "bg-indigo-600" : "bg-slate-300 dark:bg-white/10"
+                          "relative h-5 w-9 rounded-full transition-colors",
+                          data.allowLate ? "bg-indigo-600" : "bg-slate-200 dark:bg-white/10"
                         )}
                       >
                         <span
                           className={cn(
-                            "absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-                            data.allowLate ? "translate-x-6" : "translate-x-1"
+                            "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-xs transition-transform",
+                            data.allowLate ? "translate-x-4" : "translate-x-0.5"
                           )}
                         />
-                      </button>
-                    </div>
+                      </div>
+                    </button>
 
                     {data.allowLate && (
-                      <div className="pt-2 border-t border-slate-200/60 dark:border-white/5">
-                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1.5">
-                          Late penalty rate
+                      <div className="mt-3 flex items-center gap-3 p-3.5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/30 dark:bg-indigo-950/20 max-w-md animate-in fade-in-0 duration-200">
+                        <label className="text-xs font-bold text-indigo-950 dark:text-indigo-200 shrink-0">
+                          Late penalty rate:
                         </label>
                         <input
                           type="text"
                           value={data.latePenalty}
                           onChange={(e) => setData({ ...data, latePenalty: e.target.value })}
                           placeholder="10% per day"
-                          className="w-full max-w-xs rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none"
+                          className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#151926] px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none"
                         />
                       </div>
                     )}
+                  </div>
+
+                  {/* Row 4: Schedule summary card */}
+                  <div className="rounded-2xl border border-slate-200/70 dark:border-white/5 bg-[#f8fafc] dark:bg-white/[0.02] p-5 space-y-2">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                      Schedule summary
+                    </h4>
+                    <div className="space-y-1 text-xs">
+                      <p className="text-slate-500 dark:text-slate-400">
+                        Starts: <span className="font-bold text-slate-900 dark:text-white">{formatScheduleDateTime(data.releaseDate, data.startTime || "18:00")}</span>
+                      </p>
+                      <p className="text-slate-500 dark:text-slate-400">
+                        Ends: <span className="font-bold text-slate-900 dark:text-white">{formatScheduleDateTime(data.deadline, data.deadlineTime || "23:59")}</span>
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -842,15 +1033,16 @@ export default function AssignmentBuilder({
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
                       Grading Mode
                     </label>
-                    <select
+                    <CustomDropdown
                       value={data.gradingMode}
-                      onChange={(e) => setData({ ...data, gradingMode: e.target.value })}
-                      className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
-                    >
-                      <option value="Automated Test Cases + Manual Code Review">Automated Test Cases + Manual Code Review</option>
-                      <option value="100% Automated Grading">100% Automated Grading (Instant score on submit)</option>
-                      <option value="Manual Instructor Review Only">Manual Instructor Review Only</option>
-                    </select>
+                      onChange={(val) => setData({ ...data, gradingMode: val })}
+                      options={[
+                        { value: "Automated Test Cases + Manual Code Review", label: "Automated Test Cases + Manual Code Review" },
+                        { value: "100% Automated Grading", label: "100% Automated Grading (Instant score on submit)" },
+                        { value: "Manual Instructor Review Only", label: "Manual Instructor Review Only" },
+                      ]}
+                      buttonClassName="py-3"
+                    />
                   </div>
                 </div>
               )}
@@ -986,7 +1178,9 @@ export default function AssignmentBuilder({
 
                 <div>
                   <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Deadline</p>
-                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{data.deadline}</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">
+                    {formatScheduleDateTime(data.deadline, data.deadlineTime || "") || data.deadline}
+                  </p>
                 </div>
 
                 <div>
@@ -1053,9 +1247,8 @@ export default function AssignmentBuilder({
                 const form = e.currentTarget;
                 const title = (form.elements.namedItem("title") as HTMLInputElement).value;
                 const category = (form.elements.namedItem("category") as HTMLInputElement).value;
-                const difficulty = (form.elements.namedItem("difficulty") as HTMLSelectElement).value as any;
                 if (title.trim()) {
-                  handleAddNewBankProblem(title, category || "Array", difficulty || "Medium");
+                  handleAddNewBankProblem(title, category || "Array", modalDifficulty);
                 }
               }}
               className="space-y-4"
@@ -1090,15 +1283,11 @@ export default function AssignmentBuilder({
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                     Difficulty
                   </label>
-                  <select
-                    name="difficulty"
-                    defaultValue="Medium"
-                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
-                  >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </select>
+                  <CustomDropdown
+                    value={modalDifficulty}
+                    onChange={(val) => setModalDifficulty(val as any)}
+                    options={["Easy", "Medium", "Hard"]}
+                  />
                 </div>
               </div>
 
@@ -1167,7 +1356,7 @@ export default function AssignmentBuilder({
 
               <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100 dark:border-white/5">
                 <span>Course: <strong>{data.course}</strong> · {data.module}</span>
-                <span>Due: <strong>{data.deadline}</strong></span>
+                <span>Due: <strong>{formatScheduleDateTime(data.deadline, data.deadlineTime || "") || data.deadline}</strong></span>
               </div>
             </div>
 
