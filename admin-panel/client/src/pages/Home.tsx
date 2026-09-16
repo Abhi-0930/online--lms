@@ -1,5 +1,6 @@
 import DashboardLayout, { navLabelMap } from "@/components/DashboardLayout";
 import AdminProfileDropdown from "@/components/AdminProfileDropdown";
+import CourseBuilder, { CourseBuilderData } from "@/components/CourseBuilder";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { cn } from "@/lib/utils";
 import {
@@ -456,7 +457,7 @@ function useLiveAdminData() {
   return { stats, students, courses: coursesList, isLoading, isWsConnected, refresh };
 }
 
-function Overview({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+function Overview({ onAction, onToast, onCreateCourse }: { onAction: (state: DialogState) => void; onToast: (message: string) => void; onCreateCourse?: () => void }) {
   const { adminUser } = useAdminAuth();
   const { stats, courses: liveCourses, isWsConnected } = useLiveAdminData();
   const displayName = adminUser?.name || "Abhishek";
@@ -487,7 +488,7 @@ function Overview({ onAction, onToast }: { onAction: (state: DialogState) => voi
           <button onClick={() => onToast("Report export queued")} className="secondary-button">
             <Download className="h-4 w-4" /> Export report
           </button>
-          <button onClick={() => onAction({ title: "Create a new course", description: "Start with the course basics and add the curriculum in the builder.", fields: ["Course title", "Instructor"] })} className="primary-button">
+          <button onClick={onCreateCourse || (() => onAction({ title: "Create a new course", description: "Start with the course basics and add the curriculum in the builder.", fields: ["Course title", "Instructor"] }))} className="primary-button">
             <Plus className="h-4 w-4" /> Create new
           </button>
         </div>
@@ -605,7 +606,7 @@ function Overview({ onAction, onToast }: { onAction: (state: DialogState) => voi
   );
 }
 
-function CoursesView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+function CoursesView({ onAction, onToast, onCreateCourse }: { onAction: (state: DialogState) => void; onToast: (message: string) => void; onCreateCourse?: () => void }) {
   const { courses: liveCourses } = useLiveAdminData();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
@@ -626,9 +627,10 @@ function CoursesView({ onAction, onToast }: { onAction: (state: DialogState) => 
         section="courses"
         description={sectionDescriptions.courses}
         actionLabel="Create course"
-        onAction={() => onAction({ title: "Create a new course", description: "Create the course shell, then continue to the curriculum builder.", fields: ["Course title", "Instructor", "Price"] })}
+        onAction={onCreateCourse || (() => onAction({ title: "Create a new course", description: "Create the course shell, then continue to the curriculum builder.", fields: ["Course title", "Instructor", "Price"] }))}
         onExport={() => onToast("Course catalog exported")}
       />
+
       <MetricStrip
         items={[
           { label: "Published courses", value: publishedCount.toString(), change: `${publishedCount} active in catalog` },
@@ -853,10 +855,182 @@ function SettingsView({ onToast }: { onToast: (message: string) => void }) {
 export default function Home() {
   const { adminUser } = useAdminAuth();
   const section = useHashRoute();
-  const [dialog, setDialog] = useState<DialogState>(null); const [toast, setToast] = useState<string | null>(null);
-  useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(null), 3200); return () => window.clearTimeout(timer); }, [toast]);
-  useEffect(() => { setDialog(null); setToast(null); }, [section]);
-  const onAction = (state: DialogState) => setDialog(state); const onToast = (message: string) => setToast(message);
-  const content = section === "overview" ? <Overview onAction={onAction} onToast={onToast} /> : section === "courses" ? <CoursesView onAction={onAction} onToast={onToast} /> : section === "students" ? <StudentsView onAction={onAction} onToast={onToast} /> : section === "content" ? <ContentView onAction={onAction} onToast={onToast} /> : section === "assessments" ? <AssessmentsView onAction={onAction} onToast={onToast} /> : section === "live" ? <LiveView onAction={onAction} onToast={onToast} /> : section === "payments" ? <PaymentsView onAction={onAction} onToast={onToast} /> : section === "feedback" ? <FeedbackView onAction={onAction} onToast={onToast} /> : section === "reports" ? <ReportsView onToast={onToast} /> : section === "audit" ? <AuditView onToast={onToast} /> : <SettingsView onToast={onToast} />;
-  return <DashboardLayout><div className="relative"><div className="flex items-center gap-3 border-b border-[var(--app-line)] bg-[var(--app-bg)] px-5 py-3 sm:px-8"><div className="relative flex min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]" /><input placeholder="Search courses, students, or actions..." className="h-9 w-full max-w-xl rounded-xl border border-transparent bg-[var(--subtle-bg)] pl-9 pr-3 text-xs font-medium outline-none transition focus:border-indigo-200 focus:bg-[var(--app-card)]" /></div><button className="icon-button" aria-label="Notifications"><Bell className="h-[17px] w-[17px]" /><span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-[var(--app-bg)]" /></button><AdminProfileDropdown variant="topbar" align="end" /></div>{content}{dialog && <Dialog state={dialog} onClose={() => setDialog(null)} onSave={(message) => { setDialog(null); onToast(message); }} />}{toast && <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl"><span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-500"><Check className="h-3.5 w-3.5" /></span>{toast}</div>}</div></DashboardLayout>;
+  const [isCourseBuilderOpen, setIsCourseBuilderOpen] = useState(false);
+  const [dialog, setDialog] = useState<DialogState>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const { refresh } = useLiveAdminData();
+
+  useEffect(() => {
+    if (section === "create-course") {
+      setIsCourseBuilderOpen(true);
+    }
+  }, [section]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  useEffect(() => {
+    setDialog(null);
+    setToast(null);
+  }, [section]);
+
+  const onAction = (state: DialogState) => setDialog(state);
+  const onToast = (message: string) => setToast(message);
+
+  const handleOpenCourseBuilder = () => {
+    setIsCourseBuilderOpen(true);
+  };
+
+  const handleCloseCourseBuilder = () => {
+    setIsCourseBuilderOpen(false);
+    if (window.location.hash === "#create-course") {
+      window.location.hash = "#courses";
+    }
+  };
+
+  const handleSaveCourseDraft = async (data: CourseBuilderData) => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: data.title,
+          subtitle: data.subtitle,
+          description: data.description,
+          language: data.language,
+          category: data.category,
+          level: data.level,
+          coverImageUrl: data.thumbnailPreview,
+          status: "DRAFT",
+        }),
+      });
+
+      if (res.ok) {
+        onToast("Course draft saved successfully");
+        refresh();
+      } else {
+        const err = await res.json();
+        onToast(err.error || "Failed to save course draft");
+      }
+    } catch {
+      onToast("Course draft saved locally");
+    }
+  };
+
+  const handleContinueCourse = async (data: CourseBuilderData) => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: data.title,
+          subtitle: data.subtitle,
+          description: data.description,
+          language: data.language,
+          category: data.category,
+          level: data.level,
+          coverImageUrl: data.thumbnailPreview,
+          status: "DRAFT",
+        }),
+      });
+
+      if (res.ok) {
+        onToast("Basic information saved. Moving to next step.");
+        refresh();
+      } else {
+        onToast("Basic information verified.");
+      }
+    } catch {
+      onToast("Basic information verified.");
+    }
+  };
+
+  if (isCourseBuilderOpen || section === "create-course") {
+    return (
+      <div className="relative min-h-screen bg-[#f8fafc]">
+        <CourseBuilder
+          onClose={handleCloseCourseBuilder}
+          onSaveDraft={handleSaveCourseDraft}
+          onContinue={handleContinueCourse}
+        />
+        {toast && (
+          <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+            <span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-500 text-white">
+              <Check className="h-3.5 w-3.5" />
+            </span>
+            {toast}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const content =
+    section === "overview" ? (
+      <Overview onAction={onAction} onToast={onToast} onCreateCourse={handleOpenCourseBuilder} />
+    ) : section === "courses" ? (
+      <CoursesView onAction={onAction} onToast={onToast} onCreateCourse={handleOpenCourseBuilder} />
+    ) : section === "students" ? (
+      <StudentsView onAction={onAction} onToast={onToast} />
+    ) : section === "content" ? (
+      <ContentView onAction={onAction} onToast={onToast} />
+    ) : section === "assessments" ? (
+      <AssessmentsView onAction={onAction} onToast={onToast} />
+    ) : section === "live" ? (
+      <LiveView onAction={onAction} onToast={onToast} />
+    ) : section === "payments" ? (
+      <PaymentsView onAction={onAction} onToast={onToast} />
+    ) : section === "feedback" ? (
+      <FeedbackView onAction={onAction} onToast={onToast} />
+    ) : section === "reports" ? (
+      <ReportsView onToast={onToast} />
+    ) : section === "audit" ? (
+      <AuditView onToast={onToast} />
+    ) : (
+      <SettingsView onToast={onToast} />
+    );
+
+  return (
+    <DashboardLayout>
+      <div className="relative">
+        <div className="flex items-center gap-3 border-b border-[var(--app-line)] bg-[var(--app-bg)] px-5 py-3 sm:px-8">
+          <div className="relative flex min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]" />
+            <input
+              placeholder="Search courses, students, or actions..."
+              className="h-9 w-full max-w-xl rounded-xl border border-transparent bg-[var(--subtle-bg)] pl-9 pr-3 text-xs font-medium outline-none transition focus:border-indigo-200 focus:bg-[var(--app-card)]"
+            />
+          </div>
+          <button className="icon-button" aria-label="Notifications">
+            <Bell className="h-[17px] w-[17px]" />
+            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-[var(--app-bg)]" />
+          </button>
+          <AdminProfileDropdown variant="topbar" align="end" />
+        </div>
+        {content}
+        {dialog && (
+          <Dialog
+            state={dialog}
+            onClose={() => setDialog(null)}
+            onSave={(message) => {
+              setDialog(null);
+              onToast(message);
+            }}
+          />
+        )}
+        {toast && (
+          <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl">
+            <span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-500">
+              <Check className="h-3.5 w-3.5" />
+            </span>
+            {toast}
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
 }
+

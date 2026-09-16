@@ -243,4 +243,74 @@ export class AdminService {
       };
     });
   }
+
+  async saveCourseDraft(data: {
+    title: string;
+    subtitle?: string;
+    description: string;
+    language?: string;
+    category?: string;
+    level?: string;
+    coverImageUrl?: string;
+    price?: number;
+    status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  }) {
+    // Generate slug
+    const baseSlug = data.title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') || `course-${Date.now()}`;
+    const slug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+
+    // Map level to enum
+    let levelEnum: any = 'BEGINNER';
+    if (data.level) {
+      const lvl = data.level.toUpperCase().replace(/\s+/g, '_');
+      if (lvl === 'INTERMEDIATE') levelEnum = 'INTERMEDIATE';
+      else if (lvl === 'ADVANCED') levelEnum = 'ADVANCED';
+      else if (lvl === 'ALL_LEVELS' || lvl === 'ALL') levelEnum = 'ALL_LEVELS';
+    }
+
+    // Find default instructor or admin
+    let instructor = await this.prisma.user.findFirst({
+      where: { role: { in: ['ADMIN', 'INSTRUCTOR'] } },
+    });
+
+    if (!instructor) {
+      instructor = await this.prisma.user.findFirst();
+    }
+
+    if (!instructor) {
+      // Create admin instructor if none exists
+      instructor = await this.prisma.user.create({
+        data: {
+          email: 'admin@learnhub.com',
+          fullName: 'Platform Admin',
+          role: 'ADMIN',
+          isEmailVerified: true,
+        },
+      });
+    }
+
+    const course = await this.prisma.course.create({
+      data: {
+        slug,
+        title: data.title,
+        subtitle: data.subtitle || null,
+        description: data.description,
+        coverImageUrl: data.coverImageUrl || null,
+        price: data.price || 0,
+        level: levelEnum,
+        status: data.status || 'DRAFT',
+        instructorId: instructor.id,
+      },
+      include: {
+        instructor: true,
+      },
+    });
+
+    return course;
+  }
 }
+

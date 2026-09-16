@@ -23,4 +23,17 @@ export default async function adminController(fastify: FastifyInstance) {
   fastify.get('/courses', async () => {
     return adminService.getAllCourses();
   });
+
+  fastify.post('/courses', async (request, reply) => {
+    const body = request.body as any;
+    try {
+      const course = await adminService.saveCourseDraft(body);
+      // Real-time broadcast to all admin WebSocket clients
+      await AdminWsBroadcaster.broadcastUpdate(fastify.prisma);
+      return reply.code(201).send(course);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to create course' });
+    }
+  });
 }
+
