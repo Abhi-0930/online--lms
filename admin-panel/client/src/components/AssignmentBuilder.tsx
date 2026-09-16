@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -6,18 +6,26 @@ import {
   Check,
   ChevronDown,
   ClipboardCheck,
-  Clock,
   Code2,
-  FileCheck2,
   FileText,
-  HelpCircle,
+  GripVertical,
   Plus,
   Save,
+  Search,
   Send,
   Trash2,
   Upload,
   X,
 } from "lucide-react";
+
+export interface AssignmentProblemItem {
+  id: number;
+  title: string;
+  category: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  points: number;
+  isAdded: boolean;
+}
 
 export interface AssignmentData {
   id?: string | number;
@@ -29,13 +37,7 @@ export interface AssignmentData {
   topic?: string;
   difficulty?: string;
   problemsCount: number;
-  problemsList: Array<{
-    id: number;
-    title: string;
-    category: string;
-    difficulty: "Easy" | "Medium" | "Hard";
-    points: number;
-  }>;
+  problemsList: AssignmentProblemItem[];
   releaseDate: string;
   deadline: string;
   allowLate: boolean;
@@ -79,6 +81,18 @@ const DEFAULT_MODULES: Record<string, string[]> = {
   "Placement Prep": ["Resume & Portfolio", "DSA Mock Screens", "System Design Sprints"],
 };
 
+const INITIAL_PROBLEMS_BANK: AssignmentProblemItem[] = [
+  { id: 1, title: "Two Sum", category: "Array, HashMap", difficulty: "Easy", points: 25, isAdded: true },
+  { id: 2, title: "Move Zeroes", category: "Array", difficulty: "Easy", points: 25, isAdded: true },
+  { id: 3, title: "Maximum Subarray", category: "Array, Kadane", difficulty: "Medium", points: 25, isAdded: true },
+  { id: 4, title: "Best Time to Buy Stock", category: "Array", difficulty: "Easy", points: 25, isAdded: false },
+  { id: 5, title: "Longest Substring Without Repeating Characters", category: "Sliding Window, String", difficulty: "Medium", points: 25, isAdded: false },
+  { id: 6, title: "Trapping Rain Water", category: "Two Pointers, Stack", difficulty: "Hard", points: 50, isAdded: false },
+  { id: 7, title: "Lowest Common Ancestor in Binary Tree", category: "Trees, DFS", difficulty: "Medium", points: 25, isAdded: false },
+  { id: 8, title: "Valid Parentheses", category: "Stack, String", difficulty: "Easy", points: 20, isAdded: false },
+  { id: 9, title: "Alien Dictionary Topological Sort", category: "Graphs, BFS", difficulty: "Hard", points: 50, isAdded: false },
+];
+
 interface AssignmentBuilderProps {
   initialData?: Partial<AssignmentData>;
   onClose: () => void;
@@ -94,8 +108,15 @@ export default function AssignmentBuilder({
   onPublish,
   availableCourses = DEFAULT_COURSES,
 }: AssignmentBuilderProps) {
-  const [activeStep, setActiveStep] = useState(1);
+  const [activeStep, setActiveStep] = useState(3);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Bank problems repository
+  const [problemsBank, setProblemsBank] = useState<AssignmentProblemItem[]>(INITIAL_PROBLEMS_BANK);
+  const [problemSearch, setProblemSearch] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState("All difficulties");
+  const [topicFilter, setTopicFilter] = useState("All topics");
 
   // Form State initialized matching user screenshot defaults
   const [data, setData] = useState<AssignmentData>({
@@ -106,12 +127,8 @@ export default function AssignmentBuilder({
     module: initialData?.module || "Arrays",
     topic: initialData?.topic || "Two Pointers & Sliding Window",
     difficulty: initialData?.difficulty || "Medium",
-    problemsCount: initialData?.problemsCount || 3,
-    problemsList: initialData?.problemsList || [
-      { id: 1, title: "Two Sum & Hash Map Optimizations", category: "Arrays", difficulty: "Easy", points: 20 },
-      { id: 2, title: "Longest Substring Without Repeating Characters", category: "Sliding Window", difficulty: "Medium", points: 30 },
-      { id: 3, title: "Trapping Rain Water", category: "Two Pointers", difficulty: "Hard", points: 50 },
-    ],
+    problemsCount: 3,
+    problemsList: INITIAL_PROBLEMS_BANK.filter((p) => p.isAdded),
     releaseDate: initialData?.releaseDate || "16 Sept 2026",
     deadline: initialData?.deadline || "22 Sept 2026",
     allowLate: initialData?.allowLate ?? true,
@@ -123,48 +140,63 @@ export default function AssignmentBuilder({
     submissionTypes: initialData?.submissionTypes || ["Code Editor / IDE", "ZIP / File upload", "GitHub repository link"],
     maxFileSize: initialData?.maxFileSize || "25 MB",
     maxAttempts: initialData?.maxAttempts || "Unlimited",
-    totalMarks: initialData?.totalMarks || 100,
-    passingMarks: initialData?.passingMarks || 40,
-    gradingMode: initialData?.gradingMode || "Automated Test Cases + Manual Code Review",
-    targetCohort: initialData?.targetCohort || "Spring Cohort & Placement Prep",
-    status: initialData?.status || "Draft",
-    notifyStudents: initialData?.notifyStudents ?? true,
+    totalMarks: 100,
+    passingMarks: 40,
+    gradingMode: "Automated Test Cases + Manual Code Review",
+    targetCohort: "Spring Cohort & Placement Prep",
+    status: "Draft",
+    notifyStudents: true,
   });
 
-  const [newProblemTitle, setNewProblemTitle] = useState("");
-  const [newProblemDifficulty, setNewProblemDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
-  const [newProblemPoints, setNewProblemPoints] = useState(25);
+  const availableModules = DEFAULT_MODULES[data.course] || ["Arrays", "Strings", "Trees", "Graphs"];
 
-  const availableModules = DEFAULT_MODULES[data.course] || ["Module 1: Foundations", "Module 2: Advanced"];
+  const handleToggleProblem = (id: number) => {
+    setProblemsBank((current) => {
+      const updated = current.map((p) => (p.id === id ? { ...p, isAdded: !p.isAdded } : p));
+      const addedList = updated.filter((p) => p.isAdded);
+      setData((prev) => ({
+        ...prev,
+        problemsList: addedList,
+        problemsCount: addedList.length,
+        totalMarks: addedList.reduce((acc, p) => acc + p.points, 0) || 100,
+      }));
+      return updated;
+    });
+  };
 
-  const handleAddProblem = () => {
-    if (!newProblemTitle.trim()) return;
-    const newProb = {
+  const handleAddNewBankProblem = (title: string, category: string, difficulty: "Easy" | "Medium" | "Hard") => {
+    const newProb: AssignmentProblemItem = {
       id: Date.now(),
-      title: newProblemTitle.trim(),
-      category: data.module || "General",
-      difficulty: newProblemDifficulty,
-      points: Number(newProblemPoints) || 25,
+      title,
+      category,
+      difficulty,
+      points: difficulty === "Hard" ? 50 : difficulty === "Medium" ? 30 : 20,
+      isAdded: true,
     };
-    const updatedList = [...data.problemsList, newProb];
-    setData((prev) => ({
-      ...prev,
-      problemsList: updatedList,
-      problemsCount: updatedList.length,
-      totalMarks: updatedList.reduce((acc, p) => acc + p.points, 0),
-    }));
-    setNewProblemTitle("");
+    setProblemsBank((current) => [newProb, ...current]);
+    setData((prev) => {
+      const addedList = [newProb, ...prev.problemsList];
+      return {
+        ...prev,
+        problemsList: addedList,
+        problemsCount: addedList.length,
+        totalMarks: addedList.reduce((acc, p) => acc + p.points, 0),
+      };
+    });
+    setIsAddModalOpen(false);
   };
 
-  const handleRemoveProblem = (id: number) => {
-    const updatedList = data.problemsList.filter((p) => p.id !== id);
-    setData((prev) => ({
-      ...prev,
-      problemsList: updatedList,
-      problemsCount: updatedList.length,
-      totalMarks: updatedList.reduce((acc, p) => acc + p.points, 0),
-    }));
-  };
+  const filteredProblems = useMemo(() => {
+    return problemsBank.filter((p) => {
+      const matchesSearch =
+        !problemSearch.trim() ||
+        `${p.title} ${p.category} ${p.difficulty}`.toLowerCase().includes(problemSearch.toLowerCase().trim());
+      const matchesDiff = difficultyFilter === "All difficulties" || p.difficulty === difficultyFilter;
+      const matchesTopic =
+        topicFilter === "All topics" || p.category.toLowerCase().includes(topicFilter.toLowerCase());
+      return matchesSearch && matchesDiff && matchesTopic;
+    });
+  }, [problemsBank, problemSearch, difficultyFilter, topicFilter]);
 
   const toggleSubmissionType = (type: string) => {
     setData((prev) => {
@@ -251,7 +283,7 @@ export default function AssignmentBuilder({
           {/* Left / Main Section (8 cols) */}
           <div className="lg:col-span-8 space-y-4">
             {/* Step Tabs Card */}
-            <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3 py-2 shadow-xs overflow-hidden">
+            <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-4 py-3 shadow-xs overflow-hidden">
               <div className="flex items-center justify-between gap-1 w-full overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {STEPS.map((step) => {
                   const isActive = activeStep === step.id;
@@ -262,26 +294,26 @@ export default function AssignmentBuilder({
                       type="button"
                       onClick={() => setActiveStep(step.id)}
                       className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] xl:text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0",
+                        "relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0",
                         isActive
-                          ? "bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200/80 dark:border-indigo-800/60 shadow-xs"
+                          ? "text-indigo-600 dark:text-indigo-400 font-bold border-b-2 border-indigo-600 dark:border-indigo-400 pb-1"
                           : isCompleted
-                          ? "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"
+                          ? "text-emerald-600 dark:text-emerald-400 font-semibold"
                           : "text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                       )}
                     >
-                      <span
-                        className={cn(
-                          "grid h-4.5 w-4.5 place-items-center rounded-full text-[10px] font-bold",
+                      {isCompleted ? (
+                        <Check className="h-3.5 w-3.5 stroke-[2.5] text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <span className={cn(
+                          "grid h-5 w-5 place-items-center rounded-full text-[10px] font-bold",
                           isActive
-                            ? "bg-indigo-600 text-white"
-                            : isCompleted
-                            ? "bg-emerald-500 text-white"
-                            : "bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400"
-                        )}
-                      >
-                        {isCompleted ? <Check className="h-3 w-3 stroke-[3]" /> : step.id}
-                      </span>
+                            ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+                            : "bg-slate-100 dark:bg-white/10 text-slate-500"
+                        )}>
+                          {step.id}
+                        </span>
+                      )}
                       <span>{step.label}</span>
                     </button>
                   );
@@ -438,97 +470,142 @@ export default function AssignmentBuilder({
                 </div>
               )}
 
-              {/* Step 3: Problems */}
+              {/* Step 3: Assignment Problems (Matched to User Screenshot) */}
               {activeStep === 3 && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-5">
+                  {/* Step Header with Title & "+ Add existing problem" Button */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                        Practice Problems ({data.problemsList.length})
+                      <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                        Assignment Problems
                       </h2>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        Include coding challenges and test cases for student submission.
+                        Select and order existing practice problems.
                       </p>
                     </div>
-                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                      Total: {data.totalMarks} marks
-                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-indigo-500/20 transition active:scale-95 cursor-pointer shrink-0"
+                    >
+                      <Plus className="h-4 w-4 stroke-[2.5]" />
+                      <span>Add existing problem</span>
+                    </button>
                   </div>
 
-                  {/* Problem Items List */}
-                  <div className="space-y-2.5">
-                    {data.problemsList.map((prob, idx) => (
+                  {/* Search and Filters Bar */}
+                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+                    {/* Search Input */}
+                    <div className="relative flex-1 w-full">
+                      <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={problemSearch}
+                        onChange={(e) => setProblemSearch(e.target.value)}
+                        placeholder="Search practice problems"
+                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-10 pr-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
+                      />
+                    </div>
+
+                    {/* Difficulties Dropdown */}
+                    <div className="relative w-full sm:w-auto shrink-0">
+                      <select
+                        value={difficultyFilter}
+                        onChange={(e) => setDifficultyFilter(e.target.value)}
+                        className="w-full sm:w-auto appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 pr-8 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none transition cursor-pointer"
+                      >
+                        <option value="All difficulties">All difficulties</option>
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    </div>
+
+                    {/* Topics Dropdown */}
+                    <div className="relative w-full sm:w-auto shrink-0">
+                      <select
+                        value={topicFilter}
+                        onChange={(e) => setTopicFilter(e.target.value)}
+                        className="w-full sm:w-auto appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 pr-8 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none transition cursor-pointer"
+                      >
+                        <option value="All topics">All topics</option>
+                        <option value="Array">Array</option>
+                        <option value="HashMap">HashMap</option>
+                        <option value="Kadane">Kadane</option>
+                        <option value="Sliding Window">Sliding Window</option>
+                        <option value="Trees">Trees</option>
+                        <option value="Graphs">Graphs</option>
+                        <option value="Stack">Stack</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    </div>
+                  </div>
+
+                  {/* Problems Cards List */}
+                  <div className="space-y-3 pt-2">
+                    {filteredProblems.map((prob, idx) => (
                       <div
                         key={prob.id}
-                        className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
+                        className={cn(
+                          "flex items-center justify-between p-4 rounded-2xl border transition-all",
+                          prob.isAdded
+                            ? "border-blue-100 bg-[#f8faff] dark:border-white/10 dark:bg-white/[0.02]"
+                            : "border-slate-200/80 bg-white dark:border-white/5 dark:bg-white/[0.01]"
+                        )}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="grid h-8 w-8 place-items-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300 font-mono text-xs font-bold">
+                        {/* Left Side: Drag Handle + Number + Title + Subtitle */}
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          {/* 6-Dots Drag Handle Icon */}
+                          <div className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-grab px-1">
+                            <GripVertical className="h-4 w-4" />
+                          </div>
+
+                          {/* Round Number Badge */}
+                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-100 dark:bg-white/10 text-xs font-bold text-slate-700 dark:text-slate-300">
                             {idx + 1}
                           </span>
-                          <div>
-                            <p className="text-xs font-bold text-slate-900 dark:text-white">
+
+                          {/* Title and Topics */}
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
                               {prob.title}
-                            </p>
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                              {prob.category} · {prob.difficulty} · {prob.points} points
+                            </h4>
+                            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                              {prob.difficulty} · {prob.category}
                             </p>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveProblem(prob.id)}
-                          className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-300 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+
+                        {/* Right Side: Action Button */}
+                        <div>
+                          {prob.isAdded ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleProblem(prob.id)}
+                              className="rounded-xl bg-rose-50/80 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 px-4 py-1.5 text-xs font-semibold transition cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleProblem(prob.id)}
+                              className="rounded-xl bg-indigo-50/80 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 px-4 py-1.5 text-xs font-semibold transition cursor-pointer"
+                            >
+                              Add
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
-                  </div>
 
-                  {/* Add Problem Form */}
-                  <div className="p-4 rounded-2xl border border-dashed border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/30 dark:bg-indigo-950/20 space-y-3">
-                    <p className="text-xs font-bold text-indigo-900 dark:text-indigo-300">
-                      + Add New Practice Problem
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                      <div className="sm:col-span-6">
-                        <input
-                          type="text"
-                          value={newProblemTitle}
-                          onChange={(e) => setNewProblemTitle(e.target.value)}
-                          placeholder="e.g. Subarray Sum Equals K"
-                          className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        />
+                    {filteredProblems.length === 0 && (
+                      <div className="py-10 text-center text-xs text-slate-400">
+                        No practice problems match your search criteria.
                       </div>
-                      <div className="sm:col-span-3">
-                        <select
-                          value={newProblemDifficulty}
-                          onChange={(e) => setNewProblemDifficulty(e.target.value as any)}
-                          className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none"
-                        >
-                          <option value="Easy">Easy</option>
-                          <option value="Medium">Medium</option>
-                          <option value="Hard">Hard</option>
-                        </select>
-                      </div>
-                      <div className="sm:col-span-3 flex gap-2">
-                        <input
-                          type="number"
-                          value={newProblemPoints}
-                          onChange={(e) => setNewProblemPoints(Number(e.target.value))}
-                          placeholder="Points"
-                          className="w-20 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddProblem}
-                          className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-3 py-2 text-xs font-bold text-white shadow-xs cursor-pointer"
-                        >
-                          Add
-                        </button>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -835,9 +912,10 @@ export default function AssignmentBuilder({
                 <button
                   type="button"
                   onClick={activeStep === 1 ? onClose : () => setActiveStep((s) => Math.max(1, s - 1))}
-                  className="rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer"
+                  className="rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer flex items-center gap-2"
                 >
-                  {activeStep === 1 ? "Cancel" : "Back"}
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <span>{activeStep === 1 ? "Cancel" : "Back"}</span>
                 </button>
 
                 <div className="flex items-center gap-2.5">
@@ -903,7 +981,7 @@ export default function AssignmentBuilder({
 
                 <div>
                   <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Problems added</p>
-                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{data.problemsCount}</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{data.problemsList.length}</p>
                 </div>
 
                 <div>
@@ -953,6 +1031,97 @@ export default function AssignmentBuilder({
         </div>
       </main>
 
+      {/* Add New Bank Problem Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#121620] p-6 shadow-2xl border border-slate-100 dark:border-white/10 animate-in zoom-in-95 duration-150 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
+              <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                Add Practice Problem
+              </h3>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="grid h-8 w-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                const title = (form.elements.namedItem("title") as HTMLInputElement).value;
+                const category = (form.elements.namedItem("category") as HTMLInputElement).value;
+                const difficulty = (form.elements.namedItem("difficulty") as HTMLSelectElement).value as any;
+                if (title.trim()) {
+                  handleAddNewBankProblem(title, category || "Array", difficulty || "Medium");
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                  Problem Title <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  name="title"
+                  required
+                  placeholder="e.g. Subarray Sum Equals K"
+                  className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
+                  autoFocus
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                    Topic / Category
+                  </label>
+                  <input
+                    name="category"
+                    placeholder="e.g. Prefix Sum, Hash Table"
+                    defaultValue="Array"
+                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                    Difficulty
+                  </label>
+                  <select
+                    name="difficulty"
+                    defaultValue="Medium"
+                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="rounded-xl border border-slate-200/90 dark:border-white/10 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-indigo-600 hover:bg-indigo-700 px-5 py-2 text-xs font-bold text-white cursor-pointer shadow-sm"
+                >
+                  Add Problem
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Quick Preview Modal */}
       {isPreviewOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
@@ -990,7 +1159,7 @@ export default function AssignmentBuilder({
                       className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/5"
                     >
                       <span className="font-semibold">{idx + 1}. {p.title}</span>
-                      <span className="text-[10px] font-bold text-indigo-600">{p.points} pts</span>
+                      <span className="text-[10px] font-bold text-indigo-600">{p.difficulty} · {p.category}</span>
                     </div>
                   ))}
                 </div>
@@ -1006,7 +1175,7 @@ export default function AssignmentBuilder({
               <button
                 type="button"
                 onClick={() => setIsPreviewOpen(false)}
-                className="rounded-xl bg-slate-900 dark:bg-white px-5 py-2 text-xs font-bold text-white dark:text-slate-900"
+                className="rounded-xl bg-slate-900 dark:bg-white px-5 py-2 text-xs font-bold text-white dark:text-slate-900 cursor-pointer"
               >
                 Close Preview
               </button>
