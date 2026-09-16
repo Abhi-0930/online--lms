@@ -16,6 +16,7 @@ import {
   X,
   Search,
   ChevronDown,
+  Upload,
 } from "lucide-react";
 
 export interface ContentTypeOption {
@@ -154,7 +155,7 @@ function getTitlePlaceholder(typeId: string): string {
     case "module":
       return "e.g. Arrays";
     case "lesson":
-      return "e.g. Binary Search Deep Dive";
+      return "e.g. Video lesson";
     case "notes_pdf":
       return "e.g. Recursion & Backtracking Worksheet";
     case "practice_problem":
@@ -200,6 +201,9 @@ export default function AddContentModal({
   const [formContentType, setFormContentType] = useState<string>("module");
   const [formAttachTo, setFormAttachTo] = useState<string>(availableCourses[0] || "DSA Mastery");
   const [formDescription, setFormDescription] = useState("");
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const filteredTypes = useMemo(() => {
     if (!searchQuery.trim()) return CONTENT_TYPES;
@@ -225,6 +229,7 @@ export default function AddContentModal({
     setStep("select_type");
     setFormTitle("");
     setFormDescription("");
+    setUploadedFileName("");
     onClose();
   };
 
@@ -238,7 +243,22 @@ export default function AddContentModal({
     setFormContentType(selectedType);
     setFormTitle("");
     setFormDescription("");
+    setUploadedFileName("");
     setStep("create_form");
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setUploadedFileName(e.target.files[0].name);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setUploadedFileName(e.dataTransfer.files[0].name);
+    }
   };
 
   const handleFinalSubmit = (e?: React.FormEvent) => {
@@ -541,9 +561,49 @@ export default function AddContentModal({
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     placeholder="Add a short description for learners"
-                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-h-[140px] resize-y"
+                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-h-[120px] resize-y"
                   />
                 </div>
+
+                {/* Upload or link resource (shown for Lesson and other asset types) */}
+                {formContentType !== "module" && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                      Upload or link resource
+                    </label>
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragging(true);
+                      }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={handleDrop}
+                      className={cn(
+                        "relative flex flex-col items-center justify-center rounded-2xl border p-7 text-center transition-all cursor-pointer",
+                        isDragging
+                          ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30"
+                          : "border-indigo-100/90 dark:border-white/10 bg-indigo-50/20 dark:bg-white/[0.02] hover:border-indigo-300 dark:hover:border-white/20 hover:bg-indigo-50/40"
+                      )}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={handleFileChange}
+                      />
+                      <div className="mb-2 grid h-8 w-8 place-items-center text-indigo-600 dark:text-indigo-400">
+                        <Upload className="h-5 w-5 stroke-[2]" />
+                      </div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {uploadedFileName || "Drop a file or browse"}
+                      </p>
+                      <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                        PDF, DOCX, PPT, ZIP, or external link
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Pinned Footer */}
