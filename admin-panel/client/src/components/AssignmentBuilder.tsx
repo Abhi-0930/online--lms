@@ -251,8 +251,8 @@ export default function AssignmentBuilder({
           {/* Left / Main Section (8 cols) */}
           <div className="lg:col-span-8 space-y-4">
             {/* Step Tabs Card */}
-            <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-4 py-2.5 shadow-xs overflow-x-auto">
-              <div className="flex items-center gap-2 min-w-max">
+            <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3 py-2 shadow-xs overflow-hidden">
+              <div className="flex items-center justify-between gap-1 w-full overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {STEPS.map((step) => {
                   const isActive = activeStep === step.id;
                   const isCompleted = activeStep > step.id;
@@ -262,9 +262,9 @@ export default function AssignmentBuilder({
                       type="button"
                       onClick={() => setActiveStep(step.id)}
                       className={cn(
-                        "flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer",
+                        "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] xl:text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0",
                         isActive
-                          ? "bg-indigo-50/80 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-bold border-b-2 border-indigo-600 dark:border-indigo-400"
+                          ? "bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200/80 dark:border-indigo-800/60 shadow-xs"
                           : isCompleted
                           ? "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"
                           : "text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
@@ -272,7 +272,7 @@ export default function AssignmentBuilder({
                     >
                       <span
                         className={cn(
-                          "grid h-5 w-5 place-items-center rounded-full text-[10px] font-bold",
+                          "grid h-4.5 w-4.5 place-items-center rounded-full text-[10px] font-bold",
                           isActive
                             ? "bg-indigo-600 text-white"
                             : isCompleted
@@ -324,7 +324,8 @@ export default function AssignmentBuilder({
                       value={data.description}
                       onChange={(e) => setData({ ...data, description: e.target.value })}
                       placeholder="Practice arrays and problem-solving fundamentals."
-                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-h-[110px] resize-y font-medium"
+                      rows={4}
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium resize-none"
                     />
                   </div>
 
@@ -336,7 +337,8 @@ export default function AssignmentBuilder({
                       value={data.instructions}
                       onChange={(e) => setData({ ...data, instructions: e.target.value })}
                       placeholder="Complete all problems and submit before the deadline."
-                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-h-[110px] resize-y font-medium"
+                      rows={4}
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium resize-none"
                     />
                   </div>
                 </div>
