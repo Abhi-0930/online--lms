@@ -48,8 +48,7 @@ const navigation = [
     items: [
       { id: "content", label: "Content Library", icon: ListChecks },
       { id: "practice_problems", label: "Practice Problems", icon: Code2 },
-      { id: "assignments", label: "Assignments", icon: ClipboardCheck },
-      { id: "assessments", label: "Assessments", icon: ClipboardCheck, badge: "8" },
+      { id: "assignments", label: "Assignments", icon: ClipboardCheck, badge: "8" },
       { id: "submissions", label: "Submissions", icon: FileText, badge: "42" },
       { id: "announcements", label: "Announcements", icon: Send },
     ],

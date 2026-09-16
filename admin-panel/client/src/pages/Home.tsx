@@ -1,6 +1,7 @@
 import DashboardLayout, { navLabelMap } from "@/components/DashboardLayout";
 import AdminProfileDropdown from "@/components/AdminProfileDropdown";
 import CourseBuilder, { CourseBuilderData, CourseModule } from "@/components/CourseBuilder";
+import AssignmentBuilder, { AssignmentData } from "@/components/AssignmentBuilder";
 import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { cn } from "@/lib/utils";
@@ -1297,7 +1298,7 @@ function ContentView({
             setQuery={setQuery}
             filter={filter}
             setFilter={setFilter}
-            filters={["All", "Video", "PDF", "Resource", "Practice problem", "Text"]}
+            filters={["All", "Video", "PDF", "Assignment", "Resource", "Practice problem", "Text"]}
           />
         }
       >
@@ -1327,6 +1328,8 @@ function ContentView({
                           <PlayCircle className="h-4 w-4" />
                         ) : item.type === "Practice problem" ? (
                           <Code2 className="h-4 w-4" />
+                        ) : item.type === "Assignment" ? (
+                          <ClipboardCheck className="h-4 w-4 text-sky-600" />
                         ) : (
                           <FileText className="h-4 w-4" />
                         )}
@@ -1529,7 +1532,16 @@ function PracticeProblemsView({ onAction, onToast }: { onAction: (state: DialogS
   );
 }
 
-function AssignmentsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+function AssignmentsView({
+  onToast,
+  onCreateAssignment,
+  onEditAssignment,
+}: {
+  onAction?: (state: DialogState) => void;
+  onToast: (message: string) => void;
+  onCreateAssignment?: () => void;
+  onEditAssignment?: (assignment: any) => void;
+}) {
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState(assignmentsData);
@@ -1546,13 +1558,7 @@ function AssignmentsView({ onAction, onToast }: { onAction: (state: DialogState)
         section="assignments"
         description={sectionDescriptions.assignments}
         actionLabel="Create assignment"
-        onAction={() =>
-          onAction({
-            title: "Create course assignment",
-            description: "Define rubrics, deadline, submission requirements, and course attachment.",
-            fields: ["Assignment title", "Course / Track", "Due date", "Max points", "Submission guidelines"],
-          })
-        }
+        onAction={onCreateAssignment || (() => onToast("Opening assignment builder..."))}
         onExport={() => onToast("Assignments list exported")}
       />
 
@@ -1593,13 +1599,17 @@ function AssignmentsView({ onAction, onToast }: { onAction: (state: DialogState)
             </thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]">
+                <tr
+                  key={item.id}
+                  className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)] transition-colors cursor-pointer"
+                  onClick={() => onEditAssignment && onEditAssignment(item)}
+                >
                   <td className="px-5 py-4 sm:px-6">
                     <div className="flex items-center gap-3">
                       <span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
                         <ClipboardCheck className="h-4 w-4" />
                       </span>
-                      <p className="text-[12px] font-bold">{item.title}</p>
+                      <p className="text-[12px] font-bold hover:text-indigo-600 transition-colors">{item.title}</p>
                     </div>
                   </td>
                   <td className="px-4 py-4 text-[11px] font-semibold text-[var(--muted)]">{item.course}</td>
@@ -1948,13 +1958,18 @@ export default function Home() {
   const section = useHashRoute();
   const [isCourseBuilderOpen, setIsCourseBuilderOpen] = useState(false);
   const [editingCourseData, setEditingCourseData] = useState<Partial<CourseBuilderData> | null>(null);
+  const [isAssignmentBuilderOpen, setIsAssignmentBuilderOpen] = useState(false);
+  const [editingAssignmentData, setEditingAssignmentData] = useState<Partial<AssignmentData> | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const { refresh } = useLiveAdminData();
+  const { refresh, courses: liveCourses } = useLiveAdminData();
 
   useEffect(() => {
     if (section === "create-course") {
       setIsCourseBuilderOpen(true);
+    }
+    if (section === "create-assignment") {
+      setIsAssignmentBuilderOpen(true);
     }
   }, [section]);
 
@@ -1975,6 +1990,39 @@ export default function Home() {
   const handleOpenCourseBuilder = () => {
     setEditingCourseData(null);
     setIsCourseBuilderOpen(true);
+  };
+
+  const handleOpenAssignmentBuilder = () => {
+    setEditingAssignmentData(null);
+    setIsAssignmentBuilderOpen(true);
+  };
+
+  const handleEditAssignment = (assignment: any) => {
+    setEditingAssignmentData({
+      id: assignment.id,
+      title: assignment.title,
+      course: assignment.course,
+      deadline: assignment.dueDate || assignment.deadline || "22 Sept 2026",
+      status: assignment.status || "Draft",
+    });
+    setIsAssignmentBuilderOpen(true);
+  };
+
+  const handleCloseAssignmentBuilder = () => {
+    setIsAssignmentBuilderOpen(false);
+    setEditingAssignmentData(null);
+    if (window.location.hash === "#create-assignment") {
+      window.location.hash = "#assignments";
+    }
+  };
+
+  const handleSaveAssignmentDraft = (data: AssignmentData) => {
+    onToast(`Assignment draft "${data.title}" saved successfully!`);
+  };
+
+  const handlePublishAssignment = (data: AssignmentData) => {
+    onToast(`Assignment "${data.title}" published successfully!`);
+    handleCloseAssignmentBuilder();
   };
 
   const handleEditCourse = (course: Course) => {
@@ -2215,6 +2263,32 @@ export default function Home() {
     );
   }
 
+  if (isAssignmentBuilderOpen || section === "create-assignment") {
+    return (
+      <div className="relative min-h-screen bg-[#f8fafc]">
+        <AssignmentBuilder
+          initialData={editingAssignmentData || undefined}
+          onClose={handleCloseAssignmentBuilder}
+          onSaveDraft={handleSaveAssignmentDraft}
+          onPublish={handlePublishAssignment}
+          availableCourses={
+            liveCourses && liveCourses.length > 0
+              ? liveCourses.map((c) => c.title)
+              : undefined
+          }
+        />
+        {toast && (
+          <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+            <span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-500 text-white">
+              <Check className="h-3.5 w-3.5" />
+            </span>
+            {toast}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const content =
     section === "overview" ? (
       <Overview onAction={onAction} onToast={onToast} onCreateCourse={handleOpenCourseBuilder} />
@@ -2236,7 +2310,12 @@ export default function Home() {
     ) : section === "practice_problems" ? (
       <PracticeProblemsView onAction={onAction} onToast={onToast} />
     ) : section === "assignments" ? (
-      <AssignmentsView onAction={onAction} onToast={onToast} />
+      <AssignmentsView
+        onAction={onAction}
+        onToast={onToast}
+        onCreateAssignment={handleOpenAssignmentBuilder}
+        onEditAssignment={handleEditAssignment}
+      />
     ) : section === "assessments" ? (
       <AssessmentsView onAction={onAction} onToast={onToast} />
     ) : section === "submissions" ? (

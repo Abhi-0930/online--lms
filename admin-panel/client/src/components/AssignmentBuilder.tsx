@@ -1,0 +1,1017 @@
+import React, { useState } from "react";
+import { cn } from "@/lib/utils";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  ClipboardCheck,
+  Clock,
+  Code2,
+  FileCheck2,
+  FileText,
+  HelpCircle,
+  Plus,
+  Save,
+  Send,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
+
+export interface AssignmentData {
+  id?: string | number;
+  title: string;
+  description: string;
+  instructions: string;
+  course: string;
+  module: string;
+  topic?: string;
+  difficulty?: string;
+  problemsCount: number;
+  problemsList: Array<{
+    id: number;
+    title: string;
+    category: string;
+    difficulty: "Easy" | "Medium" | "Hard";
+    points: number;
+  }>;
+  releaseDate: string;
+  deadline: string;
+  allowLate: boolean;
+  latePenalty: string;
+  resources: Array<{ id: number; name: string; size?: string; url?: string }>;
+  submissionTypes: string[];
+  maxFileSize: string;
+  maxAttempts: string;
+  totalMarks: number;
+  passingMarks: number;
+  gradingMode: string;
+  targetCohort: string;
+  status: "Draft" | "Published" | "Scheduled";
+  notifyStudents: boolean;
+}
+
+const STEPS = [
+  { id: 1, label: "Basic Information" },
+  { id: 2, label: "Course Mapping" },
+  { id: 3, label: "Problems" },
+  { id: 4, label: "Schedule" },
+  { id: 5, label: "Resources" },
+  { id: 6, label: "Submission" },
+  { id: 7, label: "Evaluation" },
+  { id: 8, label: "Visibility" },
+];
+
+const DEFAULT_COURSES = [
+  "DSA Placement Program",
+  "DSA Mastery",
+  "Fullstack Next.js & GraphQL Masterclass",
+  "System Design",
+  "Placement Prep",
+];
+
+const DEFAULT_MODULES: Record<string, string[]> = {
+  "DSA Placement Program": ["Arrays", "Strings", "Trees", "Graphs", "Dynamic Programming"],
+  "DSA Mastery": ["Arrays & Pointers", "Hashing", "Linked Lists", "Stacks & Queues"],
+  "Fullstack Next.js & GraphQL Masterclass": ["Server Components", "API Routes & Auth", "Prisma & PostgreSQL"],
+  "System Design": ["Scalability & Caching", "Rate Limiting", "Message Queues & Kafka"],
+  "Placement Prep": ["Resume & Portfolio", "DSA Mock Screens", "System Design Sprints"],
+};
+
+interface AssignmentBuilderProps {
+  initialData?: Partial<AssignmentData>;
+  onClose: () => void;
+  onSaveDraft: (data: AssignmentData) => void;
+  onPublish: (data: AssignmentData) => void;
+  availableCourses?: string[];
+}
+
+export default function AssignmentBuilder({
+  initialData,
+  onClose,
+  onSaveDraft,
+  onPublish,
+  availableCourses = DEFAULT_COURSES,
+}: AssignmentBuilderProps) {
+  const [activeStep, setActiveStep] = useState(1);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // Form State initialized matching user screenshot defaults
+  const [data, setData] = useState<AssignmentData>({
+    title: initialData?.title || "Week 1 Assignment",
+    description: initialData?.description || "Practice arrays and problem-solving fundamentals.",
+    instructions: initialData?.instructions || "Complete all problems and submit before the deadline.",
+    course: initialData?.course || availableCourses[0] || "DSA Placement Program",
+    module: initialData?.module || "Arrays",
+    topic: initialData?.topic || "Two Pointers & Sliding Window",
+    difficulty: initialData?.difficulty || "Medium",
+    problemsCount: initialData?.problemsCount || 3,
+    problemsList: initialData?.problemsList || [
+      { id: 1, title: "Two Sum & Hash Map Optimizations", category: "Arrays", difficulty: "Easy", points: 20 },
+      { id: 2, title: "Longest Substring Without Repeating Characters", category: "Sliding Window", difficulty: "Medium", points: 30 },
+      { id: 3, title: "Trapping Rain Water", category: "Two Pointers", difficulty: "Hard", points: 50 },
+    ],
+    releaseDate: initialData?.releaseDate || "16 Sept 2026",
+    deadline: initialData?.deadline || "22 Sept 2026",
+    allowLate: initialData?.allowLate ?? true,
+    latePenalty: initialData?.latePenalty || "10% per day",
+    resources: initialData?.resources || [
+      { id: 1, name: "Arrays_Problem_Solving_CheatSheet.pdf", size: "1.4 MB" },
+      { id: 2, name: "Starter_Code_Template_TypeScript.zip", size: "3.2 MB" },
+    ],
+    submissionTypes: initialData?.submissionTypes || ["Code Editor / IDE", "ZIP / File upload", "GitHub repository link"],
+    maxFileSize: initialData?.maxFileSize || "25 MB",
+    maxAttempts: initialData?.maxAttempts || "Unlimited",
+    totalMarks: initialData?.totalMarks || 100,
+    passingMarks: initialData?.passingMarks || 40,
+    gradingMode: initialData?.gradingMode || "Automated Test Cases + Manual Code Review",
+    targetCohort: initialData?.targetCohort || "Spring Cohort & Placement Prep",
+    status: initialData?.status || "Draft",
+    notifyStudents: initialData?.notifyStudents ?? true,
+  });
+
+  const [newProblemTitle, setNewProblemTitle] = useState("");
+  const [newProblemDifficulty, setNewProblemDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
+  const [newProblemPoints, setNewProblemPoints] = useState(25);
+
+  const availableModules = DEFAULT_MODULES[data.course] || ["Module 1: Foundations", "Module 2: Advanced"];
+
+  const handleAddProblem = () => {
+    if (!newProblemTitle.trim()) return;
+    const newProb = {
+      id: Date.now(),
+      title: newProblemTitle.trim(),
+      category: data.module || "General",
+      difficulty: newProblemDifficulty,
+      points: Number(newProblemPoints) || 25,
+    };
+    const updatedList = [...data.problemsList, newProb];
+    setData((prev) => ({
+      ...prev,
+      problemsList: updatedList,
+      problemsCount: updatedList.length,
+      totalMarks: updatedList.reduce((acc, p) => acc + p.points, 0),
+    }));
+    setNewProblemTitle("");
+  };
+
+  const handleRemoveProblem = (id: number) => {
+    const updatedList = data.problemsList.filter((p) => p.id !== id);
+    setData((prev) => ({
+      ...prev,
+      problemsList: updatedList,
+      problemsCount: updatedList.length,
+      totalMarks: updatedList.reduce((acc, p) => acc + p.points, 0),
+    }));
+  };
+
+  const toggleSubmissionType = (type: string) => {
+    setData((prev) => {
+      const exists = prev.submissionTypes.includes(type);
+      return {
+        ...prev,
+        submissionTypes: exists
+          ? prev.submissionTypes.filter((t) => t !== type)
+          : [...prev.submissionTypes, type],
+      };
+    });
+  };
+
+  const progressPercent = Math.round((activeStep / 8) * 100);
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0b0e14] text-slate-900 dark:text-slate-100 flex flex-col antialiased">
+      {/* Top Header Bar */}
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-[#121620]/95 backdrop-blur-md px-6 py-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Assignments</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => onSaveDraft(data)}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer shadow-xs"
+          >
+            <Save className="h-3.5 w-3.5" />
+            <span>Save draft</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onPublish({ ...data, status: "Published" })}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
+          >
+            <Send className="h-3.5 w-3.5" />
+            <span>Publish assignment</span>
+          </button>
+          <button
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-slate-200 transition-colors ml-1 cursor-pointer"
+            aria-label="Close builder"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content Container */}
+      <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 py-7">
+        {/* Title Area */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400 dark:text-slate-500 mb-1">
+            <span>Assignments</span>
+            <span>&gt;</span>
+            <span className="text-slate-700 dark:text-slate-300 font-bold">New Assignment</span>
+          </div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-400 mb-1">
+            ASSIGNMENT BUILDER
+          </div>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Create Assignment
+            </h1>
+            <span className="rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/50 px-2 py-0.5 text-[10px] font-bold">
+              Draft
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-3xl">
+            Create and publish assignments with practice problems, resources, deadlines, and submission requirements.
+          </p>
+        </div>
+
+        {/* 2-Column Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left / Main Section (8 cols) */}
+          <div className="lg:col-span-8 space-y-4">
+            {/* Step Tabs Card */}
+            <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-4 py-2.5 shadow-xs overflow-x-auto">
+              <div className="flex items-center gap-2 min-w-max">
+                {STEPS.map((step) => {
+                  const isActive = activeStep === step.id;
+                  const isCompleted = activeStep > step.id;
+                  return (
+                    <button
+                      key={step.id}
+                      type="button"
+                      onClick={() => setActiveStep(step.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer",
+                        isActive
+                          ? "bg-indigo-50/80 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-bold border-b-2 border-indigo-600 dark:border-indigo-400"
+                          : isCompleted
+                          ? "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"
+                          : "text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "grid h-5 w-5 place-items-center rounded-full text-[10px] font-bold",
+                          isActive
+                            ? "bg-indigo-600 text-white"
+                            : isCompleted
+                            ? "bg-emerald-500 text-white"
+                            : "bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400"
+                        )}
+                      >
+                        {isCompleted ? <Check className="h-3 w-3 stroke-[3]" /> : step.id}
+                      </span>
+                      <span>{step.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Active Step Form Card */}
+            <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 sm:p-8 shadow-sm">
+              {/* Step 1: Basic Information */}
+              {activeStep === 1 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                      Basic Information
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Start with a clear title, description, and instructions for students.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                      Assignment Title <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={data.title}
+                      onChange={(e) => setData({ ...data, title: e.target.value })}
+                      placeholder="Week 1 Assignment"
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                      Assignment Description <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      value={data.description}
+                      onChange={(e) => setData({ ...data, description: e.target.value })}
+                      placeholder="Practice arrays and problem-solving fundamentals."
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-h-[110px] resize-y font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                      Instructions <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      value={data.instructions}
+                      onChange={(e) => setData({ ...data, instructions: e.target.value })}
+                      placeholder="Complete all problems and submit before the deadline."
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-h-[110px] resize-y font-medium"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Course Mapping */}
+              {activeStep === 2 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                      Course Mapping
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Attach this assignment to a specific course curriculum and module.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                        Target Course <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={data.course}
+                          onChange={(e) => setData({ ...data, course: e.target.value })}
+                          className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 pr-9 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer font-medium"
+                        >
+                          {availableCourses.map((c) => (
+                            <option key={c} value={c} className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white">
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                        Target Module <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={data.module}
+                          onChange={(e) => setData({ ...data, module: e.target.value })}
+                          className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 pr-9 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer font-medium"
+                        >
+                          {availableModules.map((m) => (
+                            <option key={m} value={m} className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white">
+                              {m}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                        Topic / Subtopic (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={data.topic || ""}
+                        onChange={(e) => setData({ ...data, topic: e.target.value })}
+                        placeholder="e.g. Two Pointers & Sliding Window"
+                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                        Difficulty Level
+                      </label>
+                      <div className="flex gap-2">
+                        {(["Beginner", "Medium", "Hard"] as const).map((lvl) => (
+                          <button
+                            key={lvl}
+                            type="button"
+                            onClick={() => setData({ ...data, difficulty: lvl })}
+                            className={cn(
+                              "flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                              data.difficulty === lvl
+                                ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/60 dark:border-indigo-800 dark:text-indigo-300 shadow-xs"
+                                : "border-slate-200/80 bg-slate-50/50 text-slate-600 dark:border-white/5 dark:bg-white/[0.02] dark:text-slate-400"
+                            )}
+                          >
+                            {lvl}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Problems */}
+              {activeStep === 3 && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                        Practice Problems ({data.problemsList.length})
+                      </h2>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Include coding challenges and test cases for student submission.
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                      Total: {data.totalMarks} marks
+                    </span>
+                  </div>
+
+                  {/* Problem Items List */}
+                  <div className="space-y-2.5">
+                    {data.problemsList.map((prob, idx) => (
+                      <div
+                        key={prob.id}
+                        className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="grid h-8 w-8 place-items-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300 font-mono text-xs font-bold">
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 dark:text-white">
+                              {prob.title}
+                            </p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                              {prob.category} · {prob.difficulty} · {prob.points} points
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProblem(prob.id)}
+                          className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-300 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add Problem Form */}
+                  <div className="p-4 rounded-2xl border border-dashed border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/30 dark:bg-indigo-950/20 space-y-3">
+                    <p className="text-xs font-bold text-indigo-900 dark:text-indigo-300">
+                      + Add New Practice Problem
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                      <div className="sm:col-span-6">
+                        <input
+                          type="text"
+                          value={newProblemTitle}
+                          onChange={(e) => setNewProblemTitle(e.target.value)}
+                          placeholder="e.g. Subarray Sum Equals K"
+                          className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        />
+                      </div>
+                      <div className="sm:col-span-3">
+                        <select
+                          value={newProblemDifficulty}
+                          onChange={(e) => setNewProblemDifficulty(e.target.value as any)}
+                          className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none"
+                        >
+                          <option value="Easy">Easy</option>
+                          <option value="Medium">Medium</option>
+                          <option value="Hard">Hard</option>
+                        </select>
+                      </div>
+                      <div className="sm:col-span-3 flex gap-2">
+                        <input
+                          type="number"
+                          value={newProblemPoints}
+                          onChange={(e) => setNewProblemPoints(Number(e.target.value))}
+                          placeholder="Points"
+                          className="w-20 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddProblem}
+                          className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-3 py-2 text-xs font-bold text-white shadow-xs cursor-pointer"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Schedule */}
+              {activeStep === 4 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                      Schedule & Deadlines
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Configure release dates, submission deadlines, and late penalty policies.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                        Release Date
+                      </label>
+                      <input
+                        type="text"
+                        value={data.releaseDate}
+                        onChange={(e) => setData({ ...data, releaseDate: e.target.value })}
+                        placeholder="16 Sept 2026"
+                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                        Submission Deadline <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={data.deadline}
+                        onChange={(e) => setData({ ...data, deadline: e.target.value })}
+                        placeholder="22 Sept 2026"
+                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">
+                          Allow late submissions
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          Students can still submit after the deadline with a configured penalty.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setData({ ...data, allowLate: !data.allowLate })}
+                        className={cn(
+                          "relative h-6 w-11 rounded-full transition-colors cursor-pointer",
+                          data.allowLate ? "bg-indigo-600" : "bg-slate-300 dark:bg-white/10"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                            data.allowLate ? "translate-x-6" : "translate-x-1"
+                          )}
+                        />
+                      </button>
+                    </div>
+
+                    {data.allowLate && (
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-white/5">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                          Late penalty rate
+                        </label>
+                        <input
+                          type="text"
+                          value={data.latePenalty}
+                          onChange={(e) => setData({ ...data, latePenalty: e.target.value })}
+                          placeholder="10% per day"
+                          className="w-full max-w-xs rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 5: Resources */}
+              {activeStep === 5 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                      Resources & Attachments
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Upload starter code templates, problem statements, and reference guides.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 p-8 text-center cursor-pointer hover:bg-indigo-50/40 transition">
+                    <div className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300">
+                      <Upload className="h-5 w-5" />
+                    </div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      Drop starter code or PDF documents here
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Supports ZIP, PDF, MD, IPYNB, DOCX (Max 50 MB)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Attached Files ({data.resources.length})
+                    </p>
+                    {data.resources.map((res) => (
+                      <div
+                        key={res.id}
+                        className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-4 w-4 text-indigo-600" />
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 dark:text-white">{res.name}</p>
+                            <p className="text-[10px] text-slate-400">{res.size}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setData({ ...data, resources: data.resources.filter((r) => r.id !== res.id) })}
+                          className="text-slate-400 hover:text-rose-500"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 6: Submission */}
+              {activeStep === 6 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                      Submission Settings
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Select what format learners can use to submit their work.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {[
+                      { id: "Code Editor / IDE", desc: "Built-in online IDE with instant test case execution" },
+                      { id: "ZIP / File upload", desc: "Upload zipped solution code, documents or PDF reports" },
+                      { id: "GitHub repository link", desc: "Submit public or private GitHub/GitLab repository URL" },
+                      { id: "Google Drive link", desc: "Share external drive link for project deliverables" },
+                    ].map((opt) => {
+                      const isSelected = data.submissionTypes.includes(opt.id);
+                      return (
+                        <div
+                          key={opt.id}
+                          onClick={() => toggleSubmissionType(opt.id)}
+                          className={cn(
+                            "flex items-start gap-3.5 p-4 rounded-2xl border transition-all cursor-pointer",
+                            isSelected
+                              ? "border-indigo-600 bg-indigo-50/30 dark:border-indigo-500 dark:bg-indigo-950/20"
+                              : "border-slate-200/80 bg-white dark:border-white/5 dark:bg-white/[0.02]"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "grid h-5 w-5 shrink-0 place-items-center rounded-md border mt-0.5 transition-colors",
+                              isSelected
+                                ? "bg-indigo-600 border-indigo-600 text-white"
+                                : "border-slate-300 dark:border-white/20 bg-white dark:bg-transparent"
+                            )}
+                          >
+                            {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 dark:text-white">{opt.id}</p>
+                            <p className="text-[11px] text-slate-400">{opt.desc}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 7: Evaluation */}
+              {activeStep === 7 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                      Evaluation & Grading
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Configure scoring rubrics, auto-grading rules, and passing criteria.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                        Total Marks <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={data.totalMarks}
+                        onChange={(e) => setData({ ...data, totalMarks: Number(e.target.value) })}
+                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                        Passing Marks
+                      </label>
+                      <input
+                        type="number"
+                        value={data.passingMarks}
+                        onChange={(e) => setData({ ...data, passingMarks: Number(e.target.value) })}
+                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                      Grading Mode
+                    </label>
+                    <select
+                      value={data.gradingMode}
+                      onChange={(e) => setData({ ...data, gradingMode: e.target.value })}
+                      className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="Automated Test Cases + Manual Code Review">Automated Test Cases + Manual Code Review</option>
+                      <option value="100% Automated Grading">100% Automated Grading (Instant score on submit)</option>
+                      <option value="Manual Instructor Review Only">Manual Instructor Review Only</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 8: Visibility */}
+              {activeStep === 8 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                      Visibility & Publishing
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Control which cohorts have access and configure launch notifications.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+                      Target Cohort / Batch
+                    </label>
+                    <input
+                      type="text"
+                      value={data.targetCohort}
+                      onChange={(e) => setData({ ...data, targetCohort: e.target.value })}
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-medium"
+                    />
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">
+                        Notify enrolled students
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Send push notifications and email alerts immediately when published.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setData({ ...data, notifyStudents: !data.notifyStudents })}
+                      className={cn(
+                        "relative h-6 w-11 rounded-full transition-colors cursor-pointer",
+                        data.notifyStudents ? "bg-indigo-600" : "bg-slate-300 dark:bg-white/10"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                          data.notifyStudents ? "translate-x-6" : "translate-x-1"
+                        )}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Footer Actions inside form container */}
+              <div className="mt-8 flex items-center justify-between border-t border-slate-100 dark:border-white/5 pt-6">
+                <button
+                  type="button"
+                  onClick={activeStep === 1 ? onClose : () => setActiveStep((s) => Math.max(1, s - 1))}
+                  className="rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer"
+                >
+                  {activeStep === 1 ? "Cancel" : "Back"}
+                </button>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewOpen(true)}
+                    className="rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer"
+                  >
+                    Preview assignment
+                  </button>
+                  {activeStep < 8 ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveStep((s) => Math.min(8, s + 1))}
+                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
+                    >
+                      <span>Continue</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onPublish({ ...data, status: "Published" })}
+                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      <span>Publish assignment</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar Summary Section (4 cols) */}
+          <div className="lg:col-span-4 space-y-4">
+            {/* Card 1: Assignment summary */}
+            <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
+                <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                  Assignment summary
+                </h3>
+                <span className="text-indigo-600 dark:text-indigo-400">
+                  <FileText className="h-4 w-4" />
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Assignment title</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{data.title || "Untitled Assignment"}</p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Course</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{data.course}</p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Module</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{data.module}</p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Problems added</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{data.problemsCount}</p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Deadline</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{data.deadline}</p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Submission type</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">
+                    {data.submissionTypes.length > 1 ? "Multiple formats" : data.submissionTypes[0] || "Code Editor"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Total marks</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{data.totalMarks}</p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Status</p>
+                  <div className="mt-1">
+                    <span className="rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/50 px-2 py-0.5 text-[10px] font-bold">
+                      {data.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: CREATION PROGRESS */}
+            <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                CREATION PROGRESS
+              </p>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                <div
+                  className="h-full rounded-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-300"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Step {activeStep} of 8
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Quick Preview Modal */}
+      {isPreviewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-[#121620] p-6 shadow-2xl border border-slate-100 dark:border-white/10 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5 text-indigo-600" />
+                <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                  {data.title}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsPreviewOpen(false)}
+                className="grid h-8 w-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-600 dark:text-slate-300">{data.description}</p>
+              <div className="p-3.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50">
+                <p className="font-bold text-indigo-950 dark:text-indigo-200">Instructions:</p>
+                <p className="mt-1 text-indigo-900/80 dark:text-indigo-300/80">{data.instructions}</p>
+              </div>
+
+              <div>
+                <p className="font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                  Problems to complete ({data.problemsList.length}):
+                </p>
+                <div className="space-y-1.5">
+                  {data.problemsList.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/5"
+                    >
+                      <span className="font-semibold">{idx + 1}. {p.title}</span>
+                      <span className="text-[10px] font-bold text-indigo-600">{p.points} pts</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100 dark:border-white/5">
+                <span>Course: <strong>{data.course}</strong> · {data.module}</span>
+                <span>Due: <strong>{data.deadline}</strong></span>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setIsPreviewOpen(false)}
+                className="rounded-xl bg-slate-900 dark:bg-white px-5 py-2 text-xs font-bold text-white dark:text-slate-900"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

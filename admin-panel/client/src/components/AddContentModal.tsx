@@ -6,6 +6,7 @@ import {
   PlayCircle,
   FileText,
   Code2,
+  ClipboardCheck,
   FileCheck2,
   FolderArchive,
   Megaphone,
@@ -82,11 +83,11 @@ const CONTENT_TYPES: ContentTypeOption[] = [
     iconColor: "text-purple-600 dark:text-purple-400",
   },
   {
-    id: "assessment",
-    title: "Assessment",
-    description: "Create quizzes and tests.",
-    tags: "Quiz · Weekly test · Module test · Mock test",
-    icon: FileCheck2,
+    id: "assignment",
+    title: "Assignment",
+    description: "Create student assignments and projects.",
+    tags: "Code submission · File upload · GitHub link",
+    icon: ClipboardCheck,
     iconBg: "bg-sky-50 dark:bg-sky-950/60",
     iconColor: "text-sky-600 dark:text-sky-400",
   },
@@ -159,9 +160,9 @@ export function getContentTypeMeta(type: string = "") {
       iconColor: "text-purple-600 dark:text-purple-400",
     };
   }
-  if (t.includes("assessment") || t.includes("quiz") || t.includes("test")) {
+  if (t.includes("assignment") || t.includes("homework") || t.includes("project") || t.includes("assessment")) {
     return {
-      icon: FileCheck2,
+      icon: ClipboardCheck,
       iconBg: "bg-sky-50 dark:bg-sky-950/60",
       iconColor: "text-sky-600 dark:text-sky-400",
     };
@@ -197,8 +198,9 @@ function getTitlePlaceholder(typeId: string): string {
       return "e.g. Recursion & Backtracking Worksheet";
     case "practice_problem":
       return "e.g. Two Sum & Sliding Window";
+    case "assignment":
     case "assessment":
-      return "e.g. Graph Algorithms Screen";
+      return "e.g. Fullstack JWT Auth Project";
     case "resource":
       return "e.g. Resume Template - FAANG Ready";
     case "announcement":
