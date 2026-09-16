@@ -1,6 +1,7 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import logger from '../utils/logger';
+import { AuthService } from '../modules/auth/auth.service';
 
 export interface AuthenticatedUser {
   id: string;
@@ -62,6 +63,13 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
         }
       } catch {
         // Non-blocking database session check fallback
+      }
+
+      if (decoded?.email) {
+        const memUser = AuthService.fallbackUsers.get(decoded.email.toLowerCase());
+        if (memUser) {
+          memUser.lastActiveAt = new Date().toISOString();
+        }
       }
 
       request.user = decoded;

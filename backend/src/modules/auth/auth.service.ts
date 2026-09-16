@@ -27,6 +27,8 @@ export class AuthService {
           isCompleted: true,
         },
         enrollments: [],
+        lastLoginAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString(),
         createdAt: new Date(Date.now() - 3600000).toISOString(),
       },
     ],
@@ -118,6 +120,8 @@ export class AuthService {
       fullName: payload.fullName,
       role: 'STUDENT' as any,
       maxDevices: env.MAX_CONCURRENT_DEVICES_PER_USER,
+      lastLoginAt: new Date().toISOString(),
+      lastActiveAt: new Date().toISOString(),
     };
 
     let user: any = newUserData;
@@ -201,9 +205,26 @@ export class AuthService {
           userAgent: payload.userAgent,
         },
       });
+
+      await this.prisma.activityLog.create({
+        data: {
+          userId: user.id,
+          action: 'AUTH_LOGIN',
+          ipAddress: payload.ip,
+          metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
+        },
+      }).catch(() => {});
     } catch {
       // Non-blocking fallback
     }
+
+    const nowIso = new Date().toISOString();
+    user.lastLoginAt = nowIso;
+    user.lastActiveAt = nowIso;
+    AuthService.fallbackUsers.set(normalizedEmail, user);
+
+    // Broadcast real-time update to all connected Admin WebSocket clients
+    AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
 
     return {
       user: {
@@ -515,6 +536,11 @@ export class AuthService {
       if (err.code === 'DEVICE_LIMIT_REACHED') throw err;
       logger.warn({ err: err.message }, 'Database device tracking deferred, session active');
     }
+
+    const nowIso = new Date().toISOString();
+    user.lastLoginAt = nowIso;
+    user.lastActiveAt = nowIso;
+    AuthService.fallbackUsers.set(normalizedEmail, user);
 
     logger.info({ userId: user.id, email: user.email }, 'User logged in via Google OAuth');
 

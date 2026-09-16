@@ -1,6 +1,7 @@
 import DashboardLayout, { navLabelMap } from "@/components/DashboardLayout";
 import AdminProfileDropdown from "@/components/AdminProfileDropdown";
 import CourseBuilder, { CourseBuilderData, CourseModule } from "@/components/CourseBuilder";
+import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { cn } from "@/lib/utils";
 import {
@@ -379,6 +380,7 @@ interface StudentItem {
   course: string;
   progress: number;
   activity: string;
+  lastActiveAt?: string;
   status: string;
   avatar: string;
 }
@@ -1122,7 +1124,32 @@ function StudentsView({ onAction, onToast }: { onAction: (state: DialogState) =>
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{learner.activity}</td>
+                  <td
+                    className="px-4 py-4 text-[11px] text-[var(--muted)]"
+                    title={
+                      learner.lastActiveAt
+                        ? `Last active: ${new Date(learner.lastActiveAt).toLocaleString("en-US", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}`
+                        : undefined
+                    }
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          learner.activity === "Just now" ||
+                            learner.activity === "Active now" ||
+                            learner.activity.includes("min ago") ||
+                            learner.activity.includes("mins ago")
+                            ? "bg-emerald-500 animate-pulse"
+                            : "bg-slate-300 dark:bg-slate-600"
+                        )}
+                      />
+                      <span>{learner.activity}</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-4">
                     <StatusBadge>{learner.status}</StatusBadge>
                   </td>
@@ -1144,10 +1171,158 @@ function StudentsView({ onAction, onToast }: { onAction: (state: DialogState) =>
   );
 }
 
-function ContentView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
-  const [query, setQuery] = useState(""); const [filter, setFilter] = useState("All"); const [rows, setRows] = useState(contentItems);
-  const filtered = rows.filter((item) => (filter === "All" || item.type === filter) && `${item.title} ${item.parent} ${item.owner}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="content" description={sectionDescriptions.content} actionLabel="Add content" onAction={() => onAction({ title: "Add learning content", description: "Create a resource and attach it to the right place in the learning path.", fields: ["Content title", "Content type", "Attach to"] })} onExport={() => onToast("Content inventory exported") } /><MetricStrip items={[{ label: "Published resources", value: "428", change: "+24 this month" }, { label: "Practice problems", value: "1,284", change: "+86 this month" }, { label: "Drafts", value: "36", change: "12 need review", tone: "text-amber-600" }, { label: "Storage used", value: "68%", change: "2.4 TB available" }]} /><DataCard title="Content library" subtitle="Modules, lessons, videos, files, and practice resources" toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "Video", "PDF", "Assignment", "Practice problem", "Text"]} />}><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left"><thead><tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]"><th className="px-5 py-3 sm:px-6">Content</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Location</th><th className="px-4 py-3">Owner</th><th className="px-4 py-3">Updated</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead><tbody>{filtered.map((item) => <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"><td className="px-5 py-4 sm:px-6"><div className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">{item.type === "Video" ? <PlayCircle className="h-4 w-4" /> : item.type === "Practice problem" ? <Code2 className="h-4 w-4" /> : <FileText className="h-4 w-4" />}</span><p className="text-[12px] font-bold">{item.title}</p></div></td><td className="px-4 py-4 text-[11px] font-semibold">{item.type}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.parent}</td><td className="px-4 py-4 text-[11px] font-semibold">{item.owner}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.updated}</td><td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td><td className="px-4 py-4"><button onClick={() => setRows((current) => current.map((row) => row.id === item.id ? { ...row, status: row.status === "Published" ? "Draft" : "Published" } : row))} className="icon-button"><MoreHorizontal className="h-4 w-4" /></button></td></tr>)}</tbody></table></div></DataCard></div>;
+function ContentView({
+  onAction,
+  onToast,
+  onCreateCourse,
+}: {
+  onAction: (state: DialogState) => void;
+  onToast: (message: string) => void;
+  onCreateCourse?: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("All");
+  const [rows, setRows] = useState(contentItems);
+  const [isAddContentOpen, setIsAddContentOpen] = useState(false);
+
+  const filtered = rows.filter(
+    (item) =>
+      (filter === "All" || item.type === filter) &&
+      `${item.title} ${item.parent} ${item.owner}`.toLowerCase().includes(query.toLowerCase())
+  );
+
+  const handleContinueAddContent = (selectedType: string, typeInfo: ContentTypeOption) => {
+    if (selectedType === "course" && onCreateCourse) {
+      setIsAddContentOpen(false);
+      onCreateCourse();
+      return;
+    }
+
+    const typeName =
+      typeInfo.title === "Notes / PDF"
+        ? "PDF"
+        : typeInfo.title === "Practice Problem"
+        ? "Practice problem"
+        : typeInfo.title;
+
+    const newItem = {
+      id: Date.now(),
+      title: `${typeInfo.title}: New Asset`,
+      type: typeName,
+      parent: "DSA Placement Program",
+      owner: "Admin Team",
+      status: "Published",
+      updated: "Just now",
+    };
+
+    setRows((current) => [newItem, ...current]);
+    setIsAddContentOpen(false);
+    onToast(`${typeInfo.title} created and added to content library!`);
+  };
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="content"
+        description={sectionDescriptions.content}
+        actionLabel="Add content"
+        onAction={() => setIsAddContentOpen(true)}
+        onExport={() => onToast("Content inventory exported")}
+      />
+
+      <MetricStrip
+        items={[
+          { label: "Published resources", value: "428", change: "+24 this month" },
+          { label: "Practice problems", value: "1,284", change: "+86 this month" },
+          { label: "Drafts", value: "36", change: "12 need review", tone: "text-amber-600" },
+          { label: "Storage used", value: "68%", change: "2.4 TB available" },
+        ]}
+      />
+
+      <DataCard
+        title="Content library"
+        subtitle="Modules, lessons, videos, files, and practice resources"
+        toolbar={
+          <SearchToolbar
+            query={query}
+            setQuery={setQuery}
+            filter={filter}
+            setFilter={setFilter}
+            filters={["All", "Video", "PDF", "Assignment", "Practice problem", "Text"]}
+          />
+        }
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] text-left">
+            <thead>
+              <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                <th className="px-5 py-3 sm:px-6">Content</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Location</th>
+                <th className="px-4 py-3">Owner</th>
+                <th className="px-4 py-3">Updated</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((item) => (
+                <tr
+                  key={item.id}
+                  className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"
+                >
+                  <td className="px-5 py-4 sm:px-6">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+                        {item.type === "Video" ? (
+                          <PlayCircle className="h-4 w-4" />
+                        ) : item.type === "Practice problem" ? (
+                          <Code2 className="h-4 w-4" />
+                        ) : (
+                          <FileText className="h-4 w-4" />
+                        )}
+                      </span>
+                      <p className="text-[12px] font-bold">{item.title}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-[11px] font-semibold">{item.type}</td>
+                  <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.parent}</td>
+                  <td className="px-4 py-4 text-[11px] font-semibold">{item.owner}</td>
+                  <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.updated}</td>
+                  <td className="px-4 py-4">
+                    <StatusBadge>{item.status}</StatusBadge>
+                  </td>
+                  <td className="px-4 py-4">
+                    <button
+                      onClick={() =>
+                        setRows((current) =>
+                          current.map((row) =>
+                            row.id === item.id
+                              ? { ...row, status: row.status === "Published" ? "Draft" : "Published" }
+                              : row
+                          )
+                        )
+                      }
+                      className="icon-button"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </DataCard>
+
+      <AddContentModal
+        isOpen={isAddContentOpen}
+        onClose={() => setIsAddContentOpen(false)}
+        onContinue={handleContinueAddContent}
+        onOpenCourseBuilder={onCreateCourse}
+      />
+    </div>
+  );
 }
 
 function AssessmentsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
@@ -1471,7 +1646,11 @@ export default function Home() {
     ) : section === "students" ? (
       <StudentsView onAction={onAction} onToast={onToast} />
     ) : section === "content" ? (
-      <ContentView onAction={onAction} onToast={onToast} />
+      <ContentView
+        onAction={onAction}
+        onToast={onToast}
+        onCreateCourse={handleOpenCourseBuilder}
+      />
     ) : section === "assessments" ? (
       <AssessmentsView onAction={onAction} onToast={onToast} />
     ) : section === "live" ? (

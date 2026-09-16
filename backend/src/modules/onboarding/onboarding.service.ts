@@ -48,6 +48,7 @@ export class OnboardingService {
 
     for (const [email, u] of AuthService.fallbackUsers.entries()) {
       if (u.id === userId) {
+        u.lastActiveAt = new Date().toISOString();
         u.onboarding = { ...(u.onboarding || {}), ...record, educationStatus };
         AuthService.fallbackUsers.set(email, u);
       }
@@ -96,6 +97,7 @@ export class OnboardingService {
 
     for (const [email, u] of AuthService.fallbackUsers.entries()) {
       if (u.id === userId) {
+        u.lastActiveAt = new Date().toISOString();
         u.onboarding = { ...(u.onboarding || {}), ...record, targetDomain: rolesString };
         AuthService.fallbackUsers.set(email, u);
       }
@@ -144,6 +146,7 @@ export class OnboardingService {
 
     for (const [email, u] of AuthService.fallbackUsers.entries()) {
       if (u.id === userId) {
+        u.lastActiveAt = new Date().toISOString();
         u.onboarding = { ...(u.onboarding || {}), ...record, experienceLevel: companiesString };
         AuthService.fallbackUsers.set(email, u);
       }
@@ -204,6 +207,7 @@ export class OnboardingService {
 
     for (const [email, u] of AuthService.fallbackUsers.entries()) {
       if (u.id === userId) {
+        u.lastActiveAt = new Date().toISOString();
         u.fullName = name;
         u.name = name;
         u.onboarding = { ...(u.onboarding || {}), ...record, primaryGoal: name };

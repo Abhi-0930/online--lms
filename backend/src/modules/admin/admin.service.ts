@@ -27,6 +27,44 @@ export class AdminService {
     return target.slice(0, 2).toUpperCase();
   }
 
+  private formatLastActive(dateInput: Date | string | number | null | undefined): { label: string; date: string } {
+    if (!dateInput) {
+      return { label: 'Never', date: new Date().toISOString() };
+    }
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) {
+      return { label: 'Never', date: new Date().toISOString() };
+    }
+
+    const now = Date.now();
+    const diffMs = Math.max(0, now - date.getTime());
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    let label = '';
+    if (diffMins < 1) {
+      label = 'Just now';
+    } else if (diffMins === 1) {
+      label = '1 min ago';
+    } else if (diffMins < 60) {
+      label = `${diffMins} mins ago`;
+    } else if (diffHours === 1) {
+      label = '1 hr ago';
+    } else if (diffHours < 24) {
+      label = `${diffHours} hrs ago`;
+    } else if (diffDays === 1) {
+      label = 'Yesterday';
+    } else if (diffDays < 7) {
+      label = `${diffDays} days ago`;
+    } else {
+      label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    return { label, date: date.toISOString() };
+  }
+
   async getDashboardStats() {
     let dbUsers: any[] = [];
     try {
@@ -34,6 +72,14 @@ export class AdminService {
         include: {
           onboarding: true,
           enrollments: true,
+          devices: {
+            orderBy: { lastActiveAt: 'desc' },
+            take: 1,
+          },
+          activityLogs: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -49,6 +95,10 @@ export class AdminService {
     for (const u of AuthService.fallbackUsers.values()) {
       if (!userMap.has(u.email.toLowerCase())) {
         userMap.set(u.email.toLowerCase(), u);
+      } else {
+        const existing = userMap.get(u.email.toLowerCase());
+        if (u.lastActiveAt) existing.lastActiveAt = u.lastActiveAt;
+        if (u.lastLoginAt) existing.lastLoginAt = u.lastLoginAt;
       }
     }
 
@@ -72,16 +122,33 @@ export class AdminService {
     }
     totalCourses += AdminService.fallbackCourses.size;
 
-    // Recent activity items
+    // Recent activity items based on true last active timestamps
     const recentActivities = allUsers.slice(0, 5).map((u) => {
       const name = u.fullName || u.name || u.email.split('@')[0];
-      const createdDate = new Date(u.createdAt || Date.now());
-      const minsAgo = Math.max(1, Math.floor((Date.now() - createdDate.getTime()) / 60000));
-      let timeStr = `${minsAgo} min ago`;
-      if (minsAgo >= 60) {
-        const hours = Math.floor(minsAgo / 60);
-        timeStr = hours >= 24 ? `${Math.floor(hours / 24)} days ago` : `${hours} hr ago`;
+
+      const candidateDates: number[] = [];
+      if (u.lastActiveAt) candidateDates.push(new Date(u.lastActiveAt).getTime());
+      if (u.lastLoginAt) candidateDates.push(new Date(u.lastLoginAt).getTime());
+      if (u.devices && u.devices.length > 0 && u.devices[0]?.lastActiveAt) {
+        candidateDates.push(new Date(u.devices[0].lastActiveAt).getTime());
       }
+      if (u.activityLogs && u.activityLogs.length > 0 && u.activityLogs[0]?.createdAt) {
+        candidateDates.push(new Date(u.activityLogs[0].createdAt).getTime());
+      }
+      if (u.onboarding?.updatedAt) {
+        candidateDates.push(new Date(u.onboarding.updatedAt).getTime());
+      }
+      if (u.updatedAt) {
+        candidateDates.push(new Date(u.updatedAt).getTime());
+      }
+      if (u.createdAt) {
+        candidateDates.push(new Date(u.createdAt).getTime());
+      }
+
+      const validTimestamps = candidateDates.filter((t) => !isNaN(t) && t > 0);
+      const latestTimestamp = validTimestamps.length > 0 ? Math.max(...validTimestamps) : Date.now();
+      const { label: timeStr } = this.formatLastActive(latestTimestamp);
+
       const hasEnrollments = Array.isArray(u.enrollments) && u.enrollments.length > 0;
       return {
         title: hasEnrollments ? `Student enrolled: ${name}` : `Learner registered: ${name}`,
@@ -108,6 +175,14 @@ export class AdminService {
           enrollments: {
             include: { course: true },
           },
+          devices: {
+            orderBy: { lastActiveAt: 'desc' },
+            take: 1,
+          },
+          activityLogs: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -122,6 +197,10 @@ export class AdminService {
     for (const u of AuthService.fallbackUsers.values()) {
       if (!userMap.has(u.email.toLowerCase())) {
         userMap.set(u.email.toLowerCase(), u);
+      } else {
+        const existing = userMap.get(u.email.toLowerCase());
+        if (u.lastActiveAt) existing.lastActiveAt = u.lastActiveAt;
+        if (u.lastLoginAt) existing.lastLoginAt = u.lastLoginAt;
       }
     }
 
@@ -180,14 +259,37 @@ export class AdminService {
         status = progress >= 70 ? 'On track' : progress > 0 ? 'In progress' : 'Enrolled';
       }
 
-      // Time calculation
-      const createdDate = new Date(u.createdAt || Date.now());
-      const minsAgo = Math.max(2, Math.floor((Date.now() - createdDate.getTime()) / 60000));
-      let activityStr = `${minsAgo} min ago`;
-      if (minsAgo >= 60) {
-        const hours = Math.floor(minsAgo / 60);
-        activityStr = hours >= 24 ? `${Math.floor(hours / 24)} days ago` : `${hours} hrs ago`;
+      // Collect all candidate timestamps to determine true last active / login
+      const candidateDates: number[] = [];
+
+      if (u.devices && u.devices.length > 0 && u.devices[0]?.lastActiveAt) {
+        candidateDates.push(new Date(u.devices[0].lastActiveAt).getTime());
       }
+      if (u.activityLogs && u.activityLogs.length > 0 && u.activityLogs[0]?.createdAt) {
+        candidateDates.push(new Date(u.activityLogs[0].createdAt).getTime());
+      }
+      if (u.lastActiveAt) {
+        candidateDates.push(new Date(u.lastActiveAt).getTime());
+      }
+      if (u.lastLoginAt) {
+        candidateDates.push(new Date(u.lastLoginAt).getTime());
+      }
+      if (onboarding?.updatedAt) {
+        candidateDates.push(new Date(onboarding.updatedAt).getTime());
+      }
+      if (onboarding?.completedAt) {
+        candidateDates.push(new Date(onboarding.completedAt).getTime());
+      }
+      if (u.updatedAt) {
+        candidateDates.push(new Date(u.updatedAt).getTime());
+      }
+      if (u.createdAt) {
+        candidateDates.push(new Date(u.createdAt).getTime());
+      }
+
+      const validTimestamps = candidateDates.filter((t) => !isNaN(t) && t > 0);
+      const latestTimestamp = validTimestamps.length > 0 ? Math.max(...validTimestamps) : Date.now();
+      const { label: activityStr, date: lastActiveIso } = this.formatLastActive(latestTimestamp);
 
       return {
         id: u.id || index + 1,
@@ -201,6 +303,7 @@ export class AdminService {
         course: courseName,
         progress,
         activity: activityStr,
+        lastActiveAt: lastActiveIso,
         status,
         avatar: this.getInitials(name, email),
         createdAt: u.createdAt || new Date().toISOString(),
