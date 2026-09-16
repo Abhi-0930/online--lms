@@ -114,7 +114,7 @@ const contentItems = [
   { id: 1, title: "Graphs: BFS vs DFS", type: "Video", parent: "DSA · Graphs", owner: "Arjun Mehta", status: "Published", updated: "Today" },
   { id: 2, title: "Recursion patterns worksheet", type: "PDF", parent: "DSA · Recursion", owner: "Maya Rao", status: "Published", updated: "Yesterday" },
   { id: 3, title: "Binary tree traversal challenge", type: "Practice problem", parent: "DSA · Trees", owner: "Neel Shah", status: "Draft", updated: "2 days ago" },
-  { id: 4, title: "Week 4 assignment rubric", type: "Assignment", parent: "Placement Prep", owner: "Kavya Iyer", status: "Review", updated: "3 days ago" },
+  { id: 4, title: "Fullstack system design cheatsheet", type: "Resource", parent: "Placement Prep", owner: "Kavya Iyer", status: "Review", updated: "3 days ago" },
   { id: 5, title: "Complexity analysis cheatsheet", type: "Text", parent: "Foundations", owner: "Arjun Mehta", status: "Published", updated: "4 days ago" },
 ];
 
@@ -153,17 +153,61 @@ const auditLogs = [
   { action: "Announcement posted", entity: "Spring cohort", actor: "Ava Patel", time: "Yesterday", tone: "bg-rose-100 text-rose-700" },
 ];
 
+const practiceProblemsData = [
+  { id: 1, title: "Two Sum & Hash Map Optimizations", category: "Arrays", difficulty: "Easy", acceptance: "84.2%", submissions: 2420, testCases: 15, status: "Live" },
+  { id: 2, title: "Longest Substring Without Repeating Characters", category: "Sliding Window", difficulty: "Medium", acceptance: "62.8%", submissions: 1890, testCases: 24, status: "Live" },
+  { id: 3, title: "Trapping Rain Water", category: "Two Pointers", difficulty: "Hard", acceptance: "48.1%", submissions: 1140, testCases: 32, status: "Live" },
+  { id: 4, title: "Lowest Common Ancestor in Binary Tree", category: "Trees", difficulty: "Medium", acceptance: "71.4%", submissions: 1560, testCases: 20, status: "Live" },
+  { id: 5, title: "Alien Dictionary Topological Sort", category: "Graphs", difficulty: "Hard", acceptance: "39.6%", submissions: 820, testCases: 28, status: "Draft" },
+  { id: 6, title: "Valid Parentheses & Stack Matching", category: "Stack", difficulty: "Easy", acceptance: "89.5%", submissions: 3120, testCases: 12, status: "Live" },
+];
+
+const assignmentsData = [
+  { id: 1, title: "Build Fullstack Authentication with JWT & Redis", course: "Fullstack Next.js & GraphQL Masterclass", dueDate: "Sep 22, 2026", submissions: 68, maxScore: 100, avgGrade: "92/100", status: "Published" },
+  { id: 2, title: "Implement LRU Cache with O(1) Operations", course: "DSA Mastery", dueDate: "Sep 20, 2026", submissions: 142, maxScore: 100, avgGrade: "88/100", status: "Published" },
+  { id: 3, title: "Distributed Rate Limiter Design & Implementation", course: "System Design", dueDate: "Sep 25, 2026", submissions: 45, maxScore: 100, avgGrade: "84/100", status: "Published" },
+  { id: 4, title: "Interactive Graph Visualization Dashboard", course: "DSA Placement Program", dueDate: "Sep 28, 2026", submissions: 12, maxScore: 50, avgGrade: "46/50", status: "Draft" },
+];
+
+const submissionsData = [
+  { id: "SUB-9401", student: "Aarav Sharma", item: "Implement LRU Cache", course: "DSA Mastery", submitted: "15 min ago", score: "96/100", status: "Graded" },
+  { id: "SUB-9402", student: "Ishita Kapoor", item: "Distributed Rate Limiter", course: "System Design", submitted: "45 min ago", score: "Pending", status: "Needs review" },
+  { id: "SUB-9403", student: "Rohan Verma", item: "Fullstack Authentication", course: "Next.js Masterclass", submitted: "2 hrs ago", score: "88/100", status: "Graded" },
+  { id: "SUB-9404", student: "Meera Nair", item: "Trapping Rain Water", course: "DSA Mastery", submitted: "3 hrs ago", score: "Pending", status: "Needs review" },
+  { id: "SUB-9405", student: "Siddharth Rao", item: "LRU Cache with O(1)", course: "DSA Mastery", submitted: "Yesterday", score: "74/100", status: "Action required" },
+];
+
+const announcementsData = [
+  { id: 1, title: "🚀 Live System Design Mock Interview with FAANG Staff Engineer", cohort: "Spring Cohort & Placement Prep", date: "Today, 10:00 AM", author: "Admin Team", channels: "Email · App Notification · Telegram", status: "Published" },
+  { id: 2, title: "📢 Graph Algorithms Marathon - 48h Coding Sprint Announcement", cohort: "DSA Placement Program", date: "Yesterday", author: "Arjun Mehta", channels: "App Notification · Portal Banner", status: "Published" },
+  { id: 3, title: "🛠️ Scheduled Platform Maintenance on Sunday 2:00 AM - 4:00 AM IST", cohort: "All Learners", date: "Sep 14, 2026", author: "DevOps Team", channels: "Email · Portal Banner", status: "Published" },
+];
+
+const recordingsData = [
+  { id: 1, title: "Graphs: BFS, DFS & Cycle Detection in Directed Graphs", instructor: "Arjun Mehta", course: "DSA Mastery", date: "Sep 15, 2026", duration: "1h 45m", views: 248, status: "Ready" },
+  { id: 2, title: "Microservices Architecture: Event-Driven Systems & Kafka", instructor: "Maya Rao", course: "System Design", date: "Sep 14, 2026", duration: "2h 10m", views: 195, status: "Ready" },
+  { id: 3, title: "Binary Trees & Lowest Common Ancestor Masterclass", instructor: "Arjun Mehta", course: "DSA Placement Program", date: "Sep 12, 2026", duration: "1h 30m", views: 312, status: "Ready" },
+  { id: 4, title: "Mock Technical Screening: Arrays, DP & Dynamic Memory", instructor: "Kavya Iyer", course: "Placement Prep", date: "Sep 10, 2026", duration: "1h 55m", views: 180, status: "Ready" },
+];
+
 const sectionDescriptions: Record<string, string> = {
+  overview: "Real-time summary of cohort engagement, catalog metrics, and student growth.",
   courses: "Manage your catalog, instructors, pricing, and completion health.",
   students: "Keep track of learners, cohorts, progress, and engagement signals.",
   content: "Organize modules, lessons, practice problems, and learning resources.",
+  practice_problems: "Build, organize, and manage coding challenge banks and test cases.",
+  assignments: "Create and track student course assignments, homework, and projects.",
   assessments: "Build tests, mock interviews, rubrics, and coding evaluations.",
-  live: "Coordinate sessions, recordings, attendance, and instructor calendars.",
+  submissions: "Review, evaluate, and grade learner assignments and code submissions.",
+  announcements: "Broadcast platform announcements, live class alerts, and cohort updates.",
+  live: "Coordinate sessions, attendance, and instructor calendars.",
+  recordings: "Archive of recorded live lectures, workshops, and office hours.",
   payments: "Monitor revenue, invoices, refunds, and payment health.",
   feedback: "Close the loop on learner feedback and instructor quality.",
   reports: "Explore platform performance, retention, completion, and revenue trends.",
   audit: "Review the operational trail across your platform workspace.",
   settings: "Configure branding, notifications, access, certificates, and security.",
+  help: "Instructor guides, admin documentation, platform FAQs, and support desk.",
 };
 
 function useHashRoute() {
@@ -1172,14 +1216,13 @@ function StudentsView({ onAction, onToast }: { onAction: (state: DialogState) =>
 }
 
 function ContentView({
-  onAction,
   onToast,
   onCreateCourse,
 }: {
-  onAction: (state: DialogState) => void;
   onToast: (message: string) => void;
   onCreateCourse?: () => void;
 }) {
+  const { courses: liveCourses } = useLiveAdminData();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [rows, setRows] = useState(contentItems);
@@ -1254,7 +1297,7 @@ function ContentView({
             setQuery={setQuery}
             filter={filter}
             setFilter={setFilter}
-            filters={["All", "Video", "PDF", "Assignment", "Practice problem", "Text"]}
+            filters={["All", "Video", "PDF", "Resource", "Practice problem", "Text"]}
           />
         }
       >
@@ -1326,6 +1369,19 @@ function ContentView({
         onClose={() => setIsAddContentOpen(false)}
         onContinue={handleContinueAddContent}
         onOpenCourseBuilder={onCreateCourse}
+        availableCourses={
+          liveCourses && liveCourses.length > 0
+            ? liveCourses.map((c) => c.title)
+            : undefined
+        }
+        recentItems={rows.slice(0, 5).map((r) => ({
+          id: r.id,
+          title: r.title,
+          type: r.type,
+          parent: r.parent,
+          status: r.status,
+          updated: r.updated,
+        }))}
       />
     </div>
   );
@@ -1356,9 +1412,529 @@ function ReportsView({ onToast }: { onToast: (message: string) => void }) {
   return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="reports" description={sectionDescriptions.reports} actionLabel="Build report" onAction={() => onToast("Report builder opened")} onExport={() => onToast("Analytics exported as CSV")} /><MetricStrip items={[{ label: "Engagement rate", value: "71.8%", change: "+8.4%" }, { label: "Course completion", value: "68.2%", change: "+5.2%" }, { label: "Learner retention", value: "84.6%", change: "+2.1%" }, { label: "Placement rate", value: "76.4%", change: "+11.8%" }]} /><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Learning engagement</p><h2 className="mt-1 font-display text-lg font-bold">Weekly active learners</h2></div><CustomDropdown value={timeRange} onChange={setTimeRange} options={["Last 30 days", "Last 90 days"]} /></div><div className="mt-7 h-56 flex items-end gap-2">{[46, 61, 52, 74, 68, 86, 78, 91, 72, 84, 88, 95].map((height, index) => <div key={index} className="group flex flex-1 flex-col justify-end gap-2"><div className="w-full rounded-t-lg bg-indigo-200 transition-all group-hover:bg-indigo-500 dark:bg-indigo-900/60" style={{ height: `${height}%` }} /><span className="text-center text-[9px] text-[var(--muted)]">W{index + 1}</span></div>)}</div></div><div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Course completion</p><h2 className="mt-1 font-display text-lg font-bold">Where learners drop off</h2></div><BarChart3 className="h-5 w-5 text-[var(--brand)]" /></div><div className="mt-6 space-y-5">{[{ label: "DSA Mastery", value: 78, color: "bg-indigo-500" }, { label: "System Design", value: 64, color: "bg-violet-500" }, { label: "Python for Problem Solving", value: 71, color: "bg-emerald-500" }, { label: "Competitive Programming", value: 52, color: "bg-amber-500" }].map((item) => <div key={item.label}><div className="flex justify-between text-[11px] font-bold"><span>{item.label}</span><span>{item.value}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className={cn("h-full rounded-full", item.color)} style={{ width: `${item.value}%` }} /></div></div>)}</div></div></div><DataCard title="Saved reports" subtitle="Reusable exports for your leadership and instructor teams" toolbar={<button onClick={() => onToast("New report template created")} className="secondary-button"><Plus className="h-4 w-4" /> Add template</button>}><div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">{["Monthly executive pulse", "Placement readiness", "Instructor performance"].map((report) => <button onClick={() => onToast(`${report} generated`)} className="rounded-xl border border-[var(--app-line)] p-4 text-left hover:bg-[var(--subtle-bg)]" key={report}><BarChart3 className="h-4 w-4 text-[var(--brand)]" /><p className="mt-4 text-[12px] font-bold">{report}</p><p className="mt-1 text-[10px] text-[var(--muted)]">Run report · CSV / PDF</p></button>)}</div></DataCard></div>;
 }
 
-function AuditView({ onToast }: { onToast: (message: string) => void }) {
-  const [query, setQuery] = useState(""); const filtered = auditLogs.filter((item) => `${item.action} ${item.entity} ${item.actor}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="audit" description={sectionDescriptions.audit} actionLabel="Export logs" onAction={() => onToast("Audit logs exported")} /><MetricStrip items={[{ label: "Events today", value: "1,284", change: "+14.2%" }, { label: "Admin actions", value: "326", change: "Across 8 admins" }, { label: "System events", value: "958", change: "All services" }, { label: "Security alerts", value: "0", change: "No action needed" }]} /><DataCard title="Audit trail" subtitle="Every important platform action, with actor and entity context" toolbar={<div className="relative w-full sm:w-72"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" /><input value={query} onChange={(event) => setQuery(event.target.value)} className="input pl-9" placeholder="Search audit events" /></div>}><div className="divide-y divide-[var(--app-line)]">{filtered.map((item) => <div className="flex items-center gap-4 p-5 sm:px-6" key={`${item.action}-${item.entity}`}><div className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl", item.tone)}><ShieldCheck className="h-4 w-4" /></div><div className="flex-1"><p className="text-[12px] font-bold">{item.action}</p><p className="mt-1 text-[11px] text-[var(--muted)]">{item.entity} · by {item.actor}</p></div><span className="text-[10px] font-semibold text-[var(--muted)]">{item.time}</span><ChevronRight className="h-4 w-4 text-[var(--muted)]" /></div>)}</div></DataCard></div>;
+function PracticeProblemsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+  const [filter, setFilter] = useState("All");
+  const [query, setQuery] = useState("");
+  const [rows, setRows] = useState(practiceProblemsData);
+
+  const filtered = rows.filter(
+    (item) =>
+      (filter === "All" || item.difficulty === filter || item.category === filter) &&
+      `${item.title} ${item.category} ${item.difficulty}`.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="practice_problems"
+        description={sectionDescriptions.practice_problems}
+        actionLabel="Create problem"
+        onAction={() =>
+          onAction({
+            title: "Create practice problem",
+            description: "Set problem description, test cases, and difficulty level.",
+            fields: ["Problem title", "Category / Topic", "Difficulty", "Sample test cases"],
+          })
+        }
+        onExport={() => onToast("Practice problems inventory exported")}
+      />
+
+      <MetricStrip
+        items={[
+          { label: "Coding problems", value: "1,284", change: "+48 this month" },
+          { label: "Easy challenges", value: "480", change: "High solve rate" },
+          { label: "Medium / Hard", value: "804", change: "Interview focused", tone: "text-amber-600" },
+          { label: "Avg. pass rate", value: "68.4%", change: "+4.2%" },
+        ]}
+      />
+
+      <DataCard
+        title="Challenge library"
+        subtitle="DSA practice problems, coding screens, and competitive programming track"
+        toolbar={
+          <SearchToolbar
+            query={query}
+            setQuery={setQuery}
+            filter={filter}
+            setFilter={setFilter}
+            filters={["All", "Easy", "Medium", "Hard", "Arrays", "Trees", "Graphs"]}
+          />
+        }
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[850px] text-left">
+            <thead>
+              <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                <th className="px-5 py-3 sm:px-6">Problem</th>
+                <th className="px-4 py-3">Category</th>
+                <th className="px-4 py-3">Difficulty</th>
+                <th className="px-4 py-3">Acceptance</th>
+                <th className="px-4 py-3">Submissions</th>
+                <th className="px-4 py-3">Test cases</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((item) => (
+                <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]">
+                  <td className="px-5 py-4 sm:px-6">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-8 w-8 place-items-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300">
+                        <Code2 className="h-4 w-4" />
+                      </span>
+                      <p className="text-[12px] font-bold">{item.title}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-[11px] font-semibold">{item.category}</td>
+                  <td className="px-4 py-4">
+                    <span
+                      className={cn(
+                        "rounded-md px-2 py-0.5 text-[10px] font-bold",
+                        item.difficulty === "Easy"
+                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          : item.difficulty === "Medium"
+                          ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                          : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                      )}
+                    >
+                      {item.difficulty}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 text-[12px] font-bold">{item.acceptance}</td>
+                  <td className="px-4 py-4 text-[12px] font-semibold text-[var(--muted)]">{item.submissions.toLocaleString()}</td>
+                  <td className="px-4 py-4 text-[11px] font-bold">{item.testCases} cases</td>
+                  <td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td>
+                  <td className="px-4 py-4">
+                    <button
+                      onClick={() =>
+                        setRows((current) =>
+                          current.map((row) =>
+                            row.id === item.id ? { ...row, status: row.status === "Live" ? "Draft" : "Live" } : row
+                          )
+                        )
+                      }
+                      className="text-[10px] font-bold text-[var(--brand)]"
+                    >
+                      {item.status === "Live" ? "Draft" : "Publish"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </DataCard>
+    </div>
+  );
+}
+
+function AssignmentsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+  const [filter, setFilter] = useState("All");
+  const [query, setQuery] = useState("");
+  const [rows, setRows] = useState(assignmentsData);
+
+  const filtered = rows.filter(
+    (item) =>
+      (filter === "All" || item.status === filter) &&
+      `${item.title} ${item.course}`.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="assignments"
+        description={sectionDescriptions.assignments}
+        actionLabel="Create assignment"
+        onAction={() =>
+          onAction({
+            title: "Create course assignment",
+            description: "Define rubrics, deadline, submission requirements, and course attachment.",
+            fields: ["Assignment title", "Course / Track", "Due date", "Max points", "Submission guidelines"],
+          })
+        }
+        onExport={() => onToast("Assignments list exported")}
+      />
+
+      <MetricStrip
+        items={[
+          { label: "Active assignments", value: "14", change: "+2 this week" },
+          { label: "Total submissions", value: "842", change: "+18.4%" },
+          { label: "Pending grading", value: "42", change: "Needs review", tone: "text-amber-600" },
+          { label: "Avg. score", value: "88.4%", change: "+3.8%" },
+        ]}
+      />
+
+      <DataCard
+        title="Assignment directory"
+        subtitle="Homework, capstone projects, and GitHub repository submissions"
+        toolbar={
+          <SearchToolbar
+            query={query}
+            setQuery={setQuery}
+            filter={filter}
+            setFilter={setFilter}
+            filters={["All", "Published", "Draft"]}
+          />
+        }
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[850px] text-left">
+            <thead>
+              <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                <th className="px-5 py-3 sm:px-6">Assignment</th>
+                <th className="px-4 py-3">Attached Course</th>
+                <th className="px-4 py-3">Due Date</th>
+                <th className="px-4 py-3">Submissions</th>
+                <th className="px-4 py-3">Avg. Grade</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((item) => (
+                <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]">
+                  <td className="px-5 py-4 sm:px-6">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+                        <ClipboardCheck className="h-4 w-4" />
+                      </span>
+                      <p className="text-[12px] font-bold">{item.title}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-[11px] font-semibold text-[var(--muted)]">{item.course}</td>
+                  <td className="px-4 py-4 text-[11px] font-semibold">{item.dueDate}</td>
+                  <td className="px-4 py-4 text-[12px] font-bold">{item.submissions} submitted</td>
+                  <td className="px-4 py-4 text-[12px] font-bold text-emerald-600 dark:text-emerald-400">{item.avgGrade}</td>
+                  <td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td>
+                  <td className="px-4 py-4">
+                    <button
+                      onClick={() =>
+                        setRows((current) =>
+                          current.map((row) =>
+                            row.id === item.id ? { ...row, status: row.status === "Published" ? "Draft" : "Published" } : row
+                          )
+                        )
+                      }
+                      className="text-[10px] font-bold text-[var(--brand)]"
+                    >
+                      {item.status === "Published" ? "Unpublish" : "Publish"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </DataCard>
+    </div>
+  );
+}
+
+function SubmissionsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+  const [filter, setFilter] = useState("All");
+  const [query, setQuery] = useState("");
+  const [rows, setRows] = useState(submissionsData);
+
+  const filtered = rows.filter(
+    (item) =>
+      (filter === "All" || item.status === filter) &&
+      `${item.id} ${item.student} ${item.item} ${item.course}`.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="submissions"
+        description={sectionDescriptions.submissions}
+        actionLabel="Batch review"
+        onAction={() => onToast("Opened batch grading queue")}
+        onExport={() => onToast("Submissions grading log exported")}
+      />
+
+      <MetricStrip
+        items={[
+          { label: "Pending review", value: "42", change: "Due today", tone: "text-amber-600" },
+          { label: "Graded this week", value: "186", change: "+12.4%" },
+          { label: "Avg. review time", value: "3.2 hrs", change: "-45 mins faster" },
+          { label: "Pass rate", value: "91.2%", change: "+2.6%" },
+        ]}
+      />
+
+      <DataCard
+        title="Learner submission inbox"
+        subtitle="Incoming code repos, test outputs, and instructor evaluation queue"
+        toolbar={
+          <SearchToolbar
+            query={query}
+            setQuery={setQuery}
+            filter={filter}
+            setFilter={setFilter}
+            filters={["All", "Needs review", "Graded", "Action required"]}
+          />
+        }
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[850px] text-left">
+            <thead>
+              <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                <th className="px-5 py-3 sm:px-6">Submission ID</th>
+                <th className="px-4 py-3">Student</th>
+                <th className="px-4 py-3">Problem / Assignment</th>
+                <th className="px-4 py-3">Course</th>
+                <th className="px-4 py-3">Submitted</th>
+                <th className="px-4 py-3">Score</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((item) => (
+                <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]">
+                  <td className="px-5 py-4 text-[11px] font-bold font-mono sm:px-6">{item.id}</td>
+                  <td className="px-4 py-4 text-[11px] font-semibold">{item.student}</td>
+                  <td className="px-4 py-4 text-[12px] font-bold">{item.item}</td>
+                  <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.course}</td>
+                  <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.submitted}</td>
+                  <td className="px-4 py-4 text-[12px] font-bold">{item.score}</td>
+                  <td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td>
+                  <td className="px-4 py-4">
+                    <button
+                      onClick={() => {
+                        setRows((current) =>
+                          current.map((row) =>
+                            row.id === item.id ? { ...row, status: "Graded", score: "95/100" } : row
+                          )
+                        );
+                        onToast(`Graded submission ${item.id} (95/100)`);
+                      }}
+                      className="text-[10px] font-bold text-[var(--brand)]"
+                    >
+                      {item.status === "Graded" ? "Re-evaluate" : "Grade"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </DataCard>
+    </div>
+  );
+}
+
+function AnnouncementsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+  const [filter, setFilter] = useState("All");
+  const [rows] = useState(announcementsData);
+  const filtered = rows.filter((item) => filter === "All" || item.status === filter);
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="announcements"
+        description={sectionDescriptions.announcements}
+        actionLabel="Post announcement"
+        onAction={() =>
+          onAction({
+            title: "Broadcast announcement",
+            description: "Send push alerts, email digest, and in-app notices to selected student cohorts.",
+            fields: ["Title", "Target cohort", "Message", "Channels (Email/Telegram/In-app)"],
+          })
+        }
+        onExport={() => onToast("Announcements log exported")}
+      />
+
+      <MetricStrip
+        items={[
+          { label: "Announcements sent", value: "38", change: "+4 this month" },
+          { label: "Active cohorts reached", value: "4", change: "100% delivered" },
+          { label: "Avg. open rate", value: "94.2%", change: "+6.1%" },
+          { label: "Pinned notices", value: "2", change: "Live on portal" },
+        ]}
+      />
+
+      <DataCard
+        title="Broadcast center"
+        subtitle="Platform news, batch updates, live session reminders, and schedule changes"
+        toolbar={
+          <div className="flex items-center gap-2">
+            <CustomDropdown value={filter} onChange={setFilter} options={["All", "Published", "Draft"]} />
+          </div>
+        }
+      >
+        <div className="divide-y divide-[var(--app-line)]">
+          {filtered.map((item) => (
+            <div key={item.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:px-6">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300">
+                <Send className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-[13px] font-bold">{item.title}</p>
+                  <StatusBadge>{item.status}</StatusBadge>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-[var(--muted)]">
+                  <span>Target: <strong className="text-[var(--app-ink)]">{item.cohort}</strong></span>
+                  <span>·</span>
+                  <span>By {item.author}</span>
+                  <span>·</span>
+                  <span>{item.date}</span>
+                </div>
+                <p className="mt-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                  Channels: {item.channels}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onToast(`Announcement resent to ${item.cohort}`)}
+                  className="secondary-button"
+                >
+                  Resend
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </DataCard>
+    </div>
+  );
+}
+
+function RecordingsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+  const [filter, setFilter] = useState("All");
+  const [query, setQuery] = useState("");
+  const [rows] = useState(recordingsData);
+
+  const filtered = rows.filter(
+    (item) =>
+      (filter === "All" || item.course === filter) &&
+      `${item.title} ${item.instructor} ${item.course}`.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="recordings"
+        description={sectionDescriptions.recordings}
+        actionLabel="Upload recording"
+        onAction={() =>
+          onAction({
+            title: "Upload class recording",
+            description: "Upload video recording MP4 or attach cloud stream link.",
+            fields: ["Session title", "Course / Module", "Instructor", "Video URL / File", "Duration"],
+          })
+        }
+        onExport={() => onToast("Recordings inventory exported")}
+      />
+
+      <MetricStrip
+        items={[
+          { label: "Recorded lectures", value: "84", change: "+12 this month" },
+          { label: "Total watch hours", value: "1,420 hrs", change: "+18.6%" },
+          { label: "Avg. views / class", value: "112", change: "86% completion" },
+          { label: "Cloud storage used", value: "420 GB", change: "1.2 TB free" },
+        ]}
+      />
+
+      <DataCard
+        title="Class recordings archive"
+        subtitle="On-demand video playback, timestamps, lecture notes, and downloadable assets"
+        toolbar={
+          <SearchToolbar
+            query={query}
+            setQuery={setQuery}
+            filter={filter}
+            setFilter={setFilter}
+            filters={["All", "DSA Mastery", "System Design", "Placement Prep"]}
+          />
+        }
+      >
+        <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+          {filtered.map((item) => (
+            <div
+              key={item.id}
+              className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-card)] p-4 transition-all hover:border-indigo-300 dark:hover:border-white/20 hover:shadow-md"
+            >
+              <div>
+                <div className="relative mb-3 flex h-32 w-full items-center justify-center rounded-xl bg-slate-900 text-white overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                  <span className="grid h-10 w-10 place-items-center rounded-full bg-white/20 backdrop-blur-md text-white transition-transform group-hover:scale-110">
+                    <PlayCircle className="h-6 w-6" />
+                  </span>
+                  <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {item.duration}
+                  </span>
+                </div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2">
+                  {item.title}
+                </h3>
+                <p className="mt-1 text-[11px] text-[var(--muted)]">{item.course}</p>
+                <p className="mt-0.5 text-[10px] text-slate-400">By {item.instructor} · {item.date}</p>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between border-t border-[var(--app-line)] pt-3">
+                <span className="text-[10px] font-semibold text-[var(--muted)]">{item.views} views</span>
+                <button
+                  onClick={() => onToast(`Playing ${item.title}`)}
+                  className="text-[11px] font-bold text-[var(--brand)] hover:underline"
+                >
+                  Watch recording
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </DataCard>
+    </div>
+  );
+}
+
+function HelpCenterView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="help"
+        description={sectionDescriptions.help}
+        actionLabel="Contact support"
+        onAction={() =>
+          onAction({
+            title: "Submit support request",
+            description: "Describe the issue or feature request. Our team responds within 15 minutes.",
+            fields: ["Subject", "Category", "Description", "Priority level"],
+          })
+        }
+        onExport={() => onToast("Help documentation PDF exported")}
+      />
+
+      <MetricStrip
+        items={[
+          { label: "Guides & FAQs", value: "48", change: "Updated this week" },
+          { label: "Support response time", value: "< 15 mins", change: "Live chat active" },
+          { label: "Platform uptime", value: "99.99%", change: "All systems nominal" },
+          { label: "Open tickets", value: "0", change: "All resolved" },
+        ]}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-4">
+        {[
+          { title: "Course Builder Guide", desc: "How to structure modules, auto-extract syllabus, and publish curriculum." },
+          { title: "Student Management & Cohorts", desc: "Track enrollments, attendance, progress signals, and certificates." },
+          { title: "Live Streaming & Video Hosting", desc: "Integrate Zoom, Google Meet, or upload recordings to cloud storage." },
+          { title: "Payments, Invoices & Refunds", desc: "Configuring UPI, Razorpay, Stripe, automated invoices, and payouts." },
+          { title: "Assessments & Rubrics", desc: "Creating coding evaluation screens, MCQ banks, and timer controls." },
+          { title: "Platform Security & Access", desc: "Setting up 2FA, admin roles, audit logs, and IP restrictions." },
+        ].map((guide, idx) => (
+          <div key={idx} className="surface-card p-5 hover:border-indigo-300 dark:hover:border-white/20 transition-all cursor-pointer" onClick={() => onToast(`Opened: ${guide.title}`)}>
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300 mb-3">
+              <LifeBuoy className="h-4 w-4" />
+            </div>
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white">{guide.title}</h3>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--muted)]">{guide.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function SettingsView({ onToast }: { onToast: (message: string) => void }) {
@@ -1657,10 +2233,20 @@ export default function Home() {
         onToast={onToast}
         onCreateCourse={handleOpenCourseBuilder}
       />
+    ) : section === "practice_problems" ? (
+      <PracticeProblemsView onAction={onAction} onToast={onToast} />
+    ) : section === "assignments" ? (
+      <AssignmentsView onAction={onAction} onToast={onToast} />
     ) : section === "assessments" ? (
       <AssessmentsView onAction={onAction} onToast={onToast} />
+    ) : section === "submissions" ? (
+      <SubmissionsView onAction={onAction} onToast={onToast} />
+    ) : section === "announcements" ? (
+      <AnnouncementsView onAction={onAction} onToast={onToast} />
     ) : section === "live" ? (
       <LiveView onAction={onAction} onToast={onToast} />
+    ) : section === "recordings" ? (
+      <RecordingsView onAction={onAction} onToast={onToast} />
     ) : section === "payments" ? (
       <PaymentsView onAction={onAction} onToast={onToast} />
     ) : section === "feedback" ? (
@@ -1669,6 +2255,8 @@ export default function Home() {
       <ReportsView onToast={onToast} />
     ) : section === "audit" ? (
       <AuditView onToast={onToast} />
+    ) : section === "help" ? (
+      <HelpCenterView onAction={onAction} onToast={onToast} />
     ) : (
       <SettingsView onToast={onToast} />
     );

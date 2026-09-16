@@ -10,6 +10,8 @@ import {
   ChevronDown,
   CircleDollarSign,
   ClipboardCheck,
+  Code2,
+  FileCheck2,
   FileText,
   GraduationCap,
   LayoutDashboard,
@@ -20,6 +22,8 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
+  PlayCircle,
+  Send,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -40,11 +44,21 @@ const navigation = [
     ],
   },
   {
-    label: "Learning operations",
+    label: "Learning Content",
     items: [
-      { id: "content", label: "Content library", icon: ListChecks },
+      { id: "content", label: "Content Library", icon: ListChecks },
+      { id: "practice_problems", label: "Practice Problems", icon: Code2 },
+      { id: "assignments", label: "Assignments", icon: ClipboardCheck },
       { id: "assessments", label: "Assessments", icon: ClipboardCheck, badge: "8" },
-      { id: "live", label: "Live & recorded", icon: Video },
+      { id: "submissions", label: "Submissions", icon: FileText, badge: "42" },
+      { id: "announcements", label: "Announcements", icon: Send },
+    ],
+  },
+  {
+    label: "Learning Operations",
+    items: [
+      { id: "live", label: "Live Sessions", icon: Video },
+      { id: "recordings", label: "Recordings", icon: PlayCircle },
       { id: "payments", label: "Payments", icon: CircleDollarSign },
     ],
   },
@@ -56,11 +70,18 @@ const navigation = [
       { id: "audit", label: "Audit logs", icon: ShieldCheck },
     ],
   },
+  {
+    label: "Platform",
+    items: [
+      { id: "settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
 
 export const navLabelMap: Record<string, string> = {
   ...Object.fromEntries(navigation.flatMap((group) => group.items.map((item) => [item.id, item.label]))),
   settings: "Settings",
+  help: "Help Center",
 };
 
 function getHash() {
@@ -152,13 +173,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         onClick={() => navigate(item.id)}
                         title={collapsed ? item.label : undefined}
                         className={cn(
-                          "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-semibold transition-all",
+                          "group flex w-full items-center gap-3 px-3 py-2 text-left text-[13px] transition-all cursor-pointer",
                           collapsed && "justify-center px-2",
-                          active ? "bg-[var(--nav-active)] text-[var(--brand)] shadow-sm" : "text-[var(--muted)] hover:bg-slate-100 hover:text-[var(--app-ink)] dark:hover:bg-white/5",
+                          active
+                            ? "rounded-2xl border border-indigo-200/90 dark:border-indigo-800/60 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs"
+                            : "rounded-xl font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 hover:text-slate-900 dark:hover:bg-white/5 dark:hover:text-white"
                         )}
                       >
                         <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "stroke-[2.5]")} />
-                        {!collapsed && <><span className="min-w-0 flex-1 truncate">{item.label}</span>{item.badge && <span className={cn("rounded-md px-1.5 py-0.5 text-[10px]", active ? "bg-white/80 text-[var(--brand)]" : "bg-slate-100 text-[var(--muted)] dark:bg-white/10")}>{item.badge}</span>}</>}
+                        {!collapsed && (
+                          <>
+                            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                            {item.badge && (
+                              <span
+                                className={cn(
+                                  "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                  active
+                                    ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/70 dark:text-indigo-300"
+                                    : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+                                )}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+                          </>
+                        )}
                       </button>
                     );
                   })}
@@ -168,18 +207,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
 
           {!collapsed && (
-            <div className="mt-5 border-t border-[var(--app-line)] pt-4 space-y-1">
-              <button onClick={() => navigate("settings")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-slate-100 hover:text-[var(--app-ink)] dark:hover:bg-white/5 cursor-pointer">
-                <Settings className="h-[17px] w-[17px]" /> Settings
+            <div className="mt-4 border-t border-[var(--app-line)] pt-3 space-y-1">
+              <button
+                onClick={() => navigate("help")}
+                className={cn(
+                  "flex w-full items-center gap-3 px-3 py-2 text-left text-[13px] transition-colors cursor-pointer",
+                  activeSection === "help"
+                    ? "rounded-2xl border border-indigo-200/90 dark:border-indigo-800/60 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs"
+                    : "rounded-xl font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 hover:text-slate-900 dark:hover:bg-white/5 dark:hover:text-white"
+                )}
+              >
+                <LifeBuoy className="h-[17px] w-[17px]" /> Help center
               </button>
-              <button onClick={toggleTheme} className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-slate-100 hover:text-[var(--app-ink)] dark:hover:bg-white/5 cursor-pointer">
+              <button
+                onClick={toggleTheme}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-slate-600 dark:text-slate-400 transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:hover:bg-white/5 dark:hover:text-white cursor-pointer"
+              >
                 <span className="flex items-center gap-3">
                   {theme === "dark" ? <Sun className="h-[17px] w-[17px]" /> : <Moon className="h-[17px] w-[17px]" />}
                   <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
                 </span>
-              </button>
-              <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-slate-100 hover:text-[var(--app-ink)] dark:hover:bg-white/5 cursor-pointer">
-                <LifeBuoy className="h-[17px] w-[17px]" /> Help center
               </button>
             </div>
           )}

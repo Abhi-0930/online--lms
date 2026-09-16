@@ -6,7 +6,6 @@ import {
   PlayCircle,
   FileText,
   Code2,
-  ClipboardCheck,
   FileCheck2,
   FolderArchive,
   Megaphone,
@@ -83,15 +82,6 @@ const CONTENT_TYPES: ContentTypeOption[] = [
     iconColor: "text-purple-600 dark:text-purple-400",
   },
   {
-    id: "assignment",
-    title: "Assignment",
-    description: "Create student assignments.",
-    tags: "Code submission · File upload · GitHub link",
-    icon: ClipboardCheck,
-    iconBg: "bg-orange-50 dark:bg-orange-950/60",
-    iconColor: "text-orange-600 dark:text-orange-400",
-  },
-  {
     id: "assessment",
     title: "Assessment",
     description: "Create quizzes and tests.",
@@ -113,7 +103,7 @@ const CONTENT_TYPES: ContentTypeOption[] = [
     id: "announcement",
     title: "Announcement",
     description: "Post platform announcements.",
-    tags: "New assignment · Live session · Recording",
+    tags: "Platform news · Live session · Recording",
     icon: Megaphone,
     iconBg: "bg-pink-50 dark:bg-pink-950/60",
     iconColor: "text-pink-600 dark:text-pink-400",
@@ -129,26 +119,73 @@ const DEFAULT_COURSES = [
   "Placement Prep",
 ];
 
-const RECENT_ITEMS = [
-  {
-    id: "rec_1",
-    title: "Binary tree traversal challenge",
-    detail: "Practice Problem · 2 days ago",
-    status: "Published",
-    icon: Code2,
-    iconBg: "bg-purple-50 dark:bg-purple-950/60",
-    iconColor: "text-purple-600 dark:text-purple-400",
-  },
-  {
-    id: "rec_2",
-    title: "Recursion patterns worksheet",
-    detail: "Notes / PDF · Yesterday",
-    status: "Published",
-    icon: FileText,
-    iconBg: "bg-rose-50 dark:bg-rose-950/60",
-    iconColor: "text-rose-600 dark:text-rose-400",
-  },
-];
+export interface RecentContentItem {
+  id: string | number;
+  title: string;
+  type?: string;
+  parent?: string;
+  detail?: string;
+  status?: string;
+  updated?: string;
+}
+
+export function getContentTypeMeta(type: string = "") {
+  const t = type.toLowerCase();
+  if (t.includes("module")) {
+    return {
+      icon: FolderPlus,
+      iconBg: "bg-amber-50 dark:bg-amber-950/60",
+      iconColor: "text-amber-600 dark:text-amber-400",
+    };
+  }
+  if (t.includes("video") || t.includes("lesson")) {
+    return {
+      icon: PlayCircle,
+      iconBg: "bg-emerald-50 dark:bg-emerald-950/60",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
+    };
+  }
+  if (t.includes("pdf") || t.includes("note") || t.includes("worksheet")) {
+    return {
+      icon: FileText,
+      iconBg: "bg-rose-50 dark:bg-rose-950/60",
+      iconColor: "text-rose-600 dark:text-rose-400",
+    };
+  }
+  if (t.includes("practice") || t.includes("problem") || t.includes("code")) {
+    return {
+      icon: Code2,
+      iconBg: "bg-purple-50 dark:bg-purple-950/60",
+      iconColor: "text-purple-600 dark:text-purple-400",
+    };
+  }
+  if (t.includes("assessment") || t.includes("quiz") || t.includes("test")) {
+    return {
+      icon: FileCheck2,
+      iconBg: "bg-sky-50 dark:bg-sky-950/60",
+      iconColor: "text-sky-600 dark:text-sky-400",
+    };
+  }
+  if (t.includes("resource") || t.includes("template") || t.includes("cheatsheet") || t.includes("roadmap")) {
+    return {
+      icon: FolderArchive,
+      iconBg: "bg-teal-50 dark:bg-teal-950/60",
+      iconColor: "text-teal-600 dark:text-teal-400",
+    };
+  }
+  if (t.includes("announcement")) {
+    return {
+      icon: Megaphone,
+      iconBg: "bg-pink-50 dark:bg-pink-950/60",
+      iconColor: "text-pink-600 dark:text-pink-400",
+    };
+  }
+  return {
+    icon: BookOpen,
+    iconBg: "bg-indigo-50 dark:bg-indigo-950/60",
+    iconColor: "text-indigo-600 dark:text-indigo-400",
+  };
+}
 
 function getTitlePlaceholder(typeId: string): string {
   switch (typeId) {
@@ -160,12 +197,10 @@ function getTitlePlaceholder(typeId: string): string {
       return "e.g. Recursion & Backtracking Worksheet";
     case "practice_problem":
       return "e.g. Two Sum & Sliding Window";
-    case "assignment":
-      return "e.g. Build an E-commerce API";
     case "assessment":
       return "e.g. Graph Algorithms Screen";
     case "resource":
-      return "e.g. Resume Template · FAANG Ready";
+      return "e.g. Resume Template - FAANG Ready";
     case "announcement":
       return "e.g. Weekly Live Q&A Session";
     default:
@@ -183,6 +218,7 @@ interface AddContentModalProps {
   ) => void;
   onOpenCourseBuilder?: () => void;
   availableCourses?: string[];
+  recentItems?: RecentContentItem[];
 }
 
 export default function AddContentModal({
@@ -191,6 +227,7 @@ export default function AddContentModal({
   onContinue,
   onOpenCourseBuilder,
   availableCourses = DEFAULT_COURSES,
+  recentItems = [],
 }: AddContentModalProps) {
   const [step, setStep] = useState<"select_type" | "create_form">("select_type");
   const [selectedType, setSelectedType] = useState<string>("module");
@@ -412,40 +449,73 @@ export default function AddContentModal({
 
                 {/* Section: Recently created */}
                 <div className="pt-2">
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white mb-2.5">
-                    Recently created
-                  </h3>
-                  <div className="space-y-2">
-                    {RECENT_ITEMS.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.01] hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={cn(
-                              "grid h-8 w-8 shrink-0 place-items-center rounded-xl",
-                              item.iconBg,
-                              item.iconColor
-                            )}
-                          >
-                            <item.icon className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-slate-900 dark:text-white">
-                              {item.title}
-                            </p>
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                              {item.detail}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40">
-                          {item.status}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between mb-2.5">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                      Recently created
+                    </h3>
+                    {recentItems.length > 0 && (
+                      <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                        {recentItems.length} items
+                      </span>
+                    )}
                   </div>
+                  {recentItems.length > 0 ? (
+                    <div className="space-y-2">
+                      {recentItems.slice(0, 5).map((item) => {
+                        const meta = getContentTypeMeta(item.type || item.detail || "");
+                        const Icon = meta.icon;
+                        const detailText =
+                          item.detail ||
+                          `${item.type || "Content"} · ${item.parent ? `${item.parent} · ` : ""}${
+                            item.updated || "Recently"
+                          }`;
+                        const statusText = item.status || "Published";
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-white dark:bg-white/[0.01] hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={cn(
+                                  "grid h-8 w-8 shrink-0 place-items-center rounded-xl",
+                                  meta.iconBg,
+                                  meta.iconColor
+                                )}
+                              >
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                  {item.title}
+                                </p>
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                                  {detailText}
+                                </p>
+                              </div>
+                            </div>
+                            <span
+                              className={cn(
+                                "text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ml-2",
+                                statusText === "Published"
+                                  ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
+                                  : statusText === "Draft"
+                                  ? "text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/10"
+                                  : "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40"
+                              )}
+                            >
+                              {statusText}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-4 text-center text-xs text-slate-400">
+                      No recently created items yet.
+                    </div>
+                  )}
                 </div>
               </div>
 
