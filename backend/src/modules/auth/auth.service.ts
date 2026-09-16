@@ -9,7 +9,33 @@ import { AdminWsBroadcaster } from '../admin/admin.ws';
 export class AuthService {
   constructor(private prisma: PrismaClient) {}
 
-  public static fallbackUsers = new Map<string, any>();
+  public static fallbackUsers = new Map<string, any>([
+    [
+      'abhishek.j3094@gmail.com',
+      {
+        id: 'usr_abhishek_01',
+        email: 'abhishek.j3094@gmail.com',
+        fullName: 'Abhishek J',
+        role: 'STUDENT',
+        isEmailVerified: true,
+        onboarding: {
+          educationStatus: '4th_year',
+          targetDomain: 'Full Stack Development',
+          experienceLevel: 'Intermediate',
+          primaryGoal: 'Product Engineering & Full Stack Placement',
+          completedStep: 4,
+          isCompleted: true,
+        },
+        enrollments: [
+          {
+            course: { title: 'Fullstack Next.js & GraphQL Masterclass' },
+            status: 'ACTIVE',
+          },
+        ],
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+    ],
+  ]);
 
   private async findUser(email: string, googleId?: string): Promise<any | null> {
     const normalizedEmail = email.toLowerCase().trim();

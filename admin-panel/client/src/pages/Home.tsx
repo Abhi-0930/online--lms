@@ -107,14 +107,7 @@ type Course = {
 type DialogState = { title: string; description: string; fields: string[] } | null;
 
 const courses: Course[] = [];
-
-const learners = [
-  { id: 1, name: "Aarav Sharma", email: "aarav.sharma@gmail.com", course: "DSA Mastery", progress: 92, activity: "12 min ago", status: "On track", avatar: "AS" },
-  { id: 2, name: "Ishita Kapoor", email: "ishita.kapoor@gmail.com", course: "System Design", progress: 76, activity: "34 min ago", status: "On track", avatar: "IK" },
-  { id: 3, name: "Rohan Verma", email: "rohan.verma@gmail.com", course: "Python for Problem Solving", progress: 44, activity: "2 hours ago", status: "Needs help", avatar: "RV" },
-  { id: 4, name: "Meera Nair", email: "meera.nair@gmail.com", course: "DSA Mastery", progress: 68, activity: "Yesterday", status: "On track", avatar: "MN" },
-  { id: 5, name: "Vivaan Joshi", email: "vivaan.joshi@gmail.com", course: "Competitive Programming", progress: 31, activity: "3 days ago", status: "At risk", avatar: "VJ" },
-];
+const learners: StudentItem[] = [];
 
 const contentItems = [
   { id: 1, title: "Graphs: BFS vs DFS", type: "Video", parent: "DSA · Graphs", owner: "Arjun Mehta", status: "Published", updated: "Today" },
