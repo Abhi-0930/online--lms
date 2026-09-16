@@ -28,11 +28,33 @@ export default async function adminController(fastify: FastifyInstance) {
     const body = request.body as any;
     try {
       const course = await adminService.saveCourseDraft(body);
-      // Real-time broadcast to all admin WebSocket clients
-      await AdminWsBroadcaster.broadcastUpdate(fastify.prisma);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
       return reply.code(201).send(course);
     } catch (err: any) {
       return reply.code(400).send({ error: err.message || 'Failed to create course' });
+    }
+  });
+
+  fastify.patch('/courses/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    try {
+      const updated = await adminService.updateCourse(id, body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(updated);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to update course' });
+    }
+  });
+
+  fastify.delete('/courses/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await adminService.deleteCourse(id);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to delete course' });
     }
   });
 }

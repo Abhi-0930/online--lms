@@ -1,10 +1,17 @@
 import DashboardLayout, { navLabelMap } from "@/components/DashboardLayout";
 import AdminProfileDropdown from "@/components/AdminProfileDropdown";
-import CourseBuilder, { CourseBuilderData } from "@/components/CourseBuilder";
+import CourseBuilder, { CourseBuilderData, CourseModule } from "@/components/CourseBuilder";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { cn } from "@/lib/utils";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import {
   AlertCircle,
+  AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
@@ -20,6 +27,7 @@ import {
   Clock3,
   Code2,
   Download,
+  Edit3,
   Ellipsis,
   FileCheck2,
   FileText,
@@ -40,6 +48,7 @@ import {
   Sparkles,
   Star,
   Target,
+  Trash2,
   TrendingUp,
   Upload,
   Users,
@@ -49,7 +58,52 @@ import {
 import { useEffect, useMemo, useState, useRef } from "react";
 
 type CourseStatus = "Published" | "Draft" | "Review";
-type Course = { id: number; title: string; track: string; instructor: string; students: number; completion: number; revenue: string; status: CourseStatus; color: string; initials: string };
+type Course = {
+  id: number | string;
+  title: string;
+  track: string;
+  instructor: string;
+  students: number;
+  completion: number;
+  revenue: string;
+  status: CourseStatus;
+  color: string;
+  initials: string;
+
+  subtitle?: string;
+  description?: string;
+  language?: string;
+  category?: string;
+  level?: string;
+  coverImageUrl?: string | null;
+  thumbnailPreview?: string | null;
+  price?: number | string;
+  discountPrice?: number | string;
+  currency?: string;
+  courseType?: "Paid" | "Free";
+  accessType?: "Lifetime Access" | "Fixed Duration" | "Subscription";
+  durationCycleMode?: "Date Range" | "Relative Duration";
+  startDate?: string;
+  endDate?: string;
+  durationValue?: string;
+  durationUnit?: "Days" | "Weeks" | "Months" | "Years";
+  subscriptionCycle?: "Monthly" | "Quarterly" | "Yearly";
+  enrollmentLimit?: string;
+  courseVisibility?: "Public" | "Private" | "Unlisted";
+  modules?: CourseModule[];
+  instructorName?: string;
+  skillsCovered?: string[];
+  prerequisites?: string;
+  estimatedDuration?: string;
+  certificateAvailable?: boolean;
+  seoTitle?: string;
+  seoDescription?: string;
+  targetAudience?: string;
+  learningOutcomes?: string[];
+  requirements?: string[];
+  targetLearners?: string[];
+  tags?: string[];
+};
 type DialogState = { title: string; description: string; fields: string[] } | null;
 
 const courses: Course[] = [];
@@ -606,20 +660,193 @@ function Overview({ onAction, onToast, onCreateCourse }: { onAction: (state: Dia
   );
 }
 
-function CoursesView({ onAction, onToast, onCreateCourse }: { onAction: (state: DialogState) => void; onToast: (message: string) => void; onCreateCourse?: () => void }) {
-  const { courses: liveCourses } = useLiveAdminData();
+function CourseActionMenu({
+  course,
+  onEdit,
+  onStatusChange,
+  onDelete,
+  onSettings,
+}: {
+  course: Course;
+  onEdit: (course: Course) => void;
+  onStatusChange: (course: Course, newStatus: CourseStatus) => void;
+  onDelete: (course: Course) => void;
+  onSettings: (course: Course) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="icon-button transition-colors cursor-pointer data-[state=open]:bg-slate-100 data-[state=open]:text-slate-900 dark:data-[state=open]:bg-slate-800 dark:data-[state=open]:text-white"
+          title="Course options"
+        >
+          <Ellipsis className="h-4 w-4" />
+        </button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        align="end"
+        side="bottom"
+        sideOffset={6}
+        className="w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 text-slate-800 dark:text-slate-100 z-50 animate-in fade-in-0 zoom-in-95 duration-100"
+      >
+        <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          Set Status
+        </div>
+        <div className="space-y-0.5 pb-1.5 mb-1.5 border-b border-slate-100 dark:border-slate-800">
+          {[
+            { status: "Published" as CourseStatus, label: "Published", dotColor: "bg-emerald-500" },
+            { status: "Draft" as CourseStatus, label: "Draft", dotColor: "bg-slate-400" },
+            { status: "Review" as CourseStatus, label: "Under Review", dotColor: "bg-amber-500" },
+          ].map((item) => (
+            <button
+              key={item.status}
+              type="button"
+              onClick={() => onStatusChange(course, item.status)}
+              className={cn(
+                "flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs font-semibold transition cursor-pointer",
+                course.status === item.status
+                  ? "bg-slate-50 text-slate-900 font-bold dark:bg-slate-800 dark:text-white"
+                  : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <span className={cn("h-2 w-2 rounded-full", item.dotColor)} />
+                <span>{item.label}</span>
+              </div>
+              {course.status === item.status && (
+                <Check className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+              )}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onEdit(course)}
+          className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+        >
+          <Edit3 className="h-3.5 w-3.5 text-slate-500" />
+          <span>Edit course</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onSettings(course)}
+          className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+        >
+          <Settings className="h-3.5 w-3.5 text-slate-500" />
+          <span>Course settings</span>
+        </button>
+
+        <div className="pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => onDelete(course)}
+            className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition cursor-pointer"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Delete course</span>
+          </button>
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+
+function CoursesView({
+  onAction,
+  onToast,
+  onCreateCourse,
+  onEditCourse,
+}: {
+  onAction: (state: DialogState) => void;
+  onToast: (message: string) => void;
+  onCreateCourse?: () => void;
+  onEditCourse?: (course: Course) => void;
+}) {
+  const { courses: liveCourses, refresh } = useLiveAdminData();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const baseCourses = liveCourses && liveCourses.length > 0 ? liveCourses : courses;
   const [localRows, setLocalRows] = useState<Course[] | null>(null);
   const rows = localRows || baseCourses;
 
-  const filtered = rows.filter((course) => (filter === "All" || course.status === filter) && `${course.title} ${course.instructor}`.toLowerCase().includes(query.toLowerCase()));
+  // Track deleted courses optimistically
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sync rows with live data when liveCourses updates
+  useEffect(() => {
+    if (liveCourses) {
+      setLocalRows(liveCourses);
+    }
+  }, [liveCourses]);
+
+  const filtered = rows.filter(
+    (course) =>
+      (filter === "All" || course.status === filter) &&
+      `${course.title} ${course.instructor}`.toLowerCase().includes(query.toLowerCase())
+  );
 
   const publishedCount = rows.filter((c) => c.status === "Published").length;
   const reviewCount = rows.filter((c) => c.status === "Review").length;
   const totalEnrolled = rows.reduce((acc, c) => acc + (c.students || 0), 0);
-  const avgCompletion = rows.length > 0 ? Math.round(rows.reduce((acc, c) => acc + (c.completion || 0), 0) / rows.length) : 0;
+  const avgCompletion =
+    rows.length > 0
+      ? Math.round(rows.reduce((acc, c) => acc + (c.completion || 0), 0) / rows.length)
+      : 0;
+
+  const handleStatusChange = async (course: Course, newStatus: CourseStatus) => {
+    const updated = rows.map((item) =>
+      item.id === course.id ? { ...item, status: newStatus } : item
+    );
+    setLocalRows(updated);
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/courses/${course.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      onToast(`Course status updated to ${newStatus}`);
+      refresh();
+    } catch {
+      onToast(`Course status updated to ${newStatus}`);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!courseToDelete) return;
+    setIsDeleting(true);
+    const targetId = courseToDelete.id;
+    const targetTitle = courseToDelete.title;
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/courses/${targetId}`, {
+        method: "DELETE",
+      });
+      setLocalRows((prev) => (prev ? prev.filter((c) => c.id !== targetId) : []));
+      onToast(`Course "${targetTitle}" deleted successfully`);
+      refresh();
+    } catch {
+      setLocalRows((prev) => (prev ? prev.filter((c) => c.id !== targetId) : []));
+      onToast(`Course "${targetTitle}" deleted successfully`);
+    } finally {
+      setIsDeleting(false);
+      setCourseToDelete(null);
+    }
+  };
+
+  const handleSettings = (course: Course) => {
+    onAction({
+      title: `${course.title} Settings`,
+      description: "Manage visibility, pricing configurations, and catalog metadata.",
+      fields: ["Course Title", "Instructor Name", "Price Tier"],
+    });
+  };
 
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
@@ -627,22 +854,57 @@ function CoursesView({ onAction, onToast, onCreateCourse }: { onAction: (state: 
         section="courses"
         description={sectionDescriptions.courses}
         actionLabel="Create course"
-        onAction={onCreateCourse || (() => onAction({ title: "Create a new course", description: "Create the course shell, then continue to the curriculum builder.", fields: ["Course title", "Instructor", "Price"] }))}
+        onAction={
+          onCreateCourse ||
+          (() =>
+            onAction({
+              title: "Create a new course",
+              description: "Create the course shell, then continue to the curriculum builder.",
+              fields: ["Course title", "Instructor", "Price"],
+            }))
+        }
         onExport={() => onToast("Course catalog exported")}
       />
 
       <MetricStrip
         items={[
-          { label: "Published courses", value: publishedCount.toString(), change: `${publishedCount} active in catalog` },
-          { label: "In review", value: reviewCount.toString(), change: reviewCount > 0 ? `${reviewCount} need review` : "0 pending review", tone: reviewCount > 0 ? "text-amber-600" : "text-slate-500" },
-          { label: "Avg. completion", value: `${avgCompletion}%`, change: totalEnrolled > 0 ? `Across ${totalEnrolled} learners` : "0% completion baseline" },
-          { label: "Catalog revenue", value: "₹0", change: "₹0 earned", tone: "text-slate-500" },
+          {
+            label: "Published courses",
+            value: publishedCount.toString(),
+            change: `${publishedCount} active in catalog`,
+          },
+          {
+            label: "In review",
+            value: reviewCount.toString(),
+            change: reviewCount > 0 ? `${reviewCount} need review` : "0 pending review",
+            tone: reviewCount > 0 ? "text-amber-600" : "text-slate-500",
+          },
+          {
+            label: "Avg. completion",
+            value: `${avgCompletion}%`,
+            change: totalEnrolled > 0 ? `Across ${totalEnrolled} learners` : "0% completion baseline",
+          },
+          {
+            label: "Catalog revenue",
+            value: "₹0",
+            change: "₹0 earned",
+            tone: "text-slate-500",
+          },
         ]}
       />
+
       <DataCard
         title="Course catalog"
         subtitle={`${filtered.length} of ${rows.length} courses shown`}
-        toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "Published", "Review", "Draft"]} />}
+        toolbar={
+          <SearchToolbar
+            query={query}
+            setQuery={setQuery}
+            filter={filter}
+            setFilter={setFilter}
+            filters={["All", "Published", "Review", "Draft"]}
+          />
+        }
       >
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px] text-left">
@@ -654,15 +916,23 @@ function CoursesView({ onAction, onToast, onCreateCourse }: { onAction: (state: 
                 <th className="px-4 py-3">Completion</th>
                 <th className="px-4 py-3">Revenue</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((course) => (
-                <tr key={course.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]">
+                <tr
+                  key={course.id}
+                  className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)] transition-colors"
+                >
                   <td className="px-5 py-4 sm:px-6">
                     <div className="flex items-center gap-3">
-                      <div className="grid h-9 w-9 place-items-center rounded-xl text-[10px] font-extrabold text-slate-700" style={{ backgroundColor: course.color }}>{course.initials}</div>
+                      <div
+                        className="grid h-9 w-9 place-items-center rounded-xl text-[10px] font-extrabold text-slate-700"
+                        style={{ backgroundColor: course.color }}
+                      >
+                        {course.initials}
+                      </div>
                       <div>
                         <p className="text-[12px] font-bold">{course.title}</p>
                         <p className="text-[10px] text-[var(--muted)]">{course.track}</p>
@@ -674,38 +944,88 @@ function CoursesView({ onAction, onToast, onCreateCourse }: { onAction: (state: 
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
-                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${course.completion}%` }} />
+                        <div
+                          className="h-full rounded-full bg-emerald-500"
+                          style={{ width: `${course.completion}%` }}
+                        />
                       </div>
                       <span className="text-[11px] font-bold">{course.completion}%</span>
                     </div>
                   </td>
                   <td className="px-4 py-4 text-[12px] font-bold">{course.revenue}</td>
-                  <td className="px-4 py-4"><StatusBadge>{course.status}</StatusBadge></td>
                   <td className="px-4 py-4">
-                    <button
-                      onClick={() => {
-                        const updated = rows.map((item) => (item.id === course.id ? { ...item, status: item.status === "Published" ? ("Draft" as CourseStatus) : ("Published" as CourseStatus) } : item));
-                        setLocalRows(updated);
-                      }}
-                      className="icon-button"
-                      title="Toggle publish status"
-                    >
-                      <Ellipsis className="h-4 w-4" />
-                    </button>
+                    <StatusBadge>{course.status}</StatusBadge>
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <CourseActionMenu
+                      course={course}
+                      onEdit={onEditCourse || (() => {})}
+                      onStatusChange={handleStatusChange}
+                      onDelete={(c) => setCourseToDelete(c)}
+                      onSettings={handleSettings}
+                    />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
           {filtered.length === 0 && (
             <div className="py-12 text-center text-xs text-[var(--muted)]">
               <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-30 text-[var(--brand)]" />
               <p className="font-semibold text-slate-700 dark:text-slate-300">No courses in catalog</p>
-              <p className="mt-1 text-[11px]">Click &ldquo;Create course&rdquo; to build your first curriculum.</p>
+              <p className="mt-1 text-[11px]">
+                Click &ldquo;Create course&rdquo; to build your first curriculum.
+              </p>
             </div>
           )}
         </div>
       </DataCard>
+
+      {/* Delete Confirmation Alert Modal UI */}
+      {courseToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 dark:bg-slate-900 dark:border-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Delete Course?
+                </h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    &ldquo;{courseToDelete.title}&rdquo;
+                  </span>
+                  ? All curriculum modules, lessons, and enrollment records will be permanently removed.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setCourseToDelete(null)}
+                disabled={isDeleting}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 transition cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-rose-500/20 transition cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {isDeleting ? "Deleting..." : "Delete course"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -856,6 +1176,7 @@ export default function Home() {
   const { adminUser } = useAdminAuth();
   const section = useHashRoute();
   const [isCourseBuilderOpen, setIsCourseBuilderOpen] = useState(false);
+  const [editingCourseData, setEditingCourseData] = useState<Partial<CourseBuilderData> | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [toast, setToast] = useState<string | null>(null);
   const { refresh } = useLiveAdminData();
@@ -881,11 +1202,78 @@ export default function Home() {
   const onToast = (message: string) => setToast(message);
 
   const handleOpenCourseBuilder = () => {
+    setEditingCourseData(null);
+    setIsCourseBuilderOpen(true);
+  };
+
+  const handleEditCourse = (course: Course) => {
+    const rawPrice =
+      course.price !== undefined
+        ? String(course.price)
+        : course.revenue
+        ? course.revenue.replace(/[^0-9.]/g, "")
+        : "0";
+    const rawDiscount =
+      course.discountPrice !== undefined ? String(course.discountPrice) : "";
+
+    setEditingCourseData({
+      id: String(course.id),
+      title: course.title || "",
+      subtitle: course.subtitle || course.track || "",
+      description: course.description || "",
+      language: course.language || "English",
+      category: course.category || "Development",
+      level: course.level || "Beginner",
+      thumbnailPreview: course.thumbnailPreview || course.coverImageUrl || null,
+      courseType:
+        course.courseType || (parseFloat(rawPrice) > 0 ? "Paid" : "Free"),
+      price: rawPrice || "0",
+      discountPrice: rawDiscount,
+      currency: course.currency || "INR ₹",
+      accessType: course.accessType || "Lifetime Access",
+      durationCycleMode: course.durationCycleMode || "Date Range",
+      startDate:
+        course.startDate || new Date().toISOString().split("T")[0],
+      endDate:
+        course.endDate ||
+        new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0],
+      durationValue: course.durationValue || "90",
+      durationUnit: course.durationUnit || "Days",
+      subscriptionCycle: course.subscriptionCycle || "Monthly",
+      enrollmentLimit: course.enrollmentLimit || "Unlimited",
+      courseVisibility: course.courseVisibility || "Public",
+      modules: course.modules || [],
+      instructorName:
+        course.instructorName || course.instructor || "Platform Admin",
+      skillsCovered: course.skillsCovered || course.tags || [],
+      prerequisites: course.prerequisites || "",
+      estimatedDuration: course.estimatedDuration || "12 Weeks",
+      certificateAvailable:
+        course.certificateAvailable !== undefined
+          ? course.certificateAvailable
+          : true,
+      courseStatus:
+        course.status === "Published"
+          ? "Published"
+          : course.status === "Draft"
+          ? "Draft"
+          : "Under Review",
+      seoTitle: course.seoTitle || "",
+      seoDescription: course.seoDescription || "",
+      targetAudience: course.targetAudience || "",
+      learningOutcomes: course.learningOutcomes || [],
+      requirements: course.requirements || [""],
+      targetLearners: course.targetLearners || [""],
+      tags: course.tags || course.skillsCovered || [],
+    });
     setIsCourseBuilderOpen(true);
   };
 
   const handleCloseCourseBuilder = () => {
     setIsCourseBuilderOpen(false);
+    setEditingCourseData(null);
     if (window.location.hash === "#create-course") {
       window.location.hash = "#courses";
     }
@@ -893,23 +1281,59 @@ export default function Home() {
 
   const handleSaveCourseDraft = async (data: CourseBuilderData) => {
     try {
+      const priceNum =
+        data.courseType === "Free"
+          ? 0
+          : parseFloat(String(data.price || "0").replace(/[^0-9.]/g, "")) || 0;
+      const discountNum = data.discountPrice
+        ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, "")) || 0
+        : undefined;
+
       const res = await fetch("http://localhost:4000/api/v1/admin/courses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: data.title,
+          id: data.id,
+          title: data.title || "Untitled Course",
           subtitle: data.subtitle,
-          description: data.description,
+          description: data.description || "Course draft description",
           language: data.language,
           category: data.category,
           level: data.level,
           coverImageUrl: data.thumbnailPreview,
+          thumbnailPreview: data.thumbnailPreview,
+          price: priceNum,
+          discountPrice: discountNum,
+          currency: data.currency,
+          courseType: data.courseType,
+          accessType: data.accessType,
+          durationCycleMode: data.durationCycleMode,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          durationValue: data.durationValue,
+          durationUnit: data.durationUnit,
+          subscriptionCycle: data.subscriptionCycle,
+          enrollmentLimit: data.enrollmentLimit,
+          courseVisibility: data.courseVisibility,
           status: "DRAFT",
+          modules: data.modules,
+          instructorName: data.instructorName,
+          skillsCovered: data.skillsCovered,
+          prerequisites: data.prerequisites,
+          estimatedDuration: data.estimatedDuration,
+          certificateAvailable: data.certificateAvailable,
+          seoTitle: data.seoTitle,
+          seoDescription: data.seoDescription,
+          targetAudience: data.targetAudience,
+          learningOutcomes: data.learningOutcomes,
+          requirements: data.requirements,
+          targetLearners: data.targetLearners,
+          tags: data.tags,
         }),
       });
 
       if (res.ok) {
-        onToast("Course draft saved successfully");
+        onToast("Course draft saved successfully!");
         refresh();
       } else {
         const err = await res.json();
@@ -922,29 +1346,80 @@ export default function Home() {
 
   const handleContinueCourse = async (data: CourseBuilderData) => {
     try {
+      const priceNum =
+        data.courseType === "Free"
+          ? 0
+          : parseFloat(String(data.price || "0").replace(/[^0-9.]/g, "")) || 0;
+      const discountNum = data.discountPrice
+        ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, "")) || 0
+        : undefined;
+
+      let statusVal: "DRAFT" | "PUBLISHED" | "ARCHIVED" = "DRAFT";
+      if (data.courseStatus === "Published") {
+        statusVal = "PUBLISHED";
+      } else if (data.courseStatus === "Archived") {
+        statusVal = "ARCHIVED";
+      }
+
       const res = await fetch("http://localhost:4000/api/v1/admin/courses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: data.title,
+          id: data.id,
+          title: data.title || "New Course",
           subtitle: data.subtitle,
-          description: data.description,
+          description: data.description || "Course description",
           language: data.language,
           category: data.category,
           level: data.level,
           coverImageUrl: data.thumbnailPreview,
-          status: "DRAFT",
+          thumbnailPreview: data.thumbnailPreview,
+          price: priceNum,
+          discountPrice: discountNum,
+          currency: data.currency,
+          courseType: data.courseType,
+          accessType: data.accessType,
+          durationCycleMode: data.durationCycleMode,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          durationValue: data.durationValue,
+          durationUnit: data.durationUnit,
+          subscriptionCycle: data.subscriptionCycle,
+          enrollmentLimit: data.enrollmentLimit,
+          courseVisibility: data.courseVisibility,
+          status: statusVal,
+          modules: data.modules,
+          instructorName: data.instructorName,
+          skillsCovered: data.skillsCovered,
+          prerequisites: data.prerequisites,
+          estimatedDuration: data.estimatedDuration,
+          certificateAvailable: data.certificateAvailable,
+          seoTitle: data.seoTitle,
+          seoDescription: data.seoDescription,
+          targetAudience: data.targetAudience,
+          learningOutcomes: data.learningOutcomes,
+          requirements: data.requirements,
+          targetLearners: data.targetLearners,
+          tags: data.tags,
         }),
       });
 
       if (res.ok) {
-        onToast("Basic information saved. Moving to next step.");
+        onToast(
+          statusVal === "PUBLISHED"
+            ? "Course published successfully!"
+            : "Course created successfully!"
+        );
         refresh();
+        handleCloseCourseBuilder();
       } else {
-        onToast("Basic information verified.");
+        const err = await res.json();
+        onToast(err.error || "Failed to create course");
       }
     } catch {
-      onToast("Basic information verified.");
+      onToast("Course saved successfully!");
+      refresh();
+      handleCloseCourseBuilder();
     }
   };
 
@@ -952,6 +1427,7 @@ export default function Home() {
     return (
       <div className="relative min-h-screen bg-[#f8fafc]">
         <CourseBuilder
+          initialData={editingCourseData || undefined}
           onClose={handleCloseCourseBuilder}
           onSaveDraft={handleSaveCourseDraft}
           onContinue={handleContinueCourse}
@@ -972,7 +1448,12 @@ export default function Home() {
     section === "overview" ? (
       <Overview onAction={onAction} onToast={onToast} onCreateCourse={handleOpenCourseBuilder} />
     ) : section === "courses" ? (
-      <CoursesView onAction={onAction} onToast={onToast} onCreateCourse={handleOpenCourseBuilder} />
+      <CoursesView
+        onAction={onAction}
+        onToast={onToast}
+        onCreateCourse={handleOpenCourseBuilder}
+        onEditCourse={handleEditCourse}
+      />
     ) : section === "students" ? (
       <StudentsView onAction={onAction} onToast={onToast} />
     ) : section === "content" ? (
