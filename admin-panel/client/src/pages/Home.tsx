@@ -173,7 +173,14 @@ function useHashRoute() {
 
 function StatusBadge({ children }: { children: React.ReactNode }) {
   const value = String(children);
-  const tone = value === "Published" || value === "Paid" || value === "Live" || value === "On track" || value === "Responded" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : value === "Draft" || value === "Review" || value === "Open" || value === "Upcoming" || value === "New" || value === "Refund requested" ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" : "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300";
+  const tone =
+    value === "Published" || value === "Paid" || value === "Live" || value === "On track" || value === "Responded"
+      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+      : value === "Draft" || value === "Review" || value === "Open" || value === "Upcoming" || value === "New" || value === "Refund requested" || value === "In progress"
+      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+      : value === "Not enrolled"
+      ? "bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border border-slate-200/60 dark:border-white/10"
+      : "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300";
   return <span className={cn("rounded-md px-2 py-1 text-[10px] font-bold", tone)}>{children}</span>;
 }
 
@@ -1059,7 +1066,7 @@ function StudentsView({ onAction, onToast }: { onAction: (state: DialogState) =>
       <DataCard
         title="Learner directory"
         subtitle={students.length > 0 ? `${filtered.length} of ${students.length} learners registered` : "0 learners currently registered"}
-        toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "On track", "In progress"]} />}
+        toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "On track", "In progress", "Not enrolled"]} />}
       >
         <div className="overflow-x-auto">
           <table className="w-full min-w-[780px] text-left">
@@ -1092,13 +1099,27 @@ function StudentsView({ onAction, onToast }: { onAction: (state: DialogState) =>
                       {learner.education}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-[11px] font-semibold">{learner.course}</td>
+                  <td className="px-4 py-4 text-[11px]">
+                    {learner.course === "Not enrolled" ? (
+                      <span className="text-[var(--muted)] italic font-normal">Not enrolled</span>
+                    ) : (
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">{learner.course}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
-                        <div className="h-full rounded-full bg-indigo-500" style={{ width: `${learner.progress}%` }} />
+                        <div
+                          className={cn(
+                            "h-full rounded-full",
+                            learner.progress > 0 ? "bg-indigo-500" : "bg-transparent"
+                          )}
+                          style={{ width: `${learner.progress}%` }}
+                        />
                       </div>
-                      <span className="text-[11px] font-bold">{learner.progress}%</span>
+                      <span className={cn("text-[11px] font-bold", learner.progress === 0 ? "text-[var(--muted)]" : "")}>
+                        {learner.progress}%
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{learner.activity}</td>

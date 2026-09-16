@@ -26,12 +26,7 @@ export class AuthService {
           completedStep: 4,
           isCompleted: true,
         },
-        enrollments: [
-          {
-            course: { title: 'Fullstack Next.js & GraphQL Masterclass' },
-            status: 'ACTIVE',
-          },
-        ],
+        enrollments: [],
         createdAt: new Date(Date.now() - 3600000).toISOString(),
       },
     ],

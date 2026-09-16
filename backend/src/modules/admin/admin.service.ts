@@ -82,8 +82,9 @@ export class AdminService {
         const hours = Math.floor(minsAgo / 60);
         timeStr = hours >= 24 ? `${Math.floor(hours / 24)} days ago` : `${hours} hr ago`;
       }
+      const hasEnrollments = Array.isArray(u.enrollments) && u.enrollments.length > 0;
       return {
-        title: `Student enrolled: ${name}`,
+        title: hasEnrollments ? `Student enrolled: ${name}` : `Learner registered: ${name}`,
         detail: u.email,
         time: timeStr,
       };
@@ -154,20 +155,29 @@ export class AdminService {
       const targetDomain = onboarding?.targetDomain;
       const primaryGoal = onboarding?.primaryGoal;
 
-      // Determine course / track
-      let courseName = 'Full Stack Development';
-      if (u.enrollments && u.enrollments.length > 0 && u.enrollments[0]?.course?.title) {
-        courseName = u.enrollments[0].course.title;
-      } else if (targetDomain) {
-        courseName = targetDomain.replace(/[_-]/g, ' ').toUpperCase();
-      }
+      // Determine course / track and progress
+      const hasEnrollments = Array.isArray(u.enrollments) && u.enrollments.length > 0;
+      let courseName = 'Not enrolled';
+      let progress = 0;
+      let status = 'Not enrolled';
 
-      // Progress
-      let progress = 65;
-      if (onboarding?.isCompleted) {
-        progress = 100;
-      } else if (onboarding?.completedStep) {
-        progress = Math.min(100, Math.round((onboarding.completedStep / 4) * 100));
+      if (hasEnrollments) {
+        const firstEnrollment = u.enrollments[0];
+        courseName =
+          firstEnrollment?.course?.title ||
+          (typeof firstEnrollment === 'string' ? firstEnrollment : 'Enrolled Course');
+
+        if (typeof firstEnrollment?.progress === 'number') {
+          progress = firstEnrollment.progress;
+        } else if (onboarding?.isCompleted) {
+          progress = 100;
+        } else if (onboarding?.completedStep) {
+          progress = Math.min(100, Math.round((onboarding.completedStep / 4) * 100));
+        } else {
+          progress = 25;
+        }
+
+        status = progress >= 70 ? 'On track' : progress > 0 ? 'In progress' : 'Enrolled';
       }
 
       // Time calculation
@@ -191,7 +201,7 @@ export class AdminService {
         course: courseName,
         progress,
         activity: activityStr,
-        status: progress > 50 ? 'On track' : 'In progress',
+        status,
         avatar: this.getInitials(name, email),
         createdAt: u.createdAt || new Date().toISOString(),
       };
