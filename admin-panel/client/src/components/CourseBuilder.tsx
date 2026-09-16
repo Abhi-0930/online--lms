@@ -5,8 +5,15 @@ import {
   ImagePlus,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Trash2,
   FileText,
+  Calendar,
+  Clock,
+  CalendarRange,
+  Sparkles,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +34,12 @@ export interface CourseBuilderData {
   discountPrice: string;
   currency: string;
   accessType: "Lifetime Access" | "Fixed Duration" | "Subscription";
+  durationCycleMode?: "Date Range" | "Relative Duration";
+  startDate?: string;
+  endDate?: string;
+  durationValue?: string;
+  durationUnit?: "Days" | "Weeks" | "Months" | "Years";
+  subscriptionCycle?: "Monthly" | "Quarterly" | "Yearly";
   enrollmentLimit: string;
   courseVisibility: "Public" | "Private" | "Unlisted";
 }
@@ -63,6 +76,52 @@ const LANGUAGES = [
 ];
 
 const CURRENCIES = ["INR ₹", "USD $", "EUR €", "GBP £"];
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const WEEK_DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+function calculateDateDiffString(startDateStr?: string, endDateStr?: string): string {
+  if (!startDateStr || !endDateStr) return "";
+  const start = new Date(startDateStr);
+  const end = new Date(endDateStr);
+  const diffTime = end.getTime() - start.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (isNaN(diffDays)) return "";
+  if (diffDays < 0) return "Invalid date range";
+  if (diffDays === 0) return "1 day (Same day)";
+  if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? "s" : ""}`;
+  const months = Math.floor(diffDays / 30);
+  const remDays = diffDays % 30;
+  if (remDays === 0) return `${months} month${months > 1 ? "s" : ""} (${diffDays} days)`;
+  return `${diffDays} days (~${months} mo ${remDays} d)`;
+}
+
+function formatDisplayDate(dateStr?: string): string {
+  if (!dateStr) return "";
+  try {
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const [year, month, day] = parts;
+    const d = new Date(Number(year), Number(month) - 1, Number(day));
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return dateStr;
+  }
+}
 
 function BuilderDropdown({
   value,
@@ -161,6 +220,291 @@ function BuilderDropdown({
   );
 }
 
+function CustomDatePicker({
+  value,
+  onChange,
+  placeholder = "Select date",
+  minDate,
+  maxDate,
+  error,
+  className,
+}: {
+  value?: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  minDate?: string;
+  maxDate?: string;
+  error?: boolean;
+  className?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  // Initialize view year & month from selected value or current date
+  const parseYearMonth = () => {
+    if (value) {
+      const parts = value.split("-");
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        if (!isNaN(y) && !isNaN(m)) {
+          return { y, m };
+        }
+      }
+    }
+    const today = new Date();
+    return { y: today.getFullYear(), m: today.getMonth() };
+  };
+
+  const initial = parseYearMonth();
+  const [viewYear, setViewYear] = useState<number>(initial.y);
+  const [viewMonth, setViewMonth] = useState<number>(initial.m);
+
+  React.useEffect(() => {
+    if (value) {
+      const parts = value.split("-");
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        if (!isNaN(y) && !isNaN(m)) {
+          setViewYear(y);
+          setViewMonth(m);
+        }
+      }
+    }
+  }, [value]);
+
+  React.useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [isOpen]);
+
+  const handlePrevMonth = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((prev) => prev - 1);
+    } else {
+      setViewMonth((prev) => prev - 1);
+    }
+  };
+
+  const handleNextMonth = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((prev) => prev + 1);
+    } else {
+      setViewMonth((prev) => prev + 1);
+    }
+  };
+
+  const calendarDays = React.useMemo(() => {
+    const firstDay = new Date(viewYear, viewMonth, 1);
+    const startDayOfWeek = firstDay.getDay();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+    const days: Array<{
+      dateStr: string;
+      dayNum: number;
+      isCurrentMonth: boolean;
+    }> = [];
+
+    // Prev month padding
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
+      const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
+      const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      days.push({
+        dateStr,
+        dayNum: d,
+        isCurrentMonth: false,
+      });
+    }
+
+    // Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      days.push({
+        dateStr,
+        dayNum: d,
+        isCurrentMonth: true,
+      });
+    }
+
+    // Next month padding to fill grid
+    const totalCells = days.length <= 35 ? 35 : 42;
+    const remaining = totalCells - days.length;
+    for (let d = 1; d <= remaining; d++) {
+      const nextMonth = viewMonth === 11 ? 0 : viewMonth + 1;
+      const nextYear = viewMonth === 11 ? viewYear + 1 : viewYear;
+      const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      days.push({
+        dateStr,
+        dayNum: d,
+        isCurrentMonth: false,
+      });
+    }
+
+    return days;
+  }, [viewYear, viewMonth]);
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const isSelected = !!value;
+
+  return (
+    <div ref={datePickerRef} className={cn("relative w-full", className)}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={cn(
+          "flex w-full items-center justify-between rounded-xl border bg-white px-3.5 py-2.5 text-left text-xs sm:text-[13px] font-medium transition-all duration-150 select-none shadow-xs cursor-pointer",
+          isOpen
+            ? "border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs"
+            : error
+            ? "border-rose-400 bg-rose-50/20"
+            : "border-slate-200 hover:border-slate-300 text-slate-800"
+        )}
+      >
+        <span className="flex items-center gap-2 truncate">
+          <Calendar
+            className={cn(
+              "h-4 w-4 shrink-0 transition-colors",
+              isSelected ? "text-indigo-600" : "text-slate-400"
+            )}
+          />
+          <span
+            className={cn(
+              "truncate",
+              isSelected ? "text-slate-800 font-semibold" : "text-slate-400"
+            )}
+          >
+            {isSelected ? formatDisplayDate(value) : placeholder}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-slate-400 transition-transform duration-200 shrink-0 ml-1.5",
+            isOpen && "rotate-180 text-indigo-600"
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xl animate-in fade-in-0 zoom-in-95 duration-100 select-none">
+          {/* Calendar Header with Navigation */}
+          <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-slate-100">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer"
+              title="Previous month"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-xs font-bold text-slate-800">
+              {MONTH_NAMES[viewMonth]} {viewYear}
+            </span>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer"
+              title="Next month"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
+            {WEEK_DAYS.map((wd) => (
+              <span
+                key={wd}
+                className="text-[10px] font-bold text-slate-400 uppercase py-0.5"
+              >
+                {wd}
+              </span>
+            ))}
+          </div>
+
+          {/* Days Grid */}
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {calendarDays.map((d) => {
+              const isCurrentSelected = d.dateStr === value;
+              const isToday = d.dateStr === todayStr;
+              const isDisabled = Boolean(
+                (minDate && d.dateStr < minDate) ||
+                (maxDate && d.dateStr > maxDate)
+              );
+
+              return (
+                <button
+                  key={d.dateStr}
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => {
+                    onChange(d.dateStr);
+                    setIsOpen(false);
+                  }}
+                  className={cn(
+                    "flex h-7 w-7 mx-auto items-center justify-center rounded-lg text-xs font-medium transition-all duration-100 cursor-pointer",
+                    isCurrentSelected
+                      ? "bg-indigo-600 text-white font-bold shadow-xs hover:bg-indigo-700"
+                      : isToday
+                      ? "border border-indigo-300 text-indigo-700 font-semibold bg-indigo-50/50 hover:bg-indigo-100"
+                      : d.isCurrentMonth
+                      ? "text-slate-700 hover:bg-slate-100"
+                      : "text-slate-300 hover:bg-slate-50",
+                    isDisabled &&
+                      "opacity-25 cursor-not-allowed hover:bg-transparent text-slate-300 pointer-events-none"
+                  )}
+                >
+                  {d.dayNum}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Footer with Today / Clear shortcuts */}
+          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 text-[11px]">
+            <button
+              type="button"
+              onClick={() => {
+                onChange(todayStr);
+                setIsOpen(false);
+              }}
+              className="text-indigo-600 hover:text-indigo-700 font-bold cursor-pointer transition"
+            >
+              Select Today
+            </button>
+            {value && (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange("");
+                  setIsOpen(false);
+                }}
+                className="text-slate-400 hover:text-slate-600 font-medium cursor-pointer transition"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CourseBuilder({
   onClose,
   onSaveDraft,
@@ -184,6 +528,16 @@ export default function CourseBuilder({
     discountPrice: initialData?.discountPrice || "14,999",
     currency: initialData?.currency || "INR ₹",
     accessType: initialData?.accessType || "Lifetime Access",
+    durationCycleMode: initialData?.durationCycleMode || "Date Range",
+    startDate: initialData?.startDate || new Date().toISOString().split("T")[0],
+    endDate:
+      initialData?.endDate ||
+      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
+    durationValue: initialData?.durationValue || "90",
+    durationUnit: initialData?.durationUnit || "Days",
+    subscriptionCycle: initialData?.subscriptionCycle || "Monthly",
     enrollmentLimit: initialData?.enrollmentLimit || "Unlimited",
     courseVisibility: initialData?.courseVisibility || "Public",
   });
@@ -249,6 +603,23 @@ export default function CourseBuilder({
     const newErrors: Record<string, boolean> = {};
     if (formData.courseType === "Paid" && !formData.price.trim()) {
       newErrors.price = true;
+    }
+    if (formData.accessType === "Fixed Duration") {
+      if (formData.durationCycleMode === "Date Range") {
+        if (!formData.startDate) newErrors.startDate = true;
+        if (!formData.endDate) newErrors.endDate = true;
+        if (
+          formData.startDate &&
+          formData.endDate &&
+          formData.endDate < formData.startDate
+        ) {
+          newErrors.endDateOrder = true;
+        }
+      } else {
+        if (!formData.durationValue || parseInt(formData.durationValue, 10) <= 0) {
+          newErrors.durationValue = true;
+        }
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -877,6 +1248,387 @@ export default function CourseBuilder({
                     />
                   </div>
                 </div>
+
+                {/* Fixed Duration Cycle Configuration Card */}
+                {formData.accessType === "Fixed Duration" && (
+                  <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-slate-50/60 p-5 sm:p-6 shadow-xs animate-in fade-in slide-in-from-top-2 duration-200 space-y-5">
+                    {/* Header / Mode Selection */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-indigo-100/70">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-xs">
+                            <CalendarRange className="h-4 w-4" />
+                          </span>
+                          <div>
+                            <h4 className="text-xs sm:text-[14px] font-bold text-slate-900">
+                              Duration Cycle & Access Window
+                            </h4>
+                            <p className="text-[11px] sm:text-xs text-slate-500">
+                              Define when learner access begins and when it automatically expires.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Cycle Mode Switcher */}
+                      <div className="flex items-center gap-1 p-1 bg-white border border-slate-200 rounded-xl shadow-xs self-start sm:self-auto">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              durationCycleMode: "Date Range",
+                            }))
+                          }
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer select-none",
+                            formData.durationCycleMode === "Date Range"
+                              ? "bg-indigo-600 text-white shadow-xs"
+                              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                          )}
+                        >
+                          Calendar Dates (Start & End)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              durationCycleMode: "Relative Duration",
+                            }))
+                          }
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer select-none",
+                            formData.durationCycleMode === "Relative Duration"
+                              ? "bg-indigo-600 text-white shadow-xs"
+                              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                          )}
+                        >
+                          Duration from Enrollment
+                        </button>
+                      </div>
+                    </div>
+
+                    {formData.durationCycleMode === "Date Range" ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Start Date */}
+                          <div>
+                            <label className="block text-xs sm:text-[13px] font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5 text-indigo-600" />
+                              Access Start Date <span className="text-rose-500">*</span>
+                            </label>
+                            <CustomDatePicker
+                              value={formData.startDate}
+                              placeholder="Select start date"
+                              error={errors.startDate}
+                              onChange={(newStart) => {
+                                setFormData((prev) => {
+                                  let newEnd = prev.endDate;
+                                  if (newEnd && newEnd < newStart) {
+                                    const d = new Date(newStart);
+                                    d.setDate(d.getDate() + 30);
+                                    newEnd = d.toISOString().split("T")[0];
+                                  }
+                                  return {
+                                    ...prev,
+                                    startDate: newStart,
+                                    endDate: newEnd,
+                                  };
+                                });
+                                if (errors.startDate || errors.endDateOrder) {
+                                  setErrors((prev) => ({
+                                    ...prev,
+                                    startDate: false,
+                                    endDateOrder: false,
+                                  }));
+                                }
+                              }}
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              When learners can begin accessing course lessons and materials
+                            </p>
+                            {errors.startDate && (
+                              <p className="text-[11px] font-semibold text-rose-500 mt-1">
+                                Start date is required
+                              </p>
+                            )}
+                          </div>
+
+                          {/* End Date */}
+                          <div>
+                            <label className="block text-xs sm:text-[13px] font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-rose-500" />
+                              Access End Date (Expiry) <span className="text-rose-500">*</span>
+                            </label>
+                            <CustomDatePicker
+                              value={formData.endDate}
+                              minDate={formData.startDate}
+                              placeholder="Select expiry date"
+                              error={errors.endDate || errors.endDateOrder}
+                              onChange={(newEnd) => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  endDate: newEnd,
+                                }));
+                                if (errors.endDate || errors.endDateOrder) {
+                                  setErrors((prev) => ({
+                                    ...prev,
+                                    endDate: false,
+                                    endDateOrder: false,
+                                  }));
+                                }
+                              }}
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              When access is automatically revoked for this duration cycle
+                            </p>
+                            {errors.endDate && (
+                              <p className="text-[11px] font-semibold text-rose-500 mt-1">
+                                End date is required
+                              </p>
+                            )}
+                            {errors.endDateOrder && (
+                              <p className="text-[11px] font-semibold text-rose-500 mt-1">
+                                End date must be on or after start date
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Quick presets */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <span className="text-[11px] font-semibold text-slate-500">
+                            Quick Duration Presets:
+                          </span>
+                          {[
+                            { label: "+30 Days", days: 30 },
+                            { label: "+60 Days", days: 60 },
+                            { label: "+90 Days", days: 90 },
+                            { label: "+180 Days (6 mo)", days: 180 },
+                            { label: "+365 Days (1 yr)", days: 365 },
+                          ].map((preset) => (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              onClick={() => {
+                                const base = formData.startDate
+                                  ? new Date(formData.startDate)
+                                  : new Date();
+                                base.setDate(base.getDate() + preset.days);
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  startDate:
+                                    prev.startDate ||
+                                    new Date().toISOString().split("T")[0],
+                                  endDate: base.toISOString().split("T")[0],
+                                }));
+                                setErrors((prev) => ({
+                                  ...prev,
+                                  endDate: false,
+                                  endDateOrder: false,
+                                }));
+                              }}
+                              className="rounded-lg border border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-600 px-2.5 py-1 text-[11px] font-medium text-slate-600 transition cursor-pointer shadow-2xs"
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Summary banner */}
+                        {formData.startDate && formData.endDate && (
+                          <div className="flex items-center gap-2.5 rounded-xl bg-indigo-50/80 border border-indigo-100/90 px-3.5 py-2.5 text-xs text-indigo-950 font-medium">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-200/80 text-indigo-700 text-[11px] font-bold">
+                              ✓
+                            </span>
+                            <span>
+                              <strong>Access Cycle:</strong>{" "}
+                              {calculateDateDiffString(
+                                formData.startDate,
+                                formData.endDate
+                              )}{" "}
+                              (Starts {formatDisplayDate(formData.startDate)} • Ends{" "}
+                              {formatDisplayDate(formData.endDate)})
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Relative Duration from Enrollment */
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                          {/* Duration Count & Unit */}
+                          <div>
+                            <label className="block text-xs sm:text-[13px] font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-indigo-600" />
+                              Access Duration Period <span className="text-rose-500">*</span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="1"
+                                value={formData.durationValue}
+                                onChange={(e) => {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    durationValue: e.target.value,
+                                  }));
+                                  if (errors.durationValue)
+                                    setErrors((prev) => ({
+                                      ...prev,
+                                      durationValue: false,
+                                    }));
+                                }}
+                                placeholder="90"
+                                className={cn(
+                                  "w-28 rounded-xl border bg-white px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition shadow-xs",
+                                  errors.durationValue
+                                    ? "border-rose-400 bg-rose-50/20"
+                                    : "border-slate-200 hover:border-slate-300"
+                                )}
+                              />
+                              <BuilderDropdown
+                                value={formData.durationUnit || "Days"}
+                                onChange={(val) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    durationUnit: val as any,
+                                  }))
+                                }
+                                options={["Days", "Weeks", "Months", "Years"]}
+                                className="w-36"
+                              />
+                            </div>
+                            {errors.durationValue && (
+                              <p className="text-[11px] font-semibold text-rose-500 mt-1">
+                                Please enter a valid duration number
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Optional Available From Date */}
+                          <div>
+                            <label className="block text-xs sm:text-[13px] font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                              Course Available From{" "}
+                              <span className="text-slate-400 font-normal text-[11px]">
+                                (Optional)
+                              </span>
+                            </label>
+                            <CustomDatePicker
+                              value={formData.startDate}
+                              placeholder="Immediately upon enrollment"
+                              onChange={(val) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  startDate: val,
+                                }))
+                              }
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1">
+                              Leave empty to grant access immediately upon student enrollment
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Popular cycle presets */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <span className="text-[11px] font-semibold text-slate-500">
+                            Popular Cycles:
+                          </span>
+                          {[
+                            { label: "30 Days", val: "30", unit: "Days" as const },
+                            { label: "60 Days", val: "60", unit: "Days" as const },
+                            { label: "90 Days (3 mo)", val: "90", unit: "Days" as const },
+                            { label: "6 Months", val: "6", unit: "Months" as const },
+                            { label: "1 Year", val: "1", unit: "Years" as const },
+                          ].map((chip) => (
+                            <button
+                              key={chip.label}
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  durationValue: chip.val,
+                                  durationUnit: chip.unit,
+                                }));
+                                setErrors((prev) => ({
+                                  ...prev,
+                                  durationValue: false,
+                                }));
+                              }}
+                              className={cn(
+                                "rounded-lg border px-2.5 py-1 text-[11px] font-medium transition cursor-pointer shadow-2xs",
+                                formData.durationValue === chip.val &&
+                                  formData.durationUnit === chip.unit
+                                  ? "border-indigo-400 bg-indigo-50 text-indigo-700 font-bold"
+                                  : "border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 text-slate-600"
+                              )}
+                            >
+                              {chip.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Summary banner */}
+                        <div className="flex items-center gap-2.5 rounded-xl bg-indigo-50/80 border border-indigo-100/90 px-3.5 py-2.5 text-xs text-indigo-950 font-medium">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-200/80 text-indigo-700 text-[11px] font-bold">
+                            ✓
+                          </span>
+                          <span>
+                            Learners receive access for{" "}
+                            <strong>
+                              {formData.durationValue || 0}{" "}
+                              {formData.durationUnit?.toLowerCase()}
+                            </strong>{" "}
+                            starting from their individual enrollment date.
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Subscription Billing Cycle Card */}
+                {formData.accessType === "Subscription" && (
+                  <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-slate-50/60 p-5 shadow-xs animate-in fade-in slide-in-from-top-2 duration-200 space-y-3">
+                    <label className="block text-xs sm:text-[13px] font-bold text-slate-800">
+                      Billing & Renewal Cycle
+                    </label>
+                    <div className="flex flex-wrap gap-2.5">
+                      {(["Monthly", "Quarterly", "Yearly"] as const).map((cycle) => (
+                        <button
+                          key={cycle}
+                          type="button"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              subscriptionCycle: cycle,
+                            }))
+                          }
+                          className={cn(
+                            "rounded-xl px-4 py-2 text-xs sm:text-[13px] font-medium transition cursor-pointer select-none",
+                            formData.subscriptionCycle === cycle
+                              ? "border-2 border-indigo-500 bg-indigo-50/80 text-indigo-700 font-bold shadow-xs"
+                              : "border border-slate-200 bg-white hover:border-slate-300 text-slate-600"
+                          )}
+                        >
+                          {cycle}{" "}
+                          <span className="text-[11px] opacity-75 font-normal">
+                            (Renews every{" "}
+                            {cycle === "Monthly"
+                              ? "month"
+                              : cycle === "Quarterly"
+                              ? "3 months"
+                              : "year"}
+                            )
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Row 3: Course Visibility */}
                 <div>
