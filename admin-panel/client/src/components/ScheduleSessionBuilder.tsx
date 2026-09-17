@@ -273,8 +273,9 @@ export default function ScheduleSessionBuilder({
     passcode: initialData?.passcode || "dsa2026",
     hostNotes: initialData?.hostNotes || "Join 5 minutes early to test microphone and video screen sharing.",
     resources: initialData?.resources || [
-      { id: 1, name: "DP_Masterclass_Slides.pdf", size: "2.4 MB" },
-      { id: 2, name: "Starter_Memoization_Template.zip", size: "1.1 MB" },
+      { id: 1, name: "Arrays Notes.pdf", size: "2.4 MB" },
+      { id: 2, name: "Week 1 Assignment", size: "1.1 MB" },
+      { id: 3, name: "Two Sum Practice Problem", size: "45 KB" },
     ],
     emailReminders: initialData?.emailReminders ?? true,
     inAppNotifications: initialData?.inAppNotifications ?? true,
@@ -293,6 +294,9 @@ export default function ScheduleSessionBuilder({
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [newResourceName, setNewResourceName] = useState("");
+  const [showAttachModal, setShowAttachModal] = useState(false);
+  const [attachSearch, setAttachSearch] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const availableModules = DEFAULT_MODULES[data.course] || ["Dynamic Programming", "Arrays", "Trees", "Graphs"];
 
@@ -317,6 +321,40 @@ export default function ScheduleSessionBuilder({
       }));
       setNewResourceName("");
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const sizeStr =
+        file.size > 1024 * 1024
+          ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+          : `${Math.round(file.size / 1024)} KB`;
+
+      setData((prev) => ({
+        ...prev,
+        resources: [
+          ...prev.resources,
+          { id: Date.now(), name: file.name, size: sizeStr },
+        ],
+      }));
+      // Reset input value so same file can be uploaded again if needed
+      e.target.value = "";
+    }
+  };
+
+  const handleAttachExisting = (item: { name: string; size: string }) => {
+    if (!data.resources.some((r) => r.name.toLowerCase() === item.name.toLowerCase())) {
+      setData((prev) => ({
+        ...prev,
+        resources: [
+          ...prev.resources,
+          { id: Date.now(), name: item.name, size: item.size },
+        ],
+      }));
+    }
+    setShowAttachModal(false);
   };
 
   const handleRemoveResource = (id: number) => {
@@ -395,13 +433,18 @@ export default function ScheduleSessionBuilder({
           <div className="lg:col-span-8 space-y-6">
             {/* Section 1: Basic Information */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="border-b border-slate-100 dark:border-white/5 pb-3">
-                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>1. Basic Information</span>
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Set the primary title, designated instructor, and learning objectives.
-                </p>
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                  01
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Basic Information
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Set the primary title, designated instructor, and learning objectives.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -459,13 +502,18 @@ export default function ScheduleSessionBuilder({
 
             {/* Section 2: Course Mapping */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="border-b border-slate-100 dark:border-white/5 pb-3">
-                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                  2. Course Mapping
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Link this session to an active curriculum track and target cohort.
-                </p>
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                  02
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Course Mapping
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Link this session to an active curriculum track and target cohort.
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -524,13 +572,18 @@ export default function ScheduleSessionBuilder({
 
             {/* Section 3: Scheduling */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="border-b border-slate-100 dark:border-white/5 pb-3">
-                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                  3. Scheduling
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Set the session calendar date, timing window, and timezone.
-                </p>
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                  03
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Scheduling
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Set the session calendar date, timing window, and timezone.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -624,13 +677,18 @@ export default function ScheduleSessionBuilder({
 
             {/* Section 4: Meeting Platform */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="border-b border-slate-100 dark:border-white/5 pb-3">
-                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                  4. Meeting Platform
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Configure the video conference provider and attendee join URL.
-                </p>
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                  04
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Meeting Platform
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Configure the video conference provider and attendee join URL.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -714,80 +772,116 @@ export default function ScheduleSessionBuilder({
 
             {/* Section 5: Session Resources */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="border-b border-slate-100 dark:border-white/5 pb-3">
-                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                  5. Session Resources & Materials
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Attach presentation decks, starter templates, and reference materials.
-                </p>
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                  05
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Session Resources
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Attach learning material before students join.
+                  </p>
+                </div>
               </div>
 
+              {/* Hidden File Input for Real Upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileUpload}
+                accept=".pdf,.docx,.doc,.pptx,.zip,.rar,.txt,.md"
+              />
+
               <div className="space-y-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newResourceName}
-                    onChange={(e) => setNewResourceName(e.target.value)}
-                    placeholder="Add resource name (e.g. DP_CheatSheet.pdf)"
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddResource())}
-                    className="flex-1 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none"
-                  />
+                {/* 2-Column Action Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Card 1: Attach existing resource */}
                   <button
                     type="button"
-                    onClick={handleAddResource}
-                    className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    onClick={() => setShowAttachModal(true)}
+                    className="group text-left rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-5 hover:border-indigo-500 hover:shadow-xs transition-all cursor-pointer"
                   >
-                    <Plus className="h-4 w-4" />
-                    <span>Add File</span>
+                    <div className="text-indigo-600 dark:text-indigo-400 mb-3.5">
+                      <Link2 className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                      Attach existing resource
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      PDFs, assignments, problems, and recordings.
+                    </p>
+                  </button>
+
+                  {/* Card 2: Upload new resource */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="group text-left rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/20 dark:bg-indigo-950/20 p-5 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all cursor-pointer"
+                  >
+                    <div className="text-indigo-600 dark:text-indigo-400 mb-3.5">
+                      <Upload className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                      Upload new resource
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Add notes, slides, or external links.
+                    </p>
                   </button>
                 </div>
 
-                <div className="rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 p-6 text-center cursor-pointer hover:bg-indigo-50/30 transition">
-                  <div className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300">
-                    <Upload className="h-4 w-4" />
-                  </div>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white">
-                    Drop slides, PDF documents, or starter archives here
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Supports PDF, PPTX, ZIP, DOCX (Max 50 MB)</p>
-                </div>
-
-                <div className="space-y-2">
-                  {data.resources.map((res) => (
-                    <div
-                      key={res.id}
-                      className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]"
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-4 w-4 text-indigo-600" />
-                        <div>
-                          <p className="text-xs font-bold text-slate-900 dark:text-white">{res.name}</p>
-                          <p className="text-[10px] text-slate-400">{res.size}</p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveResource(res.id)}
-                        className="text-slate-400 hover:text-rose-500 p-1 cursor-pointer"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                {/* Attached Resources List */}
+                <div className="space-y-3 pt-1">
+                  {data.resources.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-slate-400 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
+                      No session resources attached yet. Click above to attach or upload materials.
                     </div>
-                  ))}
+                  ) : (
+                    data.resources.map((res) => (
+                      <div
+                        key={res.id}
+                        className="flex items-center justify-between px-5 py-4 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] shadow-2xs hover:border-slate-300 dark:hover:border-white/20 transition-all"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0 pr-4">
+                          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                            <Calendar className="h-4 w-4" />
+                          </div>
+                          <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                            {res.name}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveResource(res.id)}
+                          className="text-sm font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline transition cursor-pointer shrink-0"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Section 6: Notifications & Reminders */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="border-b border-slate-100 dark:border-white/5 pb-3">
-                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                  6. Notifications & Reminders
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Configure automated alerts to maximize student live turnout.
-                </p>
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                  06
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Notifications & Reminders
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Configure automated alerts to maximize student live turnout.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -858,13 +952,18 @@ export default function ScheduleSessionBuilder({
 
             {/* Section 7: Recording Settings */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="border-b border-slate-100 dark:border-white/5 pb-3">
-                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                  7. Recording Settings
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Manage cloud recording, automated transcription, and replay publishing.
-                </p>
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                  07
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Recording Settings
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Manage cloud recording, automated transcription, and replay publishing.
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -906,13 +1005,18 @@ export default function ScheduleSessionBuilder({
 
             {/* Section 8: Attendance & Settings */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="border-b border-slate-100 dark:border-white/5 pb-3">
-                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                  8. Attendance & Capacity
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Set verification thresholds and seat limits.
-                </p>
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                  08
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Attendance & Capacity
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Set verification thresholds and seat limits.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -985,13 +1089,18 @@ export default function ScheduleSessionBuilder({
 
             {/* Section 9: Visibility & Status */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="border-b border-slate-100 dark:border-white/5 pb-3">
-                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                  9. Visibility & Launch Status
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Control learner discovery and publication state.
-                </p>
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                  09
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Visibility & Launch Status
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Control learner discovery and publication state.
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1160,6 +1269,127 @@ export default function ScheduleSessionBuilder({
           </div>
         </div>
       </main>
+
+      {/* Attach Existing Resource Modal */}
+      {showAttachModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-xl rounded-3xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50">
+                  <Link2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Attach Existing Resource
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Select from library materials, assignments, or previous class notes.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAttachModal(false)}
+                className="grid h-8 w-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white transition cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                value={attachSearch}
+                onChange={(e) => setAttachSearch(e.target.value)}
+                placeholder="Search notes, assignments, problems..."
+                className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-10 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-indigo-500"
+              />
+              {attachSearch && (
+                <button
+                  type="button"
+                  onClick={() => setAttachSearch("")}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+              {[
+                { id: 101, name: "Arrays Notes.pdf", type: "PDF Notes", size: "2.4 MB" },
+                { id: 102, name: "Week 1 Assignment", type: "Assignment", size: "1.1 MB" },
+                { id: 103, name: "Two Sum Practice Problem", type: "Practice Problem", size: "45 KB" },
+                { id: 104, name: "Dynamic Programming CheatSheet.pdf", type: "PDF Notes", size: "3.2 MB" },
+                { id: 105, name: "Binary Trees & BST Masterclass.pdf", type: "PDF Notes", size: "4.1 MB" },
+                { id: 106, name: "LRU Cache Design Challenge", type: "Practice Problem", size: "68 KB" },
+                { id: 107, name: "System Design Sprint Deck.pptx", type: "Presentation", size: "12.8 MB" },
+                { id: 108, name: "Graph Traversal Starter Code.zip", type: "Code Archive", size: "5.4 MB" },
+                { id: 109, name: "Recursion & Backtracking Lab", type: "Assignment", size: "850 KB" },
+                { id: 110, name: "Live Class 01 Replay - Intro to DSA", type: "Recording", size: "450 MB" },
+              ]
+                .filter((item) =>
+                  item.name.toLowerCase().includes(attachSearch.toLowerCase()) ||
+                  item.type.toLowerCase().includes(attachSearch.toLowerCase())
+                )
+                .map((item) => {
+                  const isAttached = data.resources.some(
+                    (r) => r.name.toLowerCase() === item.name.toLowerCase()
+                  );
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] hover:border-indigo-300 dark:hover:border-indigo-800 transition"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 pr-2">
+                        <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                          <Calendar className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            {item.name}
+                          </p>
+                          <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+                            <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                              {item.type}
+                            </span>
+                            <span>•</span>
+                            <span>{item.size}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isAttached}
+                        onClick={() => handleAttachExisting(item)}
+                        className={cn(
+                          "rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer shrink-0",
+                          isAttached
+                            ? "bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500 cursor-not-allowed"
+                            : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs"
+                        )}
+                      >
+                        {isAttached ? "Attached ✓" : "Attach"}
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-white/5">
+              <button
+                type="button"
+                onClick={() => setShowAttachModal(false)}
+                className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
