@@ -3,6 +3,7 @@ import AdminProfileDropdown from "@/components/AdminProfileDropdown";
 import CourseBuilder, { CourseBuilderData, CourseModule } from "@/components/CourseBuilder";
 import AssignmentBuilder, { AssignmentData } from "@/components/AssignmentBuilder";
 import ScheduleSessionBuilder, { LiveSessionData } from "@/components/ScheduleSessionBuilder";
+import UploadRecordingBuilder, { RecordingData } from "@/components/UploadRecordingBuilder";
 import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { cn } from "@/lib/utils";
@@ -1902,7 +1903,15 @@ function AnnouncementsView({ onAction, onToast }: { onAction: (state: DialogStat
   );
 }
 
-function RecordingsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+function RecordingsView({
+  onAction,
+  onToast,
+  onUploadRecording,
+}: {
+  onAction: (state: DialogState) => void;
+  onToast: (message: string) => void;
+  onUploadRecording?: () => void;
+}) {
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
   const [rows] = useState(recordingsData);
@@ -1919,12 +1928,14 @@ function RecordingsView({ onAction, onToast }: { onAction: (state: DialogState) 
         section="recordings"
         description={sectionDescriptions.recordings}
         actionLabel="Upload recording"
-        onAction={() =>
-          onAction({
-            title: "Upload class recording",
-            description: "Upload video recording MP4 or attach cloud stream link.",
-            fields: ["Session title", "Course / Module", "Instructor", "Video URL / File", "Duration"],
-          })
+        onAction={
+          onUploadRecording ||
+          (() =>
+            onAction({
+              title: "Upload class recording",
+              description: "Upload video recording MP4 or attach cloud stream link.",
+              fields: ["Session title", "Course / Module", "Instructor", "Video URL / File", "Duration"],
+            }))
         }
         onExport={() => onToast("Recordings inventory exported")}
       />
@@ -2054,6 +2065,8 @@ export default function Home() {
   const [editingAssignmentData, setEditingAssignmentData] = useState<Partial<AssignmentData> | null>(null);
   const [isScheduleSessionOpen, setIsScheduleSessionOpen] = useState(false);
   const [editingSessionData, setEditingSessionData] = useState<Partial<LiveSessionData> | null>(null);
+  const [isUploadRecordingOpen, setIsUploadRecordingOpen] = useState(false);
+  const [editingRecordingData, setEditingRecordingData] = useState<Partial<RecordingData> | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [toast, setToast] = useState<string | null>(null);
   const { refresh, courses: liveCourses } = useLiveAdminData();
@@ -2067,6 +2080,9 @@ export default function Home() {
     }
     if (section === "schedule-session" || section === "schedule_session") {
       setIsScheduleSessionOpen(true);
+    }
+    if (section === "upload-recording" || section === "upload_recording") {
+      setIsUploadRecordingOpen(true);
     }
   }, [section]);
 
@@ -2142,6 +2158,28 @@ export default function Home() {
   const handleScheduleSession = (data: LiveSessionData) => {
     onToast(`Live session "${data.title}" scheduled successfully!`);
     handleCloseScheduleSession();
+  };
+
+  const handleOpenUploadRecording = () => {
+    setEditingRecordingData(null);
+    setIsUploadRecordingOpen(true);
+  };
+
+  const handleCloseUploadRecording = () => {
+    setIsUploadRecordingOpen(false);
+    setEditingRecordingData(null);
+    if (window.location.hash === "#upload-recording" || window.location.hash === "#upload_recording") {
+      window.location.hash = "#recordings";
+    }
+  };
+
+  const handleSaveRecordingDraft = (data: RecordingData) => {
+    onToast(`Recording draft "${data.title}" saved successfully!`);
+  };
+
+  const handlePublishRecording = (data: RecordingData) => {
+    onToast(`Recording "${data.title}" published successfully!`);
+    handleCloseUploadRecording();
   };
 
   const handleEditCourse = (course: Course) => {
@@ -2434,6 +2472,32 @@ export default function Home() {
     );
   }
 
+  if (isUploadRecordingOpen || section === "upload-recording" || section === "upload_recording") {
+    return (
+      <div className="relative min-h-screen bg-[#f8fafc]">
+        <UploadRecordingBuilder
+          initialData={editingRecordingData || undefined}
+          onClose={handleCloseUploadRecording}
+          onSaveDraft={handleSaveRecordingDraft}
+          onPublish={handlePublishRecording}
+          availableCourses={
+            liveCourses && liveCourses.length > 0
+              ? liveCourses.map((c) => c.title)
+              : undefined
+          }
+        />
+        {toast && (
+          <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+            <span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-500 text-white">
+              <Check className="h-3.5 w-3.5" />
+            </span>
+            {toast}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const content =
     section === "overview" ? (
       <Overview onAction={onAction} onToast={onToast} onCreateCourse={handleOpenCourseBuilder} />
@@ -2470,7 +2534,7 @@ export default function Home() {
     ) : section === "live" || section === "live_sessions" ? (
       <LiveView onAction={onAction} onToast={onToast} onScheduleSession={handleOpenScheduleSession} />
     ) : section === "recordings" ? (
-      <RecordingsView onAction={onAction} onToast={onToast} />
+      <RecordingsView onAction={onAction} onToast={onToast} onUploadRecording={handleOpenUploadRecording} />
     ) : section === "payments" ? (
       <PaymentsView onAction={onAction} onToast={onToast} />
     ) : section === "feedback" ? (

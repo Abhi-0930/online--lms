@@ -6,12 +6,12 @@ import {
   Check,
   ChevronDown,
   Clock,
-  Copy,
   ExternalLink,
   FileText,
-  HelpCircle,
+  Film,
   Link2,
   Lock,
+  PlayCircle,
   Plus,
   Radio,
   Save,
@@ -19,49 +19,48 @@ import {
   Sparkles,
   Trash2,
   Upload,
-  Users,
   Video,
   X,
 } from "lucide-react";
 
-export interface SessionResourceItem {
+export interface RecordingResourceItem {
   id: number;
   name: string;
   size: string;
 }
 
-export interface LiveSessionData {
+export interface RecordingChapterItem {
+  id: number;
+  timestamp: string;
+  title: string;
+}
+
+export interface RecordingData {
   id?: string | number;
   title: string;
   instructor: string;
-  sessionType: string;
+  recordingType: string;
   description: string;
   course: string;
   module: string;
   topic: string;
   targetCohort: string;
+  videoFileName?: string;
+  videoFileSize?: string;
+  videoUrl?: string;
   date: string;
-  timezone: string;
-  startTime: string;
-  endTime: string;
-  platform: string;
-  meetingLink: string;
-  passcode: string;
-  hostNotes: string;
-  resources: SessionResourceItem[];
-  emailReminders: boolean;
-  inAppNotifications: boolean;
-  reminderSchedule: string;
-  autoRecord: boolean;
-  uploadRecording: boolean;
-  aiNotes: boolean;
-  autoPublishRecording: boolean;
-  trackAttendance: boolean;
-  attendanceMethod: string;
-  attendanceThreshold: string;
-  maxAttendees: string;
+  duration: string;
+  sessionTime: string;
+  resources: RecordingResourceItem[];
+  chapters: RecordingChapterItem[];
   visibility: string;
-  status: "Scheduled" | "Draft" | "Live" | "Completed";
+  accessType: string;
+  allowDownload: boolean;
+  showInCurriculum: boolean;
+  generateAiNotes: boolean;
+  enableComments: boolean;
+  status: "Published" | "Draft" | "Processing";
+  releaseDate: string;
 }
 
 const DEFAULT_COURSES = [
@@ -235,9 +234,8 @@ function ToggleSwitch({
   );
 }
 
-function formatScheduleDateTime(dateStr: string, timeStr: string) {
+function formatDisplayDate(dateStr: string) {
   if (!dateStr) return "";
-  let formattedDate = dateStr;
   const parts = dateStr.split("-");
   if (parts.length === 3) {
     if (parts[0].length === 2 && parts[2].length === 4) {
@@ -246,119 +244,87 @@ function formatScheduleDateTime(dateStr: string, timeStr: string) {
       const year = parts[2];
       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec"];
       if (months[monthIdx]) {
-        formattedDate = `${day} ${months[monthIdx]} ${year}`;
+        return `${day} ${months[monthIdx]} ${year}`;
       }
     }
   }
-
-  let formattedTime = timeStr || "";
-  if (timeStr && timeStr.includes(":")) {
-    const [h, m] = timeStr.split(":");
-    const hours = parseInt(h, 10);
-    const suffix = hours >= 12 ? "PM" : "AM";
-    const hour12 = hours % 12 || 12;
-    formattedTime = `${hour12}:${m} ${suffix}`;
-  }
-
-  return formattedTime ? `${formattedDate}, ${formattedTime}` : formattedDate;
+  return dateStr;
 }
 
-function calculateDurationHours(startStr: string, endStr: string): string {
-  if (!startStr || !endStr || !startStr.includes(":") || !endStr.includes(":")) return "2 hours";
-  const [sh, sm] = startStr.split(":").map(Number);
-  const [eh, em] = endStr.split(":").map(Number);
-  let totalMin = (eh * 60 + em) - (sh * 60 + sm);
-  if (totalMin < 0) totalMin += 24 * 60;
-  if (totalMin === 0) return "0 mins";
-  const hrs = Math.floor(totalMin / 60);
-  const mins = totalMin % 60;
-  if (hrs > 0 && mins > 0) return `${hrs}h ${mins}m`;
-  if (hrs > 0) return `${hrs} ${hrs === 1 ? "hour" : "hours"}`;
-  return `${mins} mins`;
-}
-
-interface ScheduleSessionBuilderProps {
-  initialData?: Partial<LiveSessionData>;
+interface UploadRecordingBuilderProps {
+  initialData?: Partial<RecordingData>;
   onClose: () => void;
-  onSaveDraft: (data: LiveSessionData) => void;
-  onSchedule: (data: LiveSessionData) => void;
+  onSaveDraft: (data: RecordingData) => void;
+  onPublish: (data: RecordingData) => void;
   availableCourses?: string[];
 }
 
-export default function ScheduleSessionBuilder({
+export function UploadRecordingBuilder({
   initialData,
   onClose,
   onSaveDraft,
-  onSchedule,
+  onPublish,
   availableCourses = DEFAULT_COURSES,
-}: ScheduleSessionBuilderProps) {
-  const [data, setData] = useState<LiveSessionData>({
-    title: initialData?.title || "Dynamic Programming Masterclass",
+}: UploadRecordingBuilderProps) {
+  const [data, setData] = useState<RecordingData>({
+    title: initialData?.title || "Dynamic Programming Masterclass · Week 4",
     instructor: initialData?.instructor || "Ankit Sharma",
-    sessionType: initialData?.sessionType || "Live Class",
+    recordingType: initialData?.recordingType || "Live Session Recording",
     description:
       initialData?.description ||
-      "Master 1D & 2D Dynamic Programming patterns, memoization vs tabulation, and interview recurrence relations.",
+      "Complete recording of the live interactive session on 1D and 2D dynamic programming, state transition recurrence, and optimal substructure analysis.",
     course: initialData?.course || availableCourses[0] || "DSA Placement Program",
     module: initialData?.module || "Dynamic Programming",
-    topic: initialData?.topic || "Memoization & Tabulation Fundamentals",
-    targetCohort: initialData?.targetCohort || "Spring 2026 Batch",
+    topic: initialData?.topic || "1D & 2D Memoization Patterns",
+    targetCohort: initialData?.targetCohort || "All Enrolled Students",
+    videoFileName: initialData?.videoFileName || "DP_Masterclass_Recording_1080p.mp4",
+    videoFileSize: initialData?.videoFileSize || "1.42 GB",
+    videoUrl: initialData?.videoUrl || "",
     date: initialData?.date || "24-09-2026",
-    timezone: initialData?.timezone || "IST (UTC+5:30) - Asia/Kolkata",
-    startTime: initialData?.startTime || "18:00",
-    endTime: initialData?.endTime || "20:00",
-    platform: initialData?.platform || "Google Meet",
-    meetingLink: initialData?.meetingLink || "https://meet.google.com/dsa-live-session",
-    passcode: initialData?.passcode || "dsa2026",
-    hostNotes: initialData?.hostNotes || "Join 5 minutes early to test microphone and video screen sharing.",
+    duration: initialData?.duration || "01:45:00",
+    sessionTime: initialData?.sessionTime || "18:00 - 20:00 IST",
     resources: initialData?.resources || [
       { id: 1, name: "Arrays Notes.pdf", size: "2.4 MB" },
       { id: 2, name: "Week 1 Assignment", size: "1.1 MB" },
       { id: 3, name: "Two Sum Practice Problem", size: "45 KB" },
     ],
-    emailReminders: initialData?.emailReminders ?? true,
-    inAppNotifications: initialData?.inAppNotifications ?? true,
-    reminderSchedule: initialData?.reminderSchedule || "30 minutes before",
-    autoRecord: initialData?.autoRecord ?? true,
-    uploadRecording: initialData?.uploadRecording ?? true,
-    aiNotes: initialData?.aiNotes ?? true,
-    autoPublishRecording: initialData?.autoPublishRecording ?? false,
-    trackAttendance: initialData?.trackAttendance ?? true,
-    attendanceMethod: initialData?.attendanceMethod || "Automatic on join (min 15 mins)",
-    attendanceThreshold: initialData?.attendanceThreshold || "75%",
-    maxAttendees: initialData?.maxAttendees || "250",
+    chapters: initialData?.chapters || [
+      { id: 1, timestamp: "00:00", title: "Introduction & Warm-up" },
+      { id: 2, timestamp: "15:30", title: "Top-Down Memoization Table Walkthrough" },
+      { id: 3, timestamp: "48:15", title: "Interview Hard DP Problem Analysis" },
+    ],
     visibility: initialData?.visibility || "All enrolled students",
-    status: initialData?.status || "Scheduled",
+    accessType: initialData?.accessType || "Full Access",
+    allowDownload: initialData?.allowDownload ?? false,
+    showInCurriculum: initialData?.showInCurriculum ?? true,
+    generateAiNotes: initialData?.generateAiNotes ?? true,
+    enableComments: initialData?.enableComments ?? true,
+    status: initialData?.status || "Published",
+    releaseDate: initialData?.releaseDate || "24-09-2026",
   });
 
-  const [copiedLink, setCopiedLink] = useState(false);
-  const [newResourceName, setNewResourceName] = useState("");
   const [showAttachModal, setShowAttachModal] = useState(false);
   const [attachSearch, setAttachSearch] = useState("");
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const availableModules = DEFAULT_MODULES[data.course] || ["Dynamic Programming", "Arrays", "Trees", "Graphs"];
 
-  const durationStr = useMemo(() => calculateDurationHours(data.startTime, data.endTime), [data.startTime, data.endTime]);
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const sizeStr =
+        file.size > 1024 * 1024 * 1024
+          ? `${(file.size / (1024 * 1024 * 1024)).toFixed(2)} GB`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
 
-  const handleCopyLink = () => {
-    if (data.meetingLink) {
-      navigator.clipboard?.writeText(data.meetingLink);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    }
-  };
-
-  const handleAddResource = () => {
-    if (newResourceName.trim()) {
       setData((prev) => ({
         ...prev,
-        resources: [
-          ...prev.resources,
-          { id: Date.now(), name: newResourceName.trim(), size: "1.2 MB" },
-        ],
+        videoFileName: file.name,
+        videoFileSize: sizeStr,
       }));
-      setNewResourceName("");
+      e.target.value = "";
     }
   };
 
@@ -378,7 +344,6 @@ export default function ScheduleSessionBuilder({
           { id: Date.now(), name: file.name, size: sizeStr },
         ],
       }));
-      // Reset input value so same file can be uploaded again if needed
       e.target.value = "";
     }
   };
@@ -403,6 +368,31 @@ export default function ScheduleSessionBuilder({
     }));
   };
 
+  const handleAddChapter = () => {
+    const newId = Date.now();
+    setData((prev) => ({
+      ...prev,
+      chapters: [
+        ...prev.chapters,
+        { id: newId, timestamp: "00:00", title: "New Chapter Segment" },
+      ],
+    }));
+  };
+
+  const handleUpdateChapter = (id: number, field: "timestamp" | "title", val: string) => {
+    setData((prev) => ({
+      ...prev,
+      chapters: prev.chapters.map((ch) => (ch.id === id ? { ...ch, [field]: val } : ch)),
+    }));
+  };
+
+  const handleRemoveChapter = (id: number) => {
+    setData((prev) => ({
+      ...prev,
+      chapters: prev.chapters.filter((ch) => ch.id !== id),
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0b0e14] text-slate-900 dark:text-slate-100 flex flex-col antialiased">
       {/* Top Sticky Header */}
@@ -413,7 +403,7 @@ export default function ScheduleSessionBuilder({
             className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Back to Live Sessions</span>
+            <span>Back to recordings</span>
           </button>
         </div>
 
@@ -428,11 +418,11 @@ export default function ScheduleSessionBuilder({
           </button>
           <button
             type="button"
-            onClick={() => onSchedule({ ...data, status: "Scheduled" })}
+            onClick={() => onPublish({ ...data, status: "Published" })}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
           >
             <Send className="h-3.5 w-3.5" />
-            <span>Schedule session</span>
+            <span>Publish recording</span>
           </button>
           <button
             onClick={onClose}
@@ -444,29 +434,29 @@ export default function ScheduleSessionBuilder({
         </div>
       </header>
 
-      {/* Main Form Container */}
+      {/* Main Container */}
       <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 py-7">
         {/* Title & Banner */}
         <div className="mb-6">
           <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">
-            <span>LIVE SESSIONS</span>
+            <span>RECORDINGS</span>
             <span>/</span>
-            <span className="text-indigo-600 dark:text-indigo-400">SCHEDULE SESSION</span>
+            <span className="text-indigo-600 dark:text-indigo-400">UPLOAD RECORDING</span>
           </div>
           <div className="flex items-center gap-3">
             <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Schedule Session
+              Upload Recording
             </h1>
             <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-900/50 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
-              Interactive Live Class
+              Class Archive
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Create and schedule a live interactive session for your students and cohort.
+            Upload and publish recorded live sessions, masterclasses, or tutorials for your learners.
           </p>
         </div>
 
-        {/* 2-Column Grid (8 cols Left Form, 4 cols Right Summary) */}
+        {/* 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
           {/* Left Form (8 cols) */}
           <div className="lg:col-span-8 space-y-6">
@@ -481,26 +471,26 @@ export default function ScheduleSessionBuilder({
                     Basic Information
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Set the primary title, designated instructor, and learning objectives.
+                    Set the recording headline, instructor, and overview summary.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Session Title <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={data.title}
-                    onChange={(e) => setData({ ...data, title: e.target.value })}
-                    placeholder="e.g. Dynamic Programming Masterclass"
-                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium"
-                  />
-                </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                      Recording Title <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={data.title}
+                      onChange={(e) => setData({ ...data, title: e.target.value })}
+                      placeholder="e.g. Dynamic Programming Masterclass"
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium"
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                       Instructor / Host <span className="text-rose-500">*</span>
@@ -511,28 +501,34 @@ export default function ScheduleSessionBuilder({
                       options={["Ankit Sharma", "Abhishek Kumar", "Siddharth Rao", "Guest Industry Speaker"]}
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      Session Type
-                    </label>
-                    <CustomDropdown
-                      value={data.sessionType}
-                      onChange={(val) => setData({ ...data, sessionType: val })}
-                      options={["Live Class", "Office Hours", "Doubt Clearing", "Mock Interview", "Hands-on Workshop"]}
-                    />
-                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Session Description
+                    Recording Type
+                  </label>
+                  <CustomDropdown
+                    value={data.recordingType}
+                    onChange={(val) => setData({ ...data, recordingType: val })}
+                    options={[
+                      "Live Session Recording",
+                      "Workshop Recording",
+                      "Tutorial / Walkthrough",
+                      "Guest Lecture",
+                      "Doubt Clearing Archive",
+                    ]}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                    Description & Overview
                   </label>
                   <textarea
                     rows={3}
                     value={data.description}
                     onChange={(e) => setData({ ...data, description: e.target.value })}
-                    placeholder="What will learners achieve in this session?"
+                    placeholder="What is covered in this recording? Key takeaways and concepts."
                     className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium resize-none"
                   />
                 </div>
@@ -550,7 +546,7 @@ export default function ScheduleSessionBuilder({
                     Course Mapping
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Link this session to an active curriculum track and target cohort.
+                    Link this recording to its curriculum module and student cohort.
                   </p>
                 </div>
               </div>
@@ -589,7 +585,7 @@ export default function ScheduleSessionBuilder({
                     type="text"
                     value={data.topic}
                     onChange={(e) => setData({ ...data, topic: e.target.value })}
-                    placeholder="e.g. Memoization & Tabulation"
+                    placeholder="e.g. 1D & 2D Memoization Patterns"
                     className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:outline-none"
                   />
                 </div>
@@ -602,14 +598,14 @@ export default function ScheduleSessionBuilder({
                     type="text"
                     value={data.targetCohort}
                     onChange={(e) => setData({ ...data, targetCohort: e.target.value })}
-                    placeholder="e.g. Spring 2026 Batch"
+                    placeholder="e.g. All Enrolled Students"
                     className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Section 3: Scheduling */}
+            {/* Section 3: Video Source / Upload */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
               <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
                 <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
@@ -617,104 +613,76 @@ export default function ScheduleSessionBuilder({
                 </div>
                 <div>
                   <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                    Scheduling
+                    Video Source
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Set the session calendar date, timing window, and timezone.
+                    Upload your high-definition video recording file.
                   </p>
                 </div>
               </div>
 
+              {/* Hidden Video Input */}
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/mov,video/webm,video/mkv,.mp4,.mov,.webm,.mkv"
+                className="hidden"
+                onChange={handleVideoUpload}
+              />
+
               <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      Session Date <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        value={data.date}
-                        onChange={(e) => setData({ ...data, date: e.target.value })}
-                        placeholder="24-09-2026"
-                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-medium"
-                      />
-                      <Calendar className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
-                    </div>
+                {/* Drag and Drop Box */}
+                <div
+                  onClick={() => videoInputRef.current?.click()}
+                  className="rounded-3xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/20 dark:bg-indigo-950/20 p-8 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50/30 transition-all select-none"
+                >
+                  <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400 shadow-xs">
+                    <Upload className="h-6 w-6" />
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      Timezone
-                    </label>
-                    <CustomDropdown
-                      value={data.timezone}
-                      onChange={(val) => setData({ ...data, timezone: val })}
-                      options={[
-                        "IST (UTC+5:30) - Asia/Kolkata",
-                        "UTC (GMT+0:00) - Universal Time",
-                        "EST (UTC-5:00) - Eastern Time",
-                        "PST (UTC-8:00) - Pacific Time",
-                        "SGT (UTC+8:00) - Singapore",
-                      ]}
-                    />
-                  </div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">
+                    Drag and drop your recording here
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Supports MP4, MOV, WEBM, MKV (Up to 5 GB)
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 text-white px-4 py-2 text-xs font-bold hover:bg-indigo-700 shadow-xs transition"
+                  >
+                    <Film className="h-3.5 w-3.5" />
+                    <span>Browse video file</span>
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      Start Time <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        value={data.startTime}
-                        onChange={(e) => setData({ ...data, startTime: e.target.value })}
-                        placeholder="18:00"
-                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-medium"
-                      />
-                      <Clock className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
+                {/* Uploaded Video File Preview Card */}
+                {data.videoFileName && (
+                  <div className="flex items-center justify-between p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/30">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <PlayCircle className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {data.videoFileName}
+                        </p>
+                        <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium mt-0.5">
+                          {data.videoFileSize} · Ready for transcoding
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setData({ ...data, videoFileName: undefined, videoFileSize: undefined })}
+                      className="text-xs font-semibold text-rose-600 hover:text-rose-700 p-1.5 cursor-pointer"
+                    >
+                      Remove
+                    </button>
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      End Time <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        value={data.endTime}
-                        onChange={(e) => setData({ ...data, endTime: e.target.value })}
-                        placeholder="20:00"
-                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-medium"
-                      />
-                      <Clock className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Highlighted Schedule Banner */}
-                <div className="rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20 p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white shadow-xs shrink-0">
-                      <Calendar className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">
-                        Scheduled for {formatScheduleDateTime(data.date, data.startTime)} – {formatScheduleDateTime(data.date, data.endTime).split(", ")[1] || data.endTime}
-                      </p>
-                      <p className="text-[11px] text-indigo-700 dark:text-indigo-300 font-medium mt-0.5">
-                        Duration: {durationStr} · {data.timezone.split(" - ")[0]}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
-            {/* Section 4: Meeting Platform */}
+            {/* Section 4: Session Details & Timing */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
               <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
                 <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
@@ -722,110 +690,77 @@ export default function ScheduleSessionBuilder({
                 </div>
                 <div>
                   <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                    Meeting Platform
+                    Session Details & Timing
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Configure the video conference provider and attendee join URL.
+                    Original live broadcast date and calculated playback duration.
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      Meeting Platform <span className="text-rose-500">*</span>
-                    </label>
-                    <CustomDropdown
-                      value={data.platform}
-                      onChange={(val) => setData({ ...data, platform: val })}
-                      options={["Google Meet", "Zoom Meetings", "Microsoft Teams", "Custom WebRTC / In-App Video"]}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      Passcode / PIN (Optional)
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        value={data.passcode}
-                        onChange={(e) => setData({ ...data, passcode: e.target.value })}
-                        placeholder="e.g. dsa2026"
-                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-10 py-3 text-xs text-slate-900 dark:text-white focus:outline-none"
-                      />
-                      <Lock className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
-                    </div>
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Meeting Link / URL <span className="text-rose-500">*</span>
+                    Original Live Date <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative flex items-center">
                     <input
-                      type="url"
-                      value={data.meetingLink}
-                      onChange={(e) => setData({ ...data, meetingLink: e.target.value })}
-                      placeholder="https://meet.google.com/xyz-abcd-efg"
-                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-24 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-medium text-indigo-600 dark:text-indigo-400"
+                      type="text"
+                      value={data.date}
+                      onChange={(e) => setData({ ...data, date: e.target.value })}
+                      placeholder="24-09-2026"
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-medium"
                     />
-                    <div className="absolute right-2 flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={handleCopyLink}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition cursor-pointer"
-                        title="Copy link"
-                      >
-                        {copiedLink ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                      </button>
-                      <a
-                        href={data.meetingLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition cursor-pointer"
-                        title="Open link"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </div>
+                    <Calendar className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Host Notes / Instructor instructions (Optional)
+                    Playback Duration <span className="text-rose-500">*</span>
                   </label>
-                  <textarea
-                    rows={2}
-                    value={data.hostNotes}
-                    onChange={(e) => setData({ ...data, hostNotes: e.target.value })}
-                    placeholder="Private instructor checklist before going live"
-                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none resize-none"
-                  />
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={data.duration}
+                      onChange={(e) => setData({ ...data, duration: e.target.value })}
+                      placeholder="01:45:00"
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-medium"
+                    />
+                    <Clock className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Section 5: Session Resources */}
+            {/* Section 5: Attached Resources */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
-                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
-                  05
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                    05
+                  </div>
+                  <div>
+                    <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                      Attached Resources
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Accompanying notes, assignments, code solutions, and cheat sheets.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                    Session Resources
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Attach learning material before students join.
-                  </p>
-                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAttachModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add Resource</span>
+                </button>
               </div>
 
-              {/* Hidden File Input for Real Upload */}
+              {/* Hidden File Input */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -835,157 +770,102 @@ export default function ScheduleSessionBuilder({
                 accept=".pdf,.docx,.doc,.pptx,.zip,.rar,.txt,.md"
               />
 
-              <div className="space-y-4">
-                {/* 2-Column Action Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Card 1: Attach existing resource */}
-                  <button
-                    type="button"
-                    onClick={() => setShowAttachModal(true)}
-                    className="group text-left rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-5 hover:border-indigo-500 hover:shadow-xs transition-all cursor-pointer"
-                  >
-                    <div className="text-indigo-600 dark:text-indigo-400 mb-3.5">
-                      <Link2 className="h-5 w-5" />
-                    </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
-                      Attach existing resource
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      PDFs, assignments, problems, and recordings.
-                    </p>
-                  </button>
-
-                  {/* Card 2: Upload new resource */}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="group text-left rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/20 dark:bg-indigo-950/20 p-5 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all cursor-pointer"
-                  >
-                    <div className="text-indigo-600 dark:text-indigo-400 mb-3.5">
-                      <Upload className="h-5 w-5" />
-                    </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
-                      Upload new resource
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Add notes, slides, or external links.
-                    </p>
-                  </button>
-                </div>
-
-                {/* Attached Resources List */}
-                <div className="space-y-3 pt-1">
-                  {data.resources.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-slate-400 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
-                      No session resources attached yet. Click above to attach or upload materials.
-                    </div>
-                  ) : (
-                    data.resources.map((res) => (
-                      <div
-                        key={res.id}
-                        className="flex items-center justify-between px-5 py-4 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] shadow-2xs hover:border-slate-300 dark:hover:border-white/20 transition-all"
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0 pr-4">
-                          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
-                            <Calendar className="h-4 w-4" />
-                          </div>
-                          <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                            {res.name}
-                          </span>
+              <div className="space-y-3 pt-1">
+                {data.resources.length === 0 ? (
+                  <div className="text-center py-6 text-xs text-slate-400 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
+                    No resources attached. Click "+ Add Resource" above to attach lecture materials.
+                  </div>
+                ) : (
+                  data.resources.map((res) => (
+                    <div
+                      key={res.id}
+                      className="flex items-center justify-between px-5 py-4 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] shadow-2xs hover:border-slate-300 dark:hover:border-white/20 transition-all"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0 pr-4">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                          <Calendar className="h-4 w-4" />
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveResource(res.id)}
-                          className="text-sm font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline transition cursor-pointer shrink-0"
-                        >
-                          Remove
-                        </button>
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                          {res.name}
+                        </span>
                       </div>
-                    ))
-                  )}
-                </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveResource(res.id)}
+                        className="text-sm font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline transition cursor-pointer shrink-0"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
-            {/* Section 6: Notifications & Reminders */}
+            {/* Section 6: Chapters & Timestamps */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
-                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
-                  06
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                    06
+                  </div>
+                  <div>
+                    <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                      Chapters & Timestamps
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Enable fast seeking and video index chapters for learners.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                    Notifications & Reminders
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Configure automated alerts to maximize student live turnout.
-                  </p>
-                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddChapter}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add Chapter</span>
+                </button>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Email reminders */}
+              <div className="space-y-3">
+                {data.chapters.map((ch, idx) => (
                   <div
-                    onClick={() => setData((prev) => ({ ...prev, emailReminders: !prev.emailReminders }))}
-                    className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] hover:border-indigo-300 dark:hover:border-indigo-800 transition-all cursor-pointer select-none"
+                    key={ch.id}
+                    className="flex items-center gap-3 p-3 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01]"
                   >
-                    <div>
-                      <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                        Email reminders
-                      </span>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Send calendar invite & email alert
-                      </p>
-                    </div>
-                    <ToggleSwitch
-                      checked={data.emailReminders}
-                      onChange={(checked) => setData((prev) => ({ ...prev, emailReminders: checked }))}
-                      ariaLabel="Toggle email reminders"
+                    <span className="text-xs font-bold text-slate-400 w-6 text-center">
+                      {idx + 1}
+                    </span>
+                    <input
+                      type="text"
+                      value={ch.timestamp}
+                      onChange={(e) => handleUpdateChapter(ch.id, "timestamp", e.target.value)}
+                      placeholder="00:00"
+                      className="w-24 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3 py-2 text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 focus:outline-none"
                     />
-                  </div>
-
-                  {/* In-app notification */}
-                  <div
-                    onClick={() => setData((prev) => ({ ...prev, inAppNotifications: !prev.inAppNotifications }))}
-                    className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] hover:border-indigo-300 dark:hover:border-indigo-800 transition-all cursor-pointer select-none"
-                  >
-                    <div>
-                      <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                        In-app notification
-                      </span>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Banner & push notification
-                      </p>
-                    </div>
-                    <ToggleSwitch
-                      checked={data.inAppNotifications}
-                      onChange={(checked) => setData((prev) => ({ ...prev, inAppNotifications: checked }))}
-                      ariaLabel="Toggle in-app notifications"
+                    <input
+                      type="text"
+                      value={ch.title}
+                      onChange={(e) => handleUpdateChapter(ch.id, "title", e.target.value)}
+                      placeholder="Chapter title"
+                      className="flex-1 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-3 py-2 text-xs text-slate-900 dark:text-white font-medium focus:outline-none"
                     />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveChapter(ch.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-500 transition cursor-pointer"
+                      title="Remove chapter"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Reminder Trigger Window
-                  </label>
-                  <CustomDropdown
-                    value={data.reminderSchedule}
-                    onChange={(val) => setData({ ...data, reminderSchedule: val })}
-                    options={[
-                      "15 minutes before",
-                      "30 minutes before",
-                      "1 hour before",
-                      "1 day before",
-                      "1 hour + 15 mins before",
-                    ]}
-                  />
-                </div>
+                ))}
               </div>
             </div>
 
-            {/* Section 7: Recording Settings */}
+            {/* Section 7: Visibility & Access */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
               <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
                 <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
@@ -993,20 +873,44 @@ export default function ScheduleSessionBuilder({
                 </div>
                 <div>
                   <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                    Recording Settings
+                    Visibility & Access
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Manage cloud recording, automated transcription, and replay publishing.
+                    Manage enrollment requirements, downloadable content, and discussion permissions.
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                    Learner Visibility
+                  </label>
+                  <CustomDropdown
+                    value={data.visibility}
+                    onChange={(val) => setData({ ...data, visibility: val })}
+                    options={["All enrolled students", "Public / Open Preview", "Restricted to Batch"]}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                    Access Permission
+                  </label>
+                  <CustomDropdown
+                    value={data.accessType}
+                    onChange={(val) => setData({ ...data, accessType: val })}
+                    options={["Full Access", "Course Enrollment Required", "Free Trial Allowed"]}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
                 {[
-                  { key: "autoRecord", label: "Automatically record session", desc: "Start recording when instructor joins" },
-                  { key: "uploadRecording", label: "Upload recording after class", desc: "Save full HD replay to cloud storage" },
-                  { key: "aiNotes", label: "Generate AI transcript & notes", desc: "Create summary key takeaways" },
-                  { key: "autoPublishRecording", label: "Auto-publish to curriculum", desc: "Make visible in module lessons instantly" },
+                  { key: "allowDownload", label: "Allow video download", desc: "Permit offline MP4 saving" },
+                  { key: "showInCurriculum", label: "Show in curriculum", desc: "List inside course module lessons" },
+                  { key: "generateAiNotes", label: "Generate AI notes", desc: "Create transcript & takeaways" },
+                  { key: "enableComments", label: "Enable comments & Q&A", desc: "Allow learners to ask questions" },
                 ].map((item) => {
                   const val = (data as any)[item.key] as boolean;
                   return (
@@ -1030,7 +934,7 @@ export default function ScheduleSessionBuilder({
               </div>
             </div>
 
-            {/* Section 8: Attendance & Settings */}
+            {/* Section 8: Status Management */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
               <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
                 <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
@@ -1038,87 +942,10 @@ export default function ScheduleSessionBuilder({
                 </div>
                 <div>
                   <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                    Attendance & Capacity
+                    Status Management
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Set verification thresholds and seat limits.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div
-                  onClick={() => setData((prev) => ({ ...prev, trackAttendance: !prev.trackAttendance }))}
-                  className="p-4 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] flex items-center justify-between cursor-pointer hover:border-slate-300 dark:hover:border-white/20 transition select-none"
-                >
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">Track attendance</p>
-                    <p className="text-[11px] text-slate-400">Log join timestamps and calculate percentage watched</p>
-                  </div>
-                  <ToggleSwitch
-                    checked={data.trackAttendance}
-                    onChange={(checked) => setData((prev) => ({ ...prev, trackAttendance: checked }))}
-                    ariaLabel="Toggle track attendance"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      Attendance Method
-                    </label>
-                    <CustomDropdown
-                      value={data.attendanceMethod}
-                      onChange={(val) => setData({ ...data, attendanceMethod: val })}
-                      options={[
-                        "Automatic on join (min 15 mins)",
-                        "Manual instructor roll call",
-                        "Live Poll / Quiz participation",
-                      ]}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      Minimum Attendance Threshold
-                    </label>
-                    <input
-                      type="text"
-                      value={data.attendanceThreshold}
-                      onChange={(e) => setData({ ...data, attendanceThreshold: e.target.value })}
-                      placeholder="e.g. 75%"
-                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-bold"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Maximum Capacity / Attendee Limit
-                  </label>
-                  <input
-                    type="text"
-                    value={data.maxAttendees}
-                    onChange={(e) => setData({ ...data, maxAttendees: e.target.value })}
-                    placeholder="e.g. 250 or Unlimited"
-                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section 9: Visibility & Status */}
-            <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
-                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
-                  09
-                </div>
-                <div>
-                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                    Visibility & Launch Status
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Control learner discovery and publication state.
+                    Control publishing state and release schedule.
                   </p>
                 </div>
               </div>
@@ -1126,24 +953,29 @@ export default function ScheduleSessionBuilder({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Cohort Visibility
+                    Publication Status
                   </label>
                   <CustomDropdown
-                    value={data.visibility}
-                    onChange={(val) => setData({ ...data, visibility: val })}
-                    options={["All enrolled students", "Specific cohort only", "Public / Free Open Webinar"]}
+                    value={data.status}
+                    onChange={(val) => setData({ ...data, status: val as any })}
+                    options={["Published", "Draft", "Processing"]}
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Session Status
+                    Release Date
                   </label>
-                  <CustomDropdown
-                    value={data.status}
-                    onChange={(val) => setData({ ...data, status: val as any })}
-                    options={["Scheduled", "Draft", "Live"]}
-                  />
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={data.releaseDate}
+                      onChange={(e) => setData({ ...data, releaseDate: e.target.value })}
+                      placeholder="24-09-2026"
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-medium"
+                    />
+                    <Calendar className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1168,11 +1000,11 @@ export default function ScheduleSessionBuilder({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onSchedule({ ...data, status: "Scheduled" })}
+                  onClick={() => onPublish({ ...data, status: "Published" })}
                   className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  <span>Schedule session</span>
+                  <span>Publish recording</span>
                 </button>
               </div>
             </div>
@@ -1180,21 +1012,20 @@ export default function ScheduleSessionBuilder({
 
           {/* Right Summary Sidebar (4 cols) */}
           <div className="lg:col-span-4 space-y-4">
-            {/* Card 1: Session summary */}
             <div className="sticky top-20 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
                 <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                  Session summary
+                  Recording summary
                 </h3>
                 <span className="text-indigo-600 dark:text-indigo-400">
-                  <Video className="h-4 w-4" />
+                  <Film className="h-4 w-4" />
                 </span>
               </div>
 
               <div className="space-y-3.5 text-xs">
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Session title</p>
-                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{data.title || "Untitled Session"}</p>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Recording title</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">{data.title || "Untitled Recording"}</p>
                 </div>
 
                 <div>
@@ -1210,33 +1041,30 @@ export default function ScheduleSessionBuilder({
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Date & Time</p>
-                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">
-                    {formatScheduleDateTime(data.date, data.startTime)} – {formatScheduleDateTime(data.date, data.endTime).split(", ")[1] || data.endTime}
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Playback Duration</p>
+                  <p className="mt-0.5 font-bold text-indigo-600 dark:text-indigo-400 font-mono">
+                    {data.duration}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Meeting Platform</p>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <span className="rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-900/50 px-2 py-0.5 text-[10px] font-bold">
-                      {data.platform}
-                    </span>
-                    <span className="text-[10px] text-slate-400">({durationStr})</span>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Attendance rule</p>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Recorded Date</p>
                   <p className="mt-0.5 font-bold text-slate-900 dark:text-white">
-                    {data.trackAttendance ? `Tracked (${data.attendanceThreshold} min)` : "No tracking"}
+                    {formatDisplayDate(data.date)}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Reminders</p>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Video Source</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white truncate">
+                    {data.videoFileName || "No file uploaded"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Resources & Chapters</p>
                   <p className="mt-0.5 font-bold text-slate-900 dark:text-white">
-                    {data.emailReminders ? "Email + In-App" : "In-App only"} ({data.reminderSchedule})
+                    {data.resources.length} resources · {data.chapters.length} chapters
                   </p>
                 </div>
 
@@ -1246,7 +1074,7 @@ export default function ScheduleSessionBuilder({
                     <span
                       className={cn(
                         "rounded-md border px-2 py-0.5 text-[10px] font-bold",
-                        data.status === "Scheduled"
+                        data.status === "Published"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400"
                           : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400"
                       )}
@@ -1269,19 +1097,19 @@ export default function ScheduleSessionBuilder({
                   </div>
                   <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                     <Check className="h-3.5 w-3.5 stroke-[3]" />
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">Video source ready</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                    <Check className="h-3.5 w-3.5 stroke-[3]" />
                     <span className="font-semibold text-slate-700 dark:text-slate-300">Course & Module mapped</span>
                   </div>
                   <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                     <Check className="h-3.5 w-3.5 stroke-[3]" />
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">Calendar schedule & time</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">Chapters & timestamps</span>
                   </div>
                   <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                     <Check className="h-3.5 w-3.5 stroke-[3]" />
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">Video platform link ready</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                    <Check className="h-3.5 w-3.5 stroke-[3]" />
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">Attendance policy active</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">Access rules configured</span>
                   </div>
                 </div>
               </div>
@@ -1301,7 +1129,7 @@ export default function ScheduleSessionBuilder({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Attach Existing Resource
+                    Attach Resource
                   </h3>
                   <p className="text-xs text-slate-400">
                     Select from library materials, assignments, or previous class notes.
@@ -1346,8 +1174,6 @@ export default function ScheduleSessionBuilder({
                 { id: 106, name: "LRU Cache Design Challenge", type: "Practice Problem", size: "68 KB" },
                 { id: 107, name: "System Design Sprint Deck.pptx", type: "Presentation", size: "12.8 MB" },
                 { id: 108, name: "Graph Traversal Starter Code.zip", type: "Code Archive", size: "5.4 MB" },
-                { id: 109, name: "Recursion & Backtracking Lab", type: "Assignment", size: "850 KB" },
-                { id: 110, name: "Live Class 01 Replay - Intro to DSA", type: "Recording", size: "450 MB" },
               ]
                 .filter((item) =>
                   item.name.toLowerCase().includes(attachSearch.toLowerCase()) ||
@@ -1413,3 +1239,5 @@ export default function ScheduleSessionBuilder({
     </div>
   );
 }
+
+export default UploadRecordingBuilder;
