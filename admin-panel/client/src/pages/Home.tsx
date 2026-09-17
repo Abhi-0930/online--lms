@@ -149,11 +149,56 @@ const feedback = [
 ];
 
 const auditLogs = [
-  { action: "Assessment published", entity: "Weekly Test · Graphs", actor: "Ava Patel", time: "12 min ago", tone: "bg-emerald-100 text-emerald-700" },
-  { action: "Student added", entity: "Aarav Sharma", actor: "Nisha Singh", time: "34 min ago", tone: "bg-blue-100 text-blue-700" },
-  { action: "Payment received", entity: "INV-2048", actor: "System", time: "1 hr ago", tone: "bg-violet-100 text-violet-700" },
-  { action: "Lesson updated", entity: "Graphs: BFS vs DFS", actor: "Arjun Mehta", time: "3 hrs ago", tone: "bg-amber-100 text-amber-700" },
-  { action: "Announcement posted", entity: "Spring cohort", actor: "Ava Patel", time: "Yesterday", tone: "bg-rose-100 text-rose-700" },
+  {
+    id: 1,
+    action: "Assessment published",
+    entity: "Weekly Test · Graphs",
+    actor: "Ava Patel",
+    subtitle: "Weekly Test · Graphs · by Ava Patel",
+    time: "12 min ago",
+    badgeType: "emerald",
+    details: "Published assessment 'Weekly Test · Graphs' for Spring Cohort learners with 25 MCQ & coding questions.",
+  },
+  {
+    id: 2,
+    action: "Student added",
+    entity: "Aarav Sharma",
+    actor: "Nisha Singh",
+    subtitle: "Aarav Sharma · by Nisha Singh",
+    time: "34 min ago",
+    badgeType: "blue",
+    details: "Enrolled new student Aarav Sharma (aarav.sharma@example.com) into Fullstack Next.js Masterclass.",
+  },
+  {
+    id: 3,
+    action: "Payment received",
+    entity: "INV-2048",
+    actor: "System",
+    subtitle: "INV-2048 · by System",
+    time: "1 hr ago",
+    badgeType: "purple",
+    details: "Automated payment gateway captured INR 4,999 for Invoice INV-2048 via UPI.",
+  },
+  {
+    id: 4,
+    action: "Lesson updated",
+    entity: "Graphs: BFS vs DFS",
+    actor: "Arjun Mehta",
+    subtitle: "Graphs: BFS vs DFS · by Arjun Mehta",
+    time: "3 hrs ago",
+    badgeType: "amber",
+    details: "Updated lecture notes, attached slide deck, and published new code sandbox.",
+  },
+  {
+    id: 5,
+    action: "Announcement posted",
+    entity: "Spring cohort",
+    actor: "Ava Patel",
+    subtitle: "Spring cohort · by Ava Patel",
+    time: "Yesterday",
+    badgeType: "rose",
+    details: "Broadcasted announcement regarding upcoming FAANG System Design live mock session.",
+  },
 ];
 
 const practiceProblemsData = [
@@ -2050,6 +2095,221 @@ function HelpCenterView({ onAction, onToast }: { onAction: (state: DialogState) 
   );
 }
 
+function AuditView({ onToast }: { onToast: (message: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [selectedLog, setSelectedLog] = useState<typeof auditLogs[0] | null>(null);
+
+  const filtered = auditLogs.filter(
+    (item) =>
+      item.action.toLowerCase().includes(query.toLowerCase()) ||
+      item.subtitle.toLowerCase().includes(query.toLowerCase()) ||
+      item.actor.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      {/* Header matching reference screenshot */}
+      <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+        <div>
+          <div className="mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-indigo-600 dark:text-indigo-400">
+            <LayoutGrid className="h-3.5 w-3.5" /> OPERATIONS / AUDIT LOGS
+          </div>
+          <h1 className="font-display text-3xl font-bold tracking-[-0.04em] text-slate-900 dark:text-white">
+            Audit logs
+          </h1>
+          <p className="mt-2 max-w-2xl text-[13px] leading-6 text-slate-500 dark:text-slate-400">
+            Review the operational trail across your platform workspace.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onToast("Audit summary exported to CSV")}
+            className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/80"
+          >
+            <Download className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Export
+          </button>
+          <button
+            onClick={() => onToast("Exporting platform activity logs...")}
+            className="flex items-center gap-1.5 rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-indigo-200 transition hover:bg-indigo-700 dark:shadow-none"
+          >
+            <Plus className="h-3.5 w-3.5" /> Export logs
+          </button>
+        </div>
+      </div>
+
+      {/* 4 Metric Strip Cards */}
+      <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Events today</p>
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+          </div>
+          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">1,284</p>
+          <p className="mt-2 text-[11px] font-bold text-emerald-600">+14.2%</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Admin actions</p>
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+          </div>
+          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">326</p>
+          <p className="mt-2 text-[11px] font-bold text-emerald-600">Across 8 admins</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">System events</p>
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+          </div>
+          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">958</p>
+          <p className="mt-2 text-[11px] font-bold text-emerald-600">All services</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Security alerts</p>
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+          </div>
+          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">0</p>
+          <p className="mt-2 text-[11px] font-bold text-emerald-600">No action needed</p>
+        </div>
+      </div>
+
+      {/* Main Audit Trail Card */}
+      <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">Audit trail</h2>
+            <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-400">
+              Every important platform action, with actor and entity context
+            </p>
+          </div>
+          <div className="relative w-full sm:w-80">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search audit events"
+              className="h-10 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 pl-10 pr-4 text-xs font-medium text-slate-800 outline-none transition focus:border-indigo-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200 dark:focus:bg-slate-800 placeholder:text-slate-400"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 divide-y divide-slate-100 dark:divide-slate-800/80">
+          {filtered.map((item) => {
+            const badgeClass =
+              item.badgeType === "emerald"
+                ? "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40"
+                : item.badgeType === "blue"
+                ? "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800/40"
+                : item.badgeType === "purple"
+                ? "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800/40"
+                : item.badgeType === "amber"
+                ? "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/40"
+                : "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/40";
+
+            return (
+              <div
+                key={item.id}
+                onClick={() => setSelectedLog(item)}
+                className="group flex items-center justify-between py-4 px-2 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 rounded-xl transition cursor-pointer"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition-transform group-hover:scale-105", badgeClass)}>
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
+                      {item.action}
+                    </p>
+                    <p className="mt-0.5 text-[11px] font-medium text-slate-400 dark:text-slate-400">
+                      {item.subtitle}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-slate-400">{item.time}</span>
+                  <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
+                </div>
+              </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div className="py-12 text-center text-xs text-slate-400">
+              No audit events found matching "{query}"
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Log Detail Modal */}
+      {selectedLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">{selectedLog.action}</h3>
+                  <p className="text-[11px] text-slate-400">{selectedLog.time}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3 text-xs">
+              <div className="flex justify-between py-1 border-b border-slate-100/60 dark:border-slate-800/60">
+                <span className="font-semibold text-slate-500">Actor</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedLog.actor}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-100/60 dark:border-slate-800/60">
+                <span className="font-semibold text-slate-500">Entity</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedLog.entity}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-100/60 dark:border-slate-800/60">
+                <span className="font-semibold text-slate-500">Timestamp</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">{selectedLog.time}</span>
+              </div>
+              <div className="py-2">
+                <span className="font-semibold text-slate-500 block mb-1">Payload / Description</span>
+                <p className="rounded-xl bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+                  {selectedLog.details}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  onToast(`Event payload copied for ${selectedLog.action}`);
+                  setSelectedLog(null);
+                }}
+                className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+              >
+                Copy event JSON
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsView({ onToast }: { onToast: (message: string) => void }) {
   const [saved, setSaved] = useState(false); const [toggles, setToggles] = useState({ emails: true, twoFactor: true, certificates: false });
   const toggle = (key: keyof typeof toggles) => setToggles((current) => ({ ...current, [key]: !current[key] }));
@@ -2541,7 +2801,7 @@ export default function Home() {
       <FeedbackView onAction={onAction} onToast={onToast} />
     ) : section === "reports" ? (
       <ReportsView onToast={onToast} />
-    ) : section === "audit" ? (
+    ) : section === "audit" || section === "audit_logs" ? (
       <AuditView onToast={onToast} />
     ) : section === "help" ? (
       <HelpCenterView onAction={onAction} onToast={onToast} />
