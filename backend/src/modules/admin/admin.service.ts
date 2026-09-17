@@ -69,6 +69,7 @@ export class AdminService {
     let dbUsers: any[] = [];
     try {
       dbUsers = await this.prisma.user.findMany({
+        where: { role: 'STUDENT' },
         include: {
           onboarding: true,
           enrollments: true,
@@ -84,7 +85,7 @@ export class AdminService {
         orderBy: { createdAt: 'desc' },
       });
     } catch {
-      dbUsers = Array.from(AuthService.fallbackUsers.values());
+      dbUsers = Array.from(AuthService.fallbackUsers.values()).filter((u) => (u.role || 'STUDENT') === 'STUDENT');
     }
 
     // Merge in-memory fallback users if any
@@ -170,6 +171,7 @@ export class AdminService {
     let dbUsers: any[] = [];
     try {
       dbUsers = await this.prisma.user.findMany({
+        where: { role: 'STUDENT' },
         include: {
           onboarding: true,
           enrollments: {
@@ -187,7 +189,7 @@ export class AdminService {
         orderBy: { createdAt: 'desc' },
       });
     } catch {
-      dbUsers = Array.from(AuthService.fallbackUsers.values());
+      dbUsers = Array.from(AuthService.fallbackUsers.values()).filter((u) => (u.role || 'STUDENT') === 'STUDENT');
     }
 
     const userMap = new Map<string, any>();

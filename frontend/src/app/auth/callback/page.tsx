@@ -1,60 +1,100 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
 import { createSecureUrl } from "@/lib/urlParams";
 
-function OAuthCallbackContent() {
+function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const error = searchParams.get("error");
-    const email = searchParams.get("email");
-    const isNewUser = searchParams.get("isNewUser");
+    async function processCallback() {
+      const isNewUser = searchParams.get("isNewUser") === "true";
+      const errorParam = searchParams.get("error");
 
-    if (error === "ACCOUNT_NOT_FOUND") {
-      toast.error("No account found with this Google account. Please create an account first.");
-      router.push(createSecureUrl("/", { mode: "register", error: "ACCOUNT_NOT_FOUND", ...(email ? { email } : {}), t: Date.now() }));
-      return;
+      if (errorParam) {
+        router.replace(
+          createSecureUrl("/", {
+            mode: "login",
+            error: errorParam,
+            t: Date.now(),
+          })
+        );
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:4000/api/v1/auth/me", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const user = data?.user;
+
+          if (isNewUser || !user?.onboarding?.isCompleted) {
+            router.replace(
+              createSecureUrl("/onboarding", {
+                step: user?.onboarding?.completedStep || 1,
+                t: Date.now(),
+              })
+            );
+          } else {
+            router.replace(
+              createSecureUrl("/dashboard", {
+                v: "dashboard",
+                t: Date.now(),
+              })
+            );
+          }
+          return;
+        }
+
+        // If not authenticated or error, redirect to login
+        router.replace(
+          createSecureUrl("/", {
+            mode: "login",
+            error: "AUTH_FAILED",
+            t: Date.now(),
+          })
+        );
+      } catch {
+        router.replace(
+          createSecureUrl("/", {
+            mode: "login",
+            error: "AUTH_FAILED",
+            t: Date.now(),
+          })
+        );
+      }
     }
 
-    if (error) {
-      toast.error("Google authentication failed. Please try again.");
-      router.push(createSecureUrl("/", { mode: "login", t: Date.now() }));
-      return;
-    }
-
-    // Auth token is securely delivered via HttpOnly cookie
-    toast.success(isNewUser === "true" ? "Welcome! Account created successfully." : "Signed in with Google successfully!");
-    if (isNewUser === "true") {
-      router.push(createSecureUrl("/onboarding", { step: 1 }));
-    } else {
-      router.push(createSecureUrl("/dashboard", { v: "dashboard", t: Date.now() }));
-    }
-  }, [searchParams, router]);
+    processCallback();
+  }, [router, searchParams]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+    <div className="h-screen w-full flex flex-col items-center justify-center bg-white">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm font-medium text-gray-600">Completing sign in...</p>
+        <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-[15px] font-medium text-gray-700">Signing you in...</p>
       </div>
     </div>
   );
 }
 
-export default function OAuthCallbackPage() {
+export default function AuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
-          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <div className="h-screen w-full flex flex-col items-center justify-center bg-white">
+          <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
       }
     >
-      <OAuthCallbackContent />
+      <CallbackHandler />
     </Suspense>
   );
 }
