@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Circle,
   AlertCircle,
+  User,
   UserX,
   X,
 } from "lucide-react";
@@ -89,6 +90,7 @@ function AuthForm({
   const countryDropdownRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
+    fullName: "",
     phone: "",
     email: emailParam || "",
     password: "",
@@ -201,10 +203,10 @@ function AuthForm({
 
       const payload = isSignUp
         ? {
+            fullName: formData.fullName.trim() || formData.email.split("@")[0],
             email: formData.email,
             password: formData.password,
             phone: `${selectedCountry.dialCode}${formData.phone}`,
-            fullName: formData.email.split("@")[0],
           }
         : {
             email: formData.email,
@@ -436,6 +438,24 @@ function AuthForm({
 
             {/* Login / Register Form */}
             <form onSubmit={handleFormSubmit} className="space-y-3.5">
+              {/* Full Name Field (Only on Sign Up) */}
+              {isSignUp && (
+                <div>
+                  <div className="relative flex items-center rounded-xl border border-gray-200 bg-white px-3.5 py-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all h-[48px]">
+                    <User className="w-5 h-5 text-gray-400 mr-2.5 shrink-0 stroke-[1.8]" />
+                    <input
+                      type="text"
+                      name="fullName"
+                      placeholder="Full name"
+                      value={formData.fullName}
+                      onChange={handleInputChange}
+                      required={isSignUp}
+                      className="w-full bg-transparent text-[14px] text-gray-800 placeholder:text-gray-400 outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Mobile Number Field (Only on Sign Up) */}
               {isSignUp && (
                 <div className="flex items-center gap-2.5">

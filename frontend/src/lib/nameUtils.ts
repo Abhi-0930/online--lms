@@ -7,9 +7,9 @@ export function resolveDisplayName(userOrName: any): string {
     raw = userOrName.trim();
   } else if (typeof userOrName === "object") {
     raw =
-      userOrName.onboarding?.primaryGoal ||
       userOrName.fullName ||
       userOrName.name ||
+      userOrName.onboarding?.primaryGoal ||
       "";
 
     // If raw name is missing or is generic "Learner", try deriving from email

@@ -264,17 +264,18 @@ export default async function authController(fastify: FastifyInstance) {
       return reply.status(401).send({ error: 'Unauthorized', message: 'User not found' });
     }
 
-    let rawName = dbUser.onboarding?.primaryGoal || dbUser.fullName || dbUser.name;
-    if (!rawName || rawName.trim().toLowerCase() === 'learner') {
-      rawName = dbUser.email ? dbUser.email.split('@')[0] : 'Learner';
+    let rawName = (dbUser.fullName || dbUser.name || dbUser.onboarding?.primaryGoal || '').trim();
+    if (!rawName || rawName.toLowerCase() === 'learner') {
+      rawName = dbUser.email && dbUser.email.includes('@') ? dbUser.email.split('@')[0] : 'Learner';
     }
 
     let resolvedName = 'Learner';
-    if (rawName && rawName.trim().toLowerCase() !== 'learner') {
+    if (rawName && rawName.toLowerCase() !== 'learner') {
       const cleaned = rawName.replace(/[._-]+/g, ' ').replace(/\d+/g, '').trim();
       if (cleaned) {
         resolvedName = cleaned
           .split(/\s+/)
+          .filter(Boolean)
           .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
           .join(' ');
       } else {
