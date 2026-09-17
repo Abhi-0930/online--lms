@@ -6,6 +6,7 @@ import ScheduleSessionBuilder, { LiveSessionData } from "@/components/ScheduleSe
 import UploadRecordingBuilder, { RecordingData } from "@/components/UploadRecordingBuilder";
 import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useAdminRoute, navigateAdmin } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -30,6 +31,7 @@ import {
   ClipboardCheck,
   Clock3,
   Code2,
+  CreditCard,
   Download,
   Edit3,
   Ellipsis,
@@ -37,17 +39,21 @@ import {
   FileText,
   Filter,
   GraduationCap,
+  KeyRound,
   LayoutGrid,
   LifeBuoy,
   ListChecks,
   Lock,
   MessageSquareText,
   MoreHorizontal,
+  Palette,
   PlayCircle,
   Plus,
+  Save,
   Search,
   Send,
   Settings,
+  Shield,
   ShieldCheck,
   Sparkles,
   Star,
@@ -55,6 +61,7 @@ import {
   Trash2,
   TrendingUp,
   Upload,
+  User,
   Users,
   Video,
   X,
@@ -259,9 +266,8 @@ const sectionDescriptions: Record<string, string> = {
 };
 
 function useHashRoute() {
-  const [section, setSection] = useState(() => window.location.hash.replace("#", "") || "overview");
-  useEffect(() => { const update = () => setSection(window.location.hash.replace("#", "") || "overview"); window.addEventListener("hashchange", update); return () => window.removeEventListener("hashchange", update); }, []);
-  return section;
+  const { tab } = useAdminRoute();
+  return tab;
 }
 
 function StatusBadge({ children }: { children: React.ReactNode }) {
@@ -337,7 +343,8 @@ function CustomDropdown({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          "input flex w-auto min-w-[130px] items-center justify-between gap-2 px-3 py-1.5 text-xs font-semibold cursor-pointer transition-all duration-150 select-none",
+          "input flex min-w-[130px] items-center justify-between gap-2 px-3.5 py-2 text-xs font-semibold cursor-pointer transition-all duration-150 select-none rounded-xl",
+          className?.includes("w-full") ? "w-full" : "w-auto",
           open && "ring-2 ring-[var(--brand)]/30 border-[var(--brand)] shadow-sm"
         )}
       >
@@ -382,6 +389,45 @@ function CustomDropdown({
         </div>
       )}
     </div>
+  );
+}
+
+function ToggleSwitch({
+  checked,
+  onChange,
+  disabled = false,
+  ariaLabel,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(!checked);
+      }}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500/30",
+        checked ? "bg-indigo-600 dark:bg-indigo-600" : "bg-slate-300 dark:bg-slate-700",
+        disabled && "opacity-50 cursor-not-allowed"
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
+          checked ? "translate-x-5" : "translate-x-0"
+        )}
+      />
+    </button>
   );
 }
 
@@ -2123,12 +2169,6 @@ function AuditView({ onToast }: { onToast: (message: string) => void }) {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => onToast("Audit summary exported to CSV")}
-            className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/80"
-          >
-            <Download className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" /> Export
-          </button>
-          <button
             onClick={() => onToast("Exporting platform activity logs...")}
             className="flex items-center gap-1.5 rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-indigo-200 transition hover:bg-indigo-700 dark:shadow-none"
           >
@@ -2310,15 +2350,615 @@ function AuditView({ onToast }: { onToast: (message: string) => void }) {
   );
 }
 
-function SettingsView({ onToast }: { onToast: (message: string) => void }) {
-  const [saved, setSaved] = useState(false); const [toggles, setToggles] = useState({ emails: true, twoFactor: true, certificates: false });
-  const toggle = (key: keyof typeof toggles) => setToggles((current) => ({ ...current, [key]: !current[key] }));
-  return <div className="mx-auto max-w-[1100px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="settings" description={sectionDescriptions.settings} actionLabel="Save changes" onAction={() => { setSaved(true); onToast("Settings saved successfully"); }} /><div className="mt-7 grid gap-4 lg:grid-cols-[220px_1fr]"><div className="surface-card h-fit p-2"><button className="flex w-full items-center gap-3 rounded-xl bg-[var(--nav-active)] px-3 py-2.5 text-left text-[12px] font-bold text-[var(--brand)]"><Settings className="h-4 w-4" /> General</button>{["Branding", "Notifications", "Security", "Certificates", "Payments"].map((item) => <button key={item} onClick={() => onToast(`${item} settings selected`)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[12px] font-semibold text-[var(--muted)] hover:bg-[var(--subtle-bg)]"><ChevronRight className="h-3.5 w-3.5" /> {item}</button>)}</div><div className="space-y-4"><div className="surface-card p-5 sm:p-6"><div className="flex items-center justify-between"><div><h2 className="font-display text-lg font-bold">Platform profile</h2><p className="mt-1 text-[11px] text-[var(--muted)]">The details learners see across your LMS.</p></div><GraduationCap className="h-5 w-5 text-[var(--brand)]" /></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-[11px] font-bold">Platform name<input defaultValue="LearnHub" className="input mt-2" /></label><label className="text-[11px] font-bold">Support email<input defaultValue="abhishek.j3094@gmail.com" className="input mt-2" /></label><label className="text-[11px] font-bold sm:col-span-2">Default learner welcome message<textarea defaultValue="Welcome to LearnHub — your complete learning and career launchpad." className="input mt-2 min-h-[88px] py-2" /></label></div></div><div className="surface-card p-5 sm:p-6"><div><h2 className="font-display text-lg font-bold">Workspace controls</h2><p className="mt-1 text-[11px] text-[var(--muted)]">Control operational notifications and account protections.</p></div><div className="mt-5 divide-y divide-[var(--app-line)]">{[{ key: "emails" as const, title: "Admin email notifications", detail: "Receive alerts for payments, feedback, and reviews." }, { key: "twoFactor" as const, title: "Two-factor authentication", detail: "Require a second step for every admin login." }, { key: "certificates" as const, title: "Auto-issue certificates", detail: "Issue certificates when learners complete a course." }].map((item) => <div className="flex items-center justify-between gap-4 py-4" key={item.key}><div><p className="text-[12px] font-bold">{item.title}</p><p className="mt-1 text-[11px] text-[var(--muted)]">{item.detail}</p></div><button onClick={() => toggle(item.key)} aria-pressed={toggles[item.key]} className={cn("relative h-6 w-11 rounded-full transition-colors", toggles[item.key] ? "bg-[var(--brand)]" : "bg-slate-200 dark:bg-white/10")}><span className={cn("absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform", toggles[item.key] ? "translate-x-6" : "translate-x-1")} /></button></div>)}</div>{saved && <p className="mt-3 text-[11px] font-bold text-emerald-600">All changes are synced.</p>}</div></div></div></div>;
+function SettingsView({
+  onToast,
+  initialTab = "General",
+}: {
+  onToast: (message: string) => void;
+  initialTab?: string;
+}) {
+  const { subtab, navigate } = useAdminRoute();
+  const [saved, setSaved] = useState(false);
+
+  const resolveTab = (st?: string) => {
+    if (!st) return initialTab || "General";
+    const map: Record<string, string> = {
+      general: "General",
+      branding: "Branding",
+      notifications: "Notifications",
+      security: "Security",
+      certificates: "Certificates",
+      payments: "Payments",
+    };
+    return map[st.toLowerCase()] || st;
+  };
+
+  const [activeTab, setActiveTab] = useState(() => resolveTab(subtab));
+  const [primaryColor, setPrimaryColor] = useState("#5c5bf0");
+  const [timezone, setTimezone] = useState("Asia/Kolkata (IST)");
+  const [compactNav, setCompactNav] = useState(false);
+  const colorInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (subtab) {
+      setActiveTab(resolveTab(subtab));
+    } else if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [subtab, initialTab]);
+
+  const [toggles, setToggles] = useState({
+    emails: true,
+    twoFactor: true,
+    certificates: false,
+  });
+
+  const [notificationToggles, setNotificationToggles] = useState({
+    adminEmails: true,
+    studentActivity: false,
+    dailyDigest: true,
+  });
+
+  const [securityToggles, setSecurityToggles] = useState({
+    twoFactor: true,
+    sessionTimeout: true,
+    loginAlerts: true,
+  });
+
+  const [certificateToggles, setCertificateToggles] = useState({
+    autoIssue: false,
+    requireApproval: false,
+  });
+  const [issuerName, setIssuerName] = useState("Skillforge Learning");
+
+  const [paymentCurrency, setPaymentCurrency] = useState("INR — Indian Rupee");
+  const [taxRegion, setTaxRegion] = useState("India · GST");
+  const [automaticRefund, setAutomaticRefund] = useState(false);
+
+  const toggle = (key: keyof typeof toggles) =>
+    setToggles((current) => ({ ...current, [key]: !current[key] }));
+
+  const toggleNotification = (key: keyof typeof notificationToggles) =>
+    setNotificationToggles((current) => ({ ...current, [key]: !current[key] }));
+
+  const toggleSecurity = (key: keyof typeof securityToggles) =>
+    setSecurityToggles((current) => ({ ...current, [key]: !current[key] }));
+
+  const toggleCertificate = (key: keyof typeof certificateToggles) =>
+    setCertificateToggles((current) => ({ ...current, [key]: !current[key] }));
+
+  const togglePayment = (key: keyof typeof paymentToggles) =>
+    setPaymentToggles((current) => ({ ...current, [key]: !current[key] }));
+
+  const navItems = [
+    { id: "General", label: "General", icon: User },
+    { id: "Branding", label: "Branding", icon: Palette },
+    { id: "Notifications", label: "Notifications", icon: Bell },
+    { id: "Security", label: "Security", icon: Shield },
+    { id: "Certificates", label: "Certificates", icon: GraduationCap },
+    { id: "Payments", label: "Payments", icon: CreditCard },
+  ];
+
+  return (
+    <div className="mx-auto max-w-[1200px] px-5 py-7 sm:px-8 sm:py-9">
+      {/* Header matching reference screenshot */}
+      <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+        <div>
+          <div className="mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-indigo-600 dark:text-indigo-400">
+            PLATFORM CONTROLS
+          </div>
+          <h1 className="font-display text-3xl font-bold tracking-[-0.04em] text-slate-900 dark:text-white">
+            Settings
+          </h1>
+          <p className="mt-2 max-w-2xl text-[13px] leading-6 text-slate-500 dark:text-slate-400">
+            Manage your LMS profile, security, communications, and operational defaults.
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            setSaved(true);
+            onToast("Settings saved successfully");
+          }}
+          className="flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-indigo-200 transition hover:bg-indigo-700 dark:shadow-none cursor-pointer"
+        >
+          <Save className="h-4 w-4" /> Save changes
+        </button>
+      </div>
+
+      <div className="mt-7 grid gap-6 lg:grid-cols-[220px_1fr]">
+        {/* Left Navigation Card */}
+        <div className="rounded-3xl border border-slate-100 bg-white p-3 space-y-1 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900 h-fit">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id);
+                setSaved(false);
+                navigate({ tab: "settings", subtab: item.id.toLowerCase() });
+                onToast(`Viewing ${item.label} settings`);
+              }}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-xs transition-all cursor-pointer",
+                activeTab === item.id
+                  ? "border border-indigo-200/90 bg-indigo-50/70 text-indigo-600 font-bold dark:bg-indigo-950/50 dark:border-indigo-800 dark:text-indigo-300 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 font-medium"
+              )}
+            >
+              <item.icon className="h-4 w-4 shrink-0" />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Right Tab Content */}
+        {activeTab === "Branding" ? (
+          <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
+                Branding
+              </h2>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
+                Customize how the workspace feels to your team and learners.
+              </p>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Primary Color Swatch */}
+              <div>
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block mb-2">
+                  Primary color
+                </label>
+                <div className="relative">
+                  <div
+                    onClick={() => colorInputRef.current?.click()}
+                    style={{ backgroundColor: primaryColor }}
+                    className="h-10 w-full rounded-xl cursor-pointer shadow-xs border border-transparent hover:ring-2 hover:ring-indigo-500/20 transition flex items-center justify-between px-3"
+                  >
+                    <input
+                      ref={colorInputRef}
+                      type="color"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      className="sr-only"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Default Timezone Dropdown */}
+              <div>
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block mb-2">
+                  Default timezone
+                </label>
+                <CustomDropdown
+                  value={timezone}
+                  onChange={setTimezone}
+                  options={[
+                    "Asia/Kolkata (IST)",
+                    "UTC (Coordinated Universal Time)",
+                    "America/New_York (EST)",
+                    "America/Los_Angeles (PST)",
+                    "Europe/London (GMT)",
+                    "Asia/Dubai (GST)",
+                    "Asia/Singapore (SGT)",
+                  ]}
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            {/* Compact Navigation Toggle */}
+            <div className="mt-8 pt-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">Compact navigation</p>
+                <p className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-400">
+                  Use a tighter sidebar layout for dense workspaces.
+                </p>
+              </div>
+              <ToggleSwitch
+                checked={compactNav}
+                onChange={setCompactNav}
+                ariaLabel="Compact navigation"
+              />
+            </div>
+
+            {saved && (
+              <div className="mt-6 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <Check className="h-4 w-4" /> Branding preferences saved.
+              </div>
+            )}
+          </div>
+        ) : activeTab === "General" ? (
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center justify-between border-b border-[var(--app-line)] pb-4">
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Platform profile
+                  </h2>
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    The details learners see across your LMS.
+                  </p>
+                </div>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+                  <GraduationCap className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Platform name
+                  <input
+                    defaultValue="LearnHub"
+                    className="input mt-2 w-full text-xs font-medium"
+                  />
+                </label>
+
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Support email
+                  <input
+                    defaultValue="abhishek.j3094@gmail.com"
+                    className="input mt-2 w-full text-xs font-medium"
+                  />
+                </label>
+
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 sm:col-span-2">
+                  Default learner welcome message
+                  <textarea
+                    defaultValue="Welcome to LearnHub — your complete learning and career launchpad."
+                    className="input mt-2 min-h-[88px] w-full py-2.5 text-xs font-medium leading-relaxed"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+              <div className="border-b border-[var(--app-line)] pb-4">
+                <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                  Workspace controls
+                </h2>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  Control operational notifications and account protections.
+                </p>
+              </div>
+
+              <div className="mt-2 divide-y divide-[var(--app-line)]">
+                {[
+                  {
+                    key: "emails" as const,
+                    title: "Admin email notifications",
+                    detail: "Receive alerts for payments, feedback, and reviews.",
+                  },
+                  {
+                    key: "twoFactor" as const,
+                    title: "Two-factor authentication",
+                    detail: "Require a second step for every admin login.",
+                  },
+                  {
+                    key: "certificates" as const,
+                    title: "Auto-issue certificates",
+                    detail: "Issue certificates when learners complete a course.",
+                  },
+                ].map((item) => (
+                  <div
+                    className="flex items-center justify-between gap-4 py-4.5 px-2 rounded-xl cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition"
+                    key={item.key}
+                    onClick={() => toggle(item.key)}
+                  >
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">{item.title}</p>
+                      <p className="mt-0.5 text-[11px] text-[var(--muted)]">{item.detail}</p>
+                    </div>
+                    <ToggleSwitch
+                      checked={toggles[item.key]}
+                      onChange={() => toggle(item.key)}
+                      ariaLabel={item.title}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {saved && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  <Check className="h-4 w-4" /> All changes are synced and active.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : activeTab === "Notifications" ? (
+          <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
+                Notifications
+              </h2>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
+                Choose which operational events reach your admin team.
+              </p>
+            </div>
+
+            <div className="mt-6 divide-y divide-slate-100 dark:divide-slate-800/80">
+              {[
+                {
+                  key: "adminEmails" as const,
+                  title: "Admin email notifications",
+                  detail: "Payments, feedback, reviews, and platform alerts.",
+                },
+                {
+                  key: "studentActivity" as const,
+                  title: "Student activity alerts",
+                  detail: "Notify admins about important learner milestones.",
+                },
+                {
+                  key: "dailyDigest" as const,
+                  title: "Daily operations digest",
+                  detail: "Receive a daily summary of sessions and pending reviews.",
+                },
+              ].map((item) => (
+                <div
+                  className="flex items-center justify-between gap-4 py-5 px-1 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/30 rounded-xl transition"
+                  key={item.key}
+                  onClick={() => toggleNotification(item.key)}
+                >
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">{item.title}</p>
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-400">{item.detail}</p>
+                  </div>
+                  <ToggleSwitch
+                    checked={notificationToggles[item.key]}
+                    onChange={() => toggleNotification(item.key)}
+                    ariaLabel={item.title}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {saved && (
+              <div className="mt-6 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <Check className="h-4 w-4" /> Notification preferences saved.
+              </div>
+            )}
+          </div>
+        ) : activeTab === "Security" ? (
+          <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
+                Security
+              </h2>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
+                Protect admin access and review account activity.
+              </p>
+            </div>
+
+            <div className="mt-6 divide-y divide-slate-100 dark:divide-slate-800/80">
+              {[
+                {
+                  key: "twoFactor" as const,
+                  title: "Two-factor authentication",
+                  detail: "Require a second step for every admin login.",
+                },
+                {
+                  key: "sessionTimeout" as const,
+                  title: "Session timeout",
+                  detail: "Sign out inactive admins after 30 minutes.",
+                },
+                {
+                  key: "loginAlerts" as const,
+                  title: "Login alerts",
+                  detail: "Send an alert when a new admin login is detected.",
+                },
+              ].map((item) => (
+                <div
+                  className="flex items-center justify-between gap-4 py-5 px-1 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/30 rounded-xl transition"
+                  key={item.key}
+                  onClick={() => toggleSecurity(item.key)}
+                >
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">{item.title}</p>
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-400">{item.detail}</p>
+                  </div>
+                  <ToggleSwitch
+                    checked={securityToggles[item.key]}
+                    onChange={() => toggleSecurity(item.key)}
+                    ariaLabel={item.title}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 pt-2">
+              <button
+                type="button"
+                onClick={() => onToast("Security keys rotated successfully. New session tokens generated.")}
+                className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+              >
+                <KeyRound className="h-4 w-4 text-slate-500 dark:text-slate-400" /> Rotate security keys
+              </button>
+            </div>
+
+            {saved && (
+              <div className="mt-6 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <Check className="h-4 w-4" /> Security policies saved.
+              </div>
+            )}
+          </div>
+        ) : activeTab === "Certificates" ? (
+          <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
+                Certificates
+              </h2>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
+                Configure course completion certificates.
+              </p>
+            </div>
+
+            <div className="mt-6 divide-y divide-slate-100 dark:divide-slate-800/80">
+              {[
+                {
+                  key: "autoIssue" as const,
+                  title: "Auto-issue certificates",
+                  detail: "Issue a certificate when learners complete a course.",
+                },
+                {
+                  key: "requireApproval" as const,
+                  title: "Require mentor approval",
+                  detail: "Hold certificates until an instructor reviews completion.",
+                },
+              ].map((item) => (
+                <div
+                  className="flex items-center justify-between gap-4 py-5 px-1 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/30 rounded-xl transition"
+                  key={item.key}
+                  onClick={() => toggleCertificate(item.key)}
+                >
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">{item.title}</p>
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-400">{item.detail}</p>
+                  </div>
+                  <ToggleSwitch
+                    checked={certificateToggles[item.key]}
+                    onChange={() => toggleCertificate(item.key)}
+                    ariaLabel={item.title}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8">
+              <label className="text-xs font-bold text-slate-900 dark:text-white block mb-2">
+                Certificate issuer name
+              </label>
+              <input
+                type="text"
+                value={issuerName}
+                onChange={(e) => setIssuerName(e.target.value)}
+                placeholder="Skillforge Learning"
+                className="w-full rounded-2xl bg-slate-50/70 border border-slate-200/80 px-4 py-3 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-indigo-500 focus:bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+              />
+            </div>
+
+            {saved && (
+              <div className="mt-6 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <Check className="h-4 w-4" /> Certificate settings saved.
+              </div>
+            )}
+          </div>
+        ) : activeTab === "Payments" ? (
+          <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
+                Payments
+              </h2>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
+                Manage operational payment defaults.
+              </p>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Currency Dropdown */}
+              <div>
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block mb-2">
+                  Currency
+                </label>
+                <CustomDropdown
+                  value={paymentCurrency}
+                  onChange={setPaymentCurrency}
+                  options={[
+                    "INR — Indian Rupee",
+                    "USD — US Dollar",
+                    "EUR — Euro",
+                    "GBP — British Pound",
+                    "SGD — Singapore Dollar",
+                    "AED — UAE Dirham",
+                    "CAD — Canadian Dollar",
+                    "AUD — Australian Dollar",
+                  ]}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Tax Region Dropdown */}
+              <div>
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block mb-2">
+                  Tax region
+                </label>
+                <CustomDropdown
+                  value={taxRegion}
+                  onChange={setTaxRegion}
+                  options={[
+                    "India · GST",
+                    "United States · Sales Tax",
+                    "European Union · VAT",
+                    "United Kingdom · VAT",
+                    "Singapore · GST",
+                    "United Arab Emirates · VAT",
+                    "None / Tax Exempt",
+                  ]}
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            {/* Automatic Refund Approval Toggle */}
+            <div
+              className="mt-8 pt-2 flex items-center justify-between gap-4 py-4 px-1 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/30 rounded-xl transition"
+              onClick={() => setAutomaticRefund(!automaticRefund)}
+            >
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">
+                  Automatic refund approval
+                </p>
+                <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-400">
+                  Approve refund requests below ₹2,000 automatically.
+                </p>
+              </div>
+              <ToggleSwitch
+                checked={automaticRefund}
+                onChange={setAutomaticRefund}
+                ariaLabel="Automatic refund approval"
+              />
+            </div>
+
+            {saved && (
+              <div className="mt-6 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <Check className="h-4 w-4" /> Payment defaults saved.
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
+              {activeTab}
+            </h2>
+            <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
+              Configure your platform {activeTab.toLowerCase()} settings and policies.
+            </p>
+
+            <div className="mt-6 space-y-4">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+                <p className="text-xs font-bold text-slate-900 dark:text-white">
+                  {activeTab} configurations are active
+                </p>
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  Manage rules, automated webhook triggers, and administrative overrides.
+                </p>
+              </div>
+            </div>
+
+            {saved && (
+              <div className="mt-6 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <Check className="h-4 w-4" /> {activeTab} settings saved successfully.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function Home() {
   const { adminUser } = useAdminAuth();
-  const section = useHashRoute();
+  const { tab: section, subtab, navigate, setQueryParam } = useAdminRoute();
   const [isCourseBuilderOpen, setIsCourseBuilderOpen] = useState(false);
   const [editingCourseData, setEditingCourseData] = useState<Partial<CourseBuilderData> | null>(null);
   const [isAssignmentBuilderOpen, setIsAssignmentBuilderOpen] = useState(false);
@@ -2334,15 +2974,23 @@ export default function Home() {
   useEffect(() => {
     if (section === "create-course") {
       setIsCourseBuilderOpen(true);
+    } else {
+      setIsCourseBuilderOpen(false);
     }
     if (section === "create-assignment") {
       setIsAssignmentBuilderOpen(true);
+    } else {
+      setIsAssignmentBuilderOpen(false);
     }
     if (section === "schedule-session" || section === "schedule_session") {
       setIsScheduleSessionOpen(true);
+    } else {
+      setIsScheduleSessionOpen(false);
     }
     if (section === "upload-recording" || section === "upload_recording") {
       setIsUploadRecordingOpen(true);
+    } else {
+      setIsUploadRecordingOpen(false);
     }
   }, [section]);
 
@@ -2355,7 +3003,7 @@ export default function Home() {
   useEffect(() => {
     setDialog(null);
     setToast(null);
-  }, [section]);
+  }, [section, subtab]);
 
   const onAction = (state: DialogState) => setDialog(state);
   const onToast = (message: string) => setToast(message);
@@ -2363,11 +3011,13 @@ export default function Home() {
   const handleOpenCourseBuilder = () => {
     setEditingCourseData(null);
     setIsCourseBuilderOpen(true);
+    navigate({ tab: "create-course" });
   };
 
   const handleOpenAssignmentBuilder = () => {
     setEditingAssignmentData(null);
     setIsAssignmentBuilderOpen(true);
+    navigate({ tab: "create-assignment" });
   };
 
   const handleEditAssignment = (assignment: any) => {
@@ -2379,14 +3029,13 @@ export default function Home() {
       status: assignment.status || "Draft",
     });
     setIsAssignmentBuilderOpen(true);
+    navigate({ tab: "create-assignment", id: assignment.id });
   };
 
   const handleCloseAssignmentBuilder = () => {
     setIsAssignmentBuilderOpen(false);
     setEditingAssignmentData(null);
-    if (window.location.hash === "#create-assignment") {
-      window.location.hash = "#assignments";
-    }
+    navigate({ tab: "assignments" });
   };
 
   const handleSaveAssignmentDraft = (data: AssignmentData) => {
@@ -2401,14 +3050,13 @@ export default function Home() {
   const handleOpenScheduleSession = () => {
     setEditingSessionData(null);
     setIsScheduleSessionOpen(true);
+    navigate({ tab: "schedule-session" });
   };
 
   const handleCloseScheduleSession = () => {
     setIsScheduleSessionOpen(false);
     setEditingSessionData(null);
-    if (window.location.hash === "#schedule-session" || window.location.hash === "#schedule_session") {
-      window.location.hash = "#live";
-    }
+    navigate({ tab: "live" });
   };
 
   const handleSaveSessionDraft = (data: LiveSessionData) => {
@@ -2423,14 +3071,13 @@ export default function Home() {
   const handleOpenUploadRecording = () => {
     setEditingRecordingData(null);
     setIsUploadRecordingOpen(true);
+    navigate({ tab: "upload-recording" });
   };
 
   const handleCloseUploadRecording = () => {
     setIsUploadRecordingOpen(false);
     setEditingRecordingData(null);
-    if (window.location.hash === "#upload-recording" || window.location.hash === "#upload_recording") {
-      window.location.hash = "#recordings";
-    }
+    navigate({ tab: "recordings" });
   };
 
   const handleSaveRecordingDraft = (data: RecordingData) => {
@@ -2510,9 +3157,7 @@ export default function Home() {
   const handleCloseCourseBuilder = () => {
     setIsCourseBuilderOpen(false);
     setEditingCourseData(null);
-    if (window.location.hash === "#create-course") {
-      window.location.hash = "#courses";
-    }
+    navigate({ tab: "courses" });
   };
 
   const handleSaveCourseDraft = async (data: CourseBuilderData) => {
@@ -2806,7 +3451,34 @@ export default function Home() {
     ) : section === "help" ? (
       <HelpCenterView onAction={onAction} onToast={onToast} />
     ) : (
-      <SettingsView onToast={onToast} />
+      <SettingsView
+        onToast={onToast}
+        initialTab={
+          subtab === "security"
+            ? "Security"
+            : subtab === "branding"
+            ? "Branding"
+            : subtab === "notifications"
+            ? "Notifications"
+            : subtab === "certificates"
+            ? "Certificates"
+            : subtab === "payments" || subtab === "payment_settings" || subtab === "settings_payments"
+            ? "Payments"
+            : subtab === "general"
+            ? "General"
+            : section === "security"
+            ? "Security"
+            : section === "branding"
+            ? "Branding"
+            : section === "notifications"
+            ? "Notifications"
+            : section === "certificates"
+            ? "Certificates"
+            : section === "payment_settings" || section === "settings_payments"
+            ? "Payments"
+            : "General"
+        }
+      />
     );
 
   return (

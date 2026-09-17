@@ -32,7 +32,8 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useAdminRoute } from "@/lib/navigation";
+import { useMemo, useState } from "react";
 
 const navigation = [
   {
@@ -48,7 +49,7 @@ const navigation = [
     items: [
       { id: "content", label: "Content Library", icon: ListChecks },
       { id: "practice_problems", label: "Practice Problems", icon: Code2 },
-      { id: "assignments", label: "Assignments", icon: ClipboardCheck, badge: "8" },
+      { id: "assessments", label: "Assessments", icon: ClipboardCheck, badge: "8" },
       { id: "submissions", label: "Submissions", icon: FileText, badge: "42" },
       { id: "announcements", label: "Announcements", icon: Send },
     ],
@@ -81,24 +82,18 @@ export const navLabelMap: Record<string, string> = {
   ...Object.fromEntries(navigation.flatMap((group) => group.items.map((item) => [item.id, item.label]))),
   settings: "Settings",
   help: "Help Center",
+  "create-course": "Create Course",
+  "create-assignment": "Create Assignment",
+  "schedule-session": "Schedule Live Session",
+  "upload-recording": "Upload Recording",
 };
-
-function getHash() {
-  return window.location.hash.replace("#", "") || "overview";
-}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { adminUser, logout } = useAdminAuth();
   const { theme, toggleTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState(getHash);
-
-  useEffect(() => {
-    const syncHash = () => setActiveSection(getHash());
-    window.addEventListener("hashchange", syncHash);
-    return () => window.removeEventListener("hashchange", syncHash);
-  }, []);
+  const { tab: activeSection, navigate: navigateRoute } = useAdminRoute();
 
   const displayName = adminUser?.name || "Abhishek";
   const displayEmail = adminUser?.email || "abhishek.j3094@gmail.com";
@@ -108,8 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const activeLabel = useMemo(() => navLabelMap[activeSection] || "Overview", [activeSection]);
 
   const navigate = (id: string) => {
-    window.location.hash = id;
-    setActiveSection(id);
+    navigateRoute(id);
     setMobileOpen(false);
   };
 

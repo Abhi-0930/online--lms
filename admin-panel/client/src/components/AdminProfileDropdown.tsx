@@ -3,6 +3,7 @@ import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { LogOut, Settings, LayoutDashboard, Shield, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { navigateAdmin } from "@/lib/navigation";
 
 interface AdminProfileDropdownProps {
   variant?: "topbar" | "sidebar";
@@ -43,8 +44,8 @@ export default function AdminProfileDropdown({
     logout();
   };
 
-  const handleNavigate = (hash: string) => {
-    window.location.hash = hash;
+  const handleNavigate = (target: string) => {
+    navigateAdmin(target);
     setIsOpen(false);
   };
 
