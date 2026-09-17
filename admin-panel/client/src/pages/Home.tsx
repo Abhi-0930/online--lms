@@ -2,6 +2,7 @@ import DashboardLayout, { navLabelMap } from "@/components/DashboardLayout";
 import AdminProfileDropdown from "@/components/AdminProfileDropdown";
 import CourseBuilder, { CourseBuilderData, CourseModule } from "@/components/CourseBuilder";
 import AssignmentBuilder, { AssignmentData } from "@/components/AssignmentBuilder";
+import ScheduleSessionBuilder, { LiveSessionData } from "@/components/ScheduleSessionBuilder";
 import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { cn } from "@/lib/utils";
@@ -1395,9 +1396,100 @@ function AssessmentsView({ onAction, onToast }: { onAction: (state: DialogState)
   return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="assessments" description={sectionDescriptions.assessments} actionLabel="Create assessment" onAction={() => onAction({ title: "Create an assessment", description: "Choose questions, scoring, timing, and visibility controls.", fields: ["Assessment title", "Assessment type", "Duration"] })} onExport={() => onToast("Assessment report exported") } /><MetricStrip items={[{ label: "Live assessments", value: "18", change: "+3 this week" }, { label: "Avg. pass rate", value: "74.8%", change: "+6.1%" }, { label: "Total attempts", value: "8,420", change: "+14.8%" }, { label: "Pending reviews", value: "128", change: "Due today", tone: "text-amber-600" }]} /><DataCard title="Assessment center" subtitle="Tests, mock exams, coding screens, and question banks" toolbar={<div className="flex items-center gap-2"><CustomDropdown value={filter} onChange={setFilter} options={["All", "Live", "Closed", "Draft"]} icon={<Filter className="h-3.5 w-3.5 text-[var(--muted)]" />} /></div>}><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left"><thead><tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]"><th className="px-5 py-3 sm:px-6">Assessment</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Questions</th><th className="px-4 py-3">Attempts</th><th className="px-4 py-3">Pass rate</th><th className="px-4 py-3">Schedule</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead><tbody>{filtered.map((item) => <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"><td className="px-5 py-4 sm:px-6"><p className="text-[12px] font-bold">{item.title}</p><p className="text-[10px] text-[var(--muted)]">Question bank · MCQ + coding</p></td><td className="px-4 py-4 text-[11px] font-semibold">{item.type}</td><td className="px-4 py-4 text-[12px] font-bold">{item.questions}</td><td className="px-4 py-4 text-[12px] font-bold">{item.attempts}</td><td className="px-4 py-4 text-[12px] font-bold">{item.passRate}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.date}</td><td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td><td className="px-4 py-4"><button onClick={() => setRows((current) => current.map((row) => row.id === item.id ? { ...row, status: row.status === "Live" ? "Closed" : "Live" } : row))} className="text-[10px] font-bold text-[var(--brand)]">{item.status === "Live" ? "Close" : "Publish"}</button></td></tr>)}</tbody></table></div></DataCard></div>;
 }
 
-function LiveView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
-  const [filter, setFilter] = useState("All"); const [rows, setRows] = useState(sessions); const filtered = rows.filter((item) => filter === "All" || item.status === filter);
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="live" description={sectionDescriptions.live} actionLabel="Schedule session" onAction={() => onAction({ title: "Schedule a live session", description: "Set the instructor, timing, meeting link, and attendance rules.", fields: ["Session title", "Date and time", "Instructor", "Meeting link"] })} onExport={() => onToast("Session calendar exported") } /><MetricStrip items={[{ label: "Upcoming sessions", value: "18", change: "+5 this week" }, { label: "Registered learners", value: "1,248", change: "+18.4%" }, { label: "Avg. attendance", value: "86%", change: "+3.2%" }, { label: "Recordings pending", value: "4", change: "Upload after class", tone: "text-amber-600" }]} /><DataCard title="Session calendar" subtitle="Live classes, office hours, and recorded sessions" toolbar={<div className="flex items-center gap-2"><CustomDropdown value={filter} onChange={setFilter} options={["All", "Upcoming", "Completed"]} icon={<CalendarDays className="h-4 w-4 text-[var(--muted)]" />} /></div>}><div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">{filtered.map((session) => <div className="rounded-2xl border border-[var(--app-line)] p-4" key={session.id}><div className="flex items-start justify-between"><span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300"><Video className="h-4 w-4" /></span><StatusBadge>{session.status}</StatusBadge></div><h3 className="mt-4 text-[13px] font-bold">{session.title}</h3><p className="mt-1 text-[11px] text-[var(--muted)]">{session.course}</p><div className="mt-4 flex items-center justify-between text-[10px] font-semibold"><span className="inline-flex items-center gap-1.5 text-[var(--muted)]"><Clock3 className="h-3.5 w-3.5" />{session.time}</span><span>{session.attendees} registered</span></div><div className="mt-4 flex gap-2"><button onClick={() => onToast(`${session.title} opened`)} className="secondary-button flex-1 justify-center">Open</button><button onClick={() => setRows((current) => current.map((row) => row.id === session.id ? { ...row, status: row.status === "Upcoming" ? "Completed" : "Upcoming" } : row))} className="primary-button flex-1 justify-center">{session.status === "Upcoming" ? "Complete" : "Reopen"}</button></div></div>)}</div></DataCard></div>;
+function LiveView({
+  onAction,
+  onToast,
+  onScheduleSession,
+}: {
+  onAction: (state: DialogState) => void;
+  onToast: (message: string) => void;
+  onScheduleSession?: () => void;
+}) {
+  const [filter, setFilter] = useState("All");
+  const [rows, setRows] = useState(sessions);
+  const filtered = rows.filter((item) => filter === "All" || item.status === filter);
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="live"
+        description={sectionDescriptions.live}
+        actionLabel="Schedule session"
+        onAction={
+          onScheduleSession ||
+          (() =>
+            onAction({
+              title: "Schedule a live session",
+              description: "Set the instructor, timing, meeting link, and attendance rules.",
+              fields: ["Session title", "Date and time", "Instructor", "Meeting link"],
+            }))
+        }
+        onExport={() => onToast("Session calendar exported")}
+      />
+      <MetricStrip
+        items={[
+          { label: "Upcoming sessions", value: "18", change: "+5 this week" },
+          { label: "Registered learners", value: "1,248", change: "+18.4%" },
+          { label: "Avg. attendance", value: "86%", change: "+3.2%" },
+          { label: "Recordings pending", value: "4", change: "Upload after class", tone: "text-amber-600" },
+        ]}
+      />
+      <DataCard
+        title="Session calendar"
+        subtitle="Live classes, office hours, and recorded sessions"
+        toolbar={
+          <div className="flex items-center gap-2">
+            <CustomDropdown
+              value={filter}
+              onChange={setFilter}
+              options={["All", "Upcoming", "Completed"]}
+              icon={<CalendarDays className="h-4 w-4 text-[var(--muted)]" />}
+            />
+          </div>
+        }
+      >
+        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((session) => (
+            <div className="rounded-2xl border border-[var(--app-line)] p-4" key={session.id}>
+              <div className="flex items-start justify-between">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+                  <Video className="h-4 w-4" />
+                </span>
+                <StatusBadge>{session.status}</StatusBadge>
+              </div>
+              <h3 className="mt-4 text-[13px] font-bold">{session.title}</h3>
+              <p className="mt-1 text-[11px] text-[var(--muted)]">{session.course}</p>
+              <div className="mt-4 flex items-center justify-between text-[10px] font-semibold">
+                <span className="inline-flex items-center gap-1.5 text-[var(--muted)]">
+                  <Clock3 className="h-3.5 w-3.5" />
+                  {session.time}
+                </span>
+                <span>{session.attendees} registered</span>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button onClick={() => onToast(`${session.title} opened`)} className="secondary-button flex-1 justify-center">
+                  Open
+                </button>
+                <button
+                  onClick={() =>
+                    setRows((current) =>
+                      current.map((row) =>
+                        row.id === session.id
+                          ? { ...row, status: row.status === "Upcoming" ? "Completed" : "Upcoming" }
+                          : row
+                      )
+                    )
+                  }
+                  className="primary-button flex-1 justify-center"
+                >
+                  {session.status === "Upcoming" ? "Complete" : "Reopen"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </DataCard>
+    </div>
+  );
 }
 
 function PaymentsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
@@ -1960,6 +2052,8 @@ export default function Home() {
   const [editingCourseData, setEditingCourseData] = useState<Partial<CourseBuilderData> | null>(null);
   const [isAssignmentBuilderOpen, setIsAssignmentBuilderOpen] = useState(false);
   const [editingAssignmentData, setEditingAssignmentData] = useState<Partial<AssignmentData> | null>(null);
+  const [isScheduleSessionOpen, setIsScheduleSessionOpen] = useState(false);
+  const [editingSessionData, setEditingSessionData] = useState<Partial<LiveSessionData> | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [toast, setToast] = useState<string | null>(null);
   const { refresh, courses: liveCourses } = useLiveAdminData();
@@ -1970,6 +2064,9 @@ export default function Home() {
     }
     if (section === "create-assignment") {
       setIsAssignmentBuilderOpen(true);
+    }
+    if (section === "schedule-session" || section === "schedule_session") {
+      setIsScheduleSessionOpen(true);
     }
   }, [section]);
 
@@ -2023,6 +2120,28 @@ export default function Home() {
   const handlePublishAssignment = (data: AssignmentData) => {
     onToast(`Assignment "${data.title}" published successfully!`);
     handleCloseAssignmentBuilder();
+  };
+
+  const handleOpenScheduleSession = () => {
+    setEditingSessionData(null);
+    setIsScheduleSessionOpen(true);
+  };
+
+  const handleCloseScheduleSession = () => {
+    setIsScheduleSessionOpen(false);
+    setEditingSessionData(null);
+    if (window.location.hash === "#schedule-session" || window.location.hash === "#schedule_session") {
+      window.location.hash = "#live";
+    }
+  };
+
+  const handleSaveSessionDraft = (data: LiveSessionData) => {
+    onToast(`Live session draft "${data.title}" saved successfully!`);
+  };
+
+  const handleScheduleSession = (data: LiveSessionData) => {
+    onToast(`Live session "${data.title}" scheduled successfully!`);
+    handleCloseScheduleSession();
   };
 
   const handleEditCourse = (course: Course) => {
@@ -2289,6 +2408,32 @@ export default function Home() {
     );
   }
 
+  if (isScheduleSessionOpen || section === "schedule-session" || section === "schedule_session") {
+    return (
+      <div className="relative min-h-screen bg-[#f8fafc]">
+        <ScheduleSessionBuilder
+          initialData={editingSessionData || undefined}
+          onClose={handleCloseScheduleSession}
+          onSaveDraft={handleSaveSessionDraft}
+          onSchedule={handleScheduleSession}
+          availableCourses={
+            liveCourses && liveCourses.length > 0
+              ? liveCourses.map((c) => c.title)
+              : undefined
+          }
+        />
+        {toast && (
+          <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+            <span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-500 text-white">
+              <Check className="h-3.5 w-3.5" />
+            </span>
+            {toast}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const content =
     section === "overview" ? (
       <Overview onAction={onAction} onToast={onToast} onCreateCourse={handleOpenCourseBuilder} />
@@ -2322,8 +2467,8 @@ export default function Home() {
       <SubmissionsView onAction={onAction} onToast={onToast} />
     ) : section === "announcements" ? (
       <AnnouncementsView onAction={onAction} onToast={onToast} />
-    ) : section === "live" ? (
-      <LiveView onAction={onAction} onToast={onToast} />
+    ) : section === "live" || section === "live_sessions" ? (
+      <LiveView onAction={onAction} onToast={onToast} onScheduleSession={handleOpenScheduleSession} />
     ) : section === "recordings" ? (
       <RecordingsView onAction={onAction} onToast={onToast} />
     ) : section === "payments" ? (
