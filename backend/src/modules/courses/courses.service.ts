@@ -68,8 +68,10 @@ export class CoursesService {
   }
 
   async getCourseBySlug(slug: string) {
-    const course = await this.prisma.course.findUnique({
-      where: { slug },
+    const course = await this.prisma.course.findFirst({
+      where: {
+        OR: [{ slug }, { id: slug }],
+      },
       include: {
         instructor: {
           select: {

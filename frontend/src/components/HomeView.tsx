@@ -9,6 +9,7 @@ import { createSecureUrl } from "@/lib/urlParams";
 import { resolveDisplayName, resolveFirstName, resolveEducationStatus } from "@/lib/nameUtils";
 import { initiateRazorpayCheckout } from "@/lib/razorpay";
 import { useEnrollments } from "@/hooks/useEnrollments";
+import { useLiveCourses, LiveCourseItem } from "@/hooks/useLiveCourses";
 
 function getSecureHref(path: string, params?: Record<string, any>) {
   if (!path || path === "#" || path.startsWith("http")) return path;
@@ -96,93 +97,6 @@ const utilityItems: NavItem[] = [
   { label: "Announcements", href: "/announcements", icon: Bell },
   { label: "Progress", href: "/progress", icon: LineChart },
   { label: "Community", href: "/community", icon: Users },
-];
-
-const courses = [
-  {
-    id: "dsa-foundations",
-    slug: "dsa-foundations",
-    title: "DSA for Placements",
-    subtitle: "Complete Data Structures & Algorithms with Python",
-    description: "Build the problem-solving muscle that top interviews look for. Complete Data Structures & Algorithms with Python from beginner to advanced.",
-    instructor: "Abhishek Jujjuvarapu",
-    instructorRole: "Full Stack Engineer • Mentor",
-    instructorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
-    students: "12.8k",
-    duration: "4 Months",
-    lessons: "54 lessons",
-    rating: "4.9",
-    price: "₹ 2,499",
-    category: "DSA",
-    level: "Beginner to Advanced",
-    image: courseImages.dsa,
-    badgeText: "DSA\nfor Placements",
-    progress: 0,
-    accent: "blue",
-  },
-  {
-    id: "placement-sprint",
-    slug: "placement-sprint",
-    title: "Placement Sprint 2025",
-    subtitle: "A guided 30-day sprint for OA rounds, interviews, and confidence",
-    description: "A guided 30-day sprint for OA rounds, interviews, and confidence. High-frequency problems, timed assessments, and live clinics.",
-    instructor: "Abhishek Jujjuvarapu",
-    instructorRole: "Full Stack Engineer • Mentor",
-    instructorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
-    students: "8.4k",
-    duration: "30 days",
-    lessons: "42 lessons",
-    rating: "4.8",
-    price: "₹ 2,299",
-    category: "Placement",
-    level: "Intermediate to Advanced",
-    image: courseImages.system,
-    badgeText: "Placement\nSprint 2025",
-    progress: 0,
-    accent: "violet",
-  },
-  {
-    id: "frontend-lab",
-    slug: "frontend-lab",
-    title: "Frontend Interview Lab",
-    subtitle: "Ship production-grade web applications & ace tech rounds",
-    description: "Ship polished UI while mastering the questions interviewers ask. Performance, modern state management, and framework internals.",
-    instructor: "Abhishek Jujjuvarapu",
-    instructorRole: "Full Stack Engineer • Mentor",
-    instructorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
-    students: "5.7k",
-    duration: "6 weeks",
-    lessons: "36 lessons",
-    rating: "4.7",
-    price: "₹ 1,799",
-    category: "Web development",
-    level: "Intermediate",
-    image: courseImages.web,
-    badgeText: "Frontend\nInterview Lab",
-    progress: 0,
-    accent: "amber",
-  },
-  {
-    id: "system-design",
-    slug: "system-design",
-    title: "System Design, Simply",
-    subtitle: "Distributed architectures, microservices, scaling & trade-offs",
-    description: "Think in trade-offs, draw clean architectures, and explain your why. Real-world distributed systems, caching, scaling, and database sharding.",
-    instructor: "Abhishek Jujjuvarapu",
-    instructorRole: "Full Stack Engineer • Mentor",
-    instructorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
-    students: "3.1k",
-    duration: "5 weeks",
-    lessons: "28 lessons",
-    rating: "4.9",
-    price: "₹ 1,999",
-    category: "System design",
-    level: "Advanced",
-    image: courseImages.database,
-    badgeText: "System\nDesign",
-    progress: 0,
-    accent: "emerald",
-  },
 ];
 
 const problems = [
@@ -534,6 +448,8 @@ function ProgressBar({ value, color = "#3157e8" }: { value: number; color?: stri
 function Dashboard() {
   const [showAll, setShowAll] = useState(false);
   const { user } = useAuth();
+  const { courses, loading: coursesLoading } = useLiveCourses();
+  const { enrollments, isEnrolled } = useEnrollments();
   const displayName = resolveDisplayName(user);
   const firstName = resolveFirstName(user);
 
@@ -545,6 +461,15 @@ function Dashboard() {
     day: "numeric",
     year: "numeric",
   });
+
+  const enrolledCourses = courses.filter((c) =>
+    isEnrolled(c.id) ||
+    isEnrolled(c.slug) ||
+    enrollments.some((e) => e.courseId === c.id || e.course?.id === c.id || e.course?.slug === c.slug)
+  );
+
+  const activeDisplayCourses = enrolledCourses.length > 0 ? enrolledCourses : courses;
+  const currentFocusCourse = activeDisplayCourses[0];
 
   return (
     <>
@@ -566,8 +491,8 @@ function Dashboard() {
               You’re building momentum. One focused session today can keep your placement prep on track.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link href={getSecureHref("/learn")} className="button-primary">
-                <Play className="h-3.5 w-3.5 fill-current" /> Resume learning
+              <Link href={getSecureHref(enrolledCourses.length > 0 ? "/learn" : "/courses")} className="button-primary">
+                <Play className="h-3.5 w-3.5 fill-current" /> {enrolledCourses.length > 0 ? "Resume learning" : "Explore courses"}
               </Link>
               <Link href={getSecureHref("/progress")} className="button-ghost-dark">
                 View progress <ArrowRight className="h-3.5 w-3.5" />
@@ -600,12 +525,12 @@ function Dashboard() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-bold text-[#7c87a4]">Current focus</p>
-              <h2 className="mt-1 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">
-                DSA Foundations
+              <h2 className="mt-1 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white line-clamp-1">
+                {currentFocusCourse ? currentFocusCourse.title : "Get Started"}
               </h2>
             </div>
             <span className="rounded-lg bg-[#eaf0ff] px-2 py-1 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">
-              68% done
+              {currentFocusCourse ? `${currentFocusCourse.progress}% done` : "Available"}
             </span>
           </div>
           <div className="mt-6">
@@ -615,37 +540,62 @@ function Dashboard() {
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
-                  Sliding Window Patterns
+                  {currentFocusCourse ? currentFocusCourse.subtitle || currentFocusCourse.title : "Browse real courses"}
                 </p>
-                <p className="mt-0.5 text-xs text-[#9aa4bc]">Module 04 · Lesson 03</p>
+                <p className="mt-0.5 text-xs text-[#9aa4bc]">
+                  {currentFocusCourse ? `${currentFocusCourse.category} · ${currentFocusCourse.lessons}` : "Self-paced learning"}
+                </p>
               </div>
             </div>
-            <ProgressBar value={68} />
+            <ProgressBar value={currentFocusCourse ? currentFocusCourse.progress : 0} />
             <div className="mt-2 flex justify-between text-[10px] font-semibold text-[#9aa4bc]">
-              <span>18 of 26 lessons</span>
-              <span>12 min left</span>
+              <span>{currentFocusCourse ? currentFocusCourse.lessons : "0 modules"}</span>
+              <span>{currentFocusCourse ? currentFocusCourse.duration : "Real time"}</span>
             </div>
           </div>
           <Link
-            href={getSecureHref("/learn")}
+            href={getSecureHref(currentFocusCourse ? (isEnrolled(currentFocusCourse.id) ? "/learn" : `/courses?courseId=${currentFocusCourse.id}`) : "/courses")}
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#f1f4fb] py-3 text-xs font-bold text-[#3157e8] transition hover:bg-[#e6ebfb] dark:bg-white/5 dark:hover:bg-white/10"
           >
-            Continue lesson <ArrowRight className="h-3.5 w-3.5" />
+            {enrolledCourses.length > 0 ? "Continue lesson" : "Start learning"} <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </section>
       </div>
       <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        <StatCard icon={BookOpen} value="04" label="Courses enrolled" trend="+1 this month" color="blue" />
+        <StatCard
+          icon={BookOpen}
+          value={String(enrollments.length).padStart(2, "0")}
+          label="Courses enrolled"
+          trend={enrollments.length > 0 ? `+${enrollments.length} active` : "0 active"}
+          color="blue"
+        />
         <StatCard icon={ClipboardCheck} value="18" label="Assignments submitted" trend="+4 this week" color="violet" />
         <StatCard icon={Code2} value="42" label="Problems solved" trend="+12% vs last week" color="amber" />
         <StatCard icon={Clock3} value="26h 40m" label="Total watch time" trend="+3h 20m" color="emerald" />
       </div>
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)]">
         <section>
-          <SectionTitle title="Continue your learning" link="Browse all" href={getSecureHref("/my-courses")} />
+          <SectionTitle
+            title="Continue your learning"
+            link={courses.length > 0 ? "Browse all" : undefined}
+            href={getSecureHref("/courses")}
+          />
           <div className="grid gap-4 md:grid-cols-2">
-            <CourseProgressCard course={courses[0]} />
-            <CourseProgressCard course={courses[1]} />
+            {coursesLoading ? (
+              [1, 2].map((n) => (
+                <div key={n} className="card-surface h-48 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5" />
+              ))
+            ) : activeDisplayCourses.length > 0 ? (
+              activeDisplayCourses.slice(0, 2).map((c) => (
+                <CourseProgressCard key={c.id} course={c} />
+              ))
+            ) : (
+              <div className="card-surface col-span-full p-8 text-center">
+                <Library className="mx-auto h-8 w-8 text-[#9aa4bc]" />
+                <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No courses available yet</p>
+                <p className="mt-1 text-xs text-[#9aa4bc]">Courses added via the Admin Panel will appear here live.</p>
+              </div>
+            )}
           </div>
           <div className="mt-8">
             <SectionTitle title="Activity timeline" link={showAll ? "Show less" : "View all activity"} href="#" />
@@ -672,8 +622,44 @@ function Dashboard() {
   );
 }
 
-function CourseProgressCard({ course }: { course: typeof courses[number] }) {
-  return <Link href={createSecureUrl("/courses", { courseId: course.id })} className="card-surface group overflow-hidden"><div className="relative h-[125px] overflow-hidden"><img src={course.image} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#17223d]/70 to-transparent" /><span className="absolute bottom-3 left-4 rounded-md bg-white/15 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">{course.category}</span><button onClick={(e) => { e.preventDefault(); toast.success("Course bookmarked"); }} className="absolute right-3 top-3 rounded-lg bg-black/20 p-2 text-white backdrop-blur-md hover:bg-black/40"><Bookmark className="h-3.5 w-3.5" /></button></div><div className="p-4"><div className="flex items-start justify-between gap-3"><div><h3 className="text-sm font-bold text-[#17223d] dark:text-white">{course.title}</h3><p className="mt-1 text-xs text-[#9aa4bc]">Next: Sliding Window Patterns</p></div><span className="text-xs font-bold text-[#3157e8]">{course.progress}%</span></div><div className="mt-4"><ProgressBar value={course.progress} color={course.accent === "violet" ? "#7f5af0" : "#3157e8"} /></div></div></Link>;
+function CourseProgressCard({ course }: { course: LiveCourseItem }) {
+  return (
+    <Link href={createSecureUrl("/courses", { courseId: course.id })} className="card-surface group overflow-hidden">
+      <div className="relative h-[125px] overflow-hidden">
+        <img
+          src={course.image}
+          alt={course.title}
+          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#17223d]/70 to-transparent" />
+        <span className="absolute bottom-3 left-4 rounded-md bg-white/15 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">
+          {course.category}
+        </span>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toast.success("Course bookmarked");
+          }}
+          className="absolute right-3 top-3 rounded-lg bg-black/20 p-2 text-white backdrop-blur-md hover:bg-black/40"
+        >
+          <Bookmark className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-bold text-[#17223d] dark:text-white truncate">{course.title}</h3>
+            <p className="mt-1 text-xs text-[#9aa4bc] truncate">{course.subtitle || course.description}</p>
+          </div>
+          <span className="text-xs font-bold text-[#3157e8] shrink-0">{course.progress}%</span>
+        </div>
+        <div className="mt-4">
+          <ProgressBar value={course.progress} color={course.accent === "violet" ? "#7f5af0" : "#3157e8"} />
+        </div>
+      </div>
+    </Link>
+  );
 }
 
 function ActivityRow({ item, last }: { item: typeof activity[number]; last: boolean }) { const Icon = item.icon; const colors = { blue: "bg-[#eaf0ff] text-[#3157e8]", emerald: "bg-[#e4f8ee] text-[#23a26d]", violet: "bg-[#f0eaff] text-[#7f5af0]", amber: "bg-[#fff4db] text-[#d68c20]" }; return <div className="flex items-center gap-3 py-4"><span className={cx("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", colors[item.color as keyof typeof colors])}><Icon className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-[#17223d] dark:text-white">{item.title}</p><p className="mt-0.5 truncate text-xs text-[#9aa4bc]">{item.subtitle}</p></div><span className="shrink-0 text-[10px] font-medium text-[#a5aec2]">{item.time}</span>{!last && <span className="sr-only">divider</span>}</div>; }
@@ -684,10 +670,16 @@ function AssignmentsWidget() { return <section><SectionTitle title="Pending assi
 function AssignmentRow({ title, course, due, urgent }: { title: string; course: string; due: string; urgent?: boolean }) { return <div className="flex items-start gap-3 border-b border-[#edf0f6] py-4 last:border-0 dark:border-white/10"><span className={cx("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", urgent ? "bg-[#fff0ed] text-[#ef8354]" : "bg-[#f0f2f8] text-[#7c87a4] dark:bg-white/10")}><ClipboardCheck className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-[#17223d] dark:text-white">{title}</p><p className="mt-1 truncate text-[10px] text-[#9aa4bc]">{course}</p></div><span className={cx("shrink-0 text-[10px] font-bold", urgent ? "text-[#ef8354]" : "text-[#9aa4bc]")}>{due}</span></div>; }
 
 function CoursesPage() {
+  const { courses, loading } = useLiveCourses();
   const [category, setCategory] = useState("All courses");
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("Popular");
-  const categories = ["All courses", "DSA", "Placement", "Web development", "System design"];
+
+  const categories = useMemo(() => {
+    const rawCategories = Array.from(new Set(courses.map((c) => c.category).filter(Boolean)));
+    return ["All courses", ...rawCategories];
+  }, [courses]);
+
   const sortOptions = [
     { label: "Sort: Popular", value: "Popular" },
     { label: "Sort: Highest rated", value: "Rating" },
@@ -695,13 +687,20 @@ function CoursesPage() {
     { label: "Sort: Price (High to Low)", value: "PriceHigh" },
   ];
 
-  let filtered = courses.filter(course => (category === "All courses" || course.category === category) && course.title.toLowerCase().includes(query.toLowerCase()));
+  let filtered = courses.filter(
+    (course) =>
+      (category === "All courses" || course.category === category) &&
+      (course.title.toLowerCase().includes(query.toLowerCase()) ||
+        course.description.toLowerCase().includes(query.toLowerCase()) ||
+        course.instructor.toLowerCase().includes(query.toLowerCase()))
+  );
+
   if (sortBy === "Rating") {
     filtered = [...filtered].sort((a, b) => Number(b.rating) - Number(a.rating));
   } else if (sortBy === "PriceLow") {
-    filtered = [...filtered].sort((a, b) => parseInt(a.price.replace(/[^\d]/g, "")) - parseInt(b.price.replace(/[^\d]/g, "")));
+    filtered = [...filtered].sort((a, b) => a.rawPrice - b.rawPrice);
   } else if (sortBy === "PriceHigh") {
-    filtered = [...filtered].sort((a, b) => parseInt(b.price.replace(/[^\d]/g, "")) - parseInt(a.price.replace(/[^\d]/g, "")));
+    filtered = [...filtered].sort((a, b) => b.rawPrice - a.rawPrice);
   }
 
   return (
@@ -733,50 +732,69 @@ function CoursesPage() {
           icon={<ListChecks className="h-4 w-4 text-[#9aa4bc]" />}
         />
       </div>
-      <div className="mb-7 flex gap-2 overflow-x-auto pb-1">
-        {categories.map((item) => (
-          <button
-            key={item}
-            onClick={() => setCategory(item)}
-            className={cx(
-              "whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition",
-              category === item
-                ? "bg-[#17223d] text-white dark:bg-[#3157e8]"
-                : "bg-white text-[#7c87a4] hover:bg-[#eef2ff] dark:bg-white/5 dark:hover:bg-white/10"
-            )}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
+
+      {categories.length > 1 && (
+        <div className="mb-7 flex gap-2 overflow-x-auto pb-1">
+          {categories.map((item) => (
+            <button
+              key={item}
+              onClick={() => setCategory(item)}
+              className={cx(
+                "whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition",
+                category === item
+                  ? "bg-[#17223d] text-white dark:bg-[#3157e8]"
+                  : "bg-white text-[#7c87a4] hover:bg-[#eef2ff] dark:bg-white/5 dark:hover:bg-white/10"
+              )}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="mb-4 flex items-center justify-between">
         <p className="text-xs font-semibold text-[#9aa4bc]">
-          Showing <span className="text-[#17223d] dark:text-white">{filtered.length} courses</span>
+          Showing <span className="text-[#17223d] dark:text-white">{loading ? "..." : `${filtered.length} courses`}</span>
         </p>
         <div className="hidden items-center gap-2 text-xs font-semibold text-[#9aa4bc] sm:flex">
-          <span className="h-2 w-2 rounded-full bg-[#48c58a]" /> Updated weekly
+          <span className="h-2 w-2 rounded-full bg-[#48c58a] animate-pulse" /> Live database sync
         </div>
       </div>
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((course) => (
-          <CourseCard key={course.id} course={course} />
-        ))}
-        {filtered.length === 0 && (
-          <div className="card-surface col-span-full p-10 text-center">
-            <Search className="mx-auto h-8 w-8 text-[#c4cada]" />
-            <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No courses found</p>
-            <p className="mt-1 text-xs text-[#9aa4bc]">Try another keyword or category.</p>
-          </div>
-        )}
-      </div>
+
+      {loading ? (
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="card-surface h-72 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((course) => (
+            <CourseCard key={course.id} course={course} />
+          ))}
+          {filtered.length === 0 && (
+            <div className="card-surface col-span-full p-12 text-center">
+              <Library className="mx-auto h-10 w-10 text-[#c4cada]" />
+              <p className="mt-3 text-base font-bold text-[#17223d] dark:text-white">
+                {courses.length === 0 ? "No courses available yet" : "No matching courses found"}
+              </p>
+              <p className="mt-1 text-xs text-[#9aa4bc] max-w-sm mx-auto">
+                {courses.length === 0
+                  ? "Courses created from the Admin Panel will appear here automatically."
+                  : "Try clearing your search query or choosing a different category filter."}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }
 
-function CourseCard({ course }: { course: typeof courses[number] }) {
+function CourseCard({ course }: { course: LiveCourseItem }) {
   const router = useRouter();
   const { isEnrolled } = useEnrollments();
-  const enrolled = isEnrolled(course.id) || isEnrolled(course.id.toLowerCase());
+  const enrolled = isEnrolled(course.id) || isEnrolled(course.slug);
 
   const handleEnrollClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -822,13 +840,13 @@ function CourseCard({ course }: { course: typeof courses[number] }) {
             <Bookmark className="h-4 w-4" />
           </button>
           <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white">
-            <div>
-              <p className="text-[10px] text-white/60">By {course.instructor}</p>
-              <p className="mt-1 font-display text-xl font-bold tracking-[-0.04em]">
+            <div className="min-w-0 pr-2">
+              <p className="text-[10px] text-white/60 truncate">By {course.instructor}</p>
+              <p className="mt-1 font-display text-lg font-bold tracking-[-0.04em] line-clamp-1">
                 {course.title}
               </p>
             </div>
-            <div className="flex items-center gap-1 text-xs font-bold">
+            <div className="flex shrink-0 items-center gap-1 text-xs font-bold">
               <Star className="h-3.5 w-3.5 fill-[#ffca63] text-[#ffca63]" />
               {course.rating}
             </div>
@@ -836,7 +854,7 @@ function CourseCard({ course }: { course: typeof courses[number] }) {
         </div>
         <div className="p-4">
           <p className="line-clamp-2 min-h-[40px] text-sm leading-5 text-[#7c87a4]">
-            {course.description}
+            {course.subtitle || course.description}
           </p>
           <div className="mt-4 flex items-center gap-3 text-[10px] font-semibold text-[#9aa4bc]">
             <span className="flex items-center gap-1">
@@ -883,17 +901,44 @@ function CourseCard({ course }: { course: typeof courses[number] }) {
 }
 
 function CourseDetail({ courseId }: { courseId: string }) {
+  const { courses, loading } = useLiveCourses();
   const { isEnrolled } = useEnrollments();
-  const course = courses.find((item) => item.id === courseId || item.slug === courseId) || courses[0];
   const [openModule, setOpenModule] = useState(0);
-  const enrolled = isEnrolled(course.id) || isEnrolled(course.id.toLowerCase());
+
+  const course = courses.find((item) => item.id === courseId || item.slug === courseId);
+
+  if (loading) {
+    return (
+      <div className="card-surface p-12 text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-[#3157e8] border-t-transparent" />
+        <p className="mt-3 text-sm text-[#9aa4bc]">Loading course details...</p>
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="card-surface mx-auto max-w-lg p-10 text-center">
+        <CircleHelp className="mx-auto h-10 w-10 text-[#3157e8]" />
+        <h1 className="mt-4 font-display text-2xl font-bold text-[#17223d] dark:text-white">Course Not Found</h1>
+        <p className="mt-2 text-sm leading-6 text-[#7c87a4]">
+          This course may have been removed or is no longer available.
+        </p>
+        <Link href={getSecureHref("/courses")} className="mt-6 inline-flex button-primary">
+          Back to all courses
+        </Link>
+      </div>
+    );
+  }
+
+  const enrolled = isEnrolled(course.id) || isEnrolled(course.slug);
 
   const modules = [
-    { title: "Getting started with problem solving", lessons: 6, duration: "42 min", complete: 6 },
-    { title: "Arrays & Hashing", lessons: 8, duration: "1h 26 min", complete: 8 },
-    { title: "Sliding Window Patterns", lessons: 7, duration: "1h 18 min", complete: 3 },
-    { title: "Two pointers & stacks", lessons: 6, duration: "1h 04 min", complete: 0 },
-    { title: "Trees, graphs & recursion", lessons: 9, duration: "2h 10 min", complete: 0 },
+    { title: "Getting started with fundamentals", lessons: 6, duration: "42 min", complete: 6 },
+    { title: "Core Architecture & Concepts", lessons: 8, duration: "1h 26 min", complete: 8 },
+    { title: "Advanced Patterns & Optimization", lessons: 7, duration: "1h 18 min", complete: 3 },
+    { title: "Real-world Project Implementation", lessons: 6, duration: "1h 04 min", complete: 0 },
+    { title: "Assessment & Interview Preparation", lessons: 9, duration: "2h 10 min", complete: 0 },
   ];
 
   return (
@@ -922,14 +967,14 @@ function CourseDetail({ courseId }: { courseId: string }) {
           </div>
           <h1 className="font-display text-3xl font-bold tracking-[-0.05em] sm:text-5xl">{course.title}</h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">
-            {course.subtitle || course.description} Learn a repeatable framework for breaking down unfamiliar problems, communicating trade-offs, and shipping answers you can stand behind.
+            {course.subtitle || course.description}
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 text-xs font-semibold text-white/65">
             <span className="flex items-center gap-1.5">
               <Star className="h-3.5 w-3.5 fill-[#ffca63] text-[#ffca63]" /> {course.rating} rating
             </span>
             <span className="flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5" /> {course.students} learners
+              <Users className="h-3.5 w-3.5" /> {course.students}
             </span>
             <span className="flex items-center gap-1.5">
               <Clock3 className="h-3.5 w-3.5" /> {course.duration}
@@ -1083,13 +1128,13 @@ function CourseDetail({ courseId }: { courseId: string }) {
                 <span className="font-display text-4xl font-bold tracking-[-0.06em] text-[#17223d] dark:text-white">
                   {course.progress}%
                 </span>
-                <span className="mb-1 text-xs font-semibold text-[#9aa4bc]">18 / 26 lessons</span>
+                <span className="mb-1 text-xs font-semibold text-[#9aa4bc]">0 / {course.lessons}</span>
               </div>
               <div className="mt-4">
                 <ProgressBar value={course.progress} />
               </div>
               <p className="mt-4 text-xs leading-5 text-[#9aa4bc]">
-                You’re ahead of 72% of learners in this cohort. Keep that momentum.
+                You’re building steady momentum. Keep learning!
               </p>
               <Link
                 href={getSecureHref("/progress")}
@@ -1103,7 +1148,7 @@ function CourseDetail({ courseId }: { courseId: string }) {
             <p className="text-xs font-bold text-[#7c87a4]">Meet your instructor</p>
             <div className="mt-4 flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#dce6ff] text-sm font-bold text-[#3157e8]">
-                AJ
+                {course.instructor.split(" ").map(n => n[0]).slice(0, 2).join("") || "IN"}
               </span>
               <div>
                 <p className="text-sm font-bold text-[#17223d] dark:text-white">{course.instructor}</p>
@@ -1111,7 +1156,7 @@ function CourseDetail({ courseId }: { courseId: string }) {
               </div>
             </div>
             <p className="mt-4 text-xs leading-5 text-[#7c87a4]">
-              Senior software engineer & educator dedicated to helping students crack tier-1 product companies and placements.
+              Senior engineer & educator dedicated to helping students crack tier-1 product companies and placements.
             </p>
           </div>
         </aside>
@@ -1132,13 +1177,38 @@ function PythonLogo({ className = "h-5 w-5" }: { className?: string }) {
 function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
   const router = useRouter();
   const { user } = useAuth();
+  const { courses, loading } = useLiveCourses();
   const { isEnrolled, refreshEnrollments } = useEnrollments();
-  const course = courses.find((item) => item.id === courseId || item.slug === courseId) || courses[0];
   const [isProcessing, setIsProcessing] = useState(false);
-  const enrolled = isEnrolled(course.id) || isEnrolled(course.slug || course.id);
 
-  const numericPrice = course.price.replace(/[^\d]/g, "") || "2499";
-  const basePriceNumber = parseInt(numericPrice, 10);
+  const course = courses.find((item) => item.id === courseId || item.slug === courseId);
+
+  if (loading) {
+    return (
+      <div className="p-12 text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-[#3157e8] border-t-transparent" />
+        <p className="mt-3 text-sm text-[#9aa4bc]">Loading checkout details...</p>
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="card-surface mx-auto max-w-lg p-10 text-center">
+        <CircleHelp className="mx-auto h-10 w-10 text-[#3157e8]" />
+        <h1 className="mt-4 font-display text-2xl font-bold text-[#17223d] dark:text-white">Course Not Found</h1>
+        <p className="mt-2 text-sm leading-6 text-[#7c87a4]">
+          We couldn't locate the course you're attempting to checkout with.
+        </p>
+        <Link href={getSecureHref("/courses")} className="mt-6 inline-flex button-primary">
+          Back to all courses
+        </Link>
+      </div>
+    );
+  }
+
+  const enrolled = isEnrolled(course.id) || isEnrolled(course.slug);
+  const basePriceNumber = course.rawPrice;
   const platformFee = 10;
   const totalAmountNumber = basePriceNumber + platformFee;
 
@@ -1208,30 +1278,26 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
             <div className="relative flex h-24 w-36 shrink-0 flex-col justify-between overflow-hidden rounded-xl bg-gradient-to-br from-[#0c1535] via-[#14234d] to-[#1e346f] p-3 text-white shadow-md">
               <div className="absolute -right-4 -bottom-4 h-16 w-16 rounded-full bg-blue-500/20 blur-xl" />
               <div>
-                <p className="font-display text-lg font-black leading-tight tracking-tight">
-                  {course.id === "dsa-foundations" ? "DSA" : course.title.split(" ")[0]}
+                <p className="font-display text-lg font-black leading-tight tracking-tight line-clamp-1">
+                  {course.category}
                 </p>
-                <p className="text-[10px] font-medium text-white/80">
-                  {course.id === "dsa-foundations" ? "for Placements" : course.title.split(" ").slice(1).join(" ")}
+                <p className="text-[10px] font-medium text-white/80 line-clamp-1">
+                  {course.title}
                 </p>
               </div>
               <div className="flex items-center justify-end">
-                {course.id === "dsa-foundations" ? (
-                  <PythonLogo className="h-6 w-6" />
-                ) : (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/15 backdrop-blur-sm">
-                    <Code2 className="h-3.5 w-3.5 text-yellow-400" />
-                  </span>
-                )}
+                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/15 backdrop-blur-sm">
+                  <Code2 className="h-3.5 w-3.5 text-yellow-400" />
+                </span>
               </div>
             </div>
 
             {/* Course Meta Info */}
             <div className="min-w-0 flex-1">
-              <h3 className="font-display text-base font-bold text-[#0f172a] dark:text-white">
+              <h3 className="font-display text-base font-bold text-[#0f172a] dark:text-white line-clamp-1">
                 {course.title}
               </h3>
-              <p className="mt-1 text-xs leading-5 text-[#64748b] dark:text-slate-400">
+              <p className="mt-1 text-xs leading-5 text-[#64748b] dark:text-slate-400 line-clamp-2">
                 {course.subtitle || course.description}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-4 text-xs font-medium text-[#64748b] dark:text-slate-400">
@@ -1241,7 +1307,7 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Clock3 className="h-3.5 w-3.5 text-[#0066ff]" />
-                  {course.duration || "4 Months"}
+                  {course.duration || "Self-paced"}
                 </span>
               </div>
             </div>
@@ -1349,7 +1415,6 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
             {!isProcessing && <ArrowRight className="h-4 w-4" />}
           </button>
 
-
           {/* Security Subtext */}
           <div className="text-center space-y-1">
             <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[#475569] dark:text-slate-300">
@@ -1397,10 +1462,15 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
 
 function MyCoursesPage() {
   const { enrollments } = useEnrollments();
+  const { courses, loading } = useLiveCourses();
   const [filter, setFilter] = useState("All");
 
-  const enrolledCount = Math.max(courses.length, enrollments.length);
-  const filtered = courses.filter((c) =>
+  const enrolledCourses = courses.filter((c) =>
+    enrollments.some((e) => e.courseId === c.id || e.course?.id === c.id || e.course?.slug === c.slug)
+  );
+
+  const enrolledCount = enrolledCourses.length;
+  const filtered = enrolledCourses.filter((c) =>
     filter === "All"
       ? true
       : filter === "In progress"
@@ -1459,33 +1529,54 @@ function MyCoursesPage() {
             <Award className="h-5 w-5" />
           </span>
           <div>
-            <p className="font-display text-2xl font-bold text-[#17223d] dark:text-white">01</p>
-            <p className="text-xs text-[#9aa4bc]">Certificate earned</p>
+            <p className="font-display text-2xl font-bold text-[#17223d] dark:text-white">
+              {enrolledCourses.filter((c) => c.progress === 100).length}
+            </p>
+            <p className="text-xs text-[#9aa4bc]">Certificates earned</p>
           </div>
         </div>
       </div>
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((course) => (
-          <MyCourseCard key={course.id} course={course} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {[1, 2].map((n) => (
+            <div key={n} className="card-surface h-64 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5" />
+          ))}
+        </div>
+      ) : filtered.length > 0 ? (
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((course) => (
+            <MyCourseCard key={course.id} course={course} />
+          ))}
+        </div>
+      ) : (
+        <div className="card-surface p-12 text-center">
+          <BookOpen className="mx-auto h-10 w-10 text-[#c4cada]" />
+          <p className="mt-3 text-base font-bold text-[#17223d] dark:text-white">No enrolled courses yet</p>
+          <p className="mt-1 text-xs text-[#9aa4bc] max-w-sm mx-auto">
+            Explore our course catalog to find your next skill and kickstart your learning journey.
+          </p>
+          <Link href={getSecureHref("/courses")} className="mt-5 inline-flex button-primary">
+            Browse Courses
+          </Link>
+        </div>
+      )}
     </>
   );
 }
 
-function MyCourseCard({ course }: { course: typeof courses[number] }) {
+function MyCourseCard({ course }: { course: LiveCourseItem }) {
   return (
     <div className="card-surface group overflow-hidden">
       <div className="relative h-36 overflow-hidden">
-        <img src={course.image} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+        <img src={course.image} alt={course.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#17223d]/75 to-transparent" />
         <span className="absolute bottom-3 left-4 rounded-md bg-white/15 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">
           {course.progress === 100 ? "Completed" : "In progress"}
         </span>
       </div>
       <div className="p-5">
-        <h3 className="font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">{course.title}</h3>
-        <p className="mt-1 text-xs text-[#9aa4bc]">Last opened 2 hours ago</p>
+        <h3 className="font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white line-clamp-1">{course.title}</h3>
+        <p className="mt-1 text-xs text-[#9aa4bc] line-clamp-1">{course.subtitle || course.description}</p>
         <div className="mt-5 flex items-center justify-between text-xs font-bold">
           <span className="text-[#7c87a4]">Course progress</span>
           <span className="text-[#3157e8]">{course.progress}%</span>
@@ -1859,6 +1950,14 @@ function PracticePage() {
 
 function ProgressPage() {
   const [timeframe, setTimeframe] = useState("Last 14 days");
+  const { courses } = useLiveCourses();
+  const { enrollments } = useEnrollments();
+
+  const enrolledCourses = courses.filter((c) =>
+    enrollments.some((e) => e.courseId === c.id || e.course?.id === c.id || e.course?.slug === c.slug)
+  );
+  const targetCourses = enrolledCourses.length > 0 ? enrolledCourses : courses;
+
   const bars =
     timeframe === "Last 7 days"
       ? [52, 84, 72, 92, 60, 76, 96]
@@ -1948,37 +2047,43 @@ function ProgressPage() {
         <section>
           <SectionTitle title="Course progress" link="My courses" href="/my-courses" />
           <div className="card-surface px-5">
-            {courses.slice(0, 3).map((course) => (
-              <div
-                key={course.id}
-                className="border-b border-[#edf0f6] py-5 last:border-0 dark:border-white/10"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef2ff] text-[#3157e8]">
-                      <BookOpen className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
-                        {course.title}
-                      </p>
-                      <p className="mt-1 text-[10px] text-[#9aa4bc]">
-                        {course.progress === 100
-                          ? "Completed"
-                          : `${course.progress}% complete`}
-                      </p>
+            {targetCourses.length > 0 ? (
+              targetCourses.slice(0, 3).map((course) => (
+                <div
+                  key={course.id}
+                  className="border-b border-[#edf0f6] py-5 last:border-0 dark:border-white/10"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef2ff] text-[#3157e8]">
+                        <BookOpen className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
+                          {course.title}
+                        </p>
+                        <p className="mt-1 text-[10px] text-[#9aa4bc]">
+                          {course.progress === 100
+                            ? "Completed"
+                            : `${course.progress}% complete`}
+                        </p>
+                      </div>
                     </div>
+                    <span className="text-xs font-bold text-[#3157e8]">{course.progress}%</span>
                   </div>
-                  <span className="text-xs font-bold text-[#3157e8]">{course.progress}%</span>
+                  <div className="mt-3">
+                    <ProgressBar
+                      value={course.progress}
+                      color={course.accent === "violet" ? "#7f5af0" : "#3157e8"}
+                    />
+                  </div>
                 </div>
-                <div className="mt-3">
-                  <ProgressBar
-                    value={course.progress}
-                    color={course.accent === "violet" ? "#7f5af0" : "#3157e8"}
-                  />
-                </div>
+              ))
+            ) : (
+              <div className="py-8 text-center text-xs text-[#9aa4bc]">
+                No courses available to track progress.
               </div>
-            ))}
+            )}
           </div>
         </section>
         <section>
@@ -2370,6 +2475,7 @@ function AssignmentsPage() { const [submitted, setSubmitted] = useState(false); 
 function ProfilePage() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { enrollments } = useEnrollments();
   const displayName = resolveDisplayName(user);
   const email = user?.email || "learner@example.com";
   const nameParts = displayName.trim().split(/\s+/);
@@ -2404,7 +2510,9 @@ function ProfilePage() {
           </div>
           <div className="mt-6 grid grid-cols-3 divide-x divide-[#edf0f6] dark:divide-white/10">
             <div className="text-center">
-              <p className="font-display text-lg font-bold text-[#17223d] dark:text-white">04</p>
+              <p className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                {String(enrollments.length).padStart(2, "0")}
+              </p>
               <p className="mt-1 text-[9px] text-[#9aa4bc]">Courses</p>
             </div>
             <div className="text-center">
