@@ -7,7 +7,7 @@ import UploadRecordingBuilder, { RecordingData } from "@/components/UploadRecord
 import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useAdminRoute, navigateAdmin } from "@/lib/navigation";
-import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus } from "@/hooks/useLiveAdminData";
+import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus, ContentItem } from "@/hooks/useLiveAdminData";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -73,14 +73,7 @@ type DialogState = { title: string; description: string; fields: string[] } | nu
 
 const courses: Course[] = [];
 const learners: StudentItem[] = [];
-
-const contentItems = [
-  { id: 1, title: "Graphs: BFS vs DFS", type: "Video", parent: "DSA · Graphs", owner: "Arjun Mehta", status: "Published", updated: "Today" },
-  { id: 2, title: "Recursion patterns worksheet", type: "PDF", parent: "DSA · Recursion", owner: "Maya Rao", status: "Published", updated: "Yesterday" },
-  { id: 3, title: "Binary tree traversal challenge", type: "Practice problem", parent: "DSA · Trees", owner: "Neel Shah", status: "Draft", updated: "2 days ago" },
-  { id: 4, title: "Fullstack system design cheatsheet", type: "Resource", parent: "Placement Prep", owner: "Kavya Iyer", status: "Review", updated: "3 days ago" },
-  { id: 5, title: "Complexity analysis cheatsheet", type: "Text", parent: "Foundations", owner: "Arjun Mehta", status: "Published", updated: "4 days ago" },
-];
+const contentItems: ContentItem[] = [];
 
 const assessments = [
   { id: 1, title: "Weekly Test · Graphs", type: "Weekly test", questions: 25, attempts: 642, passRate: "78%", status: "Live", date: "Today, 6:00 PM" },
@@ -1173,21 +1166,40 @@ function StudentsView({
 function ContentView({
   onToast,
   onCreateCourse,
+  content: propContent,
+  onRefresh,
 }: {
   onToast: (message: string) => void;
   onCreateCourse?: () => void;
+  content?: ContentItem[];
+  onRefresh?: () => void;
 }) {
-  const { courses: liveCourses } = useLiveAdminData();
+  const { content: liveContent, courses: liveCourses, refresh } = useLiveAdminData();
+  const rawContent = propContent !== undefined ? propContent : liveContent;
+  const [localRows, setLocalRows] = useState<ContentItem[] | null>(null);
+  const rows = localRows || rawContent;
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
-  const [rows, setRows] = useState(contentItems);
   const [isAddContentOpen, setIsAddContentOpen] = useState(false);
+
+  useEffect(() => {
+    if (rawContent) {
+      setLocalRows(rawContent);
+    }
+  }, [rawContent]);
 
   const filtered = rows.filter(
     (item) =>
       (filter === "All" || item.type === filter) &&
       `${item.title} ${item.parent} ${item.owner}`.toLowerCase().includes(query.toLowerCase())
   );
+
+  const publishedCount = rows.filter((r) => r.status === "Published").length;
+  const videoCount = rows.filter((r) => r.type === "Video").length;
+  const draftsCount = rows.filter((r) => r.status === "Draft" || r.status === "Review").length;
+  const assignmentCount = rows.filter(
+    (r) => r.type === "Assignment" || r.type === "Practice problem" || r.type === "Quiz"
+  ).length;
 
   const handleContinueAddContent = (
     selectedType: string,
@@ -1201,7 +1213,8 @@ function ContentView({
     }
 
     const title = details?.title || `${typeInfo.title}: New Asset`;
-    const parent = details?.parent || "DSA Mastery";
+    const parent =
+      details?.parent || (liveCourses.length > 0 ? liveCourses[0].title : "General Library");
     const typeName =
       typeInfo.title === "Notes / PDF"
         ? "PDF"
@@ -1209,7 +1222,7 @@ function ContentView({
         ? "Practice problem"
         : typeInfo.title;
 
-    const newItem = {
+    const newItem: ContentItem = {
       id: Date.now(),
       title,
       type: typeName,
@@ -1219,7 +1232,7 @@ function ContentView({
       updated: "Just now",
     };
 
-    setRows((current) => [newItem, ...current]);
+    setLocalRows((current) => [newItem, ...(current || [])]);
     setIsAddContentOpen(false);
     onToast(`${title} created and published to content library!`);
   };
@@ -1236,23 +1249,43 @@ function ContentView({
 
       <MetricStrip
         items={[
-          { label: "Published resources", value: "428", change: "+24 this month" },
-          { label: "Practice problems", value: "1,284", change: "+86 this month" },
-          { label: "Drafts", value: "36", change: "12 need review", tone: "text-amber-600" },
-          { label: "Storage used", value: "68%", change: "2.4 TB available" },
+          {
+            label: "Total library assets",
+            value: rows.length.toLocaleString(),
+            change: rows.length > 0 ? `↗ ${rows.length} total items` : "0 items in library",
+          },
+          {
+            label: "Published lessons & files",
+            value: publishedCount.toLocaleString(),
+            change: publishedCount > 0 ? `↗ ${publishedCount} published` : "0 published",
+          },
+          {
+            label: "Video lessons",
+            value: videoCount.toLocaleString(),
+            change: `${videoCount} video tracks`,
+          },
+          {
+            label: "Assignments & challenges",
+            value: assignmentCount.toLocaleString(),
+            change: `${assignmentCount} interactive items`,
+          },
         ]}
       />
 
       <DataCard
         title="Content library"
-        subtitle="Modules, lessons, videos, files, and practice resources"
+        subtitle={
+          rows.length > 0
+            ? `${filtered.length} of ${rows.length} learning assets in library`
+            : "0 learning assets in library"
+        }
         toolbar={
           <SearchToolbar
             query={query}
             setQuery={setQuery}
             filter={filter}
             setFilter={setFilter}
-            filters={["All", "Video", "PDF", "Assignment", "Resource", "Practice problem", "Text"]}
+            filters={["All", "Video", "PDF", "Assignment", "Resource", "Practice problem", "Text", "Quiz"]}
           />
         }
       >
@@ -1284,6 +1317,8 @@ function ContentView({
                           <Code2 className="h-4 w-4" />
                         ) : item.type === "Assignment" ? (
                           <ClipboardCheck className="h-4 w-4 text-sky-600" />
+                        ) : item.type === "PDF" ? (
+                          <FileText className="h-4 w-4 text-rose-500" />
                         ) : (
                           <FileText className="h-4 w-4" />
                         )}
@@ -1301,8 +1336,8 @@ function ContentView({
                   <td className="px-4 py-4">
                     <button
                       onClick={() =>
-                        setRows((current) =>
-                          current.map((row) =>
+                        setLocalRows((current) =>
+                          (current || []).map((row) =>
                             row.id === item.id
                               ? { ...row, status: row.status === "Published" ? "Draft" : "Published" }
                               : row
@@ -1310,6 +1345,7 @@ function ContentView({
                         )
                       }
                       className="icon-button"
+                      title="Toggle status"
                     >
                       <MoreHorizontal className="h-4 w-4" />
                     </button>
@@ -1318,6 +1354,16 @@ function ContentView({
               ))}
             </tbody>
           </table>
+
+          {filtered.length === 0 && (
+            <div className="py-14 text-center text-xs text-[var(--muted)]">
+              <ListChecks className="h-9 w-9 mx-auto mb-2 opacity-30 text-[var(--brand)]" />
+              <p className="font-semibold text-slate-700 dark:text-slate-300">No content items in library</p>
+              <p className="mt-1 text-[11px] max-w-sm mx-auto">
+                When courses, curriculum modules, lessons, and assignments are created, their assets will appear here live.
+              </p>
+            </div>
+          )}
         </div>
       </DataCard>
 
@@ -2939,6 +2985,7 @@ export default function Home() {
     assignments: liveAssignments,
     submissions: liveSubmissions,
     students: liveStudents,
+    content: liveContent,
     stats: liveStats,
     isLoading,
   } = useLiveAdminData();
@@ -3426,6 +3473,8 @@ export default function Home() {
       <ContentView
         onToast={onToast}
         onCreateCourse={handleOpenCourseBuilder}
+        content={liveContent}
+        onRefresh={refresh}
       />
     ) : section === "practice_problems" ? (
       <PracticeProblemsView onAction={onAction} onToast={onToast} />
