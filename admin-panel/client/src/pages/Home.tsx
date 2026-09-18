@@ -230,8 +230,30 @@ function SectionHeader({ section, description, actionLabel, onAction, onExport }
   return <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><div className="mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--brand)]"><LayoutGrid className="h-3.5 w-3.5" /> Operations / {label}</div><h1 className="font-display text-3xl font-bold tracking-[-0.04em]">{label}</h1><p className="mt-2 max-w-2xl text-[13px] leading-6 text-[var(--muted)]">{description}</p></div><div className="flex items-center gap-2"><button onClick={onExport || (() => undefined)} className="secondary-button"><Download className="h-4 w-4" /> Export</button><button onClick={onAction} className="primary-button"><Plus className="h-4 w-4" /> {actionLabel}</button></div></div>;
 }
 
-function MetricStrip({ items }: { items: { label: string; value: string; change: string; tone?: string }[] }) {
-  return <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{items.map((item) => <div className="surface-card p-5" key={item.label}><div className="flex items-center justify-between"><p className="text-[11px] font-semibold text-[var(--muted)]">{item.label}</p><TrendingUp className="h-4 w-4 text-emerald-500" /></div><p className="mt-2 font-display text-2xl font-bold">{item.value}</p><p className={cn("mt-2 text-[10px] font-bold", item.tone || "text-emerald-600")}>{item.change}</p></div>)}</div>;
+function MetricStrip({ items }: { items: { label: string; value: string; change: string; tone?: string; onClick?: () => void }[] }) {
+  return (
+    <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {items.map((item) => (
+        <div
+          className={cn(
+            "surface-card p-5 transition-all",
+            item.onClick && "cursor-pointer hover:border-indigo-300/80 dark:hover:border-indigo-700/80 hover:shadow-md active:scale-[0.99]"
+          )}
+          key={item.label}
+          onClick={item.onClick}
+          role={item.onClick ? "button" : undefined}
+          tabIndex={item.onClick ? 0 : undefined}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold text-[var(--muted)]">{item.label}</p>
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+          </div>
+          <p className="mt-2 font-display text-2xl font-bold">{item.value}</p>
+          <p className={cn("mt-2 text-[10px] font-bold", item.tone || "text-emerald-600")}>{item.change}</p>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 interface CustomDropdownProps {
@@ -446,6 +468,7 @@ function RevenueChart() {
 function Overview({ onAction, onToast, onCreateCourse }: { onAction: (state: DialogState) => void; onToast: (message: string) => void; onCreateCourse?: () => void }) {
   const { adminUser } = useAdminAuth();
   const { stats, courses: liveCourses, isWsConnected } = useLiveAdminData();
+  const { navigate: navigateRoute } = useAdminRoute();
   const displayName = adminUser?.name || "Abhishek";
   const [query, setQuery] = useState("");
   const activeCourses = liveCourses && liveCourses.length > 0 ? liveCourses : courses;
@@ -482,9 +505,23 @@ function Overview({ onAction, onToast, onCreateCourse }: { onAction: (state: Dia
 
       <MetricStrip
         items={[
-          { label: "Total students", value: studentCount.toLocaleString(), change: studentCount > 0 ? `↗ ${studentCount} registered` : "0 registered users" },
-          { label: "Active students", value: activeStudentCount.toLocaleString(), change: activeStudentCount > 0 ? `↗ ${activeStudentCount} active` : "0 active learners" },
-          { label: "Paid enrollments", value: stats.paidEnrollments.toLocaleString(), change: stats.paidEnrollments > 0 ? `↗ ${stats.paidEnrollments} paid` : "0 enrollments" },
+          {
+            label: "Total students",
+            value: studentCount.toLocaleString(),
+            change: studentCount > 0 ? `↗ ${studentCount} registered (click to view)` : "0 registered users",
+            onClick: () => navigateRoute({ tab: "students" }),
+          },
+          {
+            label: "Active students",
+            value: activeStudentCount.toLocaleString(),
+            change: activeStudentCount > 0 ? `↗ ${activeStudentCount} active (click to view)` : "0 active learners",
+            onClick: () => navigateRoute({ tab: "students" }),
+          },
+          {
+            label: "Paid enrollments",
+            value: stats.paidEnrollments.toLocaleString(),
+            change: stats.paidEnrollments > 0 ? `↗ ${stats.paidEnrollments} paid` : "0 enrollments",
+          },
           { label: "Practice problems solved", value: "0", change: "Tracking enabled", tone: "text-slate-500" },
         ]}
       />
@@ -497,12 +534,21 @@ function Overview({ onAction, onToast, onCreateCourse }: { onAction: (state: Dia
               <p className="text-[12px] font-semibold text-[var(--muted)]">Live activity</p>
               <h3 className="mt-1 font-display text-lg font-bold">What’s happening</h3>
             </div>
-            <Bell className="h-4 w-4 text-[var(--muted)]" />
+            <button
+              onClick={() => navigateRoute({ tab: "students" })}
+              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 cursor-pointer"
+            >
+              View learners →
+            </button>
           </div>
           <div className="mt-5 space-y-4">
             {stats.recentActivities.length > 0 ? (
               stats.recentActivities.map((act) => (
-                <div className="flex items-start gap-3" key={`${act.title}-${act.time}`}>
+                <div
+                  className="flex items-start gap-3 cursor-pointer p-1.5 -mx-1.5 rounded-xl transition hover:bg-slate-50 dark:hover:bg-white/5"
+                  key={`${act.title}-${act.time}`}
+                  onClick={() => navigateRoute({ tab: "students" })}
+                >
                   <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
                     <Users className="h-4 w-4" />
                   </div>
@@ -962,14 +1008,37 @@ function CoursesView({
   );
 }
 
-function StudentsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
-  const { students, stats, isLoading } = useLiveAdminData();
+function StudentsView({
+  onAction,
+  onToast,
+  students: propStudents,
+  stats: propStats,
+  isLoading: propLoading,
+  onRefresh,
+}: {
+  onAction: (state: DialogState) => void;
+  onToast: (message: string) => void;
+  students?: StudentItem[];
+  stats?: AdminStats;
+  isLoading?: boolean;
+  onRefresh?: () => void;
+}) {
+  const liveData = useLiveAdminData();
+  const students = propStudents !== undefined ? propStudents : liveData.students;
+  const stats = propStats !== undefined ? propStats : liveData.stats;
+  const isLoading = propLoading !== undefined ? propLoading : liveData.isLoading;
+  const refresh = onRefresh || liveData.refresh;
+
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
 
   const filtered = students.filter((learner) => {
     const matchesFilter = filter === "All" || learner.status === filter;
-    const matchesSearch = `${learner.name} ${learner.email} ${learner.course} ${learner.education}`.toLowerCase().includes(query.toLowerCase());
+    const name = learner.name || "";
+    const email = learner.email || "";
+    const course = learner.course || "";
+    const education = learner.education || "";
+    const matchesSearch = `${name} ${email} ${course} ${education}`.toLowerCase().includes(query.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -2864,7 +2933,15 @@ export default function Home() {
   const [editingRecordingData, setEditingRecordingData] = useState<Partial<RecordingData> | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const { refresh, courses: liveCourses, assignments: liveAssignments, submissions: liveSubmissions } = useLiveAdminData();
+  const {
+    refresh,
+    courses: liveCourses,
+    assignments: liveAssignments,
+    submissions: liveSubmissions,
+    students: liveStudents,
+    stats: liveStats,
+    isLoading,
+  } = useLiveAdminData();
 
   useEffect(() => {
     if (section === "create-course") {
@@ -3337,7 +3414,14 @@ export default function Home() {
         onEditCourse={handleEditCourse}
       />
     ) : section === "students" ? (
-      <StudentsView onAction={onAction} onToast={onToast} />
+      <StudentsView
+        onAction={onAction}
+        onToast={onToast}
+        students={liveStudents}
+        stats={liveStats}
+        isLoading={isLoading}
+        onRefresh={refresh}
+      />
     ) : section === "content" ? (
       <ContentView
         onToast={onToast}
