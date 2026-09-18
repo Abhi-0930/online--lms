@@ -257,7 +257,7 @@ export default function AssignmentBuilder({
   onPublish,
   availableCourses = DEFAULT_COURSES,
 }: AssignmentBuilderProps) {
-  const [activeStep, setActiveStep] = useState(4);
+  const [activeStep, setActiveStep] = useState(1);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [modalDifficulty, setModalDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
@@ -270,6 +270,7 @@ export default function AssignmentBuilder({
 
   // Form State initialized matching user screenshot defaults
   const [data, setData] = useState<AssignmentData>({
+    id: initialData?.id,
     title: initialData?.title || "Week 1 Assignment",
     description: initialData?.description || "Practice arrays and problem-solving fundamentals.",
     instructions: initialData?.instructions || "Complete all problems and submit before the deadline.",

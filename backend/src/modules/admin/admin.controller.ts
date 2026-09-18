@@ -57,5 +57,49 @@ export default async function adminController(fastify: FastifyInstance) {
       return reply.code(400).send({ error: err.message || 'Failed to delete course' });
     }
   });
+
+  // Assignments management
+  fastify.get('/assignments', async () => {
+    return adminService.getAllAssignments();
+  });
+
+  fastify.post('/assignments', async (request, reply) => {
+    const body = request.body as any;
+    try {
+      const assignment = await adminService.saveAssignment(body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(assignment);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to save assignment' });
+    }
+  });
+
+  fastify.patch('/assignments/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    try {
+      const updated = await adminService.updateAssignment(id, body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(updated);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to update assignment' });
+    }
+  });
+
+  fastify.delete('/assignments/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await adminService.deleteAssignment(id);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to delete assignment' });
+    }
+  });
+
+  // Submissions management
+  fastify.get('/submissions', async () => {
+    return adminService.getAllSubmissions();
+  });
 }
 

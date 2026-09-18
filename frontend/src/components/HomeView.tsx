@@ -10,6 +10,7 @@ import { resolveDisplayName, resolveFirstName, resolveEducationStatus } from "@/
 import { initiateRazorpayCheckout } from "@/lib/razorpay";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { useLiveCourses, LiveCourseItem } from "@/hooks/useLiveCourses";
+import { useAssignments, LiveAssignmentItem } from "@/hooks/useAssignments";
 
 function getSecureHref(path: string, params?: Record<string, any>) {
   if (!path || path === "#" || path.startsWith("http")) return path;
@@ -450,6 +451,7 @@ function Dashboard() {
   const { user } = useAuth();
   const { courses, loading: coursesLoading } = useLiveCourses();
   const { enrollments, isEnrolled } = useEnrollments();
+  const { submissions: mySubmissions } = useAssignments();
   const displayName = resolveDisplayName(user);
   const firstName = resolveFirstName(user);
 
@@ -569,7 +571,13 @@ function Dashboard() {
           trend={enrollments.length > 0 ? `+${enrollments.length} active` : "0 active"}
           color="blue"
         />
-        <StatCard icon={ClipboardCheck} value="18" label="Assignments submitted" trend="+4 this week" color="violet" />
+        <StatCard
+          icon={ClipboardCheck}
+          value={String(mySubmissions.length).padStart(2, "0")}
+          label="Assignments submitted"
+          trend={mySubmissions.length > 0 ? `${mySubmissions.length} submitted` : "0 submitted"}
+          color="violet"
+        />
         <StatCard icon={Code2} value="42" label="Problems solved" trend="+12% vs last week" color="amber" />
         <StatCard icon={Clock3} value="26h 40m" label="Total watch time" trend="+3h 20m" color="emerald" />
       </div>
@@ -629,33 +637,18 @@ function CourseProgressCard({ course }: { course: LiveCourseItem }) {
         <img
           src={course.image}
           alt={course.title}
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#17223d]/70 to-transparent" />
-        <span className="absolute bottom-3 left-4 rounded-md bg-white/15 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">
+        <span className="absolute left-3 top-3 rounded-lg bg-black/60 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-md">
           {course.category}
         </span>
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toast.success("Course bookmarked");
-          }}
-          className="absolute right-3 top-3 rounded-lg bg-black/20 p-2 text-white backdrop-blur-md hover:bg-black/40"
-        >
-          <Bookmark className="h-3.5 w-3.5" />
-        </button>
       </div>
       <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-[#17223d] dark:text-white truncate">{course.title}</h3>
-            <p className="mt-1 text-xs text-[#9aa4bc] truncate">{course.subtitle || course.description}</p>
-          </div>
-          <span className="text-xs font-bold text-[#3157e8] shrink-0">{course.progress}%</span>
-        </div>
-        <div className="mt-4">
-          <ProgressBar value={course.progress} color={course.accent === "violet" ? "#7f5af0" : "#3157e8"} />
+        <h3 className="font-display text-sm font-bold text-[#17223d] dark:text-white line-clamp-1">{course.title}</h3>
+        <p className="mt-1 text-[11px] text-[#9aa4bc] line-clamp-1">{course.subtitle}</p>
+        <div className="mt-4 flex items-center justify-between border-t border-[#edf0f6] pt-3 text-[10px] font-bold text-[#7c87a4] dark:border-white/10">
+          <span>{course.level}</span>
+          <span className="text-[#3157e8]">{course.price}</span>
         </div>
       </div>
     </Link>
@@ -666,8 +659,53 @@ function ActivityRow({ item, last }: { item: typeof activity[number]; last: bool
 
 function UpcomingSessions() { return <section><SectionTitle title="Upcoming sessions" link="Calendar" href={getSecureHref("/announcements")} /><div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10"><SessionRow day="18" month="SEP" title="Live DSA clinic" meta="Thursday · 7:30 PM" tone="blue" /><SessionRow day="21" month="SEP" title="Mock interview #02" meta="Sunday · 11:00 AM" tone="violet" /><SessionRow day="24" month="SEP" title="Guest session: Google" meta="Wednesday · 6:00 PM" tone="amber" /></div></section>; }
 function SessionRow({ day, month, title, meta, tone }: { day: string; month: string; title: string; meta: string; tone: "blue" | "violet" | "amber" }) { const tones = { blue: "bg-[#eaf0ff] text-[#3157e8]", violet: "bg-[#f0eaff] text-[#7f5af0]", amber: "bg-[#fff4db] text-[#d68c20]" }; return <div className="flex items-center gap-3 py-4"><div className={cx("flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl", tones[tone])}><span className="text-[9px] font-bold uppercase">{month}</span><span className="font-display text-lg font-bold leading-4">{day}</span></div><div className="min-w-0"><p className="truncate text-sm font-bold text-[#17223d] dark:text-white">{title}</p><p className="mt-1 text-xs text-[#9aa4bc]">{meta}</p></div><ChevronRight className="ml-auto h-4 w-4 shrink-0 text-[#c4cada]" /></div>; }
-function AssignmentsWidget() { return <section><SectionTitle title="Pending assignments" link="See all" href={getSecureHref("/assignments")} /><div className="card-surface px-5"><AssignmentRow title="Arrays checkpoint" course="DSA Foundations" due="Due tomorrow" urgent /><AssignmentRow title="System design reflection" course="Placement Sprint" due="Due in 4 days" /><AssignmentRow title="Portfolio review" course="Frontend Interview Lab" due="Due Sep 28" /></div></section>; }
-function AssignmentRow({ title, course, due, urgent }: { title: string; course: string; due: string; urgent?: boolean }) { return <div className="flex items-start gap-3 border-b border-[#edf0f6] py-4 last:border-0 dark:border-white/10"><span className={cx("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", urgent ? "bg-[#fff0ed] text-[#ef8354]" : "bg-[#f0f2f8] text-[#7c87a4] dark:bg-white/10")}><ClipboardCheck className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-[#17223d] dark:text-white">{title}</p><p className="mt-1 truncate text-[10px] text-[#9aa4bc]">{course}</p></div><span className={cx("shrink-0 text-[10px] font-bold", urgent ? "text-[#ef8354]" : "text-[#9aa4bc]")}>{due}</span></div>; }
+
+function AssignmentsWidget() {
+  const { assignments, loading } = useAssignments();
+  return (
+    <section>
+      <SectionTitle title="Pending assignments" link={assignments.length > 0 ? "See all" : undefined} href={getSecureHref("/assignments")} />
+      <div className="card-surface px-5">
+        {loading ? (
+          <div className="py-6 space-y-3">
+            <div className="h-4 bg-slate-200/60 dark:bg-white/5 rounded animate-pulse w-3/4" />
+            <div className="h-4 bg-slate-200/60 dark:bg-white/5 rounded animate-pulse w-1/2" />
+          </div>
+        ) : assignments.length === 0 ? (
+          <div className="py-6 text-center text-xs text-[#9aa4bc]">
+            No pending assignments. All caught up!
+          </div>
+        ) : (
+          assignments.slice(0, 3).map((a) => (
+            <Link key={a.id} href={getSecureHref("/assignments")}>
+              <AssignmentRow
+                title={a.title}
+                course={a.course}
+                due={a.dueDate}
+                urgent={a.dueDate.toLowerCase().includes("tomorrow") || a.dueDate.toLowerCase().includes("today")}
+              />
+            </Link>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function AssignmentRow({ title, course, due, urgent }: { title: string; course: string; due: string; urgent?: boolean }) {
+  return (
+    <div className="flex items-start gap-3 border-b border-[#edf0f6] py-4 last:border-0 dark:border-white/10 hover:opacity-85 transition-opacity">
+      <span className={cx("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", urgent ? "bg-[#fff0ed] text-[#ef8354]" : "bg-[#f0f2f8] text-[#7c87a4] dark:bg-white/10")}>
+        <ClipboardCheck className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">{title}</p>
+        <p className="mt-1 truncate text-[10px] text-[#9aa4bc]">{course}</p>
+      </div>
+      <span className={cx("shrink-0 text-[10px] font-bold", urgent ? "text-[#ef8354]" : "text-[#9aa4bc]")}>{due}</span>
+    </div>
+  );
+}
 
 function CoursesPage() {
   const { courses, loading } = useLiveCourses();
@@ -2470,7 +2508,335 @@ function NotificationsPage() {
   );
 }
 
-function AssignmentsPage() { const [submitted, setSubmitted] = useState(false); return <><PageHeader eyebrow="Show your work" title="Assignments" description="Turn your practice into proof with thoughtful submissions and mentor feedback." /><div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"><section className="card-surface p-5 sm:p-7"><div className="flex items-start gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fff0ed] text-[#ef8354]"><ClipboardCheck className="h-5 w-5" /></span><div><span className="rounded-md bg-[#fff0ed] px-2 py-1 text-[10px] font-bold text-[#ef8354]">Due tomorrow</span><h2 className="mt-3 font-display text-2xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white">Arrays checkpoint</h2><p className="mt-1 text-xs text-[#9aa4bc]">DSA Foundations · Module 02</p></div></div><div className="mt-7 rounded-xl bg-[#f7f9fc] p-5 dark:bg-white/5"><p className="text-sm font-bold text-[#17223d] dark:text-white">Instructions</p><p className="mt-2 text-sm leading-6 text-[#7c87a4]">Choose two array problems from this module and explain your approach, complexity, and one edge case you intentionally handled. Include code that another learner could review.</p></div><label className="mt-6 block text-xs font-bold text-[#52617f] dark:text-white/80">Your submission</label><textarea placeholder="Paste your explanation or solution here..." className="mt-2 min-h-[150px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white" /><div className="mt-4 grid gap-3 sm:grid-cols-2"><button onClick={() => toast.info("File upload opened")} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#cbd4e5] py-4 text-xs font-bold text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"><Plus className="h-4 w-4" /> Attach a file</button><button onClick={() => toast.info("GitHub link field ready")} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#cbd4e5] py-4 text-xs font-bold text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"><Github className="h-4 w-4" /> Add GitHub link</button></div><div className="mt-6 flex justify-end"><button onClick={() => { setSubmitted(true); toast.success("Assignment submitted for review"); }} className="button-primary"><Send className="h-4 w-4" /> {submitted ? "Submitted" : "Submit assignment"}</button></div></section><aside className="space-y-5"><div className="card-surface p-5"><p className="text-xs font-bold text-[#7c87a4]">Submission history</p><div className="mt-4 space-y-4"><div className="flex items-start gap-3"><span className="mt-0.5 h-2 w-2 rounded-full bg-[#23a26d]" /><div><p className="text-xs font-bold text-[#17223d] dark:text-white">Placement reflection</p><p className="mt-1 text-[10px] text-[#9aa4bc]">Reviewed · Sep 08, 2025</p></div></div><div className="flex items-start gap-3"><span className="mt-0.5 h-2 w-2 rounded-full bg-[#ffca63]" /><div><p className="text-xs font-bold text-[#17223d] dark:text-white">Portfolio review</p><p className="mt-1 text-[10px] text-[#9aa4bc]">Pending · Sep 04, 2025</p></div></div></div></div><div className="rounded-2xl bg-[#eaf0ff] p-5 dark:bg-[#3157e8]/20"><Headphones className="h-5 w-5 text-[#3157e8]" /><p className="mt-4 text-sm font-bold text-[#17223d] dark:text-white">Need a second pair of eyes?</p><p className="mt-2 text-xs leading-5 text-[#5f6c8c] dark:text-white/65">Ask your cohort in Community or bring the question to your next clinic.</p><Link href={getSecureHref("/community")} className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#3157e8]">Open community <ArrowRight className="h-3.5 w-3.5" /></Link></div></aside></div></>; }
+function AssignmentsPage() {
+  const { assignments, submissions, loading, submitAssignment } = useAssignments();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [submissionText, setSubmissionText] = useState("");
+  const [githubUrl, setGithubUrl] = useState("");
+  const [fileUrl, setFileUrl] = useState("");
+  const [showGithubInput, setShowGithubInput] = useState(false);
+  const [showFileInput, setShowFileInput] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedForCurrent, setSubmittedForCurrent] = useState(false);
+
+  // Default selected assignment
+  const currentAssignment = assignments.find((a) => a.id === selectedId) || assignments[0] || null;
+
+  useEffect(() => {
+    if (currentAssignment) {
+      if (currentAssignment.userSubmission) {
+        setSubmittedForCurrent(true);
+        setSubmissionText(currentAssignment.userSubmission.content || "");
+        setGithubUrl(currentAssignment.userSubmission.githubUrl || "");
+        setFileUrl(currentAssignment.userSubmission.fileUrl || "");
+      } else {
+        setSubmittedForCurrent(false);
+        setSubmissionText("");
+        setGithubUrl("");
+        setFileUrl("");
+        setShowGithubInput(false);
+        setShowFileInput(false);
+      }
+    }
+  }, [currentAssignment?.id, currentAssignment?.userSubmission]);
+
+  const handleSubmit = async () => {
+    if (!currentAssignment) return;
+    if (!submissionText.trim() && !githubUrl.trim() && !fileUrl.trim()) {
+      toast.error("Please provide your submission text, GitHub link, or attached file");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await submitAssignment(currentAssignment.id, {
+        content: submissionText,
+        githubUrl: githubUrl || undefined,
+        fileUrl: fileUrl || undefined,
+      });
+
+      if (res.success) {
+        setSubmittedForCurrent(true);
+        toast.success(`Assignment "${currentAssignment.title}" submitted successfully for review!`);
+      } else {
+        toast.error(res.error || "Failed to submit assignment");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Show your work"
+        title="Assignments"
+        description="Turn your practice into proof with thoughtful submissions and mentor feedback."
+      />
+
+      {loading ? (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="card-surface h-96 animate-pulse p-7" />
+          <div className="card-surface h-96 animate-pulse p-7" />
+        </div>
+      ) : assignments.length === 0 ? (
+        <div className="card-surface p-12 text-center">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300 mb-4">
+            <ClipboardCheck className="h-7 w-7" />
+          </div>
+          <h2 className="font-display text-xl font-bold text-[#17223d] dark:text-white">
+            No assignments available yet
+          </h2>
+          <p className="mt-2 text-xs text-[#9aa4bc] max-w-md mx-auto">
+            Assignments created and published from the Admin Panel will appear here in real time. Check back soon or explore available courses!
+          </p>
+          <Link
+            href={getSecureHref("/courses")}
+            className="button-primary mt-6 inline-flex items-center gap-2"
+          >
+            Browse courses <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Assignment Switcher if multiple */}
+          {assignments.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-[#7c87a4]">Select assignment:</span>
+              {assignments.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => setSelectedId(a.id)}
+                  className={cx(
+                    "rounded-xl px-3 py-1.5 text-xs font-bold transition-colors",
+                    (currentAssignment?.id === a.id)
+                      ? "bg-[#3157e8] text-white shadow-sm"
+                      : "bg-[#f0f2f8] text-[#52617f] hover:bg-[#e2e6f0] dark:bg-white/10 dark:text-white/80"
+                  )}
+                >
+                  {a.title}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            {currentAssignment && (
+              <section className="card-surface p-5 sm:p-7">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#fff0ed] text-[#ef8354]">
+                      <ClipboardCheck className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md bg-[#fff0ed] px-2 py-1 text-[10px] font-bold text-[#ef8354]">
+                          {currentAssignment.dueDate}
+                        </span>
+                        {currentAssignment.difficulty && (
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-white/10 dark:text-white/80">
+                            {currentAssignment.difficulty}
+                          </span>
+                        )}
+                      </div>
+                      <h2 className="mt-2 font-display text-2xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white">
+                        {currentAssignment.title}
+                      </h2>
+                      <p className="mt-1 text-xs text-[#9aa4bc]">
+                        {currentAssignment.course} {currentAssignment.module ? `· ${currentAssignment.module}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-[#7c87a4]">Total Marks</span>
+                    <p className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                      {currentAssignment.totalMarks} pts
+                    </p>
+                  </div>
+                </div>
+
+                {currentAssignment.description && (
+                  <p className="mt-5 text-sm leading-relaxed text-[#52617f] dark:text-white/70">
+                    {currentAssignment.description}
+                  </p>
+                )}
+
+                {currentAssignment.instructions && (
+                  <div className="mt-5 rounded-xl bg-[#f7f9fc] p-5 dark:bg-white/5">
+                    <p className="text-sm font-bold text-[#17223d] dark:text-white">Instructions</p>
+                    <p className="mt-2 text-sm leading-6 text-[#7c87a4] whitespace-pre-line">
+                      {currentAssignment.instructions}
+                    </p>
+                  </div>
+                )}
+
+                {/* Problem bank items if attached */}
+                {Array.isArray(currentAssignment.problemsList) && currentAssignment.problemsList.length > 0 && (
+                  <div className="mt-6 space-y-2">
+                    <p className="text-xs font-bold text-[#52617f] dark:text-white/80">
+                      Problems Included ({currentAssignment.problemsList.length})
+                    </p>
+                    <div className="divide-y divide-[#edf0f6] rounded-xl border border-[#edf0f6] dark:divide-white/10 dark:border-white/10">
+                      {currentAssignment.problemsList.map((p: any, idx: number) => (
+                        <div key={p.id || idx} className="flex items-center justify-between p-3 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[#9aa4bc]">#{idx + 1}</span>
+                            <span className="font-bold text-[#17223d] dark:text-white">{p.title}</span>
+                            {p.category && <span className="text-[10px] text-[#9aa4bc]">({p.category})</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold text-[#7c87a4]">{p.difficulty || "Medium"}</span>
+                            <span className="font-bold text-[#3157e8]">{p.points || 25} pts</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 border-t border-[#edf0f6] pt-6 dark:border-white/10">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-[#52617f] dark:text-white/80">
+                      Your submission
+                    </label>
+                    {submittedForCurrent && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <Check className="h-3.5 w-3.5" /> Submitted
+                      </span>
+                    )}
+                  </div>
+
+                  <textarea
+                    value={submissionText}
+                    onChange={(e) => setSubmissionText(e.target.value)}
+                    placeholder="Paste your explanation, code solution, or approach notes here..."
+                    className="mt-2 min-h-[150px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  />
+
+                  {showGithubInput && (
+                    <div className="mt-3">
+                      <label className="block text-[11px] font-bold text-[#7c87a4]">GitHub Repository / PR Link</label>
+                      <input
+                        type="url"
+                        value={githubUrl}
+                        onChange={(e) => setGithubUrl(e.target.value)}
+                        placeholder="https://github.com/username/project"
+                        className="mt-1 w-full rounded-xl border border-[#e5e8f0] bg-white px-3 py-2 text-xs outline-none focus:border-[#9db3ff] dark:border-white/10 dark:bg-white/5 dark:text-white"
+                      />
+                    </div>
+                  )}
+
+                  {showFileInput && (
+                    <div className="mt-3">
+                      <label className="block text-[11px] font-bold text-[#7c87a4]">File or Document URL / Cloud Link</label>
+                      <input
+                        type="text"
+                        value={fileUrl}
+                        onChange={(e) => setFileUrl(e.target.value)}
+                        placeholder="https://drive.google.com/... or cloud asset link"
+                        className="mt-1 w-full rounded-xl border border-[#e5e8f0] bg-white px-3 py-2 text-xs outline-none focus:border-[#9db3ff] dark:border-white/10 dark:bg-white/5 dark:text-white"
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowFileInput(!showFileInput)}
+                      className={cx(
+                        "flex items-center justify-center gap-2 rounded-xl border border-dashed py-3 text-xs font-bold transition",
+                        showFileInput || fileUrl
+                          ? "border-[#3157e8] text-[#3157e8] bg-[#eaf0ff]/50 dark:bg-[#3157e8]/10"
+                          : "border-[#cbd4e5] text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"
+                      )}
+                    >
+                      <Plus className="h-4 w-4" /> {fileUrl ? "File Link Added" : "Attach a file / URL"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowGithubInput(!showGithubInput)}
+                      className={cx(
+                        "flex items-center justify-center gap-2 rounded-xl border border-dashed py-3 text-xs font-bold transition",
+                        showGithubInput || githubUrl
+                          ? "border-[#3157e8] text-[#3157e8] bg-[#eaf0ff]/50 dark:bg-[#3157e8]/10"
+                          : "border-[#cbd4e5] text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"
+                      )}
+                    >
+                      <Github className="h-4 w-4" /> {githubUrl ? "GitHub Linked" : "Add GitHub link"}
+                    </button>
+                  </div>
+
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className="button-primary inline-flex items-center gap-2"
+                    >
+                      <Send className="h-4 w-4" />
+                      {isSubmitting ? "Submitting..." : submittedForCurrent ? "Update submission" : "Submit assignment"}
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Right sidebar with Submission History */}
+            <aside className="space-y-5">
+              <div className="card-surface p-5">
+                <p className="text-xs font-bold text-[#7c87a4]">Submission history</p>
+                <div className="mt-4 space-y-4">
+                  {submissions.length === 0 ? (
+                    <p className="text-xs text-[#9aa4bc] py-4 text-center">
+                      No submissions yet. Submit your first assignment on the left!
+                    </p>
+                  ) : (
+                    submissions.map((s) => {
+                      const isGraded = (s.status || "").toUpperCase() === "GRADED";
+                      return (
+                        <div key={s.id} className="flex items-start gap-3">
+                          <span
+                            className={cx(
+                              "mt-1 h-2 w-2 shrink-0 rounded-full",
+                              isGraded ? "bg-[#23a26d]" : "bg-[#ffca63]"
+                            )}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-[#17223d] dark:text-white truncate">
+                              {s.assignment?.title || "Assignment Submission"}
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-[#9aa4bc]">
+                              {isGraded ? `Score: ${s.score}/${s.maxScore || 100}` : "Pending Review"} ·{" "}
+                              {new Date(s.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-[#eaf0ff] p-5 dark:bg-[#3157e8]/20">
+                <Headphones className="h-5 w-5 text-[#3157e8]" />
+                <p className="mt-4 text-sm font-bold text-[#17223d] dark:text-white">Need a second pair of eyes?</p>
+                <p className="mt-2 text-xs leading-5 text-[#5f6c8c] dark:text-white/65">
+                  Ask your cohort in Community or bring the question to your next clinic.
+                </p>
+                <Link
+                  href={getSecureHref("/community")}
+                  className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#3157e8]"
+                >
+                  Open community <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </aside>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 function ProfilePage() {
   const { theme, toggleTheme } = useTheme();

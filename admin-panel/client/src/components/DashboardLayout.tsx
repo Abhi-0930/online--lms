@@ -34,52 +34,24 @@ import {
 } from "lucide-react";
 import { useAdminRoute } from "@/lib/navigation";
 import { useMemo, useState } from "react";
-
-const navigation = [
-  {
-    label: "Workspace",
-    items: [
-      { id: "overview", label: "Overview", icon: LayoutDashboard },
-      { id: "courses", label: "Courses", icon: BookOpen, badge: "24" },
-      { id: "students", label: "Students", icon: Users },
-    ],
-  },
-  {
-    label: "Learning Content",
-    items: [
-      { id: "content", label: "Content Library", icon: ListChecks },
-      { id: "practice_problems", label: "Practice Problems", icon: Code2 },
-      { id: "assessments", label: "Assessments", icon: ClipboardCheck, badge: "8" },
-      { id: "submissions", label: "Submissions", icon: FileText, badge: "42" },
-      { id: "announcements", label: "Announcements", icon: Send },
-    ],
-  },
-  {
-    label: "Learning Operations",
-    items: [
-      { id: "live", label: "Live Sessions", icon: Video },
-      { id: "recordings", label: "Recordings", icon: PlayCircle },
-      { id: "payments", label: "Payments", icon: CircleDollarSign },
-    ],
-  },
-  {
-    label: "Insights",
-    items: [
-      { id: "feedback", label: "Feedback", icon: FileText },
-      { id: "reports", label: "Reports", icon: BarChart3 },
-      { id: "audit", label: "Audit logs", icon: ShieldCheck },
-    ],
-  },
-  {
-    label: "Platform",
-    items: [
-      { id: "settings", label: "Settings", icon: Settings },
-    ],
-  },
-];
+import { useLiveAdminData } from "@/hooks/useLiveAdminData";
 
 export const navLabelMap: Record<string, string> = {
-  ...Object.fromEntries(navigation.flatMap((group) => group.items.map((item) => [item.id, item.label]))),
+  overview: "Overview",
+  courses: "Courses",
+  students: "Students",
+  content: "Content Library",
+  practice_problems: "Practice Problems",
+  assignments: "Assignments",
+  assessments: "Assessments",
+  submissions: "Submissions",
+  announcements: "Announcements",
+  live: "Live Sessions",
+  recordings: "Recordings",
+  payments: "Payments",
+  feedback: "Feedback",
+  reports: "Reports",
+  audit: "Audit logs",
   settings: "Settings",
   help: "Help Center",
   "create-course": "Create Course",
@@ -91,9 +63,77 @@ export const navLabelMap: Record<string, string> = {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { adminUser, logout } = useAdminAuth();
   const { theme, toggleTheme } = useTheme();
+  const { courses, stats, assignments, submissions } = useLiveAdminData();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { tab: activeSection, navigate: navigateRoute } = useAdminRoute();
+
+  const courseCount = courses.length || stats.coursesCount || 0;
+
+  const navigation = useMemo(
+    () => [
+      {
+        label: "Workspace",
+        items: [
+          { id: "overview", label: "Overview", icon: LayoutDashboard },
+          {
+            id: "courses",
+            label: "Courses",
+            icon: BookOpen,
+            badge: courseCount > 0 ? String(courseCount) : undefined,
+          },
+          {
+            id: "students",
+            label: "Students",
+            icon: Users,
+            badge: stats.totalStudents > 0 ? String(stats.totalStudents) : undefined,
+          },
+        ],
+      },
+      {
+        label: "Learning Content",
+        items: [
+          { id: "content", label: "Content Library", icon: ListChecks },
+          { id: "practice_problems", label: "Practice Problems", icon: Code2 },
+          {
+            id: "assignments",
+            label: "Assignments",
+            icon: ClipboardCheck,
+            badge: assignments.length > 0 ? String(assignments.length) : undefined,
+          },
+          { id: "assessments", label: "Assessments", icon: FileCheck2 },
+          {
+            id: "submissions",
+            label: "Submissions",
+            icon: FileText,
+            badge: submissions.length > 0 ? String(submissions.length) : undefined,
+          },
+          { id: "announcements", label: "Announcements", icon: Send },
+        ],
+      },
+      {
+        label: "Learning Operations",
+        items: [
+          { id: "live", label: "Live Sessions", icon: Video },
+          { id: "recordings", label: "Recordings", icon: PlayCircle },
+          { id: "payments", label: "Payments", icon: CircleDollarSign },
+        ],
+      },
+      {
+        label: "Insights",
+        items: [
+          { id: "feedback", label: "Feedback", icon: FileText },
+          { id: "reports", label: "Reports", icon: BarChart3 },
+          { id: "audit", label: "Audit logs", icon: ShieldCheck },
+        ],
+      },
+      {
+        label: "Platform",
+        items: [{ id: "settings", label: "Settings", icon: Settings }],
+      },
+    ],
+    [courseCount, stats.totalStudents, assignments.length, submissions.length]
+  );
 
   const displayName = adminUser?.name || "Abhishek";
   const displayEmail = adminUser?.email || "abhishek.j3094@gmail.com";
@@ -246,5 +286,3 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   );
 }
-
-export { navigation };

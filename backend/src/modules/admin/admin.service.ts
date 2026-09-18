@@ -4,6 +4,8 @@ import { OnboardingService } from '../onboarding/onboarding.service';
 
 export class AdminService {
   public static fallbackCourses = new Map<string, any>();
+  public static fallbackAssignments = new Map<string, any>();
+  public static fallbackSubmissions = new Map<string, any>();
 
   constructor(private prisma: PrismaClient) {}
 
@@ -744,6 +746,346 @@ export class AdminService {
     }
     AdminService.fallbackCourses.delete(id);
     return { success: true, id };
+  }
+
+  async getAllAssignments() {
+    let dbAssignments: any[] = [];
+    try {
+      dbAssignments = await (this.prisma as any).assignment.findMany({
+        include: {
+          course: {
+            select: { id: true, title: true, slug: true },
+          },
+          submissions: {
+            select: { id: true, score: true, maxScore: true, status: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch {
+      dbAssignments = [];
+    }
+
+    const assignmentMap = new Map<string, any>();
+    for (const a of dbAssignments) {
+      assignmentMap.set(a.id, a);
+    }
+    for (const fallback of AdminService.fallbackAssignments.values()) {
+      if (!assignmentMap.has(fallback.id)) {
+        assignmentMap.set(fallback.id, fallback);
+      }
+    }
+
+    const allList = Array.from(assignmentMap.values());
+
+    return allList.map((item) => {
+      const subs = Array.isArray(item.submissions) ? item.submissions : [];
+      const subCount = subs.length;
+      const gradedSubs = subs.filter((s: any) => s.score !== null && s.score !== undefined);
+      const avgScore = gradedSubs.length > 0
+        ? Math.round(gradedSubs.reduce((acc: number, s: any) => acc + Number(s.score), 0) / gradedSubs.length)
+        : null;
+      const maxScore = item.totalMarks || 100;
+
+      const formattedDueDate = item.dueDateString || item.deadline || (item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No due date');
+
+      const rawStatus = (item.status || 'DRAFT').toUpperCase();
+      const status = rawStatus === 'PUBLISHED' ? 'Published' : rawStatus === 'SCHEDULED' ? 'Scheduled' : 'Draft';
+
+      return {
+        id: item.id,
+        title: item.title,
+        description: item.description || '',
+        instructions: item.instructions || '',
+        course: item.course?.title || item.courseName || item.course || 'DSA Placement Program',
+        courseId: item.courseId || item.course?.id || null,
+        module: item.module || 'General',
+        topic: item.topic || '',
+        difficulty: item.difficulty || 'Medium',
+        dueDate: formattedDueDate,
+        deadline: item.deadline || formattedDueDate,
+        deadlineTime: item.deadlineTime || '',
+        releaseDate: item.releaseDate || '',
+        startTime: item.startTime || '',
+        submissions: subCount,
+        maxScore,
+        avgGrade: avgScore !== null ? `${avgScore}/${maxScore}` : '--',
+        status,
+        problemsCount: item.problemsCount || (Array.isArray(item.problemsList) ? item.problemsList.length : 0),
+        problemsList: item.problemsList || [],
+        resources: item.resources || [],
+        submissionTypes: item.submissionTypes || ['Code Editor / IDE', 'ZIP / File upload', 'GitHub repository link'],
+        allowLate: item.allowLate || false,
+        latePenalty: item.latePenalty || '10% per day',
+        maxFileSize: item.maxFileSize || '25 MB',
+        maxAttempts: item.maxAttempts || 'Unlimited',
+        totalMarks: item.totalMarks || 100,
+        passingMarks: item.passingMarks || 40,
+        gradingMode: item.gradingMode || 'Manual Review',
+        targetCohort: item.targetCohort || 'All Learners',
+        notifyStudents: item.notifyStudents ?? true,
+        createdAt: item.createdAt || new Date().toISOString(),
+      };
+    });
+  }
+
+  async saveAssignment(data: any) {
+    const statusEnum = (data.status || 'DRAFT').toUpperCase();
+    const mappedStatus = statusEnum === 'PUBLISHED' ? 'PUBLISHED' : statusEnum === 'SCHEDULED' ? 'SCHEDULED' : 'DRAFT';
+
+    let courseId: string | null = null;
+    if (data.course) {
+      try {
+        const found = await this.prisma.course.findFirst({
+          where: {
+            OR: [
+              { id: data.course },
+              { title: { contains: data.course, mode: 'insensitive' } },
+            ],
+          },
+        });
+        if (found) courseId = found.id;
+      } catch {}
+    }
+
+    if (data.id && (AdminService.fallbackAssignments.has(data.id) || typeof data.id === 'string')) {
+      try {
+        const updated = await (this.prisma as any).assignment.upsert({
+          where: { id: String(data.id) },
+          update: {
+            title: data.title,
+            description: data.description || null,
+            instructions: data.instructions || null,
+            courseId,
+            courseName: data.course || null,
+            module: data.module || null,
+            topic: data.topic || null,
+            difficulty: data.difficulty || 'Medium',
+            problemsCount: data.problemsCount || (Array.isArray(data.problemsList) ? data.problemsList.length : 0),
+            problemsList: data.problemsList || [],
+            releaseDate: data.releaseDate || null,
+            startTime: data.startTime || null,
+            deadline: data.deadline || null,
+            deadlineTime: data.deadlineTime || null,
+            dueDateString: data.deadline || data.dueDate || null,
+            allowLate: data.allowLate ?? false,
+            latePenalty: data.latePenalty || null,
+            resources: data.resources || [],
+            submissionTypes: data.submissionTypes || [],
+            maxFileSize: data.maxFileSize || null,
+            maxAttempts: data.maxAttempts || null,
+            totalMarks: Number(data.totalMarks) || 100,
+            passingMarks: Number(data.passingMarks) || 40,
+            gradingMode: data.gradingMode || null,
+            targetCohort: data.targetCohort || null,
+            status: mappedStatus,
+            notifyStudents: data.notifyStudents ?? true,
+          },
+          create: {
+            id: String(data.id),
+            title: data.title,
+            description: data.description || null,
+            instructions: data.instructions || null,
+            courseId,
+            courseName: data.course || null,
+            module: data.module || null,
+            topic: data.topic || null,
+            difficulty: data.difficulty || 'Medium',
+            problemsCount: data.problemsCount || (Array.isArray(data.problemsList) ? data.problemsList.length : 0),
+            problemsList: data.problemsList || [],
+            releaseDate: data.releaseDate || null,
+            startTime: data.startTime || null,
+            deadline: data.deadline || null,
+            deadlineTime: data.deadlineTime || null,
+            dueDateString: data.deadline || data.dueDate || null,
+            allowLate: data.allowLate ?? false,
+            latePenalty: data.latePenalty || null,
+            resources: data.resources || [],
+            submissionTypes: data.submissionTypes || [],
+            maxFileSize: data.maxFileSize || null,
+            maxAttempts: data.maxAttempts || null,
+            totalMarks: Number(data.totalMarks) || 100,
+            passingMarks: Number(data.passingMarks) || 40,
+            gradingMode: data.gradingMode || null,
+            targetCohort: data.targetCohort || null,
+            status: mappedStatus,
+            notifyStudents: data.notifyStudents ?? true,
+          },
+        });
+        AdminService.fallbackAssignments.set(updated.id, { ...data, ...updated });
+        return updated;
+      } catch (dbErr) {
+        const fullAssignment = {
+          id: String(data.id),
+          ...data,
+          status: mappedStatus,
+          updatedAt: new Date(),
+        };
+        AdminService.fallbackAssignments.set(String(data.id), fullAssignment);
+        return fullAssignment;
+      }
+    }
+
+    try {
+      const created = await (this.prisma as any).assignment.create({
+        data: {
+          title: data.title,
+          description: data.description || null,
+          instructions: data.instructions || null,
+          courseId,
+          courseName: data.course || null,
+          module: data.module || null,
+          topic: data.topic || null,
+          difficulty: data.difficulty || 'Medium',
+          problemsCount: data.problemsCount || (Array.isArray(data.problemsList) ? data.problemsList.length : 0),
+          problemsList: data.problemsList || [],
+          releaseDate: data.releaseDate || null,
+          startTime: data.startTime || null,
+          deadline: data.deadline || null,
+          deadlineTime: data.deadlineTime || null,
+          dueDateString: data.deadline || data.dueDate || null,
+          allowLate: data.allowLate ?? false,
+          latePenalty: data.latePenalty || null,
+          resources: data.resources || [],
+          submissionTypes: data.submissionTypes || [],
+          maxFileSize: data.maxFileSize || null,
+          maxAttempts: data.maxAttempts || null,
+          totalMarks: Number(data.totalMarks) || 100,
+          passingMarks: Number(data.passingMarks) || 40,
+          gradingMode: data.gradingMode || null,
+          targetCohort: data.targetCohort || null,
+          status: mappedStatus,
+          notifyStudents: data.notifyStudents ?? true,
+        },
+      });
+      AdminService.fallbackAssignments.set(created.id, { ...data, ...created });
+      return created;
+    } catch (dbErr) {
+      const newId = `asgn_${Date.now()}`;
+      const fullAssignment = {
+        id: newId,
+        ...data,
+        status: mappedStatus,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      AdminService.fallbackAssignments.set(newId, fullAssignment);
+      return fullAssignment;
+    }
+  }
+
+  async updateAssignment(id: string, data: any) {
+    let mappedStatus: string | undefined = undefined;
+    if (data.status) {
+      const s = data.status.toUpperCase();
+      mappedStatus = s === 'PUBLISHED' ? 'PUBLISHED' : s === 'SCHEDULED' ? 'SCHEDULED' : 'DRAFT';
+    }
+
+    try {
+      const updated = await (this.prisma as any).assignment.update({
+        where: { id },
+        data: {
+          ...(data.title ? { title: data.title } : {}),
+          ...(data.description !== undefined ? { description: data.description } : {}),
+          ...(mappedStatus ? { status: mappedStatus } : {}),
+          ...(data.deadline ? { deadline: data.deadline, dueDateString: data.deadline } : {}),
+          ...(data.totalMarks !== undefined ? { totalMarks: Number(data.totalMarks) } : {}),
+        },
+      });
+      if (AdminService.fallbackAssignments.has(id)) {
+        AdminService.fallbackAssignments.set(id, {
+          ...AdminService.fallbackAssignments.get(id),
+          ...data,
+          ...updated,
+        });
+      }
+      return updated;
+    } catch {
+      if (AdminService.fallbackAssignments.has(id)) {
+        const existing = AdminService.fallbackAssignments.get(id);
+        const updated = {
+          ...existing,
+          ...data,
+          status: mappedStatus || existing.status,
+          updatedAt: new Date(),
+        };
+        AdminService.fallbackAssignments.set(id, updated);
+        return updated;
+      }
+      return { id, ...data };
+    }
+  }
+
+  async deleteAssignment(id: string) {
+    try {
+      await (this.prisma as any).assignment.delete({
+        where: { id },
+      });
+    } catch {}
+    AdminService.fallbackAssignments.delete(id);
+    return { success: true, id };
+  }
+
+  async getAllSubmissions() {
+    let dbSubmissions: any[] = [];
+    try {
+      dbSubmissions = await (this.prisma as any).assignmentSubmission.findMany({
+        include: {
+          assignment: true,
+          user: true,
+        },
+        orderBy: { submittedAt: 'desc' },
+      });
+    } catch {
+      dbSubmissions = [];
+    }
+
+    const subMap = new Map<string, any>();
+    for (const s of dbSubmissions) {
+      subMap.set(s.id, s);
+    }
+    for (const fallback of AdminService.fallbackSubmissions.values()) {
+      if (!subMap.has(fallback.id)) {
+        subMap.set(fallback.id, fallback);
+      }
+    }
+
+    const allList = Array.from(subMap.values());
+
+    return allList.map((sub) => {
+      const studentName = sub.user?.fullName || sub.student || 'Learner';
+      const assignmentTitle = sub.assignment?.title || sub.item || 'Assignment';
+      const courseName = sub.assignment?.courseName || sub.course || 'DSA Placement Program';
+      const maxScore = sub.maxScore || sub.assignment?.totalMarks || 100;
+      const scoreStr = sub.score !== null && sub.score !== undefined ? `${sub.score}/${maxScore}` : 'Pending';
+
+      const statusMap: Record<string, string> = {
+        GRADED: 'Graded',
+        PENDING: 'Needs review',
+        NEEDS_REVIEW: 'Needs review',
+        ACTION_REQUIRED: 'Action required',
+      };
+      const displayStatus = statusMap[(sub.status || '').toUpperCase()] || sub.status || 'Needs review';
+
+      const { label: timeAgo } = this.formatLastActive(sub.submittedAt);
+
+      return {
+        id: sub.id.startsWith('SUB-') ? sub.id : `SUB-${sub.id.slice(0, 6)}`,
+        rawId: sub.id,
+        student: studentName,
+        studentEmail: sub.user?.email || '',
+        item: assignmentTitle,
+        course: courseName,
+        submitted: timeAgo,
+        submittedAt: sub.submittedAt || new Date().toISOString(),
+        score: scoreStr,
+        status: displayStatus,
+        content: sub.content || '',
+        fileUrl: sub.fileUrl || '',
+        githubUrl: sub.githubUrl || '',
+        feedback: sub.feedback || '',
+      };
+    });
   }
 }
 

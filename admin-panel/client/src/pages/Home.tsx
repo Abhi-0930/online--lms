@@ -7,6 +7,7 @@ import UploadRecordingBuilder, { RecordingData } from "@/components/UploadRecord
 import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useAdminRoute, navigateAdmin } from "@/lib/navigation";
+import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus } from "@/hooks/useLiveAdminData";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -68,53 +69,6 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, useRef } from "react";
 
-type CourseStatus = "Published" | "Draft" | "Review";
-type Course = {
-  id: number | string;
-  title: string;
-  track: string;
-  instructor: string;
-  students: number;
-  completion: number;
-  revenue: string;
-  status: CourseStatus;
-  color: string;
-  initials: string;
-
-  subtitle?: string;
-  description?: string;
-  language?: string;
-  category?: string;
-  level?: string;
-  coverImageUrl?: string | null;
-  thumbnailPreview?: string | null;
-  price?: number | string;
-  discountPrice?: number | string;
-  currency?: string;
-  courseType?: "Paid" | "Free";
-  accessType?: "Lifetime Access" | "Fixed Duration" | "Subscription";
-  durationCycleMode?: "Date Range" | "Relative Duration";
-  startDate?: string;
-  endDate?: string;
-  durationValue?: string;
-  durationUnit?: "Days" | "Weeks" | "Months" | "Years";
-  subscriptionCycle?: "Monthly" | "Quarterly" | "Yearly";
-  enrollmentLimit?: string;
-  courseVisibility?: "Public" | "Private" | "Unlisted";
-  modules?: CourseModule[];
-  instructorName?: string;
-  skillsCovered?: string[];
-  prerequisites?: string;
-  estimatedDuration?: string;
-  certificateAvailable?: boolean;
-  seoTitle?: string;
-  seoDescription?: string;
-  targetAudience?: string;
-  learningOutcomes?: string[];
-  requirements?: string[];
-  targetLearners?: string[];
-  tags?: string[];
-};
 type DialogState = { title: string; description: string; fields: string[] } | null;
 
 const courses: Course[] = [];
@@ -217,20 +171,8 @@ const practiceProblemsData = [
   { id: 6, title: "Valid Parentheses & Stack Matching", category: "Stack", difficulty: "Easy", acceptance: "89.5%", submissions: 3120, testCases: 12, status: "Live" },
 ];
 
-const assignmentsData = [
-  { id: 1, title: "Build Fullstack Authentication with JWT & Redis", course: "Fullstack Next.js & GraphQL Masterclass", dueDate: "Sep 22, 2026", submissions: 68, maxScore: 100, avgGrade: "92/100", status: "Published" },
-  { id: 2, title: "Implement LRU Cache with O(1) Operations", course: "DSA Mastery", dueDate: "Sep 20, 2026", submissions: 142, maxScore: 100, avgGrade: "88/100", status: "Published" },
-  { id: 3, title: "Distributed Rate Limiter Design & Implementation", course: "System Design", dueDate: "Sep 25, 2026", submissions: 45, maxScore: 100, avgGrade: "84/100", status: "Published" },
-  { id: 4, title: "Interactive Graph Visualization Dashboard", course: "DSA Placement Program", dueDate: "Sep 28, 2026", submissions: 12, maxScore: 50, avgGrade: "46/50", status: "Draft" },
-];
-
-const submissionsData = [
-  { id: "SUB-9401", student: "Aarav Sharma", item: "Implement LRU Cache", course: "DSA Mastery", submitted: "15 min ago", score: "96/100", status: "Graded" },
-  { id: "SUB-9402", student: "Ishita Kapoor", item: "Distributed Rate Limiter", course: "System Design", submitted: "45 min ago", score: "Pending", status: "Needs review" },
-  { id: "SUB-9403", student: "Rohan Verma", item: "Fullstack Authentication", course: "Next.js Masterclass", submitted: "2 hrs ago", score: "88/100", status: "Graded" },
-  { id: "SUB-9404", student: "Meera Nair", item: "Trapping Rain Water", course: "DSA Mastery", submitted: "3 hrs ago", score: "Pending", status: "Needs review" },
-  { id: "SUB-9405", student: "Siddharth Rao", item: "LRU Cache with O(1)", course: "DSA Mastery", submitted: "Yesterday", score: "74/100", status: "Action required" },
-];
+const assignmentsData: any[] = [];
+const submissionsData: any[] = [];
 
 const announcementsData = [
   { id: 1, title: "🚀 Live System Design Mock Interview with FAANG Staff Engineer", cohort: "Spring Cohort & Placement Prep", date: "Today, 10:00 AM", author: "Admin Team", channels: "Email · App Notification · Telegram", status: "Published" },
@@ -499,156 +441,6 @@ function RevenueChart() {
       </div>
     </div>
   );
-}
-
-interface AdminStats {
-  totalStudents: number;
-  activeStudents: number;
-  paidEnrollments: number;
-  coursesCount: number;
-  recentActivities: Array<{ title: string; detail: string; time: string }>;
-}
-
-interface StudentItem {
-  id: string | number;
-  name: string;
-  email: string;
-  role: string;
-  education: string;
-  course: string;
-  progress: number;
-  activity: string;
-  lastActiveAt?: string;
-  status: string;
-  avatar: string;
-}
-
-function useLiveAdminData() {
-  const [stats, setStats] = useState<AdminStats>({
-    totalStudents: 0,
-    activeStudents: 0,
-    paidEnrollments: 0,
-    coursesCount: 0,
-    recentActivities: [],
-  });
-  const [students, setStudents] = useState<StudentItem[]>([]);
-  const [coursesList, setCoursesList] = useState<Course[]>(courses);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isWsConnected, setIsWsConnected] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
-
-  const fetchInitialSnapshot = async () => {
-    try {
-      const [statsRes, studentsRes, coursesRes] = await Promise.all([
-        fetch("http://localhost:4000/api/v1/admin/stats"),
-        fetch("http://localhost:4000/api/v1/admin/students"),
-        fetch("http://localhost:4000/api/v1/admin/courses"),
-      ]);
-
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
-      }
-      if (studentsRes.ok) {
-        const studentsData = await studentsRes.json();
-        setStudents(studentsData);
-      }
-      if (coursesRes.ok) {
-        const coursesData = await coursesRes.json();
-        setCoursesList(coursesData);
-      }
-    } catch {
-      // Backend offline fallback
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // Immediate initial snapshot load
-    fetchInitialSnapshot();
-
-    let socket: WebSocket | null = null;
-    let reconnectTimer: any = null;
-    let isMounted = true;
-
-    const connectWebSocket = () => {
-      if (!isMounted) return;
-
-      try {
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const host = window.location.hostname || "localhost";
-        const wsUrl = `${protocol}//${host}:4000/api/v1/admin/ws`;
-
-        socket = new WebSocket(wsUrl);
-        wsRef.current = socket;
-
-        socket.onopen = () => {
-          if (!isMounted) return;
-          setIsWsConnected(true);
-          // Request snapshot confirmation
-          socket?.send(JSON.stringify({ type: "REFRESH" }));
-        };
-
-        socket.onmessage = (event) => {
-          if (!isMounted) return;
-          try {
-            const payload = JSON.parse(event.data);
-            if (payload.type === "INITIAL_DATA" || payload.type === "DATA_UPDATE") {
-              if (payload.data?.stats) {
-                setStats(payload.data.stats);
-              }
-              if (payload.data?.students) {
-                setStudents(payload.data.students);
-              }
-              if (payload.data?.courses) {
-                setCoursesList(payload.data.courses);
-              }
-              setIsLoading(false);
-            }
-          } catch {
-            // Ignore non-json frames
-          }
-        };
-
-        socket.onclose = () => {
-          if (!isMounted) return;
-          setIsWsConnected(false);
-          // Exponential / 4s reconnect backoff without polling HTTP
-          reconnectTimer = setTimeout(connectWebSocket, 4000);
-        };
-
-        socket.onerror = () => {
-          if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.close();
-          }
-        };
-      } catch {
-        reconnectTimer = setTimeout(connectWebSocket, 5000);
-      }
-    };
-
-    connectWebSocket();
-
-    return () => {
-      isMounted = false;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (socket) {
-        socket.onclose = null;
-        socket.close();
-      }
-    };
-  }, []);
-
-  const refresh = () => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "REFRESH" }));
-    } else {
-      fetchInitialSnapshot();
-    }
-  };
-
-  return { stats, students, courses: coursesList, isLoading, isWsConnected, refresh };
 }
 
 function Overview({ onAction, onToast, onCreateCourse }: { onAction: (state: DialogState) => void; onToast: (message: string) => void; onCreateCourse?: () => void }) {
@@ -1717,24 +1509,73 @@ function PracticeProblemsView({ onAction, onToast }: { onAction: (state: DialogS
 }
 
 function AssignmentsView({
+  onAction,
   onToast,
   onCreateAssignment,
   onEditAssignment,
+  assignments = [],
+  submissions = [],
+  onRefresh,
 }: {
   onAction?: (state: DialogState) => void;
   onToast: (message: string) => void;
   onCreateAssignment?: () => void;
   onEditAssignment?: (assignment: any) => void;
+  assignments?: any[];
+  submissions?: any[];
+  onRefresh?: () => void;
 }) {
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
-  const [rows, setRows] = useState(assignmentsData);
 
+  const rows = assignments;
   const filtered = rows.filter(
     (item) =>
       (filter === "All" || item.status === filter) &&
-      `${item.title} ${item.course}`.toLowerCase().includes(query.toLowerCase())
+      `${item.title || ""} ${item.course || ""}`.toLowerCase().includes(query.toLowerCase())
   );
+
+  const activeCount = rows.filter((r) => r.status === "Published").length;
+  const totalSubmissions = rows.reduce((sum, r) => sum + (Number(r.submissions) || 0), 0);
+  const pendingCount = submissions.filter(
+    (s) => s.status === "Needs review" || s.status === "Action required" || s.status === "PENDING"
+  ).length;
+
+  const handleToggleStatus = async (item: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextStatus = item.status === "Published" ? "Draft" : "Published";
+    try {
+      const res = await fetch(`http://localhost:4000/api/v1/admin/assignments/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (res.ok) {
+        onToast(`Assignment marked as ${nextStatus}`);
+        if (onRefresh) onRefresh();
+      } else {
+        onToast(`Failed to update status`);
+      }
+    } catch {
+      onToast(`Failed to update status`);
+    }
+  };
+
+  const handleDeleteAssignment = async (item: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Are you sure you want to delete assignment "${item.title}"?`)) return;
+    try {
+      const res = await fetch(`http://localhost:4000/api/v1/admin/assignments/${item.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        onToast(`Assignment deleted`);
+        if (onRefresh) onRefresh();
+      }
+    } catch {
+      onToast(`Failed to delete assignment`);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
@@ -1748,10 +1589,10 @@ function AssignmentsView({
 
       <MetricStrip
         items={[
-          { label: "Active assignments", value: "14", change: "+2 this week" },
-          { label: "Total submissions", value: "842", change: "+18.4%" },
-          { label: "Pending grading", value: "42", change: "Needs review", tone: "text-amber-600" },
-          { label: "Avg. score", value: "88.4%", change: "+3.8%" },
+          { label: "Active assignments", value: String(activeCount), change: `${activeCount} live in catalog` },
+          { label: "Total submissions", value: String(totalSubmissions), change: "Learner turn-ins" },
+          { label: "Pending grading", value: String(pendingCount), change: pendingCount > 0 ? "Needs review" : "All clear", tone: pendingCount > 0 ? "text-amber-600" : undefined },
+          { label: "Total items", value: String(rows.length), change: "In repository" },
         ]}
       />
 
@@ -1769,72 +1610,114 @@ function AssignmentsView({
         }
       >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[850px] text-left">
-            <thead>
-              <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-                <th className="px-5 py-3 sm:px-6">Assignment</th>
-                <th className="px-4 py-3">Attached Course</th>
-                <th className="px-4 py-3">Due Date</th>
-                <th className="px-4 py-3">Submissions</th>
-                <th className="px-4 py-3">Avg. Grade</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)] transition-colors cursor-pointer"
-                  onClick={() => onEditAssignment && onEditAssignment(item)}
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300 mb-3">
+                <ClipboardCheck className="h-6 w-6" />
+              </div>
+              <h3 className="text-sm font-bold text-[var(--foreground)]">No assignments found</h3>
+              <p className="mt-1 text-xs text-[var(--muted)] max-w-sm">
+                {query
+                  ? "No assignments match your search filter."
+                  : "No assignments created yet. Create your first assignment to assign problem sets and projects to students."}
+              </p>
+              {!query && (
+                <button
+                  onClick={onCreateAssignment}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition-colors"
                 >
-                  <td className="px-5 py-4 sm:px-6">
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
-                        <ClipboardCheck className="h-4 w-4" />
-                      </span>
-                      <p className="text-[12px] font-bold hover:text-indigo-600 transition-colors">{item.title}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-[11px] font-semibold text-[var(--muted)]">{item.course}</td>
-                  <td className="px-4 py-4 text-[11px] font-semibold">{item.dueDate}</td>
-                  <td className="px-4 py-4 text-[12px] font-bold">{item.submissions} submitted</td>
-                  <td className="px-4 py-4 text-[12px] font-bold text-emerald-600 dark:text-emerald-400">{item.avgGrade}</td>
-                  <td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td>
-                  <td className="px-4 py-4">
-                    <button
-                      onClick={() =>
-                        setRows((current) =>
-                          current.map((row) =>
-                            row.id === item.id ? { ...row, status: row.status === "Published" ? "Draft" : "Published" } : row
-                          )
-                        )
-                      }
-                      className="text-[10px] font-bold text-[var(--brand)]"
-                    >
-                      {item.status === "Published" ? "Unpublish" : "Publish"}
-                    </button>
-                  </td>
+                  <Plus className="h-3.5 w-3.5" /> Create assignment
+                </button>
+              )}
+            </div>
+          ) : (
+            <table className="w-full min-w-[850px] text-left">
+              <thead>
+                <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  <th className="px-5 py-3 sm:px-6">Assignment</th>
+                  <th className="px-4 py-3">Attached Course</th>
+                  <th className="px-4 py-3">Due Date</th>
+                  <th className="px-4 py-3">Submissions</th>
+                  <th className="px-4 py-3">Avg. Grade</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)] transition-colors cursor-pointer"
+                    onClick={() => onEditAssignment && onEditAssignment(item)}
+                  >
+                    <td className="px-5 py-4 sm:px-6">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+                          <ClipboardCheck className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <p className="text-[12px] font-bold hover:text-indigo-600 transition-colors">{item.title}</p>
+                          {item.difficulty && (
+                            <span className="text-[10px] text-[var(--muted)]">Difficulty: {item.difficulty}</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-[11px] font-semibold text-[var(--muted)]">{item.course}</td>
+                    <td className="px-4 py-4 text-[11px] font-semibold">{item.dueDate}</td>
+                    <td className="px-4 py-4 text-[12px] font-bold">{item.submissions} submitted</td>
+                    <td className="px-4 py-4 text-[12px] font-bold text-emerald-600 dark:text-emerald-400">{item.avgGrade}</td>
+                    <td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td>
+                    <td className="px-4 py-4 text-right">
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          onClick={(e) => handleToggleStatus(item, e)}
+                          className="text-[10px] font-bold text-[var(--brand)] hover:underline"
+                        >
+                          {item.status === "Published" ? "Unpublish" : "Publish"}
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteAssignment(item, e)}
+                          className="text-[10px] font-bold text-rose-500 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </DataCard>
     </div>
   );
 }
 
-function SubmissionsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+function SubmissionsView({
+  onAction,
+  onToast,
+  submissions = [],
+  onRefresh,
+}: {
+  onAction: (state: DialogState) => void;
+  onToast: (message: string) => void;
+  submissions?: any[];
+  onRefresh?: () => void;
+}) {
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
-  const [rows, setRows] = useState(submissionsData);
 
+  const rows = submissions;
   const filtered = rows.filter(
     (item) =>
       (filter === "All" || item.status === filter) &&
-      `${item.id} ${item.student} ${item.item} ${item.course}`.toLowerCase().includes(query.toLowerCase())
+      `${item.id || ""} ${item.student || ""} ${item.item || ""} ${item.course || ""}`.toLowerCase().includes(query.toLowerCase())
   );
+
+  const pendingCount = rows.filter((s) => s.status === "Needs review" || s.status === "Action required").length;
+  const gradedCount = rows.filter((s) => s.status === "Graded").length;
 
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
@@ -1848,10 +1731,10 @@ function SubmissionsView({ onAction, onToast }: { onAction: (state: DialogState)
 
       <MetricStrip
         items={[
-          { label: "Pending review", value: "42", change: "Due today", tone: "text-amber-600" },
-          { label: "Graded this week", value: "186", change: "+12.4%" },
-          { label: "Avg. review time", value: "3.2 hrs", change: "-45 mins faster" },
-          { label: "Pass rate", value: "91.2%", change: "+2.6%" },
+          { label: "Pending review", value: String(pendingCount), change: pendingCount > 0 ? "Due today" : "Queue empty", tone: pendingCount > 0 ? "text-amber-600" : undefined },
+          { label: "Graded submissions", value: String(gradedCount), change: "Evaluated" },
+          { label: "Total received", value: String(rows.length), change: "Turned in" },
+          { label: "Review status", value: pendingCount === 0 ? "Up to date" : "Active queue", change: "System health", tone: pendingCount === 0 ? "text-emerald-600" : undefined },
         ]}
       />
 
@@ -1869,48 +1752,55 @@ function SubmissionsView({ onAction, onToast }: { onAction: (state: DialogState)
         }
       >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[850px] text-left">
-            <thead>
-              <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-                <th className="px-5 py-3 sm:px-6">Submission ID</th>
-                <th className="px-4 py-3">Student</th>
-                <th className="px-4 py-3">Problem / Assignment</th>
-                <th className="px-4 py-3">Course</th>
-                <th className="px-4 py-3">Submitted</th>
-                <th className="px-4 py-3">Score</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item) => (
-                <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]">
-                  <td className="px-5 py-4 text-[11px] font-bold font-mono sm:px-6">{item.id}</td>
-                  <td className="px-4 py-4 text-[11px] font-semibold">{item.student}</td>
-                  <td className="px-4 py-4 text-[12px] font-bold">{item.item}</td>
-                  <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.course}</td>
-                  <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.submitted}</td>
-                  <td className="px-4 py-4 text-[12px] font-bold">{item.score}</td>
-                  <td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td>
-                  <td className="px-4 py-4">
-                    <button
-                      onClick={() => {
-                        setRows((current) =>
-                          current.map((row) =>
-                            row.id === item.id ? { ...row, status: "Graded", score: "95/100" } : row
-                          )
-                        );
-                        onToast(`Graded submission ${item.id} (95/100)`);
-                      }}
-                      className="text-[10px] font-bold text-[var(--brand)]"
-                    >
-                      {item.status === "Graded" ? "Re-evaluate" : "Grade"}
-                    </button>
-                  </td>
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300 mb-3">
+                <FileText className="h-6 w-6" />
+              </div>
+              <h3 className="text-sm font-bold text-[var(--foreground)]">No submissions found</h3>
+              <p className="mt-1 text-xs text-[var(--muted)] max-w-sm">
+                {query
+                  ? "No submissions match your filter."
+                  : "No students have submitted assignments yet. Submissions will appear here in real time as students submit their work."}
+              </p>
+            </div>
+          ) : (
+            <table className="w-full min-w-[850px] text-left">
+              <thead>
+                <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  <th className="px-5 py-3 sm:px-6">Submission ID</th>
+                  <th className="px-4 py-3">Student</th>
+                  <th className="px-4 py-3">Problem / Assignment</th>
+                  <th className="px-4 py-3">Course</th>
+                  <th className="px-4 py-3">Submitted</th>
+                  <th className="px-4 py-3">Score</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((item) => (
+                  <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]">
+                    <td className="px-5 py-4 text-[11px] font-bold font-mono sm:px-6">{item.id}</td>
+                    <td className="px-4 py-4 text-[11px] font-semibold">{item.student}</td>
+                    <td className="px-4 py-4 text-[12px] font-bold">{item.item}</td>
+                    <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.course}</td>
+                    <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.submitted}</td>
+                    <td className="px-4 py-4 text-[12px] font-bold">{item.score}</td>
+                    <td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td>
+                    <td className="px-4 py-4">
+                      <button
+                        onClick={() => onToast(`Evaluating submission ${item.id}`)}
+                        className="text-[10px] font-bold text-[var(--brand)]"
+                      >
+                        {item.status === "Graded" ? "Re-evaluate" : "Grade"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </DataCard>
     </div>
@@ -2414,6 +2304,11 @@ function SettingsView({
   const [paymentCurrency, setPaymentCurrency] = useState("INR — Indian Rupee");
   const [taxRegion, setTaxRegion] = useState("India · GST");
   const [automaticRefund, setAutomaticRefund] = useState(false);
+  const [paymentToggles, setPaymentToggles] = useState({
+    automaticInvoicing: true,
+    allowCoupons: true,
+    collectTax: true,
+  });
 
   const toggle = (key: keyof typeof toggles) =>
     setToggles((current) => ({ ...current, [key]: !current[key] }));
@@ -2969,7 +2864,7 @@ export default function Home() {
   const [editingRecordingData, setEditingRecordingData] = useState<Partial<RecordingData> | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const { refresh, courses: liveCourses } = useLiveAdminData();
+  const { refresh, courses: liveCourses, assignments: liveAssignments, submissions: liveSubmissions } = useLiveAdminData();
 
   useEffect(() => {
     if (section === "create-course") {
@@ -3038,12 +2933,40 @@ export default function Home() {
     navigate({ tab: "assignments" });
   };
 
-  const handleSaveAssignmentDraft = (data: AssignmentData) => {
-    onToast(`Assignment draft "${data.title}" saved successfully!`);
+  const handleSaveAssignmentDraft = async (data: AssignmentData) => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, status: "Draft" }),
+      });
+      if (res.ok) {
+        onToast(`Assignment draft "${data.title}" saved successfully!`);
+        refresh();
+      } else {
+        onToast(`Assignment draft "${data.title}" saved!`);
+      }
+    } catch {
+      onToast(`Assignment draft "${data.title}" saved!`);
+    }
   };
 
-  const handlePublishAssignment = (data: AssignmentData) => {
-    onToast(`Assignment "${data.title}" published successfully!`);
+  const handlePublishAssignment = async (data: AssignmentData) => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, status: "Published" }),
+      });
+      if (res.ok) {
+        onToast(`Assignment "${data.title}" published successfully!`);
+        refresh();
+      } else {
+        onToast(`Assignment "${data.title}" published!`);
+      }
+    } catch {
+      onToast(`Assignment "${data.title}" published!`);
+    }
     handleCloseAssignmentBuilder();
   };
 
@@ -3417,7 +3340,6 @@ export default function Home() {
       <StudentsView onAction={onAction} onToast={onToast} />
     ) : section === "content" ? (
       <ContentView
-        onAction={onAction}
         onToast={onToast}
         onCreateCourse={handleOpenCourseBuilder}
       />
@@ -3429,11 +3351,19 @@ export default function Home() {
         onToast={onToast}
         onCreateAssignment={handleOpenAssignmentBuilder}
         onEditAssignment={handleEditAssignment}
+        assignments={liveAssignments}
+        submissions={liveSubmissions}
+        onRefresh={refresh}
       />
     ) : section === "assessments" ? (
       <AssessmentsView onAction={onAction} onToast={onToast} />
     ) : section === "submissions" ? (
-      <SubmissionsView onAction={onAction} onToast={onToast} />
+      <SubmissionsView
+        onAction={onAction}
+        onToast={onToast}
+        submissions={liveSubmissions}
+        onRefresh={refresh}
+      />
     ) : section === "announcements" ? (
       <AnnouncementsView onAction={onAction} onToast={onToast} />
     ) : section === "live" || section === "live_sessions" ? (

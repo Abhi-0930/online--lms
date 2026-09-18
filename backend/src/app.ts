@@ -18,6 +18,7 @@ import resourcesRoutes from './modules/resources/resources.routes';
 import cohortsRoutes from './modules/cohorts/cohorts.routes';
 import paymentRoutes from './modules/payments/payment.routes';
 import onboardingRoutes from './modules/onboarding/onboarding.routes';
+import assignmentsRoutes from './modules/assignments/assignments.routes';
 
 import adminRoutes from './modules/admin/admin.routes';
 
@@ -74,6 +75,7 @@ export async function createApp() {
   await fastify.register(cohortsRoutes);
   await fastify.register(paymentRoutes);
   await fastify.register(onboardingRoutes);
+  await fastify.register(assignmentsRoutes);
   await fastify.register(adminRoutes);
 
   // Health Check

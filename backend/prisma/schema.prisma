@@ -101,6 +101,7 @@ model User {
   cohortEnrollments CohortEnrollment[]  @relation("CohortEnrollments")
   payments        Payment[]
   onboarding      UserOnboarding?
+  assignmentSubmissions AssignmentSubmission[]
 
   @@index([email])
   @@index([googleId])
@@ -168,6 +169,7 @@ model Course {
   roadmapItems  RoadmapItem[]
   cohorts       Cohort[]
   payments      Payment[]
+  assignments   Assignment[]
 
   @@index([slug])
   @@index([status, level])
@@ -392,4 +394,67 @@ model Payment {
   @@index([userId])
   @@index([razorpayOrderId])
   @@index([status])
+}
+
+// ------------------------------------------
+// ASSIGNMENTS & SUBMISSIONS
+// ------------------------------------------
+model Assignment {
+  id              String                @id @default(uuid())
+  title           String
+  description     String?               @db.Text
+  instructions    String?               @db.Text
+  courseId        String?
+  course          Course?               @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseName      String?
+  module          String?
+  topic           String?
+  difficulty      String?               @default("Medium")
+  problemsCount   Int                   @default(0)
+  problemsList    Json?
+  releaseDate     String?
+  startTime       String?
+  deadline        String?
+  deadlineTime    String?
+  dueDate         DateTime?
+  dueDateString   String?
+  allowLate       Boolean               @default(false)
+  latePenalty     String?
+  resources       Json?
+  submissionTypes Json?
+  maxFileSize     String?
+  maxAttempts     String?
+  totalMarks      Int                   @default(100)
+  passingMarks    Int                   @default(50)
+  gradingMode     String?               @default("Manual Review")
+  targetCohort    String?
+  status          String                @default("PUBLISHED") // "DRAFT" | "PUBLISHED" | "SCHEDULED"
+  notifyStudents  Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  submissions     AssignmentSubmission[]
+
+  @@index([courseId])
+  @@index([status])
+}
+
+model AssignmentSubmission {
+  id           String     @id @default(uuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content      String?    @db.Text
+  fileUrl      String?
+  githubUrl    String?
+  status       String     @default("PENDING") // "PENDING" | "GRADED" | "NEEDS_REVIEW"
+  score        Int?
+  maxScore     Int        @default(100)
+  feedback     String?    @db.Text
+  submittedAt  DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([assignmentId])
+  @@index([userId])
 }
