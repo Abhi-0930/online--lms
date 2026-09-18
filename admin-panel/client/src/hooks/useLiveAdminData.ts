@@ -75,6 +75,16 @@ export interface Course {
   tags?: string[];
 }
 
+export interface ContentItem {
+  id: string | number;
+  title: string;
+  type: string;
+  parent: string;
+  owner: string;
+  status: string;
+  updated: string;
+}
+
 export function useLiveAdminData() {
   const [stats, setStats] = useState<AdminStats>({
     totalStudents: 0,
@@ -87,18 +97,20 @@ export function useLiveAdminData() {
   const [coursesList, setCoursesList] = useState<Course[]>([]);
   const [assignmentsList, setAssignmentsList] = useState<any[]>([]);
   const [submissionsList, setSubmissionsList] = useState<any[]>([]);
+  const [contentList, setContentList] = useState<ContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isWsConnected, setIsWsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
   const fetchInitialSnapshot = async () => {
     try {
-      const [statsRes, studentsRes, coursesRes, assignmentsRes, submissionsRes] = await Promise.all([
+      const [statsRes, studentsRes, coursesRes, assignmentsRes, submissionsRes, contentRes] = await Promise.all([
         fetch("http://localhost:4000/api/v1/admin/stats"),
         fetch("http://localhost:4000/api/v1/admin/students"),
         fetch("http://localhost:4000/api/v1/admin/courses"),
         fetch("http://localhost:4000/api/v1/admin/assignments"),
         fetch("http://localhost:4000/api/v1/admin/submissions"),
+        fetch("http://localhost:4000/api/v1/admin/content"),
       ]);
 
       if (statsRes.ok) {
@@ -120,6 +132,10 @@ export function useLiveAdminData() {
       if (submissionsRes.ok) {
         const submissionsData = await submissionsRes.json();
         setSubmissionsList(submissionsData);
+      }
+      if (contentRes.ok) {
+        const contentData = await contentRes.json();
+        setContentList(contentData);
       }
     } catch {
       // Backend offline fallback
@@ -172,6 +188,9 @@ export function useLiveAdminData() {
               if (payload.data?.submissions) {
                 setSubmissionsList(payload.data.submissions);
               }
+              if (payload.data?.content) {
+                setContentList(payload.data.content);
+              }
               setIsLoading(false);
             }
           } catch {
@@ -221,6 +240,7 @@ export function useLiveAdminData() {
     courses: coursesList,
     assignments: assignmentsList,
     submissions: submissionsList,
+    content: contentList,
     isLoading,
     isWsConnected,
     refresh,
