@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -69,40 +69,13 @@ const STEPS = [
   { id: 8, label: "Visibility" },
 ];
 
-const DEFAULT_COURSES = [
-  "DSA Placement Program",
-  "DSA Mastery",
-  "Fullstack Next.js & GraphQL Masterclass",
-  "System Design",
-  "Placement Prep",
-];
-
-const DEFAULT_MODULES: Record<string, string[]> = {
-  "DSA Placement Program": ["Arrays", "Strings", "Trees", "Graphs", "Dynamic Programming"],
-  "DSA Mastery": ["Arrays & Pointers", "Hashing", "Linked Lists", "Stacks & Queues"],
-  "Fullstack Next.js & GraphQL Masterclass": ["Server Components", "API Routes & Auth", "Prisma & PostgreSQL"],
-  "System Design": ["Scalability & Caching", "Rate Limiting", "Message Queues & Kafka"],
-  "Placement Prep": ["Resume & Portfolio", "DSA Mock Screens", "System Design Sprints"],
-};
-
-const INITIAL_PROBLEMS_BANK: AssignmentProblemItem[] = [
-  { id: 1, title: "Two Sum", category: "Array, HashMap", difficulty: "Easy", points: 25, isAdded: true },
-  { id: 2, title: "Move Zeroes", category: "Array", difficulty: "Easy", points: 25, isAdded: true },
-  { id: 3, title: "Maximum Subarray", category: "Array, Kadane", difficulty: "Medium", points: 25, isAdded: true },
-  { id: 4, title: "Best Time to Buy Stock", category: "Array", difficulty: "Easy", points: 25, isAdded: false },
-  { id: 5, title: "Longest Substring Without Repeating Characters", category: "Sliding Window, String", difficulty: "Medium", points: 25, isAdded: false },
-  { id: 6, title: "Trapping Rain Water", category: "Two Pointers, Stack", difficulty: "Hard", points: 50, isAdded: false },
-  { id: 7, title: "Lowest Common Ancestor in Binary Tree", category: "Trees, DFS", difficulty: "Medium", points: 25, isAdded: false },
-  { id: 8, title: "Valid Parentheses", category: "Stack, String", difficulty: "Easy", points: 20, isAdded: false },
-  { id: 9, title: "Alien Dictionary Topological Sort", category: "Graphs, BFS", difficulty: "Hard", points: 50, isAdded: false },
-];
-
 interface AssignmentBuilderProps {
   initialData?: Partial<AssignmentData>;
   onClose: () => void;
   onSaveDraft: (data: AssignmentData) => void;
   onPublish: (data: AssignmentData) => void;
   availableCourses?: string[];
+  courses?: any[];
 }
 
 interface CustomDropdownProps {
@@ -255,53 +228,77 @@ export default function AssignmentBuilder({
   onClose,
   onSaveDraft,
   onPublish,
-  availableCourses = DEFAULT_COURSES,
+  availableCourses,
+  courses,
 }: AssignmentBuilderProps) {
+  const courseNames = useMemo(() => {
+    if (courses && courses.length > 0) return courses.map((c) => c.title);
+    if (availableCourses && availableCourses.length > 0) return availableCourses;
+    return [];
+  }, [courses, availableCourses]);
+
   const [activeStep, setActiveStep] = useState(1);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [modalDifficulty, setModalDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
 
-  // Bank problems repository
-  const [problemsBank, setProblemsBank] = useState<AssignmentProblemItem[]>(INITIAL_PROBLEMS_BANK);
+  const initialProblems = initialData?.problemsList || [];
+  const [problemsBank, setProblemsBank] = useState<AssignmentProblemItem[]>(initialProblems);
   const [problemSearch, setProblemSearch] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("All difficulties");
   const [topicFilter, setTopicFilter] = useState("All topics");
 
-  // Form State initialized matching user screenshot defaults
   const [data, setData] = useState<AssignmentData>({
     id: initialData?.id,
-    title: initialData?.title || "Week 1 Assignment",
-    description: initialData?.description || "Practice arrays and problem-solving fundamentals.",
-    instructions: initialData?.instructions || "Complete all problems and submit before the deadline.",
-    course: initialData?.course || availableCourses[0] || "DSA Placement Program",
-    module: initialData?.module || "Arrays",
-    topic: initialData?.topic || "Two Pointers & Sliding Window",
+    title: initialData?.title || "",
+    description: initialData?.description || "",
+    instructions: initialData?.instructions || "",
+    course: initialData?.course || (courseNames.length > 0 ? courseNames[0] : ""),
+    module: initialData?.module || "",
+    topic: initialData?.topic || "",
     difficulty: initialData?.difficulty || "Medium",
-    problemsCount: 3,
-    problemsList: INITIAL_PROBLEMS_BANK.filter((p) => p.isAdded),
-    releaseDate: initialData?.releaseDate || "15-09-2026",
+    problemsCount: initialData?.problemsCount || initialProblems.length,
+    problemsList: initialProblems,
+    releaseDate: initialData?.releaseDate || new Date().toISOString().split("T")[0],
     startTime: initialData?.startTime || "18:00",
-    deadline: initialData?.deadline || "22-09-2026",
+    deadline: initialData?.deadline || "",
     deadlineTime: initialData?.deadlineTime || "23:59",
     allowLate: initialData?.allowLate ?? false,
     latePenalty: initialData?.latePenalty || "10% per day",
-    resources: initialData?.resources || [
-      { id: 1, name: "Arrays_Problem_Solving_CheatSheet.pdf", size: "1.4 MB" },
-      { id: 2, name: "Starter_Code_Template_TypeScript.zip", size: "3.2 MB" },
-    ],
+    resources: initialData?.resources || [],
     submissionTypes: initialData?.submissionTypes || ["Code Editor / IDE", "ZIP / File upload", "GitHub repository link"],
     maxFileSize: initialData?.maxFileSize || "25 MB",
     maxAttempts: initialData?.maxAttempts || "Unlimited",
-    totalMarks: 100,
-    passingMarks: 40,
-    gradingMode: "Automated Test Cases + Manual Code Review",
-    targetCohort: "Spring Cohort & Placement Prep",
-    status: "Draft",
-    notifyStudents: true,
+    totalMarks: initialData?.totalMarks || (initialProblems.length > 0 ? initialProblems.reduce((acc, p) => acc + p.points, 0) : 100),
+    passingMarks: initialData?.passingMarks || 40,
+    gradingMode: initialData?.gradingMode || "Automated Test Cases + Manual Code Review",
+    targetCohort: initialData?.targetCohort || "All Enrolled Students",
+    status: initialData?.status || "Draft",
+    notifyStudents: initialData?.notifyStudents ?? true,
   });
 
-  const availableModules = DEFAULT_MODULES[data.course] || ["Arrays", "Strings", "Trees", "Graphs"];
+  const selectedCourseObj = useMemo(() => {
+    return (courses || []).find((c) => c.title === data.course);
+  }, [courses, data.course]);
+
+  const availableModules = useMemo(() => {
+    if (selectedCourseObj?.modules && selectedCourseObj.modules.length > 0) {
+      return selectedCourseObj.modules.map((m: any) => m.title);
+    }
+    return [];
+  }, [selectedCourseObj]);
+
+  useEffect(() => {
+    if (courseNames.length > 0 && !data.course) {
+      setData((prev) => ({ ...prev, course: courseNames[0] }));
+    }
+  }, [courseNames, data.course]);
+
+  useEffect(() => {
+    if (availableModules.length > 0 && (!data.module || !availableModules.includes(data.module))) {
+      setData((prev) => ({ ...prev, module: availableModules[0] }));
+    }
+  }, [availableModules, data.module]);
 
   const handleToggleProblem = (id: number) => {
     setProblemsBank((current) => {
@@ -549,10 +546,11 @@ export default function AssignmentBuilder({
                       <CustomDropdown
                         value={data.course}
                         onChange={(val) => {
-                          const newModules = DEFAULT_MODULES[val] || ["General"];
-                          setData({ ...data, course: val, module: newModules[0] || "" });
+                          const matched = (courses || []).find((c: any) => c.title === val);
+                          const modName = matched?.modules?.[0]?.title || "";
+                          setData({ ...data, course: val, module: modName });
                         }}
-                        options={availableCourses}
+                        options={courseNames.length > 0 ? courseNames : ["General Library"]}
                         buttonClassName="py-3"
                       />
                     </div>

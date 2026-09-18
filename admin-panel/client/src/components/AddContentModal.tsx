@@ -111,14 +111,7 @@ const CONTENT_TYPES: ContentTypeOption[] = [
   },
 ];
 
-const DEFAULT_COURSES = [
-  "DSA Mastery",
-  "Fullstack Next.js & GraphQL Masterclass",
-  "DSA Placement Program",
-  "System Design",
-  "Python for Problem Solving",
-  "Placement Prep",
-];
+const DEFAULT_COURSES: string[] = [];
 
 export interface RecentContentItem {
   id: string | number;
@@ -238,8 +231,14 @@ export default function AddContentModal({
   // Step 2 Form States
   const [formTitle, setFormTitle] = useState("");
   const [formContentType, setFormContentType] = useState<string>("module");
-  const [formAttachTo, setFormAttachTo] = useState<string>(availableCourses[0] || "DSA Mastery");
+  const [formAttachTo, setFormAttachTo] = useState<string>(availableCourses[0] || "General Library");
   const [formDescription, setFormDescription] = useState("");
+
+  React.useEffect(() => {
+    if (availableCourses.length > 0 && (!formAttachTo || formAttachTo === "General Library" || !availableCourses.includes(formAttachTo))) {
+      setFormAttachTo(availableCourses[0]);
+    }
+  }, [availableCourses]);
   const [uploadedFileName, setUploadedFileName] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -609,15 +608,24 @@ export default function AddContentModal({
                         onChange={(e) => setFormAttachTo(e.target.value)}
                         className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] px-4 py-2.5 pr-9 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
                       >
-                        {availableCourses.map((c) => (
+                        {availableCourses.length > 0 ? (
+                          availableCourses.map((c) => (
+                            <option
+                              key={c}
+                              value={c}
+                              className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white"
+                            >
+                              {c}
+                            </option>
+                          ))
+                        ) : (
                           <option
-                            key={c}
-                            value={c}
+                            value="General Library"
                             className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white"
                           >
-                            {c}
+                            General Library
                           </option>
-                        ))}
+                        )}
                       </select>
                       <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     </div>

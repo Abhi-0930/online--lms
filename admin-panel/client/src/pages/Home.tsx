@@ -3380,11 +3380,7 @@ export default function Home() {
           onClose={handleCloseAssignmentBuilder}
           onSaveDraft={handleSaveAssignmentDraft}
           onPublish={handlePublishAssignment}
-          availableCourses={
-            liveCourses && liveCourses.length > 0
-              ? liveCourses.map((c) => c.title)
-              : undefined
-          }
+          courses={liveCourses}
         />
         {toast && (
           <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-bottom-2">
@@ -3406,11 +3402,8 @@ export default function Home() {
           onClose={handleCloseScheduleSession}
           onSaveDraft={handleSaveSessionDraft}
           onSchedule={handleScheduleSession}
-          availableCourses={
-            liveCourses && liveCourses.length > 0
-              ? liveCourses.map((c) => c.title)
-              : undefined
-          }
+          courses={liveCourses}
+          contentItems={liveContent}
         />
         {toast && (
           <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-bottom-2">
@@ -3432,11 +3425,8 @@ export default function Home() {
           onClose={handleCloseUploadRecording}
           onSaveDraft={handleSaveRecordingDraft}
           onPublish={handlePublishRecording}
-          availableCourses={
-            liveCourses && liveCourses.length > 0
-              ? liveCourses.map((c) => c.title)
-              : undefined
-          }
+          courses={liveCourses}
+          contentItems={liveContent}
         />
         {toast && (
           <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-bottom-2">

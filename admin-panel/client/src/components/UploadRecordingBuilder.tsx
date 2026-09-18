@@ -63,21 +63,15 @@ export interface RecordingData {
   releaseDate: string;
 }
 
-const DEFAULT_COURSES = [
-  "DSA Placement Program",
-  "DSA Mastery",
-  "Fullstack Next.js & GraphQL Masterclass",
-  "System Design",
-  "Placement Prep",
-];
-
-const DEFAULT_MODULES: Record<string, string[]> = {
-  "DSA Placement Program": ["Dynamic Programming", "Arrays & Strings", "Trees & Graphs", "Greedy & Backtracking"],
-  "DSA Mastery": ["Arrays & Pointers", "Hashing", "Linked Lists", "Stacks & Queues"],
-  "Fullstack Next.js & GraphQL Masterclass": ["Server Components", "API Routes & Auth", "Prisma & PostgreSQL"],
-  "System Design": ["Scalability & Caching", "Rate Limiting", "Message Queues & Kafka"],
-  "Placement Prep": ["Resume & Portfolio", "DSA Mock Screens", "System Design Sprints"],
-};
+export interface ContentLibraryItem {
+  id: string | number;
+  title: string;
+  type?: string;
+  parent?: string;
+  owner?: string;
+  status?: string;
+  updated?: string;
+}
 
 interface CustomDropdownProps {
   value: string;
@@ -257,6 +251,8 @@ interface UploadRecordingBuilderProps {
   onSaveDraft: (data: RecordingData) => void;
   onPublish: (data: RecordingData) => void;
   availableCourses?: string[];
+  courses?: any[];
+  contentItems?: ContentLibraryItem[];
 }
 
 export function UploadRecordingBuilder({
@@ -264,35 +260,33 @@ export function UploadRecordingBuilder({
   onClose,
   onSaveDraft,
   onPublish,
-  availableCourses = DEFAULT_COURSES,
+  availableCourses,
+  courses,
+  contentItems = [],
 }: UploadRecordingBuilderProps) {
+  const courseNames = useMemo(() => {
+    if (courses && courses.length > 0) return courses.map((c) => c.title);
+    if (availableCourses && availableCourses.length > 0) return availableCourses;
+    return [];
+  }, [courses, availableCourses]);
+
   const [data, setData] = useState<RecordingData>({
-    title: initialData?.title || "Dynamic Programming Masterclass · Week 4",
-    instructor: initialData?.instructor || "Ankit Sharma",
+    title: initialData?.title || "",
+    instructor: initialData?.instructor || "Platform Admin",
     recordingType: initialData?.recordingType || "Live Session Recording",
-    description:
-      initialData?.description ||
-      "Complete recording of the live interactive session on 1D and 2D dynamic programming, state transition recurrence, and optimal substructure analysis.",
-    course: initialData?.course || availableCourses[0] || "DSA Placement Program",
-    module: initialData?.module || "Dynamic Programming",
-    topic: initialData?.topic || "1D & 2D Memoization Patterns",
+    description: initialData?.description || "",
+    course: initialData?.course || (courseNames.length > 0 ? courseNames[0] : ""),
+    module: initialData?.module || "",
+    topic: initialData?.topic || "",
     targetCohort: initialData?.targetCohort || "All Enrolled Students",
-    videoFileName: initialData?.videoFileName || "DP_Masterclass_Recording_1080p.mp4",
-    videoFileSize: initialData?.videoFileSize || "1.42 GB",
+    videoFileName: initialData?.videoFileName || "",
+    videoFileSize: initialData?.videoFileSize || "",
     videoUrl: initialData?.videoUrl || "",
-    date: initialData?.date || "24-09-2026",
-    duration: initialData?.duration || "01:45:00",
-    sessionTime: initialData?.sessionTime || "18:00 - 20:00 IST",
-    resources: initialData?.resources || [
-      { id: 1, name: "Arrays Notes.pdf", size: "2.4 MB" },
-      { id: 2, name: "Week 1 Assignment", size: "1.1 MB" },
-      { id: 3, name: "Two Sum Practice Problem", size: "45 KB" },
-    ],
-    chapters: initialData?.chapters || [
-      { id: 1, timestamp: "00:00", title: "Introduction & Warm-up" },
-      { id: 2, timestamp: "15:30", title: "Top-Down Memoization Table Walkthrough" },
-      { id: 3, timestamp: "48:15", title: "Interview Hard DP Problem Analysis" },
-    ],
+    date: initialData?.date || new Date().toISOString().split("T")[0],
+    duration: initialData?.duration || "01:00:00",
+    sessionTime: initialData?.sessionTime || "18:00 - 19:00 IST",
+    resources: initialData?.resources || [],
+    chapters: initialData?.chapters || [],
     visibility: initialData?.visibility || "All enrolled students",
     accessType: initialData?.accessType || "Full Access",
     allowDownload: initialData?.allowDownload ?? false,
@@ -300,7 +294,7 @@ export function UploadRecordingBuilder({
     generateAiNotes: initialData?.generateAiNotes ?? true,
     enableComments: initialData?.enableComments ?? true,
     status: initialData?.status || "Published",
-    releaseDate: initialData?.releaseDate || "24-09-2026",
+    releaseDate: initialData?.releaseDate || new Date().toISOString().split("T")[0],
   });
 
   const [showAttachModal, setShowAttachModal] = useState(false);
@@ -308,7 +302,28 @@ export function UploadRecordingBuilder({
   const videoInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const availableModules = DEFAULT_MODULES[data.course] || ["Dynamic Programming", "Arrays", "Trees", "Graphs"];
+  const selectedCourseObj = useMemo(() => {
+    return (courses || []).find((c) => c.title === data.course);
+  }, [courses, data.course]);
+
+  const availableModules = useMemo(() => {
+    if (selectedCourseObj?.modules && selectedCourseObj.modules.length > 0) {
+      return selectedCourseObj.modules.map((m: any) => m.title);
+    }
+    return [];
+  }, [selectedCourseObj]);
+
+  useEffect(() => {
+    if (courseNames.length > 0 && !data.course) {
+      setData((prev) => ({ ...prev, course: courseNames[0] }));
+    }
+  }, [courseNames, data.course]);
+
+  useEffect(() => {
+    if (availableModules.length > 0 && (!data.module || !availableModules.includes(data.module))) {
+      setData((prev) => ({ ...prev, module: availableModules[0] }));
+    }
+  }, [availableModules, data.module]);
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -559,10 +574,11 @@ export function UploadRecordingBuilder({
                   <CustomDropdown
                     value={data.course}
                     onChange={(val) => {
-                      const mods = DEFAULT_MODULES[val] || ["General"];
-                      setData({ ...data, course: val, module: mods[0] || "" });
+                      const matched = (courses || []).find((c) => c.title === val);
+                      const modName = matched?.modules?.[0]?.title || "";
+                      setData({ ...data, course: val, module: modName });
                     }}
-                    options={availableCourses}
+                    options={courseNames.length > 0 ? courseNames : ["General Library"]}
                   />
                 </div>
 
@@ -1165,16 +1181,15 @@ export function UploadRecordingBuilder({
             </div>
 
             <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-              {[
-                { id: 101, name: "Arrays Notes.pdf", type: "PDF Notes", size: "2.4 MB" },
-                { id: 102, name: "Week 1 Assignment", type: "Assignment", size: "1.1 MB" },
-                { id: 103, name: "Two Sum Practice Problem", type: "Practice Problem", size: "45 KB" },
-                { id: 104, name: "Dynamic Programming CheatSheet.pdf", type: "PDF Notes", size: "3.2 MB" },
-                { id: 105, name: "Binary Trees & BST Masterclass.pdf", type: "PDF Notes", size: "4.1 MB" },
-                { id: 106, name: "LRU Cache Design Challenge", type: "Practice Problem", size: "68 KB" },
-                { id: 107, name: "System Design Sprint Deck.pptx", type: "Presentation", size: "12.8 MB" },
-                { id: 108, name: "Graph Traversal Starter Code.zip", type: "Code Archive", size: "5.4 MB" },
-              ]
+              {(contentItems && contentItems.length > 0
+                ? contentItems.map((c) => ({
+                    id: Number(c.id) || Date.now(),
+                    name: c.title,
+                    type: c.type || "Learning Resource",
+                    size: c.parent ? `${c.parent}` : "Content Library",
+                  }))
+                : []
+              )
                 .filter((item) =>
                   item.name.toLowerCase().includes(attachSearch.toLowerCase()) ||
                   item.type.toLowerCase().includes(attachSearch.toLowerCase())
@@ -1190,7 +1205,7 @@ export function UploadRecordingBuilder({
                     >
                       <div className="flex items-center gap-3 min-w-0 pr-2">
                         <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
-                          <Calendar className="h-4 w-4" />
+                          <FileText className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
@@ -1222,6 +1237,12 @@ export function UploadRecordingBuilder({
                     </div>
                   );
                 })}
+
+              {(!contentItems || contentItems.length === 0) && (
+                <div className="py-8 text-center text-xs text-slate-400">
+                  No resources found in Content Library. Add lessons, notes, or assignments to the library first.
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-white/5">
