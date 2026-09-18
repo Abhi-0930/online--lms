@@ -42,19 +42,20 @@ export class AdminWsBroadcaster {
   private static async sendSnapshot(socket: WebSocket, prisma: PrismaClient, type: string) {
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
         adminService.getAllAssignments(),
         adminService.getAllSubmissions(),
+        adminService.getAllContent(),
       ]);
 
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(
           JSON.stringify({
             type,
-            data: { stats, students, courses, assignments, submissions },
+            data: { stats, students, courses, assignments, submissions, content },
             timestamp: new Date().toISOString(),
           })
         );
@@ -69,17 +70,18 @@ export class AdminWsBroadcaster {
 
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
         adminService.getAllAssignments(),
         adminService.getAllSubmissions(),
+        adminService.getAllContent(),
       ]);
 
       const payload = JSON.stringify({
         type: 'DATA_UPDATE',
-        data: { stats, students, courses, assignments, submissions },
+        data: { stats, students, courses, assignments, submissions, content },
         timestamp: new Date().toISOString(),
       });
 
