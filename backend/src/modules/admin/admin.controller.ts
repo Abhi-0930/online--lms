@@ -101,5 +101,10 @@ export default async function adminController(fastify: FastifyInstance) {
   fastify.get('/submissions', async () => {
     return adminService.getAllSubmissions();
   });
+
+  // Content Library management
+  fastify.get('/content', async () => {
+    return adminService.getAllContent();
+  });
 }
 
