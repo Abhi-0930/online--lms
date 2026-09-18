@@ -1,78 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createSecureUrl } from "@/lib/urlParams";
+import { useAuthContext, User, USER_STORAGE_KEY } from "@/contexts/AuthContext";
 
-export interface User {
-  id?: string;
-  name?: string;
-  fullName?: string;
-  email?: string;
-  avatarUrl?: string;
-  role?: string;
-  onboarding?: {
-    educationStatus?: string | null;
-    targetDomain?: string | null;
-    experienceLevel?: string | null;
-    primaryGoal?: string | null;
-    completedStep?: number;
-    isCompleted?: boolean;
-  };
-}
+export type { User };
+export { USER_STORAGE_KEY };
 
 export function useAuth(options?: { redirectOnUnauthenticated?: boolean; redirectPath?: string }) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchUser = useCallback(async () => {
-    try {
-      // Fetch authenticated profile via secure HttpOnly session cookie
-      const res = await fetch("http://localhost:4000/api/v1/auth/me", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.user) {
-          setUser(data.user);
-          setLoading(false);
-          return;
-        }
-      }
-
-      setUser(null);
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
-
-  const logout = useCallback(async () => {
-    try {
-      await fetch("http://localhost:4000/api/v1/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      }).catch(() => {});
-    } finally {
-      // Clean up any remaining legacy localStorage keys
-      try {
-        localStorage.removeItem("lms_token");
-        localStorage.removeItem("lms_user");
-      } catch {}
-
-      setUser(null);
-      router.push(createSecureUrl("/", { mode: "login", t: Date.now() }));
-    }
-  }, [router]);
+  const { user, loading, isAuthenticated, logout, refresh, setUser } = useAuthContext();
 
   useEffect(() => {
     if (options?.redirectOnUnauthenticated && !loading && !user) {
@@ -83,8 +21,9 @@ export function useAuth(options?: { redirectOnUnauthenticated?: boolean; redirec
   return {
     user,
     loading,
-    isAuthenticated: Boolean(user),
+    isAuthenticated,
     logout,
-    refresh: fetchUser,
+    refresh,
+    setUser,
   };
 }

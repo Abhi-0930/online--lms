@@ -425,8 +425,21 @@ function OnboardingContent() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Preload name if available from secure session
+  // Preload name if available from secure session or local cache
   useEffect(() => {
+    if (typeof window !== "undefined" && !userName) {
+      try {
+        const stored = localStorage.getItem("lms_user_profile");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const resolved = resolveDisplayName(parsed);
+          if (resolved && resolved.toLowerCase() !== "learner") {
+            setUserName(resolved);
+          }
+        }
+      } catch {}
+    }
+
     async function loadSession() {
       try {
         const res = await fetch("http://localhost:4000/api/v1/auth/me", {
@@ -436,10 +449,15 @@ function OnboardingContent() {
         });
         if (res.ok) {
           const data = await res.json();
-          if (data?.user && !userName) {
-            const resolved = resolveDisplayName(data.user);
-            if (resolved && resolved.toLowerCase() !== "learner") {
-              setUserName(resolved);
+          if (data?.user) {
+            try {
+              localStorage.setItem("lms_user_profile", JSON.stringify(data.user));
+            } catch {}
+            if (!userName) {
+              const resolved = resolveDisplayName(data.user);
+              if (resolved && resolved.toLowerCase() !== "learner") {
+                setUserName(resolved);
+              }
             }
           }
         }
@@ -610,6 +628,17 @@ function OnboardingContent() {
     setIsSubmitting(true);
 
     const cleanName = userName.trim();
+
+    try {
+      const stored = localStorage.getItem("lms_user_profile");
+      const current = stored ? JSON.parse(stored) : {};
+      current.fullName = cleanName;
+      current.name = cleanName;
+      if (!current.onboarding) current.onboarding = {};
+      current.onboarding.primaryGoal = cleanName;
+      current.onboarding.isCompleted = true;
+      localStorage.setItem("lms_user_profile", JSON.stringify(current));
+    } catch {}
 
     try {
       // Save Step 4 to database table UserOnboarding & mark isCompleted = true

@@ -223,6 +223,16 @@ function AuthForm({
       });
 
       if (res.ok) {
+        const resData = await res.json().catch(() => ({}));
+        const userObj = resData?.user || {
+          fullName: formData.fullName.trim() || formData.email.split("@")[0],
+          name: formData.fullName.trim() || formData.email.split("@")[0],
+          email: formData.email,
+        };
+        try {
+          localStorage.setItem("lms_user_profile", JSON.stringify(userObj));
+        } catch {}
+
         toast.success(
           isSignUp ? "Account created successfully!" : "Welcome back!"
         );

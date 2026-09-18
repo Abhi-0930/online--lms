@@ -28,10 +28,10 @@ export const CATALOG_COURSES = [
   {
     id: 'dsa-foundations',
     slug: 'dsa-foundations',
-    title: 'DSA Foundations',
-    subtitle: 'Build the problem-solving muscle that top interviews look for.',
-    description: 'Build the problem-solving muscle that top interviews look for. Learn a repeatable framework for breaking down unfamiliar problems, communicating trade-offs, and shipping answers you can stand behind.',
-    price: 1499,
+    title: 'DSA for Placements',
+    subtitle: 'Complete Data Structures & Algorithms with Python',
+    description: 'Complete Data Structures & Algorithms with Python. Build the problem-solving muscle that top interviews look for from beginner to advanced.',
+    price: 2499,
     level: 'BEGINNER' as const,
     coverImageUrl: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=85',
   },
@@ -167,7 +167,9 @@ export class PaymentService {
         throw error;
       }
 
-      finalAmount = Number(targetCourse.price) || 1499;
+      const baseCoursePrice = Number(targetCourse.price) || 1499;
+      const platformFee = 10;
+      finalAmount = baseCoursePrice + platformFee;
     } else if (type === 'COHORT_ENROLLMENT' && cohortId) {
       targetCohort = await this.prisma.cohort.findUnique({
         where: { id: cohortId },

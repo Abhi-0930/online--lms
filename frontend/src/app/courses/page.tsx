@@ -15,6 +15,9 @@ export default async function CoursesPage({
   }
 
   if (decoded?.courseId) {
+    if (decoded.v === "checkout") {
+      return <Home page="checkout" courseId={decoded.courseId} />;
+    }
     return <Home page="course-detail" courseId={decoded.courseId} />;
   }
 

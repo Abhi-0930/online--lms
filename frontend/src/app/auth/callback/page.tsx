@@ -34,6 +34,11 @@ function CallbackHandler() {
         if (res.ok) {
           const data = await res.json();
           const user = data?.user;
+          if (user) {
+            try {
+              localStorage.setItem("lms_user_profile", JSON.stringify(user));
+            } catch {}
+          }
 
           if (isNewUser || !user?.onboarding?.isCompleted) {
             router.replace(

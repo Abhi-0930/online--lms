@@ -24,6 +24,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Award,
+  BarChart2,
   Bell,
   Bookmark,
   BookOpen,
@@ -54,14 +55,17 @@ import {
   MoreHorizontal,
   Moon,
   Play,
+  PlaySquare,
   Plus,
   Search,
   Send,
   Settings2,
+  Shield,
   ShieldCheck,
   Sparkles,
   Star,
   Sun,
+  Tag,
   Target,
   ThumbsUp,
   Trophy,
@@ -97,65 +101,85 @@ const utilityItems: NavItem[] = [
 const courses = [
   {
     id: "dsa-foundations",
-    title: "DSA Foundations",
-    description: "Build the problem-solving muscle that top interviews look for.",
-    instructor: "Maya Patel",
+    slug: "dsa-foundations",
+    title: "DSA for Placements",
+    subtitle: "Complete Data Structures & Algorithms with Python",
+    description: "Build the problem-solving muscle that top interviews look for. Complete Data Structures & Algorithms with Python from beginner to advanced.",
+    instructor: "Abhishek Jujjuvarapu",
+    instructorRole: "Full Stack Engineer • Mentor",
+    instructorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
     students: "12.8k",
-    duration: "8 weeks",
+    duration: "4 Months",
     lessons: "54 lessons",
     rating: "4.9",
-    price: "₹1,499",
+    price: "₹ 2,499",
     category: "DSA",
-    level: "Beginner friendly",
+    level: "Beginner to Advanced",
     image: courseImages.dsa,
-    progress: 68,
+    badgeText: "DSA\nfor Placements",
+    progress: 0,
     accent: "blue",
   },
   {
     id: "placement-sprint",
+    slug: "placement-sprint",
     title: "Placement Sprint 2025",
-    description: "A guided 30-day sprint for OA rounds, interviews, and confidence.",
-    instructor: "Rohan Shah",
+    subtitle: "A guided 30-day sprint for OA rounds, interviews, and confidence",
+    description: "A guided 30-day sprint for OA rounds, interviews, and confidence. High-frequency problems, timed assessments, and live clinics.",
+    instructor: "Abhishek Jujjuvarapu",
+    instructorRole: "Full Stack Engineer • Mentor",
+    instructorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
     students: "8.4k",
     duration: "30 days",
     lessons: "42 lessons",
     rating: "4.8",
-    price: "₹2,299",
+    price: "₹ 2,299",
     category: "Placement",
-    level: "Intermediate",
+    level: "Intermediate to Advanced",
     image: courseImages.system,
-    progress: 34,
+    badgeText: "Placement\nSprint 2025",
+    progress: 0,
     accent: "violet",
   },
   {
     id: "frontend-lab",
+    slug: "frontend-lab",
     title: "Frontend Interview Lab",
-    description: "Ship polished UI while mastering the questions interviewers ask.",
-    instructor: "Sana Khan",
+    subtitle: "Ship production-grade web applications & ace tech rounds",
+    description: "Ship polished UI while mastering the questions interviewers ask. Performance, modern state management, and framework internals.",
+    instructor: "Abhishek Jujjuvarapu",
+    instructorRole: "Full Stack Engineer • Mentor",
+    instructorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
     students: "5.7k",
     duration: "6 weeks",
     lessons: "36 lessons",
     rating: "4.7",
-    price: "₹1,799",
+    price: "₹ 1,799",
     category: "Web development",
     level: "Intermediate",
     image: courseImages.web,
-    progress: 12,
+    badgeText: "Frontend\nInterview Lab",
+    progress: 0,
     accent: "amber",
   },
   {
     id: "system-design",
+    slug: "system-design",
     title: "System Design, Simply",
-    description: "Think in trade-offs, draw clean architectures, and explain your why.",
-    instructor: "Arjun Mehta",
+    subtitle: "Distributed architectures, microservices, scaling & trade-offs",
+    description: "Think in trade-offs, draw clean architectures, and explain your why. Real-world distributed systems, caching, scaling, and database sharding.",
+    instructor: "Abhishek Jujjuvarapu",
+    instructorRole: "Full Stack Engineer • Mentor",
+    instructorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
     students: "3.1k",
     duration: "5 weeks",
     lessons: "28 lessons",
     rating: "4.9",
-    price: "₹1,999",
+    price: "₹ 1,999",
     category: "System design",
     level: "Advanced",
     image: courseImages.database,
+    badgeText: "System\nDesign",
     progress: 0,
     accent: "emerald",
   },
@@ -750,29 +774,18 @@ function CoursesPage() {
 }
 
 function CourseCard({ course }: { course: typeof courses[number] }) {
-  const { user } = useAuth();
-  const { isEnrolled, refreshEnrollments } = useEnrollments();
+  const router = useRouter();
+  const { isEnrolled } = useEnrollments();
   const enrolled = isEnrolled(course.id) || isEnrolled(course.id.toLowerCase());
-  const [isEnrolling, setIsEnrolling] = useState(false);
 
-  const handleQuickEnroll = async (e: React.MouseEvent) => {
+  const handleEnrollClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (enrolled) return;
-
-    setIsEnrolling(true);
-    await initiateRazorpayCheckout({
-      courseId: course.id,
-      courseTitle: course.title,
-      price: course.price,
-      user,
-      onSuccess: () => {
-        setIsEnrolling(false);
-        refreshEnrollments();
-      },
-      onError: () => setIsEnrolling(false),
-      onCancel: () => setIsEnrolling(false),
-    });
+    if (enrolled) {
+      router.push(getSecureHref("/learn"));
+    } else {
+      router.push(createSecureUrl("/courses", { courseId: course.id, v: "checkout" }));
+    }
   };
 
   return (
@@ -845,51 +858,35 @@ function CourseCard({ course }: { course: typeof courses[number] }) {
         <span className="font-display text-lg font-bold text-[#17223d] dark:text-white">
           {course.price}
         </span>
-        {enrolled ? (
-          <Link
-            href={getSecureHref("/learn")}
-            className="flex items-center gap-1 rounded-lg bg-[#eaf0ff] px-3 py-1.5 text-xs font-bold text-[#3157e8] transition hover:bg-[#dce6ff] dark:bg-[#3157e8]/20 dark:text-white"
-          >
-            <Play className="h-3.5 w-3.5 fill-current" /> Continue
-          </Link>
-        ) : (
-          <button
-            onClick={handleQuickEnroll}
-            disabled={isEnrolling}
-            className="flex items-center gap-1.5 rounded-lg bg-[#3157e8] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#2546cc] active:scale-95 disabled:opacity-75"
-          >
-            <CreditCard className="h-3.5 w-3.5" />
-            {isEnrolling ? "Opening..." : "Enroll now"}
-          </button>
-        )}
+        <button
+          onClick={handleEnrollClick}
+          className={cx(
+            "flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer active:scale-95",
+            enrolled
+              ? "bg-[#eaf0ff] text-[#3157e8] hover:bg-[#dce6ff] dark:bg-[#3157e8]/20 dark:text-white"
+              : "bg-[#0066ff] text-white shadow-sm hover:bg-[#0052cc]"
+          )}
+        >
+          {enrolled ? (
+            <>
+              <Play className="h-3.5 w-3.5 fill-current" /> Continue
+            </>
+          ) : (
+            <>
+              <CreditCard className="h-3.5 w-3.5" /> Enroll now
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
 }
 
 function CourseDetail({ courseId }: { courseId: string }) {
-  const { user } = useAuth();
-  const { isEnrolled, refreshEnrollments } = useEnrollments();
-  const course = courses.find((item) => item.id === courseId) || courses[0];
+  const { isEnrolled } = useEnrollments();
+  const course = courses.find((item) => item.id === courseId || item.slug === courseId) || courses[0];
   const [openModule, setOpenModule] = useState(0);
-  const [isPurchasing, setIsPurchasing] = useState(false);
   const enrolled = isEnrolled(course.id) || isEnrolled(course.id.toLowerCase());
-
-  const handleEnrollNow = async () => {
-    setIsPurchasing(true);
-    await initiateRazorpayCheckout({
-      courseId: course.id,
-      courseTitle: course.title,
-      price: course.price,
-      user,
-      onSuccess: () => {
-        setIsPurchasing(false);
-        refreshEnrollments();
-      },
-      onError: () => setIsPurchasing(false),
-      onCancel: () => setIsPurchasing(false),
-    });
-  };
 
   const modules = [
     { title: "Getting started with problem solving", lessons: 6, duration: "42 min", complete: 6 },
@@ -925,7 +922,7 @@ function CourseDetail({ courseId }: { courseId: string }) {
           </div>
           <h1 className="font-display text-3xl font-bold tracking-[-0.05em] sm:text-5xl">{course.title}</h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">
-            {course.description} Learn a repeatable framework for breaking down unfamiliar problems, communicating trade-offs, and shipping answers you can stand behind.
+            {course.subtitle || course.description} Learn a repeatable framework for breaking down unfamiliar problems, communicating trade-offs, and shipping answers you can stand behind.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 text-xs font-semibold text-white/65">
             <span className="flex items-center gap-1.5">
@@ -947,14 +944,13 @@ function CourseDetail({ courseId }: { courseId: string }) {
                 <Play className="h-4 w-4 fill-current" /> Continue learning
               </Link>
             ) : (
-              <button
-                onClick={handleEnrollNow}
-                disabled={isPurchasing}
-                className="button-primary flex items-center gap-2 shadow-[0_10px_25px_rgba(49,87,232,0.35)] transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-75"
+              <Link
+                href={createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
+                className="button-primary flex items-center gap-2 shadow-[0_10px_25px_rgba(49,87,232,0.35)] transition-all hover:scale-[1.02] active:scale-95"
               >
                 <CreditCard className="h-4 w-4" />
-                {isPurchasing ? "Opening Razorpay..." : `Enroll now · ${course.price}`}
-              </button>
+                Enroll now · {course.price}
+              </Link>
             )}
             <button onClick={() => toast.success("You're on the course waitlist")} className="button-ghost-dark">
               <Bookmark className="h-4 w-4" /> Save for later
@@ -1014,14 +1010,8 @@ function CourseDetail({ courseId }: { courseId: string }) {
                     <div className="border-t border-[#edf0f6] bg-[#fafbfe] px-5 pb-4 pt-2 dark:border-white/10 dark:bg-white/[0.02]">
                       {Array.from({ length: Math.min(module.lessons, 4) }).map((_, lessonIndex) => (
                         <Link
-                          href={lessonIndex < module.complete || enrolled ? getSecureHref("/learn") : "#"}
+                          href={lessonIndex < module.complete || enrolled ? getSecureHref("/learn") : createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
                           key={lessonIndex}
-                          onClick={(e) => {
-                            if (!enrolled && lessonIndex >= module.complete) {
-                              e.preventDefault();
-                              handleEnrollNow();
-                            }
-                          }}
                           className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm hover:bg-[#f0f3fb] dark:hover:bg-white/5"
                         >
                           <span
@@ -1061,14 +1051,13 @@ function CourseDetail({ courseId }: { courseId: string }) {
               <p className="mt-2 text-xs leading-5 text-[#7c87a4]">
                 Get lifetime access to this entire course, code templates, assignments, and verified completion certificate.
               </p>
-              <button
-                onClick={handleEnrollNow}
-                disabled={isPurchasing}
-                className="mt-5 w-full button-primary flex items-center justify-center gap-2 py-3 shadow-[0_8px_20px_rgba(49,87,232,0.3)] transition-all hover:scale-[1.02] active:scale-95"
+              <Link
+                href={createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
+                className="mt-5 w-full button-primary flex items-center justify-center gap-2 py-3 shadow-[0_8px_20px_rgba(49,87,232,0.3)] transition-all hover:scale-[1.02] active:scale-95 text-center"
               >
                 <CreditCard className="h-4 w-4" />
-                {isPurchasing ? "Opening Razorpay..." : "Enroll with Razorpay"}
-              </button>
+                Enroll with Razorpay
+              </Link>
               <div className="mt-5 space-y-2.5 border-t border-[#edf0f6] pt-4 text-[11px] text-[#7c87a4] dark:border-white/10">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-[#3157e8]" />
@@ -1114,20 +1103,295 @@ function CourseDetail({ courseId }: { courseId: string }) {
             <p className="text-xs font-bold text-[#7c87a4]">Meet your instructor</p>
             <div className="mt-4 flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#dce6ff] text-sm font-bold text-[#3157e8]">
-                MP
+                AJ
               </span>
               <div>
                 <p className="text-sm font-bold text-[#17223d] dark:text-white">{course.instructor}</p>
-                <p className="mt-0.5 text-xs text-[#9aa4bc]">Senior Engineering Coach</p>
+                <p className="mt-0.5 text-xs text-[#9aa4bc]">{course.instructorRole || "Full Stack Engineer • Mentor"}</p>
               </div>
             </div>
             <p className="mt-4 text-xs leading-5 text-[#7c87a4]">
-              Former product engineer who has coached 4,000+ students through their first technical role.
+              Senior software engineer & educator dedicated to helping students crack tier-1 product companies and placements.
             </p>
           </div>
         </aside>
       </div>
     </>
+  );
+}
+
+function PythonLogo({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 110 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M54.5 4.5C28.2 4.5 29.8 15.9 29.8 15.9L29.9 27.7H55.2V31.3H20.1C8.7 31.3 4.5 41.6 4.5 54.4C4.5 67.2 12.3 75.8 22.3 75.8H29.5V64.6C29.5 51.9 39.8 41.8 52.6 41.8H77.9C80.2 41.8 82.1 39.9 82.1 37.6V15.9C82.1 15.9 83.2 4.5 54.5 4.5ZM41.4 12.8C44.1 12.8 46.3 15 46.3 17.7C46.3 20.4 44.1 22.6 41.4 22.6C38.7 22.6 36.5 20.4 36.5 17.7C36.5 15 38.7 12.8 41.4 12.8Z" fill="#387EB8"/>
+      <path d="M55.5 105.5C81.8 105.5 80.2 94.1 80.2 94.1L80.1 82.3H54.8V78.7H89.9C101.3 78.7 105.5 68.4 105.5 55.6C105.5 42.8 97.7 34.2 87.7 34.2H80.5V45.4C80.5 58.1 70.2 68.2 57.4 68.2H32.1C29.8 68.2 27.9 70.1 27.9 72.4V94.1C27.9 94.1 26.8 105.5 55.5 105.5ZM68.6 97.2C65.9 97.2 63.7 95 63.7 92.3C63.7 89.6 65.9 87.4 68.6 87.4C71.3 87.4 73.5 89.6 73.5 92.3C73.5 95 71.3 97.2 68.6 97.2Z" fill="#FFE052"/>
+    </svg>
+  );
+}
+
+function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { isEnrolled, refreshEnrollments } = useEnrollments();
+  const course = courses.find((item) => item.id === courseId || item.slug === courseId) || courses[0];
+  const [isProcessing, setIsProcessing] = useState(false);
+  const enrolled = isEnrolled(course.id) || isEnrolled(course.slug || course.id);
+
+  const numericPrice = course.price.replace(/[^\d]/g, "") || "2499";
+  const basePriceNumber = parseInt(numericPrice, 10);
+  const platformFee = 10;
+  const totalAmountNumber = basePriceNumber + platformFee;
+
+  const formattedBasePrice = `₹ ${basePriceNumber.toLocaleString("en-IN")}`;
+  const formattedTotalPrice = `₹ ${totalAmountNumber.toLocaleString("en-IN")}`;
+
+  const handleProceedToPay = async () => {
+    if (enrolled) {
+      toast.info("You are already enrolled in this course!");
+      router.push(getSecureHref("/learn"));
+      return;
+    }
+
+    setIsProcessing(true);
+    await initiateRazorpayCheckout({
+      courseId: course.id,
+      courseTitle: course.title,
+      price: totalAmountNumber,
+      user,
+      onSuccess: () => {
+        setIsProcessing(false);
+        refreshEnrollments();
+        setTimeout(() => {
+          router.push(getSecureHref("/my-courses"));
+        }, 800);
+      },
+      onError: () => {
+        setIsProcessing(false);
+      },
+      onCancel: () => {
+        setIsProcessing(false);
+      },
+    });
+  };
+
+  return (
+    <div className="mx-auto max-w-5xl py-2">
+      {/* Back to Course button */}
+      <Link
+        href={createSecureUrl("/courses", { courseId: course.id })}
+        className="mb-4 inline-flex items-center gap-2 text-xs font-bold text-[#64748b] hover:text-[#0066ff] dark:text-slate-400 dark:hover:text-blue-400 transition"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to Course
+      </Link>
+
+      {/* Page Heading */}
+      <div className="mb-8">
+        <h1 className="font-display text-3xl font-extrabold tracking-[-0.04em] text-[#0f172a] dark:text-white sm:text-4xl">
+          Confirm Your Enrollment
+        </h1>
+        <p className="mt-1.5 text-sm text-[#64748b] dark:text-slate-400">
+          Review your course and payment details before proceeding.
+        </p>
+      </div>
+
+      {/* 2-Column Responsive Card Grid */}
+      <div className="grid gap-7 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] items-start">
+        {/* Left Column: Course Details */}
+        <div className="rounded-2xl border border-[#e2e8f0] bg-white p-6 sm:p-7 shadow-sm dark:border-white/10 dark:bg-white/5 space-y-6">
+          <h2 className="font-display text-lg font-bold text-[#0f172a] dark:text-white">
+            Course Details
+          </h2>
+
+          {/* Course Banner Block */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            {/* Dark Styled Thumbnail Badge */}
+            <div className="relative flex h-24 w-36 shrink-0 flex-col justify-between overflow-hidden rounded-xl bg-gradient-to-br from-[#0c1535] via-[#14234d] to-[#1e346f] p-3 text-white shadow-md">
+              <div className="absolute -right-4 -bottom-4 h-16 w-16 rounded-full bg-blue-500/20 blur-xl" />
+              <div>
+                <p className="font-display text-lg font-black leading-tight tracking-tight">
+                  {course.id === "dsa-foundations" ? "DSA" : course.title.split(" ")[0]}
+                </p>
+                <p className="text-[10px] font-medium text-white/80">
+                  {course.id === "dsa-foundations" ? "for Placements" : course.title.split(" ").slice(1).join(" ")}
+                </p>
+              </div>
+              <div className="flex items-center justify-end">
+                {course.id === "dsa-foundations" ? (
+                  <PythonLogo className="h-6 w-6" />
+                ) : (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-white/15 backdrop-blur-sm">
+                    <Code2 className="h-3.5 w-3.5 text-yellow-400" />
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Course Meta Info */}
+            <div className="min-w-0 flex-1">
+              <h3 className="font-display text-base font-bold text-[#0f172a] dark:text-white">
+                {course.title}
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-[#64748b] dark:text-slate-400">
+                {course.subtitle || course.description}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-4 text-xs font-medium text-[#64748b] dark:text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <BarChart2 className="h-3.5 w-3.5 text-[#0066ff]" />
+                  {course.level || "Beginner to Advanced"}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Clock3 className="h-3.5 w-3.5 text-[#0066ff]" />
+                  {course.duration || "4 Months"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-[#f1f5f9] dark:border-white/10" />
+
+          {/* Instructor Section */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#94a3b8] dark:text-slate-400">
+              Instructor
+            </p>
+            <div className="mt-3 flex items-center gap-3.5">
+              <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 border-white bg-[#eff6ff] shadow-sm dark:border-slate-800">
+                <img
+                  src={course.instructorAvatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80"}
+                  alt={course.instructor || "Abhishek Jujjuvarapu"}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div>
+                <p className="flex items-center gap-1.5 text-sm font-bold text-[#0f172a] dark:text-white">
+                  {course.instructor || "Abhishek Jujjuvarapu"}
+                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#1877f2] text-white">
+                    <Check className="h-2.5 w-2.5 stroke-[3]" />
+                  </span>
+                </p>
+                <p className="text-xs text-[#64748b] dark:text-slate-400">
+                  {course.instructorRole || "Full Stack Engineer • Mentor"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-[#f1f5f9] dark:border-white/10" />
+
+          {/* What you'll get */}
+          <div>
+            <p className="text-sm font-bold text-[#0f172a] dark:text-white">
+              What you’ll get
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2.5">
+              <div className="flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3.5 py-2 text-xs font-semibold text-[#334155] dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                <PlaySquare className="h-4 w-4 text-[#475569] dark:text-slate-300" />
+                Recorded Sessions
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3.5 py-2 text-xs font-semibold text-[#334155] dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                <FileText className="h-4 w-4 text-[#475569] dark:text-slate-300" />
+                Study Notes
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3.5 py-2 text-xs font-semibold text-[#334155] dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                <Code2 className="h-4 w-4 text-[#475569] dark:text-slate-300" />
+                Practice Problems
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Payment Breakdown */}
+        <div className="rounded-2xl border border-[#e2e8f0] bg-white p-6 sm:p-7 shadow-sm dark:border-white/10 dark:bg-white/5 space-y-6">
+          <h2 className="font-display text-lg font-bold text-[#0f172a] dark:text-white">
+            Payment Breakdown
+          </h2>
+
+          {/* Pricing Breakdown Lines */}
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center justify-between text-[#64748b] dark:text-slate-400">
+              <span>Course Price</span>
+              <span className="font-semibold text-[#0f172a] dark:text-white">{formattedBasePrice}</span>
+            </div>
+            <div className="flex items-center justify-between text-[#64748b] dark:text-slate-400">
+              <span>Discount</span>
+              <span className="font-semibold text-[#059669] dark:text-emerald-400">- ₹ 0</span>
+            </div>
+            <div className="flex items-center justify-between text-[#64748b] dark:text-slate-400">
+              <span>Platform Fee</span>
+              <span className="font-semibold text-[#0f172a] dark:text-white">₹ 10</span>
+            </div>
+          </div>
+
+          {/* Dotted divider */}
+          <div className="border-t border-dashed border-[#e2e8f0] dark:border-white/10" />
+
+          {/* Total Amount */}
+          <div className="flex items-baseline justify-between">
+            <span className="text-base font-bold text-[#0f172a] dark:text-white">Total Amount</span>
+            <span className="font-display text-3xl font-extrabold tracking-tight text-[#0f172a] dark:text-white">
+              {formattedTotalPrice}
+            </span>
+          </div>
+
+          {/* Green Guarantee Chip */}
+          <div className="flex items-center gap-2 rounded-xl border border-[#a7f3d0] bg-[#ecfdf5] p-3 text-xs font-semibold text-[#065f46] dark:border-emerald-800/40 dark:bg-emerald-950/30 dark:text-emerald-300">
+            <Tag className="h-4 w-4 shrink-0 text-[#059669] dark:text-emerald-400" />
+            <span>No hidden charges. One-time payment.</span>
+          </div>
+
+          {/* Main Action Button */}
+          <button
+            onClick={handleProceedToPay}
+            disabled={isProcessing}
+            className="w-full rounded-xl bg-[#0066ff] hover:bg-[#0052cc] text-white font-bold py-3.5 px-6 flex items-center justify-center gap-2 text-base shadow-lg shadow-blue-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-75 cursor-pointer"
+          >
+            <span>{isProcessing ? "Connecting to Razorpay..." : `Proceed to Pay ${formattedTotalPrice}`}</span>
+            {!isProcessing && <ArrowRight className="h-4 w-4" />}
+          </button>
+
+
+          {/* Security Subtext */}
+          <div className="text-center space-y-1">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[#475569] dark:text-slate-300">
+              <LockKeyhole className="h-3.5 w-3.5 text-[#64748b]" />
+              <span>Secure payment via <strong className="font-bold text-[#0f172a] dark:text-white">Razorpay</strong></span>
+            </div>
+            <p className="text-[11px] text-[#94a3b8]">Your payment information is safe with us.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Trust Section */}
+      <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3 border-t border-[#e2e8f0] dark:border-white/10 pt-8">
+        <div className="flex items-center gap-3.5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-[#eff6ff] text-[#0066ff] dark:border-blue-900/40 dark:bg-blue-950/50">
+            <Shield className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-sm font-bold text-[#0f172a] dark:text-white">Secure Payments</p>
+            <p className="text-xs text-[#64748b] dark:text-slate-400">Powered by Razorpay</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3.5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-100 bg-[#ecfdf5] text-[#059669] dark:border-emerald-900/40 dark:bg-emerald-950/50">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-sm font-bold text-[#0f172a] dark:text-white">100% Safe & Secure</p>
+            <p className="text-xs text-[#64748b] dark:text-slate-400">Your data is protected</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3.5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-[#f8fafc] text-[#475569] dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+            <Headphones className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-sm font-bold text-[#0f172a] dark:text-white">Need Help?</p>
+            <p className="text-xs text-[#64748b] dark:text-slate-400">Contact Support</p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2238,6 +2502,7 @@ export default function Home({
     switch (page) {
       case "courses": return <CoursesPage />;
       case "course-detail": return <CourseDetail courseId={courseId} />;
+      case "checkout": return <EnrollmentCheckoutPage courseId={courseId} />;
       case "my-courses": return <MyCoursesPage />;
       case "learn": return <PlayerPage />;
       case "practice": return <PracticePage />;
