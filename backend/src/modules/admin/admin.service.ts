@@ -439,6 +439,8 @@ export class AdminService {
         tags: course.tags || course.skillsCovered || [],
         color: course.color || '#dbeafe',
         initials: (course.title || 'COU').slice(0, 3).toUpperCase(),
+        createdAt: course.createdAt || new Date().toISOString(),
+        updatedAt: course.updatedAt || course.createdAt || new Date().toISOString(),
       };
     });
   }
@@ -1086,6 +1088,97 @@ export class AdminService {
         feedback: sub.feedback || '',
       };
     });
+  }
+
+  async getAllContent() {
+    const items: Array<{
+      id: string | number;
+      title: string;
+      type: string;
+      parent: string;
+      owner: string;
+      status: string;
+      updated: string;
+    }> = [];
+
+    // 1. Extract lessons/topics from all courses
+    const courses = await this.getAllCourses();
+    for (const course of courses) {
+      const owner = course.instructorName || course.instructor || 'Platform Admin';
+      const status = course.status || 'Published';
+      const updated = course.updatedAt ? this.formatLastActive(course.updatedAt).label : 'Recently';
+
+      if (Array.isArray(course.modules)) {
+        for (const mod of course.modules) {
+          if (Array.isArray(mod.topics)) {
+            for (const top of mod.topics) {
+              if (Array.isArray(top.subtopics) && top.subtopics.length > 0) {
+                for (const sub of top.subtopics) {
+                  items.push({
+                    id: sub.id || `sub_${mod.id}_${top.id}_${sub.title}`,
+                    title: sub.title || top.title,
+                    type: sub.type || 'Video',
+                    parent: `${course.title} · ${mod.title || 'Curriculum'}`,
+                    owner,
+                    status,
+                    updated,
+                  });
+                }
+              } else {
+                items.push({
+                  id: top.id || `top_${mod.id}_${top.title}`,
+                  title: top.title,
+                  type: 'Video',
+                  parent: `${course.title} · ${mod.title || 'Curriculum'}`,
+                  owner,
+                  status,
+                  updated,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Extract assignments
+    const assignments = await this.getAllAssignments();
+    for (const a of assignments) {
+      items.push({
+        id: a.id,
+        title: a.title,
+        type: 'Assignment',
+        parent: a.course || 'Assignments Library',
+        owner: 'Instructor',
+        status: a.status || 'Published',
+        updated: a.createdAt ? this.formatLastActive(a.createdAt).label : 'Recently',
+      });
+    }
+
+    // 3. Extract database resources
+    try {
+      const dbResources = await this.prisma.resource.findMany({
+        include: { course: true, lesson: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      for (const res of dbResources) {
+        let typeName = 'Resource';
+        if (res.type === 'PDF') typeName = 'PDF';
+        else if (res.type === 'VIDEO_RECORDING') typeName = 'Video';
+
+        items.push({
+          id: res.id,
+          title: res.title,
+          type: typeName,
+          parent: res.course?.title || (res.lesson ? res.lesson.title : 'General Resources'),
+          owner: 'Admin',
+          status: 'Published',
+          updated: this.formatLastActive(res.createdAt).label,
+        });
+      }
+    } catch {}
+
+    return items;
   }
 }
 
