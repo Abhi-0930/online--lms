@@ -1141,19 +1141,7 @@ export class AdminService {
       }
     }
 
-    // 2. Extract assignments
-    const assignments = await this.getAllAssignments();
-    for (const a of assignments) {
-      items.push({
-        id: a.id,
-        title: a.title,
-        type: 'Assignment',
-        parent: a.course || 'Assignments Library',
-        owner: 'Instructor',
-        status: a.status || 'Published',
-        updated: a.createdAt ? this.formatLastActive(a.createdAt).label : 'Recently',
-      });
-    }
+
 
     // 3. Extract database resources
     try {
