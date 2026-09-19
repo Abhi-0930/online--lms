@@ -28,6 +28,27 @@ export interface LiveCourseItem {
 const DEFAULT_COVER =
   "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=85";
 
+const USER_COURSES_CACHE_KEY = "lms_user_cached_courses";
+
+function readCachedCourses(): LiveCourseItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(USER_COURSES_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+function writeCachedCourses(items: LiveCourseItem[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(USER_COURSES_CACHE_KEY, JSON.stringify(items));
+  } catch {}
+}
+
 function inferCategory(title: string = "", description: string = ""): string {
   const text = `${title} ${description}`.toLowerCase();
   if (text.includes("dsa") || text.includes("data structure") || text.includes("algorithm")) return "DSA";
@@ -80,8 +101,8 @@ function transformDbCourse(c: any): LiveCourseItem {
 }
 
 export function useLiveCourses() {
-  const [courses, setCourses] = useState<LiveCourseItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [courses, setCourses] = useState<LiveCourseItem[]>(() => readCachedCourses());
+  const [loading, setLoading] = useState(() => readCachedCourses().length === 0);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
@@ -95,18 +116,20 @@ export function useLiveCourses() {
       if (res.ok) {
         const data = await res.json();
         const rawList = Array.isArray(data) ? data : data.courses || [];
+        const transformed = rawList.map(transformDbCourse);
         if (isMountedRef.current) {
-          setCourses(rawList.map(transformDbCourse));
+          setCourses(transformed);
+          writeCachedCourses(transformed);
           setError(null);
         }
       } else {
         if (isMountedRef.current) {
-          setCourses([]);
+          // Keep existing cache
         }
       }
     } catch {
       if (isMountedRef.current) {
-        setCourses([]);
+        // Backend offline fallback - keep cache
       }
     } finally {
       if (isMountedRef.current) {

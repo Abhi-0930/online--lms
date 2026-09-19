@@ -497,7 +497,7 @@ export class AdminService {
       }>;
     }>;
   }) {
-    const baseSlug = data.title
+    const baseSlug = (data.title || 'course')
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
@@ -512,36 +512,117 @@ export class AdminService {
       else if (lvl === 'ALL_LEVELS' || lvl === 'ALL') levelEnum = 'ALL_LEVELS';
     }
 
-    const instructorDisplayName = data.instructorName?.trim() || 'Platform Admin';
-
-    if (data.id && AdminService.fallbackCourses.has(data.id)) {
-      const existing = AdminService.fallbackCourses.get(data.id);
-      const updated = {
-        ...existing,
-        ...data,
-        id: data.id,
-        instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
-        updatedAt: new Date(),
-      };
-      AdminService.fallbackCourses.set(data.id, updated);
-      try {
-        await this.prisma.course.update({
-          where: { id: data.id },
-          data: {
-            title: data.title,
-            subtitle: data.subtitle || null,
-            description: data.description,
-            coverImageUrl: data.coverImageUrl || data.thumbnailPreview || null,
-            price: data.price !== undefined ? data.price : undefined,
-            status: data.status || 'DRAFT',
-          },
-        });
-      } catch {}
-      return updated;
+    let statusVal: any = 'PUBLISHED';
+    if (data.status) {
+      const s = String(data.status).toUpperCase();
+      if (s === 'DRAFT') statusVal = 'DRAFT';
+      else if (s === 'ARCHIVED') statusVal = 'ARCHIVED';
+      else statusVal = 'PUBLISHED';
     }
 
+    const instructorDisplayName = data.instructorName?.trim() || 'Admin User';
+    const coverImage = data.coverImageUrl || data.thumbnailPreview || null;
+    const priceNumber = typeof data.price === 'number' && !isNaN(data.price) ? data.price : 0;
+
+    // Check if updating an existing course
+    if (data.id) {
+      let existingDbCourse: any = null;
+      try {
+        existingDbCourse = await this.prisma.course.findUnique({
+          where: { id: data.id },
+          include: { modules: true },
+        });
+      } catch {
+        existingDbCourse = null;
+      }
+
+      if (existingDbCourse) {
+        try {
+          const updated = await this.prisma.course.update({
+            where: { id: data.id },
+            data: {
+              title: data.title || existingDbCourse.title,
+              subtitle: data.subtitle !== undefined ? data.subtitle : existingDbCourse.subtitle,
+              description: data.description || existingDbCourse.description,
+              coverImageUrl: coverImage !== null ? coverImage : existingDbCourse.coverImageUrl,
+              price: priceNumber,
+              level: levelEnum,
+              status: statusVal,
+            },
+            include: {
+              instructor: true,
+              modules: {
+                include: { lessons: true },
+              },
+            },
+          });
+
+          // If modules provided on update, re-sync them
+          if (data.modules && data.modules.length > 0) {
+            try {
+              await this.prisma.module.deleteMany({ where: { courseId: data.id } });
+              for (let mIdx = 0; mIdx < data.modules.length; mIdx++) {
+                const mod = data.modules[mIdx];
+                const modLessons = mod.topics && mod.topics.length > 0
+                  ? mod.topics.flatMap((top, tIdx) => {
+                      if (top.subtopics && top.subtopics.length > 0) {
+                        return top.subtopics.map((sub, sIdx) => {
+                          const subType = (sub.type || 'Video').toUpperCase();
+                          let lessonType: any = 'VIDEO';
+                          if (subType === 'QUIZ') lessonType = 'QUIZ';
+                          else if (subType === 'ASSIGNMENT') lessonType = 'ASSIGNMENT';
+                          else if (subType === 'ARTICLE') lessonType = 'ARTICLE';
+
+                          return {
+                            title: top.title ? `${top.title} · ${sub.title || 'Lesson'}` : (sub.title || 'Lesson'),
+                            slug: `lesson-${Date.now()}-${mIdx}-${tIdx}-${sIdx}`,
+                            type: lessonType,
+                            position: (tIdx * 10) + sIdx + 1,
+                          };
+                        });
+                      }
+                      return [{
+                        title: top.title || `Lesson ${tIdx + 1}`,
+                        slug: `lesson-${Date.now()}-${mIdx}-${tIdx}`,
+                        type: 'VIDEO' as const,
+                        position: tIdx + 1,
+                      }];
+                    })
+                  : [];
+
+                await this.prisma.module.create({
+                  data: {
+                    courseId: data.id,
+                    title: mod.title || `Module ${mIdx + 1}`,
+                    description: mod.description || null,
+                    position: mIdx + 1,
+                    lessons: modLessons.length > 0 ? { create: modLessons } : undefined,
+                  },
+                });
+              }
+            } catch (syncErr) {
+              console.error('Module sync warning:', syncErr);
+            }
+          }
+
+          const fullUpdated = {
+            ...updated,
+            ...data,
+            id: updated.id,
+            instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
+            updatedAt: new Date(),
+          };
+          AdminService.fallbackCourses.set(updated.id, fullUpdated);
+          return fullUpdated;
+        } catch (updateErr) {
+          console.error('Course update DB error:', updateErr);
+        }
+      }
+    }
+
+    // Creating a brand new course
+    let instructor: any = null;
     try {
-      let instructor: any = null;
       if (data.instructorName?.trim()) {
         instructor = await this.prisma.user.findFirst({
           where: { fullName: { contains: data.instructorName.trim(), mode: 'insensitive' } },
@@ -561,59 +642,63 @@ export class AdminService {
       if (!instructor) {
         instructor = await this.prisma.user.create({
           data: {
-            email: 'admin@learnhub.com',
+            email: 'admin@lms.com',
             fullName: instructorDisplayName,
             role: 'ADMIN',
             isEmailVerified: true,
           },
         });
       }
+    } catch (instErr) {
+      console.error('Instructor lookup error:', instErr);
+    }
 
-      const modulesCreate = data.modules && data.modules.length > 0 ? {
-        create: data.modules.map((mod, mIdx) => ({
-          title: mod.title,
-          description: mod.description || null,
-          position: mIdx + 1,
-          lessons: mod.topics && mod.topics.length > 0 ? {
-            create: mod.topics.flatMap((top, tIdx) => {
-              if (top.subtopics && top.subtopics.length > 0) {
-                return top.subtopics.map((sub, sIdx) => {
-                  const subType = (sub.type || 'Video').toUpperCase();
-                  let lessonType: any = 'VIDEO';
-                  if (subType === 'QUIZ') lessonType = 'QUIZ';
-                  else if (subType === 'ASSIGNMENT') lessonType = 'ASSIGNMENT';
-                  else if (subType === 'ARTICLE') lessonType = 'ARTICLE';
+    const modulesCreate = data.modules && data.modules.length > 0 ? {
+      create: data.modules.map((mod, mIdx) => ({
+        title: mod.title || `Module ${mIdx + 1}`,
+        description: mod.description || null,
+        position: mIdx + 1,
+        lessons: mod.topics && mod.topics.length > 0 ? {
+          create: mod.topics.flatMap((top, tIdx) => {
+            if (top.subtopics && top.subtopics.length > 0) {
+              return top.subtopics.map((sub, sIdx) => {
+                const subType = (sub.type || 'Video').toUpperCase();
+                let lessonType: any = 'VIDEO';
+                if (subType === 'QUIZ') lessonType = 'QUIZ';
+                else if (subType === 'ASSIGNMENT') lessonType = 'ASSIGNMENT';
+                else if (subType === 'ARTICLE') lessonType = 'ARTICLE';
 
-                  return {
-                    title: `${top.title} · ${sub.title}`,
-                    slug: `lesson-${Date.now()}-${mIdx}-${tIdx}-${sIdx}`,
-                    type: lessonType,
-                    position: (tIdx * 10) + sIdx + 1,
-                  };
-                });
-              }
-              return [{
-                title: top.title,
-                slug: `lesson-${Date.now()}-${mIdx}-${tIdx}`,
-                type: 'VIDEO' as const,
-                position: tIdx + 1,
-              }];
-            }),
-          } : undefined,
-        })),
-      } : undefined;
+                return {
+                  title: top.title ? `${top.title} · ${sub.title || 'Lesson'}` : (sub.title || 'Lesson'),
+                  slug: `lesson-${Date.now()}-${mIdx}-${tIdx}-${sIdx}`,
+                  type: lessonType,
+                  position: (tIdx * 10) + sIdx + 1,
+                };
+              });
+            }
+            return [{
+              title: top.title || `Lesson ${tIdx + 1}`,
+              slug: `lesson-${Date.now()}-${mIdx}-${tIdx}`,
+              type: 'VIDEO' as const,
+              position: tIdx + 1,
+            }];
+          }),
+        } : undefined,
+      })),
+    } : undefined;
 
+    try {
       const course = await this.prisma.course.create({
         data: {
           slug,
-          title: data.title,
+          title: data.title || 'Untitled Course',
           subtitle: data.subtitle || null,
-          description: data.description,
-          coverImageUrl: data.coverImageUrl || data.thumbnailPreview || null,
-          price: data.price || 0,
+          description: data.description || '',
+          coverImageUrl: coverImage,
+          price: priceNumber,
           level: levelEnum,
-          status: data.status || 'DRAFT',
-          instructorId: instructor.id,
+          status: statusVal,
+          instructorId: instructor?.id || '80bb4d0d-098b-4826-a0ed-9b8488123e1c',
           modules: modulesCreate,
         },
         include: {
@@ -633,22 +718,23 @@ export class AdminService {
       AdminService.fallbackCourses.set(course.id, fullCourse);
       return fullCourse;
     } catch (dbErr) {
+      console.error('Failed to create course in Prisma:', dbErr);
       const fallbackId = data.id || `course_${Date.now()}`;
       const fallbackCourse = {
         id: fallbackId,
         slug,
-        title: data.title,
+        title: data.title || 'Untitled Course',
         subtitle: data.subtitle || null,
-        description: data.description,
+        description: data.description || '',
         language: data.language || 'English',
         category: data.category || 'Development',
         level: data.level || 'Beginner',
-        coverImageUrl: data.coverImageUrl || data.thumbnailPreview || null,
-        thumbnailPreview: data.coverImageUrl || data.thumbnailPreview || null,
-        price: data.price || 0,
+        coverImageUrl: coverImage,
+        thumbnailPreview: coverImage,
+        price: priceNumber,
         discountPrice: data.discountPrice || 0,
         currency: data.currency || 'INR ₹',
-        courseType: data.courseType || (data.price && data.price > 0 ? 'Paid' : 'Free'),
+        courseType: data.courseType || (priceNumber > 0 ? 'Paid' : 'Free'),
         accessType: data.accessType || 'Lifetime Access',
         durationCycleMode: data.durationCycleMode || 'Date Range',
         startDate: data.startDate || new Date().toISOString().split('T')[0],
@@ -658,8 +744,8 @@ export class AdminService {
         subscriptionCycle: data.subscriptionCycle || 'Monthly',
         enrollmentLimit: data.enrollmentLimit || 'Unlimited',
         courseVisibility: data.courseVisibility || 'Public',
-        status: data.status || 'DRAFT',
-        instructorId: 'admin_user',
+        status: statusVal,
+        instructorId: instructor?.id || 'admin_user',
         instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
         instructorName: instructorDisplayName,
         modules: data.modules || [],

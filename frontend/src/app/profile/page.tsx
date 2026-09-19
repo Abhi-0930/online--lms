@@ -11,7 +11,7 @@ export default async function ProfilePage({
   const decoded = decodeDataParam(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/profile", { v: "profile", t: Date.now() }));
+    redirect(createSecureUrl("/profile", { v: "profile" }));
   }
 
   return <Home page="profile" />;

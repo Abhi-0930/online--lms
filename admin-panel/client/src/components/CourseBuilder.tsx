@@ -143,8 +143,8 @@ export interface CourseBuilderData {
 
 interface CourseBuilderProps {
   onClose: () => void;
-  onSaveDraft?: (data: CourseBuilderData) => void;
-  onContinue?: (data: CourseBuilderData) => void;
+  onSaveDraft?: (data: CourseBuilderData) => void | Promise<void>;
+  onContinue?: (data: CourseBuilderData) => void | Promise<void>;
   initialData?: Partial<CourseBuilderData>;
   initialStep?: number;
 }
@@ -835,7 +835,7 @@ export default function CourseBuilder({
       initialData?.certificateAvailable !== undefined
         ? initialData.certificateAvailable
         : true,
-    courseStatus: initialData?.courseStatus || "Draft",
+    courseStatus: initialData?.courseStatus || "Published",
     seoTitle: initialData?.seoTitle || "",
     seoDescription: initialData?.seoDescription || "",
     targetAudience:
@@ -890,13 +890,13 @@ export default function CourseBuilder({
           initialData.prerequisites ||
           (Array.isArray(initialData.requirements)
             ? initialData.requirements.join("\n")
-            : initialData.requirements || ""),
+            : initialData?.requirements || ""),
         estimatedDuration: initialData.estimatedDuration || "12 Weeks",
         certificateAvailable:
           initialData.certificateAvailable !== undefined
             ? initialData.certificateAvailable
             : true,
-        courseStatus: initialData.courseStatus || "Draft",
+        courseStatus: initialData.courseStatus || "Published",
         seoTitle: initialData.seoTitle || "",
         seoDescription: initialData.seoDescription || "",
         targetAudience:
@@ -917,6 +917,7 @@ export default function CourseBuilder({
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [isDragging, setIsDragging] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Curriculum modal state
@@ -1546,7 +1547,8 @@ export default function CourseBuilder({
     setIsSaving(false);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    if (isSubmitting) return;
     if (currentStep === 1) {
       const isValid = validateStep1();
       if (!isValid) return;
@@ -1559,7 +1561,12 @@ export default function CourseBuilder({
       setCurrentStep(4);
     } else if (currentStep === 4) {
       if (onContinue) {
-        onContinue(formData);
+        setIsSubmitting(true);
+        try {
+          await onContinue(formData);
+        } finally {
+          setIsSubmitting(false);
+        }
       }
     }
   };
@@ -3196,12 +3203,21 @@ export default function CourseBuilder({
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 text-xs sm:text-[13px] font-bold text-white shadow-sm shadow-indigo-500/20 transition cursor-pointer"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 text-xs sm:text-[13px] font-bold text-white shadow-sm shadow-indigo-500/20 transition cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
                 >
                   {currentStep === 4 ? (
-                    <>
-                      <Check className="h-4 w-4 mr-0.5" /> Create course
-                    </>
+                    isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        <span>Creating course...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-0.5" />
+                        <span>Create course</span>
+                      </>
+                    )
                   ) : (
                     "Continue →"
                   )}

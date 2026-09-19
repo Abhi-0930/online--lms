@@ -25,6 +25,7 @@ import adminRoutes from './modules/admin/admin.routes';
 export async function createApp() {
   const fastify = Fastify({
     logger: logger as any,
+    bodyLimit: 50 * 1024 * 1024, // 50MB payload limit for course assets & base64 thumbnails
   });
 
   // Register CORS (with credentials for secure cookies)
@@ -110,3 +111,4 @@ export async function createApp() {
 
   return fastify;
 }
+    

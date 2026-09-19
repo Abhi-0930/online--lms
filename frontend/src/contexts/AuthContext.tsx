@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch {}
       }
       setUserState(null);
-      router.push(createSecureUrl("/", { mode: "login", t: Date.now() }));
+      router.push(createSecureUrl("/", { mode: "login" }));
     }
   }, [router]);
 

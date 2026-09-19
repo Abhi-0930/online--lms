@@ -18,7 +18,6 @@ function CallbackHandler() {
           createSecureUrl("/", {
             mode: "login",
             error: errorParam,
-            t: Date.now(),
           })
         );
         return;
@@ -44,14 +43,12 @@ function CallbackHandler() {
             router.replace(
               createSecureUrl("/onboarding", {
                 step: user?.onboarding?.completedStep || 1,
-                t: Date.now(),
               })
             );
           } else {
             router.replace(
               createSecureUrl("/dashboard", {
                 v: "dashboard",
-                t: Date.now(),
               })
             );
           }
@@ -63,7 +60,6 @@ function CallbackHandler() {
           createSecureUrl("/", {
             mode: "login",
             error: "AUTH_FAILED",
-            t: Date.now(),
           })
         );
       } catch {
@@ -71,7 +67,6 @@ function CallbackHandler() {
           createSecureUrl("/", {
             mode: "login",
             error: "AUTH_FAILED",
-            t: Date.now(),
           })
         );
       }

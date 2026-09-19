@@ -44,6 +44,14 @@ export class CoursesService {
               email: true,
             },
           },
+          modules: {
+            orderBy: { position: 'asc' },
+            include: {
+              lessons: {
+                orderBy: { position: 'asc' },
+              },
+            },
+          },
           _count: {
             select: {
               modules: true,

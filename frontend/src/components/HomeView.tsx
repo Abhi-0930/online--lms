@@ -799,10 +799,10 @@ function CoursesPage() {
         </div>
       </div>
 
-      {loading ? (
+      {loading && courses.length === 0 ? (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="card-surface h-72 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5" />
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <CourseCardSkeleton key={n} />
           ))}
         </div>
       ) : (
@@ -810,7 +810,7 @@ function CoursesPage() {
           {filtered.map((course) => (
             <CourseCard key={course.id} course={course} />
           ))}
-          {filtered.length === 0 && (
+          {!loading && filtered.length === 0 && (
             <div className="card-surface col-span-full p-12 text-center">
               <Library className="mx-auto h-10 w-10 text-[#c4cada]" />
               <p className="mt-3 text-base font-bold text-[#17223d] dark:text-white">
@@ -826,6 +826,41 @@ function CoursesPage() {
         </div>
       )}
     </>
+  );
+}
+
+function CourseCardSkeleton() {
+  return (
+    <div className="card-surface flex flex-col justify-between overflow-hidden animate-pulse">
+      <div>
+        <div className="relative h-44 bg-slate-200/70 dark:bg-white/5">
+          <div className="absolute left-4 top-4 flex gap-2">
+            <div className="h-5 w-16 rounded-md bg-slate-300/80 dark:bg-white/10" />
+            <div className="h-5 w-16 rounded-md bg-slate-300/60 dark:bg-white/10" />
+          </div>
+          <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+            <div className="space-y-1.5 flex-1 pr-4">
+              <div className="h-2.5 w-20 rounded bg-slate-300/70 dark:bg-white/10" />
+              <div className="h-5 w-3/4 rounded-md bg-slate-300/90 dark:bg-white/15" />
+            </div>
+            <div className="h-4 w-8 rounded bg-slate-300/70 dark:bg-white/10" />
+          </div>
+        </div>
+        <div className="p-4 space-y-2">
+          <div className="h-3.5 w-full rounded bg-slate-200/80 dark:bg-white/5" />
+          <div className="h-3.5 w-4/5 rounded bg-slate-200/80 dark:bg-white/5" />
+          <div className="mt-4 flex items-center gap-3 pt-2">
+            <div className="h-3 w-16 rounded bg-slate-200/60 dark:bg-white/5" />
+            <div className="h-3 w-16 rounded bg-slate-200/60 dark:bg-white/5" />
+            <div className="h-3 w-16 rounded bg-slate-200/60 dark:bg-white/5" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-auto flex items-center justify-between border-t border-[#edf0f6] p-4 pt-3 dark:border-white/10">
+        <div className="h-6 w-16 rounded-md bg-slate-200/80 dark:bg-white/10" />
+        <div className="h-8 w-24 rounded-lg bg-slate-200/80 dark:bg-white/10" />
+      </div>
+    </div>
   );
 }
 
@@ -945,11 +980,18 @@ function CourseDetail({ courseId }: { courseId: string }) {
 
   const course = courses.find((item) => item.id === courseId || item.slug === courseId);
 
-  if (loading) {
+  if (loading && !course) {
     return (
-      <div className="card-surface p-12 text-center">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-[#3157e8] border-t-transparent" />
-        <p className="mt-3 text-sm text-[#9aa4bc]">Loading course details...</p>
+      <div className="space-y-6 animate-pulse">
+        <div className="h-5 w-28 rounded bg-slate-200/80 dark:bg-white/10" />
+        <div className="rounded-[26px] bg-slate-200/70 dark:bg-white/5 p-8 sm:p-12 space-y-4">
+          <div className="flex gap-2">
+            <div className="h-5 w-20 rounded-md bg-slate-300/80 dark:bg-white/10" />
+            <div className="h-5 w-20 rounded-md bg-slate-300/80 dark:bg-white/10" />
+          </div>
+          <div className="h-10 w-2/3 rounded-lg bg-slate-300/90 dark:bg-white/15" />
+          <div className="h-4 w-full max-w-xl rounded bg-slate-300/60 dark:bg-white/10" />
+        </div>
       </div>
     );
   }
@@ -1574,10 +1616,10 @@ function MyCoursesPage() {
           </div>
         </div>
       </div>
-      {loading ? (
+      {loading && enrolledCourses.length === 0 ? (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {[1, 2].map((n) => (
-            <div key={n} className="card-surface h-64 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5" />
+          {[1, 2, 3].map((n) => (
+            <MyCourseCardSkeleton key={n} />
           ))}
         </div>
       ) : filtered.length > 0 ? (
@@ -1599,6 +1641,26 @@ function MyCoursesPage() {
         </div>
       )}
     </>
+  );
+}
+
+function MyCourseCardSkeleton() {
+  return (
+    <div className="card-surface overflow-hidden animate-pulse">
+      <div className="relative h-36 bg-slate-200/70 dark:bg-white/5">
+        <div className="absolute bottom-3 left-4 h-4 w-20 rounded-md bg-slate-300/80 dark:bg-white/10" />
+      </div>
+      <div className="p-5">
+        <div className="h-5 w-3/4 rounded-md bg-slate-200/80 dark:bg-white/10" />
+        <div className="mt-2 h-3.5 w-full rounded bg-slate-100 dark:bg-white/5" />
+        <div className="mt-5 flex items-center justify-between">
+          <div className="h-3 w-24 rounded bg-slate-200/60 dark:bg-white/10" />
+          <div className="h-3 w-8 rounded bg-slate-200/60 dark:bg-white/10" />
+        </div>
+        <div className="mt-2 h-2 w-full rounded-full bg-slate-200/80 dark:bg-white/10" />
+        <div className="mt-5 h-10 w-full rounded-xl bg-slate-200/80 dark:bg-white/10" />
+      </div>
+    </div>
   );
 }
 

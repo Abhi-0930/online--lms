@@ -11,7 +11,7 @@ export default async function ProgressPage({
   const decoded = decodeDataParam(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/progress", { v: "progress", t: Date.now() }));
+    redirect(createSecureUrl("/progress", { v: "progress" }));
   }
 
   return <Home page="progress" />;

@@ -11,7 +11,7 @@ export default async function PracticePage({
   const decoded = decodeDataParam<{ slug?: string; problemId?: string; v?: string }>(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/practice", { v: "practice", t: Date.now() }));
+    redirect(createSecureUrl("/practice", { v: "practice" }));
   }
 
   return <Home page="practice" problemSlug={decoded?.slug || decoded?.problemId} />;

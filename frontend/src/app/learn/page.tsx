@@ -11,7 +11,7 @@ export default async function LearnPage({
   const decoded = decodeDataParam(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/learn", { v: "learn", t: Date.now() }));
+    redirect(createSecureUrl("/learn", { v: "learn" }));
   }
 
   return <Home page="learn" />;

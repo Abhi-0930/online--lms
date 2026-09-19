@@ -11,7 +11,7 @@ export default async function FeedbackPage({
   const decoded = decodeDataParam(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/feedback", { v: "feedback", t: Date.now() }));
+    redirect(createSecureUrl("/feedback", { v: "feedback" }));
   }
 
   return <Home page="feedback" />;

@@ -85,58 +85,133 @@ export interface ContentItem {
   updated: string;
 }
 
+const CACHE_KEYS = {
+  STATS: "lms_admin_cache_stats",
+  STUDENTS: "lms_admin_cache_students",
+  COURSES: "lms_admin_cache_courses",
+  ASSIGNMENTS: "lms_admin_cache_assignments",
+  SUBMISSIONS: "lms_admin_cache_submissions",
+  CONTENT: "lms_admin_cache_content",
+};
+
+function readCache<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch {}
+  return fallback;
+}
+
+function writeCache<T>(key: string, data: T) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+}
+
 export function useLiveAdminData() {
-  const [stats, setStats] = useState<AdminStats>({
-    totalStudents: 0,
-    activeStudents: 0,
-    paidEnrollments: 0,
-    coursesCount: 0,
-    recentActivities: [],
+  const [stats, setStats] = useState<AdminStats>(() =>
+    readCache<AdminStats>(CACHE_KEYS.STATS, {
+      totalStudents: 0,
+      activeStudents: 0,
+      paidEnrollments: 0,
+      coursesCount: 0,
+      recentActivities: [],
+    })
+  );
+  const [students, setStudents] = useState<StudentItem[]>(() =>
+    readCache<StudentItem[]>(CACHE_KEYS.STUDENTS, [])
+  );
+  const [coursesList, setCoursesList] = useState<Course[]>(() =>
+    readCache<Course[]>(CACHE_KEYS.COURSES, [])
+  );
+  const [assignmentsList, setAssignmentsList] = useState<any[]>(() =>
+    readCache<any[]>(CACHE_KEYS.ASSIGNMENTS, [])
+  );
+  const [submissionsList, setSubmissionsList] = useState<any[]>(() =>
+    readCache<any[]>(CACHE_KEYS.SUBMISSIONS, [])
+  );
+  const [contentList, setContentList] = useState<ContentItem[]>(() =>
+    readCache<ContentItem[]>(CACHE_KEYS.CONTENT, [])
+  );
+  const [isLoading, setIsLoading] = useState(() => {
+    const cached = readCache<Course[]>(CACHE_KEYS.COURSES, []);
+    return cached.length === 0;
   });
-  const [students, setStudents] = useState<StudentItem[]>([]);
-  const [coursesList, setCoursesList] = useState<Course[]>([]);
-  const [assignmentsList, setAssignmentsList] = useState<any[]>([]);
-  const [submissionsList, setSubmissionsList] = useState<any[]>([]);
-  const [contentList, setContentList] = useState<ContentItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isWsConnected, setIsWsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
+  const updateCourses = (data: Course[]) => {
+    setCoursesList(data);
+    writeCache(CACHE_KEYS.COURSES, data);
+  };
+
+  const updateStats = (data: AdminStats) => {
+    setStats(data);
+    writeCache(CACHE_KEYS.STATS, data);
+  };
+
+  const updateStudents = (data: StudentItem[]) => {
+    setStudents(data);
+    writeCache(CACHE_KEYS.STUDENTS, data);
+  };
+
+  const updateAssignments = (data: any[]) => {
+    setAssignmentsList(data);
+    writeCache(CACHE_KEYS.ASSIGNMENTS, data);
+  };
+
+  const updateSubmissions = (data: any[]) => {
+    setSubmissionsList(data);
+    writeCache(CACHE_KEYS.SUBMISSIONS, data);
+  };
+
+  const updateContent = (data: ContentItem[]) => {
+    setContentList(data);
+    writeCache(CACHE_KEYS.CONTENT, data);
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/courses");
+      if (res.ok) {
+        const data = await res.json();
+        updateCourses(data);
+      }
+    } catch {}
+  };
+
   const fetchInitialSnapshot = async () => {
     try {
-      const [statsRes, studentsRes, coursesRes, assignmentsRes, submissionsRes, contentRes] = await Promise.all([
-        fetch("http://localhost:4000/api/v1/admin/stats"),
-        fetch("http://localhost:4000/api/v1/admin/students"),
-        fetch("http://localhost:4000/api/v1/admin/courses"),
-        fetch("http://localhost:4000/api/v1/admin/assignments"),
-        fetch("http://localhost:4000/api/v1/admin/submissions"),
-        fetch("http://localhost:4000/api/v1/admin/content"),
-      ]);
+      fetchCourses();
 
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
-      }
-      if (studentsRes.ok) {
-        const studentsData = await studentsRes.json();
-        setStudents(studentsData);
-      }
-      if (coursesRes.ok) {
-        const coursesData = await coursesRes.json();
-        setCoursesList(coursesData);
-      }
-      if (assignmentsRes.ok) {
-        const assignmentsData = await assignmentsRes.json();
-        setAssignmentsList(assignmentsData);
-      }
-      if (submissionsRes.ok) {
-        const submissionsData = await submissionsRes.json();
-        setSubmissionsList(submissionsData);
-      }
-      if (contentRes.ok) {
-        const contentData = await contentRes.json();
-        setContentList(contentData);
-      }
+      fetch("http://localhost:4000/api/v1/admin/stats")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && updateStats(d))
+        .catch(() => {});
+
+      fetch("http://localhost:4000/api/v1/admin/students")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && updateStudents(d))
+        .catch(() => {});
+
+      fetch("http://localhost:4000/api/v1/admin/assignments")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && updateAssignments(d))
+        .catch(() => {});
+
+      fetch("http://localhost:4000/api/v1/admin/submissions")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && updateSubmissions(d))
+        .catch(() => {});
+
+      fetch("http://localhost:4000/api/v1/admin/content")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && updateContent(d))
+        .catch(() => {});
     } catch {
       // Backend offline fallback
     } finally {
@@ -174,22 +249,22 @@ export function useLiveAdminData() {
             const payload = JSON.parse(event.data);
             if (payload.type === "INITIAL_DATA" || payload.type === "DATA_UPDATE") {
               if (payload.data?.stats) {
-                setStats(payload.data.stats);
+                updateStats(payload.data.stats);
               }
               if (payload.data?.students) {
-                setStudents(payload.data.students);
+                updateStudents(payload.data.students);
               }
               if (payload.data?.courses) {
-                setCoursesList(payload.data.courses);
+                updateCourses(payload.data.courses);
               }
               if (payload.data?.assignments) {
-                setAssignmentsList(payload.data.assignments);
+                updateAssignments(payload.data.assignments);
               }
               if (payload.data?.submissions) {
-                setSubmissionsList(payload.data.submissions);
+                updateSubmissions(payload.data.submissions);
               }
               if (payload.data?.content) {
-                setContentList(payload.data.content);
+                updateContent(payload.data.content);
               }
               setIsLoading(false);
             }
@@ -227,6 +302,7 @@ export function useLiveAdminData() {
   }, []);
 
   const refresh = () => {
+    fetchCourses();
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "REFRESH" }));
     } else {

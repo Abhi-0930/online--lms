@@ -11,7 +11,7 @@ export default async function NotificationsPage({
   const decoded = decodeDataParam(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/notifications", { v: "notifications", t: Date.now() }));
+    redirect(createSecureUrl("/notifications", { v: "notifications" }));
   }
 
   return <Home page="notifications" />;

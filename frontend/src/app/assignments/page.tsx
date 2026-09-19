@@ -11,7 +11,7 @@ export default async function AssignmentsPage({
   const decoded = decodeDataParam(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/assignments", { v: "assignments", t: Date.now() }));
+    redirect(createSecureUrl("/assignments", { v: "assignments" }));
   }
 
   return <Home page="assignments" />;

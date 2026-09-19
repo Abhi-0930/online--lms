@@ -11,7 +11,7 @@ export default async function MyCoursesPage({
   const decoded = decodeDataParam(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/my-courses", { v: "my-courses", t: Date.now() }));
+    redirect(createSecureUrl("/my-courses", { v: "my-courses" }));
   }
 
   return <Home page="my-courses" />;

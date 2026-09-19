@@ -11,7 +11,7 @@ export default async function CoursesPage({
   const decoded = decodeDataParam<{ courseId?: string; v?: string }>(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/courses", { v: "courses", t: Date.now() }));
+    redirect(createSecureUrl("/courses", { v: "courses" }));
   }
 
   if (decoded?.courseId) {

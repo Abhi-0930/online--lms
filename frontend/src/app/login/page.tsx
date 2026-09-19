@@ -12,7 +12,6 @@ export default async function LoginRoute({
       mode: "login",
       ...(error ? { error } : {}),
       ...(email ? { email } : {}),
-      t: Date.now(),
     })
   );
 }

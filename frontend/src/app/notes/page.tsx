@@ -11,7 +11,7 @@ export default async function NotesPage({
   const decoded = decodeDataParam(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/notes", { v: "notes", t: Date.now() }));
+    redirect(createSecureUrl("/notes", { v: "notes" }));
   }
 
   return <Home page="notes" />;

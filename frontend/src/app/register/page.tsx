@@ -12,7 +12,6 @@ export default async function RegisterRoute({
       mode: "register",
       ...(error ? { error } : {}),
       ...(email ? { email } : {}),
-      t: Date.now(),
     })
   );
 }

@@ -644,12 +644,14 @@ function CourseActionMenu({
   onDelete: (course: Course) => void;
   onSettings: (course: Course) => void;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="icon-button transition-colors cursor-pointer data-[state=open]:bg-slate-100 data-[state=open]:text-slate-900 dark:data-[state=open]:bg-slate-800 dark:data-[state=open]:text-white"
+          className="icon-button transition-colors cursor-pointer"
           title="Course options"
         >
           <Ellipsis className="h-4 w-4" />
@@ -658,9 +660,9 @@ function CourseActionMenu({
 
       <DropdownMenuContent
         align="end"
-        side="bottom"
-        sideOffset={6}
-        className="w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 text-slate-800 dark:text-slate-100 z-50 animate-in fade-in-0 zoom-in-95 duration-100"
+        side="top"
+        sideOffset={8}
+        className="w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 text-slate-800 dark:text-slate-100 z-[9999]"
       >
         <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
           Set Status
@@ -674,7 +676,10 @@ function CourseActionMenu({
             <button
               key={item.status}
               type="button"
-              onClick={() => onStatusChange(course, item.status)}
+              onClick={() => {
+                setOpen(false);
+                onStatusChange(course, item.status);
+              }}
               className={cn(
                 "flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs font-semibold transition cursor-pointer",
                 course.status === item.status
@@ -695,7 +700,10 @@ function CourseActionMenu({
 
         <button
           type="button"
-          onClick={() => onEdit(course)}
+          onClick={() => {
+            setOpen(false);
+            onEdit(course);
+          }}
           className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
         >
           <Edit3 className="h-3.5 w-3.5 text-slate-500" />
@@ -704,7 +712,10 @@ function CourseActionMenu({
 
         <button
           type="button"
-          onClick={() => onSettings(course)}
+          onClick={() => {
+            setOpen(false);
+            onSettings(course);
+          }}
           className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
         >
           <Settings className="h-3.5 w-3.5 text-slate-500" />
@@ -714,7 +725,11 @@ function CourseActionMenu({
         <div className="pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-800">
           <button
             type="button"
-            onClick={() => onDelete(course)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+              onDelete(course);
+            }}
             className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition cursor-pointer"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -738,7 +753,7 @@ function CoursesView({
   onCreateCourse?: () => void;
   onEditCourse?: (course: Course) => void;
 }) {
-  const { courses: liveCourses, refresh } = useLiveAdminData();
+  const { courses: liveCourses, isLoading, refresh } = useLiveAdminData();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const baseCourses = liveCourses && liveCourses.length > 0 ? liveCourses : courses;
@@ -790,24 +805,27 @@ function CoursesView({
   };
 
   const handleConfirmDelete = async () => {
-    if (!courseToDelete) return;
+    if (!courseToDelete || isDeleting) return;
     setIsDeleting(true);
     const targetId = courseToDelete.id;
     const targetTitle = courseToDelete.title;
+
+    // Immediately close confirmation modal on 1st click
+    setCourseToDelete(null);
+
+    // Optimistically update local state
+    setLocalRows((prev) => (prev ? prev.filter((c) => c.id !== targetId) : []));
+    onToast(`Course "${targetTitle}" deleted successfully`);
 
     try {
       await fetch(`http://localhost:4000/api/v1/admin/courses/${targetId}`, {
         method: "DELETE",
       });
-      setLocalRows((prev) => (prev ? prev.filter((c) => c.id !== targetId) : []));
-      onToast(`Course "${targetTitle}" deleted successfully`);
       refresh();
     } catch {
-      setLocalRows((prev) => (prev ? prev.filter((c) => c.id !== targetId) : []));
-      onToast(`Course "${targetTitle}" deleted successfully`);
+      refresh();
     } finally {
       setIsDeleting(false);
-      setCourseToDelete(null);
     }
   };
 
@@ -891,57 +909,79 @@ function CoursesView({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((course) => (
-                <tr
-                  key={course.id}
-                  className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)] transition-colors"
-                >
-                  <td className="px-5 py-4 sm:px-6">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="grid h-9 w-9 place-items-center rounded-xl text-[10px] font-extrabold text-slate-700"
-                        style={{ backgroundColor: course.color }}
-                      >
-                        {course.initials}
+              {isLoading && rows.length === 0 ? (
+                Array.from({ length: 3 }).map((_, idx) => (
+                  <tr key={idx} className="border-b border-[var(--app-line)] last:border-0 animate-pulse">
+                    <td className="px-5 py-4 sm:px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-slate-200/70 dark:bg-slate-800" />
+                        <div className="space-y-1.5">
+                          <div className="h-3.5 w-40 rounded bg-slate-200/70 dark:bg-slate-800" />
+                          <div className="h-2.5 w-20 rounded bg-slate-100 dark:bg-slate-800/60" />
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[12px] font-bold">{course.title}</p>
-                        <p className="text-[10px] text-[var(--muted)]">{course.track}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-[11px] font-semibold">{course.instructor}</td>
-                  <td className="px-4 py-4 text-[12px] font-bold">{course.students.toLocaleString()}</td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                    </td>
+                    <td className="px-4 py-4"><div className="h-3 w-24 rounded bg-slate-200/70 dark:bg-slate-800" /></td>
+                    <td className="px-4 py-4"><div className="h-3 w-12 rounded bg-slate-200/70 dark:bg-slate-800" /></td>
+                    <td className="px-4 py-4"><div className="h-2 w-20 rounded bg-slate-200/70 dark:bg-slate-800" /></td>
+                    <td className="px-4 py-4"><div className="h-3 w-16 rounded bg-slate-200/70 dark:bg-slate-800" /></td>
+                    <td className="px-4 py-4"><div className="h-5 w-20 rounded-full bg-slate-200/70 dark:bg-slate-800" /></td>
+                    <td className="px-4 py-4 text-right"><div className="h-6 w-6 ml-auto rounded-lg bg-slate-200/70 dark:bg-slate-800" /></td>
+                  </tr>
+                ))
+              ) : (
+                filtered.map((course) => (
+                  <tr
+                    key={course.id}
+                    className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)] transition-colors"
+                  >
+                    <td className="px-5 py-4 sm:px-6">
+                      <div className="flex items-center gap-3">
                         <div
-                          className="h-full rounded-full bg-emerald-500"
-                          style={{ width: `${course.completion}%` }}
-                        />
+                          className="grid h-9 w-9 place-items-center rounded-xl text-[10px] font-extrabold text-slate-700"
+                          style={{ backgroundColor: course.color }}
+                        >
+                          {course.initials}
+                        </div>
+                        <div>
+                          <p className="text-[12px] font-bold">{course.title}</p>
+                          <p className="text-[10px] text-[var(--muted)]">{course.track}</p>
+                        </div>
                       </div>
-                      <span className="text-[11px] font-bold">{course.completion}%</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-[12px] font-bold">{course.revenue}</td>
-                  <td className="px-4 py-4">
-                    <StatusBadge>{course.status}</StatusBadge>
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <CourseActionMenu
-                      course={course}
-                      onEdit={onEditCourse || (() => {})}
-                      onStatusChange={handleStatusChange}
-                      onDelete={(c) => setCourseToDelete(c)}
-                      onSettings={handleSettings}
-                    />
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-4 text-[11px] font-semibold">{course.instructor}</td>
+                    <td className="px-4 py-4 text-[12px] font-bold">{course.students.toLocaleString()}</td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-emerald-500"
+                            style={{ width: `${course.completion}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] font-bold">{course.completion}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-[12px] font-bold">{course.revenue}</td>
+                    <td className="px-4 py-4">
+                      <StatusBadge>{course.status}</StatusBadge>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <CourseActionMenu
+                        course={course}
+                        onEdit={onEditCourse || (() => {})}
+                        onStatusChange={handleStatusChange}
+                        onDelete={(c) => setCourseToDelete(c)}
+                        onSettings={handleSettings}
+                      />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
 
-          {filtered.length === 0 && (
+          {!isLoading && filtered.length === 0 && (
             <div className="py-12 text-center text-xs text-[var(--muted)]">
               <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-30 text-[var(--brand)]" />
               <p className="font-semibold text-slate-700 dark:text-slate-300">No courses in catalog</p>
@@ -955,8 +995,14 @@ function CoursesView({
 
       {/* Delete Confirmation Alert Modal UI */}
       {courseToDelete && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 dark:bg-slate-900 dark:border-slate-800 animate-in zoom-in-95 duration-150">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+          onClick={() => !isDeleting && setCourseToDelete(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 dark:bg-slate-900 dark:border-slate-800 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
                 <AlertTriangle className="h-6 w-6" />
@@ -986,9 +1032,13 @@ function CoursesView({
               </button>
               <button
                 type="button"
-                onClick={handleConfirmDelete}
+                autoFocus
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleConfirmDelete();
+                }}
                 disabled={isDeleting}
-                className="flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-rose-500/20 transition cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-rose-500/20 transition cursor-pointer disabled:opacity-50"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {isDeleting ? "Deleting..." : "Delete course"}
@@ -3264,11 +3314,11 @@ export default function Home() {
         onToast("Course draft saved successfully!");
         refresh();
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         onToast(err.error || "Failed to save course draft");
       }
-    } catch {
-      onToast("Course draft saved locally");
+    } catch (err: any) {
+      onToast(err?.message || "Failed to save course draft");
     }
   };
 
@@ -3282,9 +3332,9 @@ export default function Home() {
         ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, "")) || 0
         : undefined;
 
-      let statusVal: "DRAFT" | "PUBLISHED" | "ARCHIVED" = "DRAFT";
-      if (data.courseStatus === "Published") {
-        statusVal = "PUBLISHED";
+      let statusVal: "DRAFT" | "PUBLISHED" | "ARCHIVED" = "PUBLISHED";
+      if (data.courseStatus === "Draft") {
+        statusVal = "DRAFT";
       } else if (data.courseStatus === "Archived") {
         statusVal = "ARCHIVED";
       }
@@ -3341,13 +3391,11 @@ export default function Home() {
         refresh();
         handleCloseCourseBuilder();
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         onToast(err.error || "Failed to create course");
       }
-    } catch {
-      onToast("Course saved successfully!");
-      refresh();
-      handleCloseCourseBuilder();
+    } catch (err: any) {
+      onToast(err?.message || "Failed to connect to backend server");
     }
   };
 

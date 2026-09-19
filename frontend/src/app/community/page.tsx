@@ -11,7 +11,7 @@ export default async function CommunityPage({
   const decoded = decodeDataParam(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/community", { v: "community", t: Date.now() }));
+    redirect(createSecureUrl("/community", { v: "community" }));
   }
 
   return <Home page="community" />;

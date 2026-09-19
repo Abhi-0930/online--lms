@@ -11,7 +11,7 @@ export default async function AnnouncementsPage({
   const decoded = decodeDataParam(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/announcements", { v: "announcements", t: Date.now() }));
+    redirect(createSecureUrl("/announcements", { v: "announcements" }));
   }
 
   return <Home page="announcements" />;

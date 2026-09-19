@@ -62,7 +62,6 @@ function AuthForm({
     router.replace(
       createSecureUrl("/", {
         mode: signUp ? "register" : "login",
-        t: Date.now(),
       })
     );
   };
@@ -77,7 +76,6 @@ function AuthForm({
           mode: isSignUp ? "register" : "login",
           ...(rawError ? { error: rawError } : {}),
           ...(rawEmail ? { email: rawEmail } : {}),
-          t: Date.now(),
         })
       );
     }
@@ -239,7 +237,7 @@ function AuthForm({
         router.push(
           isSignUp
             ? createSecureUrl("/onboarding", { step: 1 })
-            : createSecureUrl("/dashboard", { v: "dashboard", t: Date.now() })
+            : createSecureUrl("/dashboard", { v: "dashboard" })
         );
         return;
       }
@@ -700,7 +698,7 @@ function AuthForm({
               {!isSignUp && (
                 <div className="flex justify-end pt-0.5">
                   <Link
-                    href={createSecureUrl("/forgot-password", { v: "forgot-password", t: Date.now() })}
+                    href={createSecureUrl("/forgot-password", { v: "forgot-password" })}
                     className="text-[13.5px] font-medium text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
                   >
                     Forgot password?

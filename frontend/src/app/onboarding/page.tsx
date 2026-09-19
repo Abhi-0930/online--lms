@@ -664,7 +664,7 @@ function OnboardingContent() {
     return (
       <ThankYouSuccessScreen
         onRedirect={() => {
-          router.push(createSecureUrl("/dashboard", { v: "dashboard", t: Date.now() }));
+          router.push(createSecureUrl("/dashboard", { v: "dashboard" }));
         }}
       />
     );

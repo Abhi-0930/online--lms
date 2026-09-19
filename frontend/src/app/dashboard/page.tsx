@@ -11,7 +11,7 @@ export default async function DashboardPage({
   const decoded = decodeDataParam(data || q);
 
   if (!decoded) {
-    redirect(createSecureUrl("/dashboard", { v: "dashboard", t: Date.now() }));
+    redirect(createSecureUrl("/dashboard", { v: "dashboard" }));
   }
 
   return <Home page="dashboard" />;
