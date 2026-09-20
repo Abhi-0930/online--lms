@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -35,6 +35,93 @@ import {
 } from "lucide-react";
 import { PublicProblem, useLiveProblems } from "@/hooks/useLiveProblems";
 import { toast } from "sonner";
+
+const LANGUAGE_OPTIONS: { id: "python" | "javascript" | "typescript" | "java" | "cpp"; label: string }[] = [
+  { id: "python", label: "Python 3" },
+  { id: "javascript", label: "JavaScript" },
+  { id: "typescript", label: "TypeScript" },
+  { id: "java", label: "Java" },
+  { id: "cpp", label: "C++" },
+];
+
+function LanguageCustomDropdown({
+  value,
+  onChange,
+}: {
+  value: "python" | "javascript" | "typescript" | "java" | "cpp";
+  onChange: (val: "python" | "javascript" | "typescript" | "java" | "cpp") => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const activeOption =
+    LANGUAGE_OPTIONS.find((opt) => opt.id === value) || LANGUAGE_OPTIONS[0];
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="relative inline-block text-left" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/70 px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 transition focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-xs"
+      >
+        <span>{activeOption.label}</span>
+        <ChevronDown
+          className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-150 ${
+            isOpen ? "rotate-180 text-indigo-500" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full mt-1.5 w-36 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 py-1 shadow-lg z-50 animate-in fade-in zoom-in-95 duration-100">
+          {LANGUAGE_OPTIONS.map((opt) => {
+            const isSelected = opt.id === value;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => {
+                  onChange(opt.id);
+                  setIsOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs transition cursor-pointer text-left ${
+                  isSelected
+                    ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold"
+                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5"
+                }`}
+              >
+                <span>{opt.label}</span>
+                {isSelected && (
+                  <Check className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface StudentProblemArenaProps {
   problem: PublicProblem;
@@ -828,16 +915,16 @@ public:
                 </div>
 
                 {/* Editorial Code */}
-                <div className="rounded-xl border border-slate-800 bg-[#0d1117] p-4 text-slate-200 font-mono text-xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase">Python 3 Solution</span>
+                <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#0f131f] p-4 text-slate-900 dark:text-slate-100 font-mono text-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/10 mb-2">
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Python 3 Solution</span>
                     <button
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(defaultCodes.python);
                         toast.success("Editorial code copied!");
                       }}
-                      className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
+                      className="p-1 rounded hover:bg-slate-200/80 dark:hover:bg-white/10 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white cursor-pointer"
                     >
                       <Copy className="h-3.5 w-3.5" />
                     </button>
@@ -869,7 +956,7 @@ public:
                       key={sol.id}
                       className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4 space-y-3"
                     >
-                      {/* Author Header */}
+                      {/* Author row */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
                           <img
@@ -917,14 +1004,14 @@ public:
                       </p>
 
                       {/* Code Snippet Box */}
-                      <div className="rounded-lg border border-slate-800 bg-[#0d1117] p-3 text-slate-200 font-mono text-xs relative group">
+                      <div className="rounded-lg border border-slate-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#0f131f] p-3 text-slate-900 dark:text-slate-100 font-mono text-xs relative group">
                         <button
                           type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(sol.code);
                             toast.success(`Copied ${sol.author}'s solution!`);
                           }}
-                          className="absolute top-2.5 right-2.5 p-1 rounded bg-white/10 hover:bg-white/20 text-slate-300 transition opacity-80 group-hover:opacity-100 cursor-pointer"
+                          className="absolute top-2.5 right-2.5 p-1 rounded bg-slate-200/80 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-600 dark:text-slate-300 transition opacity-80 group-hover:opacity-100 cursor-pointer"
                           title="Copy solution"
                         >
                           <Copy className="h-3 w-3" />
@@ -972,8 +1059,8 @@ public:
                             <span
                               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
                                 sub.status === "Accepted"
-                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
-                                  : "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
+                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                                    : "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
                               }`}
                             >
                               {sub.status === "Accepted" ? (
@@ -1000,7 +1087,7 @@ public:
                         </div>
 
                         {/* Submitted Code Preview */}
-                        <div className="rounded-lg border border-slate-800 bg-[#0d1117] p-3 text-slate-200 font-mono text-[11px]">
+                        <div className="rounded-lg border border-slate-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#0f131f] p-3 text-slate-900 dark:text-slate-100 font-mono text-[11px]">
                           <pre className="overflow-x-auto custom-scrollbar">
                             <code>{sub.codeSnippet}</code>
                           </pre>
@@ -1121,30 +1208,17 @@ public:
         </div>
 
         {/* ================= RIGHT COLUMN: CODE VIEWER & TEST RUNNER (6 cols) ================= */}
-        <div className="lg:col-span-6 xl:col-span-6 flex flex-col rounded-2xl border border-slate-200/90 dark:border-white/10 bg-[#0d1117] shadow-lg overflow-hidden min-h-[640px]">
+        <div className="lg:col-span-6 xl:col-span-6 flex flex-col rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#151926] shadow-sm overflow-hidden min-h-[640px]">
           {/* Top Code Editor Header: Language selector & Actions */}
-          <div className="flex items-center justify-between border-b border-slate-800 bg-[#161b22] px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <Code2 className="h-4 w-4 text-indigo-400" />
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value as any)}
-                className="bg-[#0d1117] border border-slate-700 text-slate-200 text-xs font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
-                <option value="python">Python 3</option>
-                <option value="javascript">JavaScript (Node 18+)</option>
-                <option value="typescript">TypeScript</option>
-                <option value="java">Java (OpenJDK 17)</option>
-                <option value="cpp">C++ (GCC 11)</option>
-              </select>
-            </div>
+          <div className="flex items-center justify-between border-b border-slate-200/90 dark:border-white/10 bg-slate-50/90 dark:bg-[#1a2030] px-4 py-2.5">
+            <LanguageCustomDropdown value={language} onChange={setLanguage} />
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setCode(defaultCodes[language] || defaultCodes.python)}
                 title="Reset code template"
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-slate-200 p-1.5 rounded hover:bg-white/5 transition cursor-pointer"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-2 py-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-white/5 transition cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Reset</span>
@@ -1154,16 +1228,16 @@ public:
                 type="button"
                 onClick={handleCopyCode}
                 title="Copy code"
-                className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-white/5 transition cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/5 transition cursor-pointer"
               >
-                {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
               </button>
 
               <button
                 type="button"
                 disabled={isSubmitting}
                 onClick={handleSubmitCode}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3.5 py-1 text-xs font-bold text-white shadow-xs transition cursor-pointer active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition cursor-pointer active:scale-95 disabled:opacity-50"
               >
                 <Send className={`h-3 w-3 ${isSubmitting ? "animate-spin" : ""}`} />
                 <span>{isSubmitting ? "Submitting..." : "Submit"}</span>
@@ -1172,19 +1246,19 @@ public:
           </div>
 
           {/* Code Textarea / Viewer (Full Height) */}
-          <div className="flex-1 flex flex-col relative bg-[#0d1117] p-4 text-slate-200 font-mono text-xs">
+          <div className="flex-1 flex flex-col relative bg-[#f8fafc] dark:bg-[#0f131f] p-4 text-slate-900 dark:text-slate-100 font-mono text-xs">
             <textarea
               value={code}
               onChange={(e) => setCode(e.target.value)}
               spellCheck={false}
-              className="w-full flex-1 min-h-[460px] bg-transparent border-0 text-slate-100 font-mono text-xs leading-relaxed focus:outline-none resize-none custom-scrollbar"
+              className="w-full flex-1 min-h-[460px] bg-transparent border-0 text-slate-800 dark:text-slate-100 font-mono text-xs leading-relaxed focus:outline-none resize-none custom-scrollbar"
             />
           </div>
 
           {/* Bottom Code Editor Status Bar */}
-          <div className="flex items-center justify-between border-t border-slate-800 bg-[#161b22] px-4 py-2.5 text-[11px] text-slate-400 font-mono">
+          <div className="flex items-center justify-between border-t border-slate-200/90 dark:border-white/10 bg-slate-50/90 dark:bg-[#1a2030] px-4 py-2.5 text-[11px] text-slate-600 dark:text-slate-400 font-mono">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5 text-indigo-400 font-bold">
+              <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
                 <Terminal className="h-3.5 w-3.5" />
                 <span>{language.toUpperCase()}</span>
               </span>
