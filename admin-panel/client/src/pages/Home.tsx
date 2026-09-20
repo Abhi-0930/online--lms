@@ -458,9 +458,26 @@ function RevenueChart() {
   );
 }
 
-function Overview({ onAction, onToast, onCreateCourse }: { onAction: (state: DialogState) => void; onToast: (message: string) => void; onCreateCourse?: () => void }) {
+function Overview({
+  onAction,
+  onToast,
+  onCreateCourse,
+  courses: propCourses,
+  stats: propStats,
+  isWsConnected: propWsConnected,
+}: {
+  onAction: (state: DialogState) => void;
+  onToast: (message: string) => void;
+  onCreateCourse?: () => void;
+  courses?: Course[];
+  stats?: AdminStats;
+  isWsConnected?: boolean;
+}) {
   const { adminUser } = useAdminAuth();
-  const { stats, courses: liveCourses, isWsConnected } = useLiveAdminData();
+  const hookData = useLiveAdminData();
+  const liveCourses = propCourses !== undefined ? propCourses : hookData.courses;
+  const stats = propStats !== undefined ? propStats : hookData.stats;
+  const isWsConnected = propWsConnected !== undefined ? propWsConnected : hookData.isWsConnected;
   const { navigate: navigateRoute } = useAdminRoute();
   const displayName = adminUser?.name || "Abhishek";
   const [query, setQuery] = useState("");
@@ -747,13 +764,23 @@ function CoursesView({
   onToast,
   onCreateCourse,
   onEditCourse,
+  courses: propCourses,
+  isLoading: propLoading,
+  onRefresh: propRefresh,
 }: {
   onAction: (state: DialogState) => void;
   onToast: (message: string) => void;
   onCreateCourse?: () => void;
   onEditCourse?: (course: Course) => void;
+  courses?: Course[];
+  isLoading?: boolean;
+  onRefresh?: () => void;
 }) {
-  const { courses: liveCourses, isLoading, refresh } = useLiveAdminData();
+  const hookData = useLiveAdminData();
+  const liveCourses = propCourses !== undefined ? propCourses : hookData.courses;
+  const isLoading = propLoading !== undefined ? propLoading : hookData.isLoading;
+  const refresh = propRefresh || hookData.refresh;
+
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const baseCourses = liveCourses && liveCourses.length > 0 ? liveCourses : courses;
@@ -3038,6 +3065,8 @@ export default function Home() {
     content: liveContent,
     stats: liveStats,
     isLoading,
+    isWsConnected,
+    upsertCourse,
   } = useLiveAdminData();
 
   useEffect(() => {
@@ -3244,8 +3273,8 @@ export default function Home() {
       seoDescription: course.seoDescription || "",
       targetAudience: course.targetAudience || "",
       learningOutcomes: course.learningOutcomes || [],
-      requirements: course.requirements || [""],
-      targetLearners: course.targetLearners || [""],
+      requirements: course.requirements || [],
+      targetLearners: course.targetLearners || [],
       tags: course.tags || course.skillsCovered || [],
     });
     setIsCourseBuilderOpen(true);
@@ -3311,6 +3340,10 @@ export default function Home() {
       });
 
       if (res.ok) {
+        const savedData = await res.json().catch(() => null);
+        if (savedData) {
+          upsertCourse(savedData);
+        }
         onToast("Course draft saved successfully!");
         refresh();
       } else {
@@ -3383,6 +3416,10 @@ export default function Home() {
       });
 
       if (res.ok) {
+        const savedData = await res.json().catch(() => null);
+        if (savedData) {
+          upsertCourse(savedData);
+        }
         onToast(
           statusVal === "PUBLISHED"
             ? "Course published successfully!"
@@ -3490,13 +3527,23 @@ export default function Home() {
 
   const content =
     section === "overview" ? (
-      <Overview onAction={onAction} onToast={onToast} onCreateCourse={handleOpenCourseBuilder} />
+      <Overview
+        onAction={onAction}
+        onToast={onToast}
+        onCreateCourse={handleOpenCourseBuilder}
+        courses={liveCourses}
+        stats={liveStats}
+        isWsConnected={isWsConnected}
+      />
     ) : section === "courses" ? (
       <CoursesView
         onAction={onAction}
         onToast={onToast}
         onCreateCourse={handleOpenCourseBuilder}
         onEditCourse={handleEditCourse}
+        courses={liveCourses}
+        isLoading={isLoading}
+        onRefresh={refresh}
       />
     ) : section === "students" ? (
       <StudentsView
