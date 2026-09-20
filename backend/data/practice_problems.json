@@ -228,7 +228,7 @@
       "javascript": "function twoSum(nums, target) {\n  // Write your code here\n  const map = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (map.has(complement)) {\n      return [map.get(complement), i];\n    }\n    map.set(nums[i], i);\n  }\n  return [];\n}"
     },
     "createdAt": "2026-09-20T11:08:44.216Z",
-    "updatedAt": "2026-09-20T11:08:44.216Z"
+    "updatedAt": "2026-09-20T15:41:05.105Z"
   },
   {
     "id": "a04b322c-41bb-4a68-88ea-56f628035a52",
@@ -410,19 +410,19 @@
     "updatedAt": "2026-09-20T11:08:49.082Z"
   },
   {
+    "id": "ac632909-1290-4ea7-a4ec-7e82a4f3ef9f",
+    "slug": "search-in-rotated-sorted-array-8585",
     "title": "Search in Rotated Sorted Array",
     "category": "Binary Search",
     "difficulty": "Medium",
+    "acceptance": "75.0%",
+    "submissions": 0,
     "testCases": 30,
     "status": "Live",
     "description": "Given the array nums after the possible rotation and an integer target, return the index of target if it is in nums, or -1 if it is not in nums.",
-    "id": "ac632909-1290-4ea7-a4ec-7e82a4f3ef9f",
-    "slug": "search-in-rotated-sorted-array-8585",
-    "acceptance": "75.0%",
-    "submissions": 0,
-    "sampleInput": "",
-    "sampleOutput": "",
-    "constraints": "",
+    "sampleInput": null,
+    "sampleOutput": null,
+    "constraints": null,
     "hints": [],
     "starterCode": {},
     "createdAt": "2026-09-20T11:09:18.587Z",
