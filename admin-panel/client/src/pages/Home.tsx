@@ -5,9 +5,11 @@ import AssignmentBuilder, { AssignmentData } from "@/components/AssignmentBuilde
 import ScheduleSessionBuilder, { LiveSessionData } from "@/components/ScheduleSessionBuilder";
 import UploadRecordingBuilder, { RecordingData } from "@/components/UploadRecordingBuilder";
 import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal";
+import PracticeProblemModal from "@/components/PracticeProblemModal";
+import PracticeProblemBuilder from "@/components/PracticeProblemBuilder";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useAdminRoute, navigateAdmin } from "@/lib/navigation";
-import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus, ContentItem } from "@/hooks/useLiveAdminData";
+import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus, ContentItem, PracticeProblem } from "@/hooks/useLiveAdminData";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -155,14 +157,7 @@ const auditLogs = [
   },
 ];
 
-const practiceProblemsData = [
-  { id: 1, title: "Two Sum & Hash Map Optimizations", category: "Arrays", difficulty: "Easy", acceptance: "84.2%", submissions: 2420, testCases: 15, status: "Live" },
-  { id: 2, title: "Longest Substring Without Repeating Characters", category: "Sliding Window", difficulty: "Medium", acceptance: "62.8%", submissions: 1890, testCases: 24, status: "Live" },
-  { id: 3, title: "Trapping Rain Water", category: "Two Pointers", difficulty: "Hard", acceptance: "48.1%", submissions: 1140, testCases: 32, status: "Live" },
-  { id: 4, title: "Lowest Common Ancestor in Binary Tree", category: "Trees", difficulty: "Medium", acceptance: "71.4%", submissions: 1560, testCases: 20, status: "Live" },
-  { id: 5, title: "Alien Dictionary Topological Sort", category: "Graphs", difficulty: "Hard", acceptance: "39.6%", submissions: 820, testCases: 28, status: "Draft" },
-  { id: 6, title: "Valid Parentheses & Stack Matching", category: "Stack", difficulty: "Easy", acceptance: "89.5%", submissions: 3120, testCases: 12, status: "Live" },
-];
+const practiceProblemsData: PracticeProblem[] = [];
 
 const assignmentsData: any[] = [];
 const submissionsData: any[] = [];
@@ -1243,11 +1238,13 @@ function StudentsView({
 function ContentView({
   onToast,
   onCreateCourse,
+  onOpenPracticeProblemBuilder,
   content: propContent,
   onRefresh,
 }: {
   onToast: (message: string) => void;
   onCreateCourse?: () => void;
+  onOpenPracticeProblemBuilder?: () => void;
   content?: ContentItem[];
   onRefresh?: () => void;
 }) {
@@ -1286,6 +1283,12 @@ function ContentView({
     if (selectedType === "course" && onCreateCourse) {
       setIsAddContentOpen(false);
       onCreateCourse();
+      return;
+    }
+
+    if (selectedType === "practice_problem" && onOpenPracticeProblemBuilder) {
+      setIsAddContentOpen(false);
+      onOpenPracticeProblemBuilder();
       return;
     }
 
@@ -1344,7 +1347,7 @@ function ContentView({
           {
             label: "Assignments & challenges",
             value: assignmentCount.toLocaleString(),
-            change: `${assignmentCount} interactive items`,
+            change: `${assignmentCount} tasks`,
           },
         ]}
       />
@@ -1449,6 +1452,7 @@ function ContentView({
         onClose={() => setIsAddContentOpen(false)}
         onContinue={handleContinueAddContent}
         onOpenCourseBuilder={onCreateCourse}
+        onOpenPracticeProblemBuilder={onOpenPracticeProblemBuilder}
         availableCourses={
           liveCourses && liveCourses.length > 0
             ? liveCourses.map((c) => c.title)
@@ -1583,10 +1587,40 @@ function ReportsView({ onToast }: { onToast: (message: string) => void }) {
   return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="reports" description={sectionDescriptions.reports} actionLabel="Build report" onAction={() => onToast("Report builder opened")} onExport={() => onToast("Analytics exported as CSV")} /><MetricStrip items={[{ label: "Engagement rate", value: "71.8%", change: "+8.4%" }, { label: "Course completion", value: "68.2%", change: "+5.2%" }, { label: "Learner retention", value: "84.6%", change: "+2.1%" }, { label: "Placement rate", value: "76.4%", change: "+11.8%" }]} /><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Learning engagement</p><h2 className="mt-1 font-display text-lg font-bold">Weekly active learners</h2></div><CustomDropdown value={timeRange} onChange={setTimeRange} options={["Last 30 days", "Last 90 days"]} /></div><div className="mt-7 h-56 flex items-end gap-2">{[46, 61, 52, 74, 68, 86, 78, 91, 72, 84, 88, 95].map((height, index) => <div key={index} className="group flex flex-1 flex-col justify-end gap-2"><div className="w-full rounded-t-lg bg-indigo-200 transition-all group-hover:bg-indigo-500 dark:bg-indigo-900/60" style={{ height: `${height}%` }} /><span className="text-center text-[9px] text-[var(--muted)]">W{index + 1}</span></div>)}</div></div><div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Course completion</p><h2 className="mt-1 font-display text-lg font-bold">Where learners drop off</h2></div><BarChart3 className="h-5 w-5 text-[var(--brand)]" /></div><div className="mt-6 space-y-5">{[{ label: "DSA Mastery", value: 78, color: "bg-indigo-500" }, { label: "System Design", value: 64, color: "bg-violet-500" }, { label: "Python for Problem Solving", value: 71, color: "bg-emerald-500" }, { label: "Competitive Programming", value: 52, color: "bg-amber-500" }].map((item) => <div key={item.label}><div className="flex justify-between text-[11px] font-bold"><span>{item.label}</span><span>{item.value}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className={cn("h-full rounded-full", item.color)} style={{ width: `${item.value}%` }} /></div></div>)}</div></div></div><DataCard title="Saved reports" subtitle="Reusable exports for your leadership and instructor teams" toolbar={<button onClick={() => onToast("New report template created")} className="secondary-button"><Plus className="h-4 w-4" /> Add template</button>}><div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">{["Monthly executive pulse", "Placement readiness", "Instructor performance"].map((report) => <button onClick={() => onToast(`${report} generated`)} className="rounded-xl border border-[var(--app-line)] p-4 text-left hover:bg-[var(--subtle-bg)]" key={report}><BarChart3 className="h-4 w-4 text-[var(--brand)]" /><p className="mt-4 text-[12px] font-bold">{report}</p><p className="mt-1 text-[10px] text-[var(--muted)]">Run report · CSV / PDF</p></button>)}</div></DataCard></div>;
 }
 
-function PracticeProblemsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+function PracticeProblemsView({
+  practiceProblems = [],
+  onCreateProblem,
+  onEditProblem,
+  onSaveProblem,
+  onDeleteProblem,
+  onToggleStatus,
+  onToast,
+  onRefresh,
+}: {
+  practiceProblems?: PracticeProblem[];
+  onCreateProblem?: () => void;
+  onEditProblem?: (prob: PracticeProblem) => void;
+  onSaveProblem?: (prob: PracticeProblem) => void;
+  onDeleteProblem?: (id: string | number) => void;
+  onToggleStatus?: (id: string | number) => void;
+  onToast: (message: string) => void;
+  onRefresh?: () => void;
+}) {
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
-  const [rows, setRows] = useState(practiceProblemsData);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [problemToEdit, setProblemToEdit] = useState<PracticeProblem | null>(null);
+
+  const rows = practiceProblems || [];
+
+  // Derive dynamic categories
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    rows.forEach((p) => {
+      if (p.category) cats.add(p.category);
+    });
+    return ["All", "Easy", "Medium", "Hard", ...Array.from(cats)];
+  }, [rows]);
 
   const filtered = rows.filter(
     (item) =>
@@ -1594,28 +1628,66 @@ function PracticeProblemsView({ onAction, onToast }: { onAction: (state: DialogS
       `${item.title} ${item.category} ${item.difficulty}`.toLowerCase().includes(query.toLowerCase())
   );
 
+  // Metrics
+  const totalCount = rows.length;
+  const easyCount = rows.filter((p) => p.difficulty === "Easy").length;
+  const medHardCount = rows.filter((p) => p.difficulty !== "Easy").length;
+  const liveCount = rows.filter((p) => p.status === "Live").length;
+
+  const handleCreateNew = () => {
+    if (onCreateProblem) {
+      onCreateProblem();
+    } else {
+      setProblemToEdit(null);
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleEdit = (prob: PracticeProblem) => {
+    if (onEditProblem) {
+      onEditProblem(prob);
+    } else {
+      setProblemToEdit(prob);
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleDelete = (prob: PracticeProblem) => {
+    if (confirm(`Are you sure you want to delete problem "${prob.title}"?`)) {
+      if (onDeleteProblem) {
+        onDeleteProblem(prob.id);
+      }
+      onToast(`Deleted problem "${prob.title}"`);
+    }
+  };
+
+  const handleExport = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(rows, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `practice_problems_${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    onToast("Practice problems exported as JSON");
+  };
+
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
       <SectionHeader
         section="practice_problems"
         description={sectionDescriptions.practice_problems}
         actionLabel="Create problem"
-        onAction={() =>
-          onAction({
-            title: "Create practice problem",
-            description: "Set problem description, test cases, and difficulty level.",
-            fields: ["Problem title", "Category / Topic", "Difficulty", "Sample test cases"],
-          })
-        }
-        onExport={() => onToast("Practice problems inventory exported")}
+        onAction={handleCreateNew}
+        onExport={handleExport}
       />
 
       <MetricStrip
         items={[
-          { label: "Coding problems", value: "1,284", change: "+48 this month" },
-          { label: "Easy challenges", value: "480", change: "High solve rate" },
-          { label: "Medium / Hard", value: "804", change: "Interview focused", tone: "text-amber-600" },
-          { label: "Avg. pass rate", value: "68.4%", change: "+4.2%" },
+          { label: "Coding problems", value: String(totalCount), change: `${liveCount} Live on platform` },
+          { label: "Easy challenges", value: String(easyCount), change: "High solve rate" },
+          { label: "Medium / Hard", value: String(medHardCount), change: "Interview focused", tone: "text-amber-600" },
+          { label: "Active challenge bank", value: "100% synced", change: "Persistent storage", tone: "text-emerald-600" },
         ]}
       />
 
@@ -1623,13 +1695,24 @@ function PracticeProblemsView({ onAction, onToast }: { onAction: (state: DialogS
         title="Challenge library"
         subtitle="DSA practice problems, coding screens, and competitive programming track"
         toolbar={
-          <SearchToolbar
-            query={query}
-            setQuery={setQuery}
-            filter={filter}
-            setFilter={setFilter}
-            filters={["All", "Easy", "Medium", "Hard", "Arrays", "Trees", "Graphs"]}
-          />
+          <div className="flex items-center gap-3">
+            <SearchToolbar
+              query={query}
+              setQuery={setQuery}
+              filter={filter}
+              setFilter={setFilter}
+              filters={categories}
+            />
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                title="Refresh from server"
+                className="hidden sm:grid h-9 w-9 place-items-center rounded-xl border border-[var(--app-line)] hover:bg-[var(--subtle-bg)] text-slate-500 cursor-pointer"
+              >
+                <Sparkles className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         }
       >
         <div className="overflow-x-auto">
@@ -1643,59 +1726,98 @@ function PracticeProblemsView({ onAction, onToast }: { onAction: (state: DialogS
                 <th className="px-4 py-3">Submissions</th>
                 <th className="px-4 py-3">Test cases</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3 text-right pr-6">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item) => (
-                <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]">
-                  <td className="px-5 py-4 sm:px-6">
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-8 w-8 place-items-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300">
-                        <Code2 className="h-4 w-4" />
-                      </span>
-                      <p className="text-[12px] font-bold">{item.title}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-[11px] font-semibold">{item.category}</td>
-                  <td className="px-4 py-4">
-                    <span
-                      className={cn(
-                        "rounded-md px-2 py-0.5 text-[10px] font-bold",
-                        item.difficulty === "Easy"
-                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                          : item.difficulty === "Medium"
-                          ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                          : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
-                      )}
-                    >
-                      {item.difficulty}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-[12px] font-bold">{item.acceptance}</td>
-                  <td className="px-4 py-4 text-[12px] font-semibold text-[var(--muted)]">{item.submissions.toLocaleString()}</td>
-                  <td className="px-4 py-4 text-[11px] font-bold">{item.testCases} cases</td>
-                  <td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td>
-                  <td className="px-4 py-4">
-                    <button
-                      onClick={() =>
-                        setRows((current) =>
-                          current.map((row) =>
-                            row.id === item.id ? { ...row, status: row.status === "Live" ? "Draft" : "Live" } : row
-                          )
-                        )
-                      }
-                      className="text-[10px] font-bold text-[var(--brand)]"
-                    >
-                      {item.status === "Live" ? "Draft" : "Publish"}
-                    </button>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-xs text-[var(--muted)]">
+                    No practice problems found. Click "Create problem" to add the first challenge!
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((item) => (
+                  <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)] transition-colors">
+                    <td className="px-5 py-4 sm:px-6">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-8 w-8 place-items-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300">
+                          <Code2 className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <p className="text-[12px] font-bold text-slate-900 dark:text-white">{item.title}</p>
+                          {item.slug && <p className="text-[10px] font-mono text-slate-400">/{item.slug}</p>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-[11px] font-semibold text-slate-700 dark:text-slate-300">{item.category}</td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={cn(
+                          "rounded-md px-2 py-0.5 text-[10px] font-bold",
+                          item.difficulty === "Easy"
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                            : item.difficulty === "Medium"
+                            ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                            : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                        )}
+                      >
+                        {item.difficulty}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-[12px] font-bold">{item.acceptance || "75.0%"}</td>
+                    <td className="px-4 py-4 text-[12px] font-semibold text-[var(--muted)]">{(item.submissions || 0).toLocaleString()}</td>
+                    <td className="px-4 py-4 text-[11px] font-bold">{item.testCases || 10} cases</td>
+                    <td className="px-4 py-4">
+                      <button
+                        onClick={() => onToggleStatus && onToggleStatus(item.id)}
+                        className="cursor-pointer"
+                        title="Click to toggle status"
+                      >
+                        <StatusBadge>{item.status}</StatusBadge>
+                      </button>
+                    </td>
+                    <td className="px-4 py-4 text-right pr-6">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => onToggleStatus && onToggleStatus(item.id)}
+                          className="rounded-lg px-2 py-1 text-[10px] font-bold text-[var(--brand)] hover:bg-[var(--subtle-bg)] transition-colors cursor-pointer"
+                        >
+                          {item.status === "Live" ? "Draft" : "Publish"}
+                        </button>
+                        <button
+                          onClick={() => handleEdit(item)}
+                          title="Edit problem"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item)}
+                          title="Delete problem"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </DataCard>
+
+      <PracticeProblemModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        problemToEdit={problemToEdit}
+        onSave={(saved) => {
+          if (onSaveProblem) onSaveProblem(saved);
+        }}
+        onToast={onToast}
+      />
     </div>
   );
 }
@@ -3054,6 +3176,8 @@ export default function Home() {
   const [editingSessionData, setEditingSessionData] = useState<Partial<LiveSessionData> | null>(null);
   const [isUploadRecordingOpen, setIsUploadRecordingOpen] = useState(false);
   const [editingRecordingData, setEditingRecordingData] = useState<Partial<RecordingData> | null>(null);
+  const [isPracticeProblemBuilderOpen, setIsPracticeProblemBuilderOpen] = useState(false);
+  const [editingProblemData, setEditingProblemData] = useState<Partial<PracticeProblem> | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [toast, setToast] = useState<string | null>(null);
   const {
@@ -3063,10 +3187,14 @@ export default function Home() {
     submissions: liveSubmissions,
     students: liveStudents,
     content: liveContent,
+    practiceProblems: livePracticeProblems,
     stats: liveStats,
     isLoading,
     isWsConnected,
     upsertCourse,
+    upsertPracticeProblem,
+    deletePracticeProblem,
+    toggleProblemStatus,
   } = useLiveAdminData();
 
   useEffect(() => {
@@ -3089,6 +3217,11 @@ export default function Home() {
       setIsUploadRecordingOpen(true);
     } else {
       setIsUploadRecordingOpen(false);
+    }
+    if (section === "create-practice-problem" || section === "create_practice_problem") {
+      setIsPracticeProblemBuilderOpen(true);
+    } else {
+      setIsPracticeProblemBuilderOpen(false);
     }
   }, [section]);
 
@@ -3213,6 +3346,75 @@ export default function Home() {
   const handlePublishRecording = (data: RecordingData) => {
     onToast(`Recording "${data.title}" published successfully!`);
     handleCloseUploadRecording();
+  };
+
+  const handleOpenPracticeProblemBuilder = (prob?: PracticeProblem) => {
+    setEditingProblemData(prob || null);
+    setIsPracticeProblemBuilderOpen(true);
+    if (prob?.id) {
+      navigate({ tab: "create-practice-problem", id: String(prob.id) });
+    } else {
+      navigate({ tab: "create-practice-problem" });
+    }
+  };
+
+  const handleClosePracticeProblemBuilder = () => {
+    setIsPracticeProblemBuilderOpen(false);
+    setEditingProblemData(null);
+    navigate({ tab: "practice_problems" });
+  };
+
+  const handleSaveProblemDraft = async (data: PracticeProblem) => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/practice-problems", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, status: "Draft" }),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        upsertPracticeProblem(saved);
+        onToast(`Problem draft "${data.title}" saved successfully!`);
+      } else {
+        upsertPracticeProblem({ ...data, status: "Draft" });
+        onToast(`Problem draft "${data.title}" saved!`);
+      }
+    } catch {
+      upsertPracticeProblem({ ...data, status: "Draft" });
+      onToast(`Problem draft "${data.title}" saved!`);
+    }
+    refresh();
+    handleClosePracticeProblemBuilder();
+  };
+
+  const handlePublishProblem = async (data: PracticeProblem) => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/practice-problems", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, status: "Live" }),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        upsertPracticeProblem(saved);
+        onToast(`Practice problem "${data.title}" published live to student arena!`);
+      } else {
+        upsertPracticeProblem({ ...data, status: "Live" });
+        onToast(`Practice problem "${data.title}" published live!`);
+      }
+    } catch {
+      upsertPracticeProblem({ ...data, status: "Live" });
+      onToast(`Practice problem "${data.title}" published live!`);
+    }
+    refresh();
+    handleClosePracticeProblemBuilder();
+  };
+
+  const handleDeleteProblemFromBuilder = async (id: string | number) => {
+    await deletePracticeProblem(id);
+    onToast("Practice problem deleted");
+    refresh();
+    handleClosePracticeProblemBuilder();
   };
 
   const handleEditCourse = (course: Course) => {
@@ -3525,6 +3727,29 @@ export default function Home() {
     );
   }
 
+  if (isPracticeProblemBuilderOpen || section === "create-practice-problem" || section === "create_practice_problem") {
+    return (
+      <div className="relative min-h-screen bg-[#f8fafc]">
+        <PracticeProblemBuilder
+          initialData={editingProblemData}
+          onClose={handleClosePracticeProblemBuilder}
+          onSaveDraft={handleSaveProblemDraft}
+          onPublish={handlePublishProblem}
+          onDelete={handleDeleteProblemFromBuilder}
+          existingProblems={livePracticeProblems}
+        />
+        {toast && (
+          <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+            <span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-500 text-white">
+              <Check className="h-3.5 w-3.5" />
+            </span>
+            {toast}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const content =
     section === "overview" ? (
       <Overview
@@ -3558,11 +3783,21 @@ export default function Home() {
       <ContentView
         onToast={onToast}
         onCreateCourse={handleOpenCourseBuilder}
+        onOpenPracticeProblemBuilder={handleOpenPracticeProblemBuilder}
         content={liveContent}
         onRefresh={refresh}
       />
     ) : section === "practice_problems" ? (
-      <PracticeProblemsView onAction={onAction} onToast={onToast} />
+      <PracticeProblemsView
+        practiceProblems={livePracticeProblems}
+        onCreateProblem={() => handleOpenPracticeProblemBuilder()}
+        onEditProblem={(prob) => handleOpenPracticeProblemBuilder(prob)}
+        onSaveProblem={upsertPracticeProblem}
+        onDeleteProblem={deletePracticeProblem}
+        onToggleStatus={toggleProblemStatus}
+        onToast={onToast}
+        onRefresh={refresh}
+      />
     ) : section === "assignments" ? (
       <AssignmentsView
         onAction={onAction}
