@@ -93,7 +93,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Browse courses", href: "/courses", icon: Library },
   { label: "My learning", href: "/my-courses", icon: BookOpen },
-  { label: "Practice problems", href: "/practice", icon: Code2, badge: "12" },
+  { label: "Practice problems", href: "/practice", icon: Code2 },
 ];
 
 const utilityItems: NavItem[] = [
@@ -151,7 +151,18 @@ function Avatar({ size = "md", name }: { size?: "sm" | "md" | "lg"; name?: strin
 
 function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed: (value: boolean) => void }) {
   const location = usePathname() || "";
+  const { problems: liveProblems } = useLiveProblems();
+  const { courses } = useLiveCourses();
+  const { enrollments } = useEnrollments();
   const isActive = (href: string) => href === "/" ? location === "/" : location.startsWith(href);
+
+  const dynamicNavItems: NavItem[] = [
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Browse courses", href: "/courses", icon: Library, badge: courses.length > 0 ? String(courses.length) : undefined },
+    { label: "My learning", href: "/my-courses", icon: BookOpen, badge: enrollments.length > 0 ? String(enrollments.length) : undefined },
+    { label: "Practice problems", href: "/practice", icon: Code2, badge: liveProblems.length > 0 ? String(liveProblems.length) : undefined },
+  ];
+
   return (
     <aside className={cx("fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[#e5e8f0] bg-[#fbfcff] transition-[width] duration-200 dark:border-white/10 dark:bg-[#10172b] lg:flex", collapsed ? "w-[86px]" : "w-[250px]")}>
       <div className={cx("flex h-[78px] items-center border-b border-[#e5e8f0] dark:border-white/10", collapsed ? "justify-center px-3" : "px-6")}>
@@ -160,7 +171,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
       <div className="flex flex-1 flex-col overflow-y-auto px-3 py-6">
         {!collapsed && <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>}
         <nav className="space-y-1">
-          {navItems.map((item) => <SidebarLink key={item.href} item={item} active={isActive(item.href)} collapsed={collapsed} />)}
+          {dynamicNavItems.map((item) => <SidebarLink key={item.href} item={item} active={isActive(item.href)} collapsed={collapsed} />)}
         </nav>
         {!collapsed && <p className="mb-3 mt-8 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Keep going</p>}
         <nav className="space-y-1">
@@ -419,9 +430,20 @@ function MobileNav() {
 function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const location = usePathname() || "";
   const { user } = useAuth();
+  const { problems: liveProblems } = useLiveProblems();
+  const { courses } = useLiveCourses();
+  const { enrollments } = useEnrollments();
   const displayName = resolveDisplayName(user);
   if (!open) return null;
-  return <div className="fixed inset-0 z-[60] lg:hidden"><button aria-label="Close menu" onClick={onClose} className="absolute inset-0 bg-[#17223d]/40 backdrop-blur-sm" /><aside className="relative flex h-full w-[82%] max-w-[310px] flex-col bg-[#fbfcff] shadow-2xl dark:bg-[#10172b]"><div className="flex h-[78px] items-center justify-between border-b border-[#e5e8f0] px-6 dark:border-white/10"><Logo /><button onClick={onClose} className="rounded-lg p-2 text-[#7c87a4] hover:bg-[#eef2ff]"><X className="h-5 w-5" /></button></div><div className="flex-1 px-4 py-6"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>{[...navItems, ...utilityItems].map((item) => <div key={item.href} onClick={onClose}><SidebarLink item={item} active={item.href === "/" ? location === "/" : location.startsWith(item.href)} collapsed={false} /></div>)}</div><div className="border-t border-[#e5e8f0] p-5 dark:border-white/10"><div className="flex items-center gap-3"><Avatar name={displayName} /><div><p suppressHydrationWarning className="text-sm font-bold text-[#17223d] dark:text-white truncate max-w-[180px]">{displayName}</p><p className="text-xs text-[#9aa4bc]">7 day learning streak</p></div></div></div></aside></div>;
+
+  const dynamicNavItems: NavItem[] = [
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Browse courses", href: "/courses", icon: Library, badge: courses.length > 0 ? String(courses.length) : undefined },
+    { label: "My learning", href: "/my-courses", icon: BookOpen, badge: enrollments.length > 0 ? String(enrollments.length) : undefined },
+    { label: "Practice problems", href: "/practice", icon: Code2, badge: liveProblems.length > 0 ? String(liveProblems.length) : undefined },
+  ];
+
+  return <div className="fixed inset-0 z-[60] lg:hidden"><button aria-label="Close menu" onClick={onClose} className="absolute inset-0 bg-[#17223d]/40 backdrop-blur-sm" /><aside className="relative flex h-full w-[82%] max-w-[310px] flex-col bg-[#fbfcff] shadow-2xl dark:bg-[#10172b]"><div className="flex h-[78px] items-center justify-between border-b border-[#e5e8f0] px-6 dark:border-white/10"><Logo /><button onClick={onClose} className="rounded-lg p-2 text-[#7c87a4] hover:bg-[#eef2ff]"><X className="h-5 w-5" /></button></div><div className="flex-1 px-4 py-6"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>{[...dynamicNavItems, ...utilityItems].map((item) => <div key={item.href} onClick={onClose}><SidebarLink item={item} active={item.href === "/" ? location === "/" : location.startsWith(item.href)} collapsed={false} /></div>)}</div><div className="border-t border-[#e5e8f0] p-5 dark:border-white/10"><div className="flex items-center gap-3"><Avatar name={displayName} /><div><p suppressHydrationWarning className="text-sm font-bold text-[#17223d] dark:text-white truncate max-w-[180px]">{displayName}</p><p className="text-xs text-[#9aa4bc]">7 day learning streak</p></div></div></div></aside></div>;
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
@@ -441,7 +463,7 @@ function SectionTitle({ title, link, href = "#" }: { title: string; link?: strin
 
 function StatCard({ icon: Icon, value, label, trend, color }: { icon: LucideIcon; value: string; label: string; trend: string; color: "blue" | "violet" | "amber" | "emerald" }) {
   const tones = { blue: "bg-[#eaf0ff] text-[#3157e8] dark:bg-[#3157e8]/20", violet: "bg-[#f0eaff] text-[#7f5af0] dark:bg-[#7f5af0]/20", amber: "bg-[#fff4db] text-[#d68c20] dark:bg-[#d68c20]/20", emerald: "bg-[#e4f8ee] text-[#23a26d] dark:bg-[#23a26d]/20" };
-  return <div className="card-surface p-4 sm:p-5"><div className="flex items-start justify-between gap-2"><span className={cx("flex h-9 w-9 items-center justify-center rounded-xl", tones[color])}><Icon className="h-[17px] w-[17px]" /></span><span className="flex items-center gap-1 text-[10px] font-bold text-[#24a06b]"><ArrowUpRight className="h-3 w-3" />{trend}</span></div><p className="mt-4 font-display text-[26px] font-bold tracking-[-0.05em] text-[#17223d] dark:text-white">{value}</p><p className="mt-1 text-xs font-medium text-[#9aa4bc]">{label}</p></div>;
+  return <div className="card-surface p-4 sm:p-5"><div className="flex items-start justify-between gap-2"><span className={cx("flex h-9 w-9 items-center justify-center rounded-xl", tones[color])}><Icon className="h-[17px] w-[17px]" /></span><span className="flex items-center gap-1 text-[10px] font-bold text-[#24a06b]" suppressHydrationWarning><ArrowUpRight className="h-3 w-3" />{trend}</span></div><p className="mt-4 font-display text-[26px] font-bold tracking-[-0.05em] text-[#17223d] dark:text-white" suppressHydrationWarning>{value}</p><p className="mt-1 text-xs font-medium text-[#9aa4bc]">{label}</p></div>;
 }
 
 function ProgressBar({ value, color = "#3157e8" }: { value: number; color?: string }) {
@@ -454,8 +476,10 @@ function Dashboard() {
   const { courses, loading: coursesLoading } = useLiveCourses();
   const { enrollments, isEnrolled } = useEnrollments();
   const { submissions: mySubmissions } = useAssignments();
+  const { problems: liveProblems } = useLiveProblems();
   const displayName = resolveDisplayName(user);
   const firstName = resolveFirstName(user);
+  const solvedCount = liveProblems.filter((p) => p.solved).length;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -580,7 +604,13 @@ function Dashboard() {
           trend={mySubmissions.length > 0 ? `${mySubmissions.length} submitted` : "0 submitted"}
           color="violet"
         />
-        <StatCard icon={Code2} value="42" label="Problems solved" trend="+12% vs last week" color="amber" />
+        <StatCard
+          icon={Code2}
+          value={String(solvedCount).padStart(2, "0")}
+          label="Problems solved"
+          trend={liveProblems.length > 0 ? `${solvedCount} of ${liveProblems.length} solved` : "0 available"}
+          color="amber"
+        />
         <StatCard icon={Clock3} value="26h 40m" label="Total watch time" trend="+3h 20m" color="emerald" />
       </div>
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)]">
@@ -2084,8 +2114,7 @@ function PracticePage({
 
   const solvedCount = liveProblems.filter((p) => p.solved).length;
   const totalCount = liveProblems.length;
-  const accuracyPct = totalCount > 0 ? Math.min(95, Math.round((solvedCount > 0 ? (solvedCount / (solvedCount + 2)) * 100 : 78))) : 78;
-  const nextMilestone = totalCount > 0 ? totalCount : 50;
+  const accuracyPct = totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0;
 
   return (
     <>
@@ -2101,31 +2130,33 @@ function PracticePage({
       />
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card-surface p-5">
-          <p className="text-xs font-semibold text-[#9aa4bc]">Solved this month</p>
+          <p className="text-xs font-semibold text-[#9aa4bc]">Solved</p>
           <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white" suppressHydrationWarning>
             {solvedCount}
           </p>
           <div className="mt-3">
-            <ProgressBar value={totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 72} color="#23a26d" />
+            <ProgressBar value={totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0} color="#23a26d" />
           </div>
           <p className="mt-2 text-[10px] font-bold text-[#23a26d]" suppressHydrationWarning>
             {totalCount} total challenges available
           </p>
         </div>
         <div className="card-surface p-5">
-          <p className="text-xs font-semibold text-[#9aa4bc]">Current accuracy</p>
+          <p className="text-xs font-semibold text-[#9aa4bc]">Completion rate</p>
           <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white" suppressHydrationWarning>
             {accuracyPct}<span className="text-base">%</span>
           </p>
-          <p className="mt-3 text-[10px] font-bold text-[#3157e8]">Top 18% of your cohort</p>
+          <p className="mt-3 text-[10px] font-bold text-[#3157e8]" suppressHydrationWarning>
+            {solvedCount > 0 ? `${solvedCount} of ${totalCount} solved` : (totalCount > 0 ? "Start your first problem" : "No problems available")}
+          </p>
         </div>
         <div className="card-surface p-5">
-          <p className="text-xs font-semibold text-[#9aa4bc]">Next milestone</p>
+          <p className="text-xs font-semibold text-[#9aa4bc]">Remaining</p>
           <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white" suppressHydrationWarning>
-            {nextMilestone} <span className="text-sm font-semibold text-[#9aa4bc]">solved</span>
+            {Math.max(0, totalCount - solvedCount)} <span className="text-sm font-semibold text-[#9aa4bc]">unsolved</span>
           </p>
           <p className="mt-3 text-[10px] font-bold text-[#d68c20]" suppressHydrationWarning>
-            {Math.max(0, nextMilestone - solvedCount)} more to unlock badge
+            {totalCount === 0 ? "No problems published yet" : `${Math.max(0, totalCount - solvedCount)} more to complete all`}
           </p>
         </div>
       </div>
@@ -2245,11 +2276,16 @@ function ProgressPage() {
   const [timeframe, setTimeframe] = useState("Last 14 days");
   const { courses } = useLiveCourses();
   const { enrollments } = useEnrollments();
+  const { problems: liveProblems } = useLiveProblems();
 
   const enrolledCourses = courses.filter((c) =>
     enrollments.some((e) => e.courseId === c.id || e.course?.id === c.id || e.course?.slug === c.slug)
   );
   const targetCourses = enrolledCourses.length > 0 ? enrolledCourses : courses;
+
+  const easySolved = liveProblems.filter((p) => p.solved && p.difficulty?.toLowerCase() === "easy").length;
+  const mediumSolved = liveProblems.filter((p) => p.solved && p.difficulty?.toLowerCase() === "medium").length;
+  const hardSolved = liveProblems.filter((p) => p.solved && p.difficulty?.toLowerCase() === "hard").length;
 
   const bars =
     timeframe === "Last 7 days"
@@ -2383,15 +2419,21 @@ function ProgressPage() {
           <SectionTitle title="Practice statistics" link="Practice" href="/practice" />
           <div className="card-surface grid grid-cols-3 divide-x divide-[#edf0f6] p-5 dark:divide-white/10">
             <div className="px-2 text-center">
-              <p className="font-display text-3xl font-bold text-[#23a26d]">24</p>
+              <p className="font-display text-3xl font-bold text-[#23a26d]" suppressHydrationWarning>
+                {String(easySolved).padStart(2, "0")}
+              </p>
               <p className="mt-2 text-[10px] font-bold text-[#9aa4bc]">Easy solved</p>
             </div>
             <div className="px-2 text-center">
-              <p className="font-display text-3xl font-bold text-[#d68c20]">15</p>
+              <p className="font-display text-3xl font-bold text-[#d68c20]" suppressHydrationWarning>
+                {String(mediumSolved).padStart(2, "0")}
+              </p>
               <p className="mt-2 text-[10px] font-bold text-[#9aa4bc]">Medium solved</p>
             </div>
             <div className="px-2 text-center">
-              <p className="font-display text-3xl font-bold text-[#ef8354]">03</p>
+              <p className="font-display text-3xl font-bold text-[#ef8354]" suppressHydrationWarning>
+                {String(hardSolved).padStart(2, "0")}
+              </p>
               <p className="mt-2 text-[10px] font-bold text-[#9aa4bc]">Hard solved</p>
             </div>
           </div>
@@ -2437,6 +2479,7 @@ function ProgressPage() {
 }
 
 function AnnouncementsPage() {
+  const { problems: liveProblems } = useLiveProblems();
   const announcements = [
     {
       title: "Your next live clinic is this Thursday",
@@ -2445,10 +2488,10 @@ function AnnouncementsPage() {
       body: "Bring one problem you got stuck on. We’ll break it down together and leave time for open Q&A.",
     },
     {
-      title: "New practice set: trees & graphs",
-      category: "New content",
-      date: "Sep 09, 2025",
-      body: "12 fresh problems are now available in the practice room, with hints written by your mentors.",
+      title: "Interactive Practice Arena",
+      category: "Practice",
+      date: "Active now",
+      body: `${liveProblems.length} real coding challenges are currently available in the practice room.`,
     },
     {
       title: "Mock interview week is open",
@@ -3097,6 +3140,8 @@ function ProfilePage() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const { enrollments } = useEnrollments();
+  const { problems: liveProblems } = useLiveProblems();
+  const solvedCount = liveProblems.filter((p) => p.solved).length;
   const displayName = resolveDisplayName(user);
   const email = user?.email || "learner@example.com";
   const nameParts = displayName.trim().split(/\s+/);
@@ -3137,7 +3182,9 @@ function ProfilePage() {
               <p className="mt-1 text-[9px] text-[#9aa4bc]">Courses</p>
             </div>
             <div className="text-center">
-              <p className="font-display text-lg font-bold text-[#17223d] dark:text-white">42</p>
+              <p className="font-display text-lg font-bold text-[#17223d] dark:text-white" suppressHydrationWarning>
+                {String(solvedCount).padStart(2, "0")}
+              </p>
               <p className="mt-1 text-[9px] text-[#9aa4bc]">Solved</p>
             </div>
             <div className="text-center">
