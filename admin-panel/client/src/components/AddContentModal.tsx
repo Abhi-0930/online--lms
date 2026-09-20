@@ -212,6 +212,7 @@ interface AddContentModalProps {
     details?: CreatedContentPayload
   ) => void;
   onOpenCourseBuilder?: () => void;
+  onOpenPracticeProblemBuilder?: () => void;
   availableCourses?: string[];
   recentItems?: RecentContentItem[];
 }
@@ -221,6 +222,7 @@ export default function AddContentModal({
   onClose,
   onContinue,
   onOpenCourseBuilder,
+  onOpenPracticeProblemBuilder,
   availableCourses = DEFAULT_COURSES,
   recentItems = [],
 }: AddContentModalProps) {
@@ -276,6 +278,11 @@ export default function AddContentModal({
     if (selectedType === "course" && onOpenCourseBuilder) {
       handleClose();
       onOpenCourseBuilder();
+      return;
+    }
+    if (selectedType === "practice_problem" && onOpenPracticeProblemBuilder) {
+      handleClose();
+      onOpenPracticeProblemBuilder();
       return;
     }
     setFormContentType(selectedType);
