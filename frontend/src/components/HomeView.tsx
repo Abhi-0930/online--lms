@@ -11,7 +11,8 @@ import { initiateRazorpayCheckout } from "@/lib/razorpay";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { useLiveCourses, LiveCourseItem } from "@/hooks/useLiveCourses";
 import { useAssignments, LiveAssignmentItem } from "@/hooks/useAssignments";
-import { useLiveProblems, PublicProblem } from "@/hooks/useLiveProblems";
+import { useLiveProblems, PublicProblem, DEFAULT_PROBLEMS } from "@/hooks/useLiveProblems";
+import StudentProblemArena from "@/components/StudentProblemArena";
 
 function getSecureHref(path: string, params?: Record<string, any>) {
   if (!path || path === "#" || path.startsWith("http")) return path;
@@ -138,7 +139,14 @@ function Avatar({ size = "md", name }: { size?: "sm" | "md" | "lg"; name?: strin
     .join("")
     .toUpperCase() || "L";
   const sizeClass = size === "lg" ? "h-16 w-16 text-xl" : size === "sm" ? "h-8 w-8 text-[11px]" : "h-10 w-10 text-sm";
-  return <span className={cx("inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#3157e8] via-[#567bf5] to-[#7f5af0] font-semibold text-white ring-2 ring-white dark:ring-[#182036]", sizeClass)}>{initials}</span>;
+  return (
+    <span
+      suppressHydrationWarning
+      className={cx("inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#3157e8] via-[#567bf5] to-[#7f5af0] font-semibold text-white ring-2 ring-white dark:ring-[#182036]", sizeClass)}
+    >
+      {initials}
+    </span>
+  );
 }
 
 function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed: (value: boolean) => void }) {
@@ -311,8 +319,8 @@ function LearnerProfileDropdown({ displayName, roleName, user, onLogout }: { dis
       >
         <Avatar size="sm" name={displayName} />
         <span className="hidden text-left lg:block">
-          <span className="block text-xs font-bold text-[#17223d] dark:text-white truncate max-w-[140px]">{displayName}</span>
-          <span className="block text-[10px] text-[#9aa4bc]">{roleName}</span>
+          <span suppressHydrationWarning className="block text-xs font-bold text-[#17223d] dark:text-white truncate max-w-[140px]">{displayName}</span>
+          <span suppressHydrationWarning className="block text-[10px] text-[#9aa4bc]">{roleName}</span>
         </span>
         <ChevronDown className={cx("hidden h-3.5 w-3.5 text-[#9aa4bc] transition-transform duration-200 lg:block", open && "rotate-180 text-[#3157e8]")} />
       </button>
@@ -322,8 +330,8 @@ function LearnerProfileDropdown({ displayName, roleName, user, onLogout }: { dis
           <div className="flex items-center gap-2.5 border-b border-[#edf0f6] p-2.5 pb-3 dark:border-white/10">
             <Avatar size="sm" name={displayName} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-bold text-[#17223d] dark:text-white">{displayName}</p>
-              <p className="truncate text-[10px] text-[#9aa4bc]">{user?.email || "learner@example.com"}</p>
+              <p suppressHydrationWarning className="truncate text-xs font-bold text-[#17223d] dark:text-white">{displayName}</p>
+              <p suppressHydrationWarning className="truncate text-[10px] text-[#9aa4bc]">{user?.email || "learner@example.com"}</p>
               <span className="mt-1 inline-block rounded bg-[#e4f8ee] px-1.5 py-0.5 text-[9px] font-bold text-[#23a26d]">Active Learner</span>
             </div>
           </div>
@@ -413,7 +421,7 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
   const { user } = useAuth();
   const displayName = resolveDisplayName(user);
   if (!open) return null;
-  return <div className="fixed inset-0 z-[60] lg:hidden"><button aria-label="Close menu" onClick={onClose} className="absolute inset-0 bg-[#17223d]/40 backdrop-blur-sm" /><aside className="relative flex h-full w-[82%] max-w-[310px] flex-col bg-[#fbfcff] shadow-2xl dark:bg-[#10172b]"><div className="flex h-[78px] items-center justify-between border-b border-[#e5e8f0] px-6 dark:border-white/10"><Logo /><button onClick={onClose} className="rounded-lg p-2 text-[#7c87a4] hover:bg-[#eef2ff]"><X className="h-5 w-5" /></button></div><div className="flex-1 px-4 py-6"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>{[...navItems, ...utilityItems].map((item) => <div key={item.href} onClick={onClose}><SidebarLink item={item} active={item.href === "/" ? location === "/" : location.startsWith(item.href)} collapsed={false} /></div>)}</div><div className="border-t border-[#e5e8f0] p-5 dark:border-white/10"><div className="flex items-center gap-3"><Avatar name={displayName} /><div><p className="text-sm font-bold text-[#17223d] dark:text-white truncate max-w-[180px]">{displayName}</p><p className="text-xs text-[#9aa4bc]">7 day learning streak</p></div></div></div></aside></div>;
+  return <div className="fixed inset-0 z-[60] lg:hidden"><button aria-label="Close menu" onClick={onClose} className="absolute inset-0 bg-[#17223d]/40 backdrop-blur-sm" /><aside className="relative flex h-full w-[82%] max-w-[310px] flex-col bg-[#fbfcff] shadow-2xl dark:bg-[#10172b]"><div className="flex h-[78px] items-center justify-between border-b border-[#e5e8f0] px-6 dark:border-white/10"><Logo /><button onClick={onClose} className="rounded-lg p-2 text-[#7c87a4] hover:bg-[#eef2ff]"><X className="h-5 w-5" /></button></div><div className="flex-1 px-4 py-6"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>{[...navItems, ...utilityItems].map((item) => <div key={item.href} onClick={onClose}><SidebarLink item={item} active={item.href === "/" ? location === "/" : location.startsWith(item.href)} collapsed={false} /></div>)}</div><div className="border-t border-[#e5e8f0] p-5 dark:border-white/10"><div className="flex items-center gap-3"><Avatar name={displayName} /><div><p suppressHydrationWarning className="text-sm font-bold text-[#17223d] dark:text-white truncate max-w-[180px]">{displayName}</p><p className="text-xs text-[#9aa4bc]">7 day learning streak</p></div></div></div></aside></div>;
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
@@ -2047,7 +2055,11 @@ function PlayerPage() {
   );
 }
 
-function PracticePage() {
+function PracticePage({
+  onSelectProblem,
+}: {
+  onSelectProblem?: (slugOrId: string) => void;
+}) {
   const { problems: liveProblems, isLoading, refresh } = useLiveProblems();
   const [difficulty, setDifficulty] = useState("All");
   const [topic, setTopic] = useState("All topics");
@@ -2090,29 +2102,29 @@ function PracticePage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card-surface p-5">
           <p className="text-xs font-semibold text-[#9aa4bc]">Solved this month</p>
-          <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">
+          <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white" suppressHydrationWarning>
             {solvedCount}
           </p>
           <div className="mt-3">
             <ProgressBar value={totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 72} color="#23a26d" />
           </div>
-          <p className="mt-2 text-[10px] font-bold text-[#23a26d]">
+          <p className="mt-2 text-[10px] font-bold text-[#23a26d]" suppressHydrationWarning>
             {totalCount} total challenges available
           </p>
         </div>
         <div className="card-surface p-5">
           <p className="text-xs font-semibold text-[#9aa4bc]">Current accuracy</p>
-          <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">
+          <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white" suppressHydrationWarning>
             {accuracyPct}<span className="text-base">%</span>
           </p>
           <p className="mt-3 text-[10px] font-bold text-[#3157e8]">Top 18% of your cohort</p>
         </div>
         <div className="card-surface p-5">
           <p className="text-xs font-semibold text-[#9aa4bc]">Next milestone</p>
-          <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">
+          <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white" suppressHydrationWarning>
             {nextMilestone} <span className="text-sm font-semibold text-[#9aa4bc]">solved</span>
           </p>
-          <p className="mt-3 text-[10px] font-bold text-[#d68c20]">
+          <p className="mt-3 text-[10px] font-bold text-[#d68c20]" suppressHydrationWarning>
             {Math.max(0, nextMilestone - solvedCount)} more to unlock badge
           </p>
         </div>
@@ -2157,12 +2169,17 @@ function PracticePage() {
           filtered.map((problem) => (
             <div
               key={String(problem.id || problem.title)}
-              className="grid gap-3 border-b border-[#edf0f6] px-5 py-4 last:border-0 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] sm:items-center sm:gap-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+              onClick={() => {
+                if (onSelectProblem) {
+                  onSelectProblem(problem.slug || String(problem.id));
+                }
+              }}
+              className="grid gap-3 border-b border-[#edf0f6] px-5 py-4 last:border-0 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] sm:items-center sm:gap-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer group"
             >
               <div className="flex min-w-0 items-start gap-3">
                 <span
                   className={cx(
-                    "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                    "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg group-hover:scale-105 transition-transform",
                     problem.solved
                       ? "bg-[#e4f8ee] text-[#23a26d]"
                       : "bg-[#f1f3f8] text-[#9aa4bc] dark:bg-white/10"
@@ -2171,14 +2188,9 @@ function PracticePage() {
                   <Code2 className="h-3.5 w-3.5" />
                 </span>
                 <div className="min-w-0">
-                  <Link
-                    href={createSecureUrl("/practice", {
-                      slug: problem.slug || problem.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-                    })}
-                    className="block truncate text-sm font-bold text-[#17223d] hover:text-[#3157e8] dark:text-white"
-                  >
+                  <span className="block truncate text-sm font-bold text-[#17223d] group-hover:text-[#3157e8] dark:text-white transition-colors">
                     {problem.title}
-                  </Link>
+                  </span>
                   <p className="mt-1 text-[10px] text-[#9aa4bc]">
                     {problem.topic || problem.category} · {(problem.attempts || 0)} attempts
                   </p>
@@ -2206,13 +2218,14 @@ function PracticePage() {
                 {problem.solved ? "Solved" : "Not started"}
               </span>
               <button
-                onClick={() =>
+                onClick={(e) => {
+                  e.stopPropagation();
                   setSaved(
                     saved.includes(problem.title)
                       ? saved.filter((item) => item !== problem.title)
                       : [...saved, problem.title]
-                  )
-                }
+                  );
+                }}
                 className={cx(
                   "justify-self-start rounded-lg p-2 transition-colors cursor-pointer",
                   saved.includes(problem.title) ? "text-[#3157e8]" : "text-[#b6bfd0] hover:text-[#3157e8]"
@@ -3214,6 +3227,34 @@ export default function Home({
   problemSlug?: string;
 }) {
   useAuth();
+  const { problems: liveProblems } = useLiveProblems();
+  const [activeProblemSlug, setActiveProblemSlug] = useState<string | null>(problemSlug || null);
+
+  useEffect(() => {
+    if (problemSlug) {
+      setActiveProblemSlug(problemSlug);
+    }
+  }, [problemSlug]);
+
+  const activeProblem = useMemo(() => {
+    if (!activeProblemSlug) return null;
+    return (
+      liveProblems.find(
+        (p) =>
+          p.slug === activeProblemSlug ||
+          String(p.id) === activeProblemSlug ||
+          p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeProblemSlug
+      ) ||
+      DEFAULT_PROBLEMS.find(
+        (p) =>
+          p.slug === activeProblemSlug ||
+          String(p.id) === activeProblemSlug ||
+          p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeProblemSlug
+      ) ||
+      null
+    );
+  }, [activeProblemSlug, liveProblems]);
+
   const content = useMemo(() => {
     switch (page) {
       case "courses": return <CoursesPage />;
@@ -3221,7 +3262,16 @@ export default function Home({
       case "checkout": return <EnrollmentCheckoutPage courseId={courseId} />;
       case "my-courses": return <MyCoursesPage />;
       case "learn": return <PlayerPage />;
-      case "practice": return <PracticePage />;
+      case "practice": return (
+        <PracticePage
+          onSelectProblem={(slug) => {
+            setActiveProblemSlug(slug);
+            if (typeof window !== "undefined") {
+              window.history.replaceState(null, "", createSecureUrl("/practice", { slug }));
+            }
+          }}
+        />
+      );
       case "progress": return <ProgressPage />;
       case "announcements": return <AnnouncementsPage />;
       case "community": return <CommunityPage />;
@@ -3233,5 +3283,33 @@ export default function Home({
       default: return <Dashboard />;
     }
   }, [courseId, page]);
+
+  // Full-page LeetCode-style problem arena view (outside AppShell, exactly like admin panel)
+  if (page === "practice" && activeProblem) {
+    return (
+      <div className="relative min-h-screen bg-[#f5f7fb] dark:bg-[#0b0e17]">
+        <StudentProblemArena
+          problem={activeProblem}
+          onBack={() => {
+            setActiveProblemSlug(null);
+            if (typeof window !== "undefined") {
+              window.history.replaceState(null, "", createSecureUrl("/practice", { v: "practice" }));
+            }
+          }}
+          onSelectProblem={(slugOrId) => {
+            setActiveProblemSlug(slugOrId);
+            if (typeof window !== "undefined") {
+              window.history.replaceState(
+                null,
+                "",
+                createSecureUrl("/practice", { slug: slugOrId })
+              );
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
   return <AppShell>{content}</AppShell>;
 }
