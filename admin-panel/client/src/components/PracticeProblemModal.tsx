@@ -40,8 +40,8 @@ export default function PracticeProblemModal({
   const [category, setCategory] = useState("Arrays");
   const [difficulty, setDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
   const [status, setStatus] = useState<"Live" | "Draft">("Live");
-  const [testCases, setTestCases] = useState<number>(15);
-  const [acceptance, setAcceptance] = useState<string>("75.0%");
+  const [testCases, setTestCases] = useState<number>(0);
+  const [acceptance, setAcceptance] = useState<string>("0.0%");
   const [description, setDescription] = useState("");
   const [sampleInput, setSampleInput] = useState("");
   const [sampleOutput, setSampleOutput] = useState("");
@@ -60,8 +60,8 @@ export default function PracticeProblemModal({
       setCategory(problemToEdit.category || "Arrays");
       setDifficulty(problemToEdit.difficulty || "Medium");
       setStatus(problemToEdit.status || "Live");
-      setTestCases(problemToEdit.testCases || 10);
-      setAcceptance(problemToEdit.acceptance || "75.0%");
+      setTestCases(problemToEdit.testCases || 0);
+      setAcceptance(problemToEdit.acceptance || "0.0%");
       setDescription(problemToEdit.description || "");
       setSampleInput(problemToEdit.sampleInput || "");
       setSampleOutput(problemToEdit.sampleOutput || "");
@@ -79,8 +79,8 @@ export default function PracticeProblemModal({
       setCategory("Arrays");
       setDifficulty("Medium");
       setStatus("Live");
-      setTestCases(15);
-      setAcceptance("75.0%");
+      setTestCases(0);
+      setAcceptance("0.0%");
       setDescription("");
       setSampleInput("");
       setSampleOutput("");
