@@ -7,6 +7,6 @@ export default async function PracticeProblemPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const secureUrl = createSecureUrl("/practice", { slug: slug || "two-sum" });
+  const secureUrl = slug ? createSecureUrl("/practice", { slug }) : createSecureUrl("/practice", { v: "practice" });
   redirect(secureUrl);
 }
