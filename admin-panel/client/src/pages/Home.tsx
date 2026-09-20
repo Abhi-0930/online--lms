@@ -7,6 +7,7 @@ import UploadRecordingBuilder, { RecordingData } from "@/components/UploadRecord
 import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal";
 import PracticeProblemModal from "@/components/PracticeProblemModal";
 import PracticeProblemBuilder from "@/components/PracticeProblemBuilder";
+import PracticeProblemDetailView from "@/components/PracticeProblemDetailView";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useAdminRoute, navigateAdmin } from "@/lib/navigation";
 import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus, ContentItem, PracticeProblem } from "@/hooks/useLiveAdminData";
@@ -38,6 +39,7 @@ import {
   Download,
   Edit3,
   Ellipsis,
+  Eye,
   FileCheck2,
   FileText,
   Filter,
@@ -1590,6 +1592,7 @@ function ReportsView({ onToast }: { onToast: (message: string) => void }) {
 function PracticeProblemsView({
   practiceProblems = [],
   onCreateProblem,
+  onViewProblem,
   onEditProblem,
   onSaveProblem,
   onDeleteProblem,
@@ -1599,6 +1602,7 @@ function PracticeProblemsView({
 }: {
   practiceProblems?: PracticeProblem[];
   onCreateProblem?: () => void;
+  onViewProblem?: (prob: PracticeProblem) => void;
   onEditProblem?: (prob: PracticeProblem) => void;
   onSaveProblem?: (prob: PracticeProblem) => void;
   onDeleteProblem?: (id: string | number) => void;
@@ -1738,14 +1742,26 @@ function PracticeProblemsView({
                 </tr>
               ) : (
                 filtered.map((item) => (
-                  <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)] transition-colors">
+                  <tr
+                    key={item.id}
+                    onClick={() => {
+                      if (onViewProblem) {
+                        onViewProblem(item);
+                      } else {
+                        handleEdit(item);
+                      }
+                    }}
+                    className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)] transition-colors cursor-pointer group"
+                  >
                     <td className="px-5 py-4 sm:px-6">
                       <div className="flex items-center gap-3">
-                        <span className="grid h-8 w-8 place-items-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300">
+                        <span className="grid h-8 w-8 place-items-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300 group-hover:scale-105 transition-transform">
                           <Code2 className="h-4 w-4" />
                         </span>
                         <div>
-                          <p className="text-[12px] font-bold text-slate-900 dark:text-white">{item.title}</p>
+                          <p className="text-[12px] font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            {item.title}
+                          </p>
                           {item.slug && <p className="text-[10px] font-mono text-slate-400">/{item.slug}</p>}
                         </div>
                       </div>
@@ -1768,7 +1784,7 @@ function PracticeProblemsView({
                     <td className="px-4 py-4 text-[12px] font-bold">{item.acceptance || "75.0%"}</td>
                     <td className="px-4 py-4 text-[12px] font-semibold text-[var(--muted)]">{(item.submissions || 0).toLocaleString()}</td>
                     <td className="px-4 py-4 text-[11px] font-bold">{item.testCases || 10} cases</td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => onToggleStatus && onToggleStatus(item.id)}
                         className="cursor-pointer"
@@ -1777,13 +1793,20 @@ function PracticeProblemsView({
                         <StatusBadge>{item.status}</StatusBadge>
                       </button>
                     </td>
-                    <td className="px-4 py-4 text-right pr-6">
+                    <td className="px-4 py-4 text-right pr-6" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => onToggleStatus && onToggleStatus(item.id)}
                           className="rounded-lg px-2 py-1 text-[10px] font-bold text-[var(--brand)] hover:bg-[var(--subtle-bg)] transition-colors cursor-pointer"
                         >
                           {item.status === "Live" ? "Draft" : "Publish"}
+                        </button>
+                        <button
+                          onClick={() => onViewProblem ? onViewProblem(item) : handleEdit(item)}
+                          title="View problem details"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleEdit(item)}
@@ -3178,6 +3201,7 @@ export default function Home() {
   const [editingRecordingData, setEditingRecordingData] = useState<Partial<RecordingData> | null>(null);
   const [isPracticeProblemBuilderOpen, setIsPracticeProblemBuilderOpen] = useState(false);
   const [editingProblemData, setEditingProblemData] = useState<Partial<PracticeProblem> | null>(null);
+  const [viewingProblemData, setViewingProblemData] = useState<PracticeProblem | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [toast, setToast] = useState<string | null>(null);
   const {
@@ -3750,6 +3774,57 @@ export default function Home() {
     );
   }
 
+  if (viewingProblemData && !isPracticeProblemBuilderOpen) {
+    return (
+      <div className="relative min-h-screen bg-[#f8fafc]">
+        <PracticeProblemDetailView
+          problem={viewingProblemData}
+          onBack={() => {
+            setViewingProblemData(null);
+            navigate({ tab: "practice_problems" });
+          }}
+          onEdit={(prob) => {
+            setEditingProblemData(prob);
+            setIsPracticeProblemBuilderOpen(true);
+          }}
+          onToggleStatus={async (id) => {
+            await toggleProblemStatus(id);
+            setViewingProblemData((prev) =>
+              prev ? { ...prev, status: prev.status === "Live" ? "Draft" : "Live" } : null
+            );
+          }}
+          onDelete={async (id) => {
+            await deletePracticeProblem(id);
+            onToast("Practice problem deleted");
+            setViewingProblemData(null);
+            refresh();
+          }}
+          onDuplicate={(prob) => {
+            handleOpenPracticeProblemBuilder({
+              ...prob,
+              id: undefined as any,
+              title: `${prob.title} (Copy)`,
+              status: "Draft",
+            });
+            setViewingProblemData(null);
+          }}
+          existingProblems={livePracticeProblems}
+          onSelectProblem={(prob) => {
+            setViewingProblemData(prob);
+          }}
+        />
+        {toast && (
+          <div className="fixed bottom-5 right-5 z-[80] flex max-w-sm items-center gap-3 rounded-xl bg-slate-950 px-4 py-3 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+            <span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-500 text-white">
+              <Check className="h-3.5 w-3.5" />
+            </span>
+            {toast}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const content =
     section === "overview" ? (
       <Overview
@@ -3791,6 +3866,7 @@ export default function Home() {
       <PracticeProblemsView
         practiceProblems={livePracticeProblems}
         onCreateProblem={() => handleOpenPracticeProblemBuilder()}
+        onViewProblem={(prob) => setViewingProblemData(prob)}
         onEditProblem={(prob) => handleOpenPracticeProblemBuilder(prob)}
         onSaveProblem={upsertPracticeProblem}
         onDeleteProblem={deletePracticeProblem}
