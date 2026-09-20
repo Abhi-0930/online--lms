@@ -39,7 +39,6 @@ import {
   Download,
   Edit3,
   Ellipsis,
-  Eye,
   FileCheck2,
   FileText,
   Filter,
@@ -1799,13 +1798,6 @@ function PracticeProblemsView({
                           className="rounded-lg px-2 py-1 text-[10px] font-bold text-[var(--brand)] hover:bg-[var(--subtle-bg)] transition-colors cursor-pointer"
                         >
                           {item.status === "Live" ? "Draft" : "Publish"}
-                        </button>
-                        <button
-                          onClick={() => onViewProblem ? onViewProblem(item) : handleEdit(item)}
-                          title="View problem details"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleEdit(item)}
