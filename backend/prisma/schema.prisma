@@ -458,3 +458,30 @@ model AssignmentSubmission {
   @@index([assignmentId])
   @@index([userId])
 }
+
+// ------------------------------------------
+// PRACTICE PROBLEMS
+// ------------------------------------------
+model PracticeProblem {
+  id           String   @id @default(uuid())
+  slug         String   @unique
+  title        String
+  category     String   @default("Arrays")
+  difficulty   String   @default("Medium") // "Easy" | "Medium" | "Hard"
+  acceptance   String   @default("75.0%")
+  submissions  Int      @default(0)
+  testCases    Int      @default(10)
+  status       String   @default("Live") // "Live" | "Draft"
+  description  String?  @db.Text
+  sampleInput  String?  @db.Text
+  sampleOutput String?  @db.Text
+  constraints  String?  @db.Text
+  hints        Json?    // array of strings
+  starterCode  Json?    // { javascript: "...", python: "...", cpp: "..." }
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([category])
+  @@index([difficulty])
+  @@index([status])
+}
