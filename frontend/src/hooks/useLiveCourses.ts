@@ -16,6 +16,11 @@ export interface LiveCourseItem {
   lessons: string;
   rating: string;
   price: string;
+  originalPrice?: string;
+  discountPrice?: string;
+  hasDiscount?: boolean;
+  discountPercentage?: number;
+  currency?: string;
   category: string;
   level: string;
   image: string;
@@ -23,6 +28,21 @@ export interface LiveCourseItem {
   progress: number;
   accent: string;
   rawPrice: number;
+  rawOriginalPrice?: number;
+  rawDiscountPrice?: number;
+  modules?: any[];
+  learningOutcomes?: string[];
+  prerequisites?: string;
+  targetAudience?: string;
+  requirements?: string[];
+  targetLearners?: string[];
+  skillsCovered?: string[];
+  tags?: string[];
+  certificateAvailable?: boolean;
+  seoTitle?: string;
+  seoDescription?: string;
+  accessType?: string;
+  courseVisibility?: string;
 }
 
 const DEFAULT_COVER =
@@ -59,20 +79,114 @@ function inferCategory(title: string = "", description: string = ""): string {
 }
 
 function transformDbCourse(c: any): LiveCourseItem {
-  const numericPrice = Math.round(Number(c.price || 0));
-  const formattedPrice = `₹ ${numericPrice.toLocaleString("en-IN")}`;
+  const origPriceNum = typeof c.price === "number"
+    ? c.price
+    : (parseFloat(String(c.price || "0").replace(/[^0-9.]/g, "")) || 0);
+
+  const discPriceNum = c.discountPrice !== undefined && c.discountPrice !== null && String(c.discountPrice).trim() !== ""
+    ? (typeof c.discountPrice === "number"
+        ? c.discountPrice
+        : (parseFloat(String(c.discountPrice).replace(/[^0-9.]/g, "")) || 0))
+    : 0;
+
+  let rawPrice = origPriceNum;
+  let formattedPrice = `₹ ${origPriceNum.toLocaleString("en-IN")}`;
+  let originalPriceStr: string | undefined = undefined;
+  let hasDiscount = false;
+  let discountPercentage = 0;
+
+  if (c.courseType === "Free" || (origPriceNum === 0 && discPriceNum === 0)) {
+    rawPrice = 0;
+    formattedPrice = "Free";
+  } else if (discPriceNum > 0 && discPriceNum < origPriceNum) {
+    rawPrice = discPriceNum;
+    formattedPrice = `₹ ${discPriceNum.toLocaleString("en-IN")}`;
+    originalPriceStr = `₹ ${origPriceNum.toLocaleString("en-IN")}`;
+    hasDiscount = true;
+    discountPercentage = Math.round(((origPriceNum - discPriceNum) / origPriceNum) * 100);
+  } else if (origPriceNum > 0) {
+    rawPrice = origPriceNum;
+    formattedPrice = `₹ ${origPriceNum.toLocaleString("en-IN")}`;
+  }
 
   const levelStr = c.level
-    ? c.level.charAt(0) + c.level.slice(1).toLowerCase().replace(/_/g, " ")
+    ? c.level.charAt(0).toUpperCase() + c.level.slice(1).toLowerCase().replace(/_/g, " ")
     : "Beginner";
 
-  const moduleCount = c._count?.modules ?? (Array.isArray(c.modules) ? c.modules.length : 0);
-  const lessonsStr = moduleCount > 0 ? `${moduleCount} modules` : "Curriculum inside";
+  const rawModules = Array.isArray(c.modules) ? c.modules : [];
+  const modules = rawModules.map((mod: any, mIdx: number) => {
+    if (mod.topics && Array.isArray(mod.topics) && mod.topics.length > 0) {
+      const allSubtopics = mod.topics.flatMap((t: any) => t.subtopics || []);
+      const totalLessons = allSubtopics.length > 0 ? allSubtopics.length : mod.topics.length;
+      return {
+        id: mod.id || `mod_${mIdx}`,
+        title: mod.title || `Module ${mIdx + 1}`,
+        description: mod.description || "",
+        lessons: totalLessons,
+        duration: mod.duration || `${Math.max(15, totalLessons * 15)} mins`,
+        complete: 0,
+        topics: mod.topics,
+      };
+    }
+    const lessons = Array.isArray(mod.lessons) ? mod.lessons : [];
+    return {
+      id: mod.id || `mod_${mIdx}`,
+      title: mod.title || `Module ${mIdx + 1}`,
+      description: mod.description || "",
+      lessons: lessons.length || 0,
+      duration: mod.duration || `${Math.max(15, (lessons.length || 1) * 15)} mins`,
+      complete: 0,
+      topics: lessons.length > 0 ? [
+        {
+          id: `top_${mod.id || mIdx}`,
+          title: "Lessons",
+          subtopics: lessons.map((l: any) => ({
+            id: l.id,
+            title: l.title,
+            type: l.type ? (l.type.charAt(0).toUpperCase() + l.type.slice(1).toLowerCase()) : "Video",
+            duration: l.durationSeconds ? `${Math.round(l.durationSeconds / 60)} mins` : "15 mins",
+          })),
+        }
+      ] : [],
+    };
+  });
+
+  const totalLessonsCount = modules.reduce((sum: number, m: any) => sum + (m.lessons || 0), 0);
+  const lessonsStr = totalLessonsCount > 0
+    ? `${modules.length} module${modules.length > 1 ? "s" : ""} · ${totalLessonsCount} lesson${totalLessonsCount > 1 ? "s" : ""}`
+    : modules.length > 0
+    ? `${modules.length} module${modules.length > 1 ? "s" : ""}`
+    : "Curriculum inside";
+
   const enrollmentCount = c._count?.enrollments ?? (Array.isArray(c.enrollments) ? c.enrollments.length : 0);
-  const studentsStr = enrollmentCount > 0 ? `${enrollmentCount} learners` : "0 learners";
+  const studentsStr = enrollmentCount > 0 ? `${enrollmentCount} learners` : (c.students ? `${c.students} learners` : "0 learners");
 
   const category = c.category || inferCategory(c.title, c.description);
   const accent = category === "DSA" ? "blue" : category === "Placement" ? "violet" : category === "Web development" ? "amber" : "emerald";
+
+  const learningOutcomes = Array.isArray(c.learningOutcomes)
+    ? c.learningOutcomes.map((s: any) => String(s).trim()).filter(Boolean)
+    : [];
+
+  const prerequisites = typeof c.prerequisites === "string"
+    ? c.prerequisites
+    : (Array.isArray(c.requirements) ? c.requirements.join("\n") : "");
+
+  const requirements = Array.isArray(c.requirements) && c.requirements.length > 0
+    ? c.requirements.map((s: any) => String(s).trim()).filter(Boolean)
+    : (prerequisites ? prerequisites.split("\n").map(s => s.trim()).filter(Boolean) : []);
+
+  const targetAudience = typeof c.targetAudience === "string"
+    ? c.targetAudience
+    : (Array.isArray(c.targetLearners) ? c.targetLearners.join(", ") : "");
+
+  const targetLearners = Array.isArray(c.targetLearners) && c.targetLearners.length > 0
+    ? c.targetLearners.map((s: any) => String(s).trim()).filter(Boolean)
+    : (targetAudience ? targetAudience.split(",").map(s => s.trim()).filter(Boolean) : []);
+
+  const skillsCovered = Array.isArray(c.skillsCovered) && c.skillsCovered.length > 0
+    ? c.skillsCovered.map((s: any) => String(s).trim()).filter(Boolean)
+    : (Array.isArray(c.tags) ? c.tags.map((s: any) => String(s).trim()).filter(Boolean) : []);
 
   return {
     id: c.id,
@@ -80,23 +194,43 @@ function transformDbCourse(c: any): LiveCourseItem {
     title: c.title || "Untitled Course",
     subtitle: c.subtitle || c.description?.slice(0, 90) || "",
     description: c.description || "",
-    instructor: c.instructor?.fullName || "Abhishek Jujjuvarapu",
-    instructorRole: "Full Stack Engineer • Mentor",
+    instructor: c.instructorName || c.instructor?.fullName || "Platform Admin",
+    instructorRole: "Lead Instructor • Mentor",
     instructorAvatar:
       c.instructor?.avatarUrl ||
       "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
     students: studentsStr,
-    duration: "Self-paced",
+    duration: c.estimatedDuration || (c.durationValue ? `${c.durationValue} ${c.durationUnit || 'Days'}` : "12 Weeks"),
     lessons: lessonsStr,
     rating: "4.9",
     price: formattedPrice,
+    originalPrice: originalPriceStr,
+    discountPrice: hasDiscount ? `₹ ${discPriceNum.toLocaleString("en-IN")}` : undefined,
+    hasDiscount,
+    discountPercentage,
+    currency: c.currency || "INR ₹",
     category,
     level: levelStr,
-    image: c.coverImageUrl || DEFAULT_COVER,
+    image: c.coverImageUrl || c.thumbnailPreview || DEFAULT_COVER,
     badgeText: c.title || "Course",
     progress: 0,
     accent,
-    rawPrice: numericPrice,
+    rawPrice,
+    rawOriginalPrice: origPriceNum,
+    rawDiscountPrice: discPriceNum,
+    modules,
+    learningOutcomes,
+    prerequisites,
+    targetAudience,
+    requirements,
+    targetLearners,
+    skillsCovered,
+    tags: Array.isArray(c.tags) ? c.tags : [],
+    certificateAvailable: c.certificateAvailable !== undefined ? c.certificateAvailable : true,
+    seoTitle: c.seoTitle || "",
+    seoDescription: c.seoDescription || "",
+    accessType: c.accessType || "Lifetime Access",
+    courseVisibility: c.courseVisibility || "Public",
   };
 }
 
