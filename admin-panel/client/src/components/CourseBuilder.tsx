@@ -802,8 +802,8 @@ export default function CourseBuilder({
     thumbnailPreview: initialData?.thumbnailPreview || null,
 
     courseType: initialData?.courseType || "Paid",
-    price: initialData?.price || "18,999",
-    discountPrice: initialData?.discountPrice || "14,999",
+    price: initialData?.price !== undefined ? String(initialData.price) : "18,999",
+    discountPrice: initialData?.discountPrice !== undefined ? String(initialData.discountPrice) : "",
     currency: initialData?.currency || "INR ₹",
     accessType: initialData?.accessType || "Lifetime Access",
     durationCycleMode: initialData?.durationCycleMode || "Date Range",
@@ -826,10 +826,11 @@ export default function CourseBuilder({
     skillsCovered:
       initialData?.skillsCovered || initialData?.tags || [],
     prerequisites:
-      initialData?.prerequisites ||
-      (Array.isArray(initialData?.requirements)
-        ? initialData.requirements.join("\n")
-        : initialData?.requirements || ""),
+      initialData?.prerequisites !== undefined
+        ? initialData.prerequisites
+        : (Array.isArray(initialData?.requirements)
+          ? initialData.requirements.join("\n")
+          : initialData?.requirements || ""),
     estimatedDuration: initialData?.estimatedDuration || "12 Weeks",
     certificateAvailable:
       initialData?.certificateAvailable !== undefined
@@ -839,14 +840,15 @@ export default function CourseBuilder({
     seoTitle: initialData?.seoTitle || "",
     seoDescription: initialData?.seoDescription || "",
     targetAudience:
-      initialData?.targetAudience ||
-      (Array.isArray(initialData?.targetLearners)
-        ? initialData.targetLearners.join(", ")
-        : initialData?.targetLearners ||
-          ""),
+      initialData?.targetAudience !== undefined
+        ? initialData.targetAudience
+        : (Array.isArray(initialData?.targetLearners)
+          ? initialData.targetLearners.join(", ")
+          : initialData?.targetLearners ||
+            ""),
     learningOutcomes: initialData?.learningOutcomes || [],
-    requirements: initialData?.requirements || [""],
-    targetLearners: initialData?.targetLearners || [""],
+    requirements: initialData?.requirements || [],
+    targetLearners: initialData?.targetLearners || [],
     tags: initialData?.tags || [],
   });
 
@@ -863,8 +865,8 @@ export default function CourseBuilder({
         thumbnail: initialData.thumbnail || null,
         thumbnailPreview: initialData.thumbnailPreview || null,
         courseType: initialData.courseType || "Paid",
-        price: initialData.price || "18,999",
-        discountPrice: initialData.discountPrice || "14,999",
+        price: initialData.price !== undefined ? String(initialData.price) : "18,999",
+        discountPrice: initialData.discountPrice !== undefined ? String(initialData.discountPrice) : "",
         currency: initialData.currency || "INR ₹",
         accessType: initialData.accessType || "Lifetime Access",
         durationCycleMode: initialData.durationCycleMode || "Date Range",
@@ -887,10 +889,11 @@ export default function CourseBuilder({
         skillsCovered:
           initialData.skillsCovered || initialData.tags || [],
         prerequisites:
-          initialData.prerequisites ||
-          (Array.isArray(initialData.requirements)
-            ? initialData.requirements.join("\n")
-            : initialData?.requirements || ""),
+          initialData.prerequisites !== undefined
+            ? initialData.prerequisites
+            : (Array.isArray(initialData.requirements)
+              ? initialData.requirements.join("\n")
+              : initialData?.requirements || ""),
         estimatedDuration: initialData.estimatedDuration || "12 Weeks",
         certificateAvailable:
           initialData.certificateAvailable !== undefined
@@ -900,14 +903,15 @@ export default function CourseBuilder({
         seoTitle: initialData.seoTitle || "",
         seoDescription: initialData.seoDescription || "",
         targetAudience:
-          initialData.targetAudience ||
-          (Array.isArray(initialData.targetLearners)
-            ? initialData.targetLearners.join(", ")
-            : initialData.targetLearners ||
-              ""),
+          initialData.targetAudience !== undefined
+            ? initialData.targetAudience
+            : (Array.isArray(initialData.targetLearners)
+              ? initialData.targetLearners.join(", ")
+              : initialData.targetLearners ||
+                ""),
         learningOutcomes: initialData.learningOutcomes || [],
-        requirements: initialData.requirements || [""],
-        targetLearners: initialData.targetLearners || [""],
+        requirements: initialData.requirements || [],
+        targetLearners: initialData.targetLearners || [],
         tags: initialData.tags || [],
       });
       setCurrentStep(1);
@@ -1539,10 +1543,44 @@ export default function CourseBuilder({
     return Object.keys(newErrors).length === 0;
   };
 
+  const prepareFinalFormData = (): CourseBuilderData => {
+    const currentOutcomes = [...(formData.learningOutcomes || [])];
+    if (outcomeInput.trim() && !currentOutcomes.includes(outcomeInput.trim())) {
+      currentOutcomes.push(outcomeInput.trim());
+    }
+
+    const currentSkills = [...(formData.skillsCovered || [])];
+    if (skillInput.trim()) {
+      const extra = skillInput.split(/[,]+/).map((s) => s.trim()).filter(Boolean);
+      for (const s of extra) {
+        if (!currentSkills.includes(s)) currentSkills.push(s);
+      }
+    }
+
+    const currentReqs = formData.prerequisites
+      ? formData.prerequisites.split("\n").map((s) => s.trim()).filter(Boolean)
+      : (formData.requirements || []);
+
+    const currentLearners = formData.targetAudience
+      ? formData.targetAudience.split(",").map((s) => s.trim()).filter(Boolean)
+      : (formData.targetLearners || []);
+
+    return {
+      ...formData,
+      learningOutcomes: currentOutcomes,
+      skillsCovered: currentSkills,
+      tags: currentSkills,
+      requirements: currentReqs,
+      targetLearners: currentLearners,
+    };
+  };
+
   const handleSaveDraft = async () => {
     setIsSaving(true);
+    const dataToSave = prepareFinalFormData();
+    setFormData(dataToSave);
     if (onSaveDraft) {
-      await onSaveDraft(formData);
+      await onSaveDraft(dataToSave);
     }
     setIsSaving(false);
   };
@@ -1563,7 +1601,9 @@ export default function CourseBuilder({
       if (onContinue) {
         setIsSubmitting(true);
         try {
-          await onContinue(formData);
+          const dataToSubmit = prepareFinalFormData();
+          setFormData(dataToSubmit);
+          await onContinue(dataToSubmit);
         } finally {
           setIsSubmitting(false);
         }
