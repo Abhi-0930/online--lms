@@ -74,6 +74,7 @@ export default function StudentProblemArena({
   const [showHints, setShowHints] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [isBookmarked, setIsBookmarked] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // User submissions history (persisted in localStorage)
   const [mySubmissions, setMySubmissions] = useState<
@@ -403,7 +404,43 @@ public:
     ];
   }, [problem.hints]);
 
+  // Handle Submit Code
+  const handleSubmitCode = () => {
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      const runtime = `${Math.floor(Math.random() * 25) + 28} ms`;
+      const memory = `${(Math.random() * 2 + 15.2).toFixed(1)} MB`;
 
+      // Mark solved in global live state
+      markProblemSolved(String(problem.id));
+      if (problem.slug) markProblemSolved(problem.slug);
+
+      // Add to submission history
+      const newSubmission = {
+        id: `sub-${Date.now()}`,
+        status: "Accepted" as const,
+        runtime: `${runtime} (Beats 96.4%)`,
+        memory: `${memory} (Beats 91.8%)`,
+        language: language.toUpperCase(),
+        timestamp: "Just now",
+        codeSnippet: code,
+      };
+
+      const updatedSubs = [newSubmission, ...mySubmissions];
+      setMySubmissions(updatedSubs);
+      try {
+        localStorage.setItem(
+          `lms_submissions_${problem.id || problem.slug}`,
+          JSON.stringify(updatedSubs)
+        );
+      } catch {}
+
+      toast.success("Solution submitted successfully!", {
+        description: `Verdict: Accepted | Runtime: ${runtime}`,
+      });
+    }, 600);
+  };
 
   // Handle Post Discussion
   const handlePostDiscussion = (e: React.FormEvent) => {
@@ -1120,6 +1157,16 @@ public:
                 className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-white/5 transition cursor-pointer"
               >
                 {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleSubmitCode}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3.5 py-1 text-xs font-bold text-white shadow-xs transition cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <Send className={`h-3 w-3 ${isSubmitting ? "animate-spin" : ""}`} />
+                <span>{isSubmitting ? "Submitting..." : "Submit"}</span>
               </button>
             </div>
           </div>
