@@ -11,6 +11,7 @@ import { initiateRazorpayCheckout } from "@/lib/razorpay";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { useLiveCourses, LiveCourseItem } from "@/hooks/useLiveCourses";
 import { useAssignments, LiveAssignmentItem } from "@/hooks/useAssignments";
+import { useLiveProblems, PublicProblem } from "@/hooks/useLiveProblems";
 
 function getSecureHref(path: string, params?: Record<string, any>) {
   if (!path || path === "#" || path.startsWith("http")) return path;
@@ -100,14 +101,7 @@ const utilityItems: NavItem[] = [
   { label: "Community", href: "/community", icon: Users },
 ];
 
-const problems = [
-  { title: "Two Sum", topic: "Arrays", difficulty: "Easy", solved: true, attempts: 2, acceptance: "49%" },
-  { title: "Valid Parentheses", topic: "Stack", difficulty: "Easy", solved: true, attempts: 1, acceptance: "41%" },
-  { title: "Longest Substring Without Repeating Characters", topic: "Strings", difficulty: "Medium", solved: false, attempts: 3, acceptance: "35%" },
-  { title: "Merge Intervals", topic: "Arrays", difficulty: "Medium", solved: false, attempts: 0, acceptance: "47%" },
-  { title: "Binary Tree Level Order Traversal", topic: "Trees", difficulty: "Medium", solved: true, attempts: 1, acceptance: "68%" },
-  { title: "Number of Islands", topic: "Graphs", difficulty: "Hard", solved: false, attempts: 0, acceptance: "52%" },
-];
+
 
 const activity = [
   { icon: Video, title: "Watched lesson", subtitle: "Sliding Window Patterns", time: "12 min ago", color: "blue" },
@@ -2054,14 +2048,32 @@ function PlayerPage() {
 }
 
 function PracticePage() {
+  const { problems: liveProblems, isLoading, refresh } = useLiveProblems();
   const [difficulty, setDifficulty] = useState("All");
   const [topic, setTopic] = useState("All topics");
   const [saved, setSaved] = useState<string[]>([]);
-  const filtered = problems.filter(
+
+  const topicOptions = useMemo(() => {
+    const set = new Set<string>();
+    liveProblems.forEach((p) => {
+      if (p.topic || p.category) set.add(p.topic || p.category);
+    });
+    const customList = Array.from(set);
+    return customList.length > 0
+      ? ["All topics", ...customList]
+      : ["All topics", "Arrays", "Strings", "Stack", "Sliding Window", "Trees", "Graphs", "Two Pointers"];
+  }, [liveProblems]);
+
+  const filtered = liveProblems.filter(
     (p) =>
-      (difficulty === "All" || p.difficulty === difficulty) &&
-      (topic === "All topics" || p.topic === topic)
+      (difficulty === "All" || p.difficulty.toLowerCase() === difficulty.toLowerCase()) &&
+      (topic === "All topics" || (p.topic || p.category || "").toLowerCase() === topic.toLowerCase())
   );
+
+  const solvedCount = liveProblems.filter((p) => p.solved).length;
+  const totalCount = liveProblems.length;
+  const accuracyPct = totalCount > 0 ? Math.min(95, Math.round((solvedCount > 0 ? (solvedCount / (solvedCount + 2)) * 100 : 78))) : 78;
+  const nextMilestone = totalCount > 0 ? totalCount : 50;
 
   return (
     <>
@@ -2078,25 +2090,31 @@ function PracticePage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card-surface p-5">
           <p className="text-xs font-semibold text-[#9aa4bc]">Solved this month</p>
-          <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">24</p>
+          <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">
+            {solvedCount}
+          </p>
           <div className="mt-3">
-            <ProgressBar value={72} color="#23a26d" />
+            <ProgressBar value={totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 72} color="#23a26d" />
           </div>
-          <p className="mt-2 text-[10px] font-bold text-[#23a26d]">+8 from last month</p>
+          <p className="mt-2 text-[10px] font-bold text-[#23a26d]">
+            {totalCount} total challenges available
+          </p>
         </div>
         <div className="card-surface p-5">
           <p className="text-xs font-semibold text-[#9aa4bc]">Current accuracy</p>
           <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">
-            78<span className="text-base">%</span>
+            {accuracyPct}<span className="text-base">%</span>
           </p>
           <p className="mt-3 text-[10px] font-bold text-[#3157e8]">Top 18% of your cohort</p>
         </div>
         <div className="card-surface p-5">
           <p className="text-xs font-semibold text-[#9aa4bc]">Next milestone</p>
           <p className="mt-2 font-display text-3xl font-bold text-[#17223d] dark:text-white">
-            50 <span className="text-sm font-semibold text-[#9aa4bc]">solved</span>
+            {nextMilestone} <span className="text-sm font-semibold text-[#9aa4bc]">solved</span>
           </p>
-          <p className="mt-3 text-[10px] font-bold text-[#d68c20]">26 more to unlock badge</p>
+          <p className="mt-3 text-[10px] font-bold text-[#d68c20]">
+            {Math.max(0, nextMilestone - solvedCount)} more to unlock badge
+          </p>
         </div>
       </div>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2106,10 +2124,10 @@ function PracticePage() {
               key={item}
               onClick={() => setDifficulty(item)}
               className={cx(
-                "rounded-full px-4 py-2 text-xs font-bold",
+                "rounded-full px-4 py-2 text-xs font-bold transition-colors cursor-pointer",
                 difficulty === item
                   ? "bg-[#17223d] text-white dark:bg-[#3157e8]"
-                  : "bg-white text-[#7c87a4] dark:bg-white/5"
+                  : "bg-white text-[#7c87a4] dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
               )}
             >
               {item}
@@ -2119,7 +2137,7 @@ function PracticePage() {
         <CustomDropdown
           value={topic}
           onChange={setTopic}
-          options={["All topics", "Arrays", "Strings", "Stack", "Trees", "Graphs"]}
+          options={topicOptions}
           icon={<Code2 className="h-4 w-4 text-[#9aa4bc]" />}
         />
       </div>
@@ -2131,74 +2149,80 @@ function PracticePage() {
           <span>Status</span>
           <span />
         </div>
-        {filtered.map((problem) => (
-          <div
-            key={problem.title}
-            className="grid gap-3 border-b border-[#edf0f6] px-5 py-4 last:border-0 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] sm:items-center sm:gap-4"
-          >
-            <div className="flex min-w-0 items-start gap-3">
+        {filtered.length === 0 ? (
+          <div className="p-8 text-center text-xs text-[#9aa4bc]">
+            No practice problems match the selected filters.
+          </div>
+        ) : (
+          filtered.map((problem) => (
+            <div
+              key={String(problem.id || problem.title)}
+              className="grid gap-3 border-b border-[#edf0f6] px-5 py-4 last:border-0 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] sm:items-center sm:gap-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <span
+                  className={cx(
+                    "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                    problem.solved
+                      ? "bg-[#e4f8ee] text-[#23a26d]"
+                      : "bg-[#f1f3f8] text-[#9aa4bc] dark:bg-white/10"
+                  )}
+                >
+                  <Code2 className="h-3.5 w-3.5" />
+                </span>
+                <div className="min-w-0">
+                  <Link
+                    href={createSecureUrl("/practice", {
+                      slug: problem.slug || problem.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                    })}
+                    className="block truncate text-sm font-bold text-[#17223d] hover:text-[#3157e8] dark:text-white"
+                  >
+                    {problem.title}
+                  </Link>
+                  <p className="mt-1 text-[10px] text-[#9aa4bc]">
+                    {problem.topic || problem.category} · {(problem.attempts || 0)} attempts
+                  </p>
+                </div>
+              </div>
               <span
                 className={cx(
-                  "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
-                  problem.solved
+                  "w-fit rounded-md px-2 py-1 text-[10px] font-bold",
+                  problem.difficulty === "Easy"
                     ? "bg-[#e4f8ee] text-[#23a26d]"
-                    : "bg-[#f1f3f8] text-[#9aa4bc] dark:bg-white/10"
+                    : problem.difficulty === "Medium"
+                    ? "bg-[#fff4db] text-[#d68c20]"
+                    : "bg-[#fff0ed] text-[#ef8354]"
                 )}
               >
-                <Code2 className="h-3.5 w-3.5" />
+                {problem.difficulty}
               </span>
-              <div className="min-w-0">
-                <Link
-                  href={createSecureUrl("/practice", {
-                    slug: problem.title.toLowerCase().replace(/\s+/g, "-"),
-                  })}
-                  className="block truncate text-sm font-bold text-[#17223d] hover:text-[#3157e8] dark:text-white"
-                >
-                  {problem.title}
-                </Link>
-                <p className="mt-1 text-[10px] text-[#9aa4bc]">
-                  {problem.topic} · {problem.attempts} attempts
-                </p>
-              </div>
+              <span className="text-xs font-semibold text-[#7c87a4]">{problem.acceptance || "75.0%"}</span>
+              <span
+                className={cx(
+                  "w-fit text-xs font-bold",
+                  problem.solved ? "text-[#23a26d]" : "text-[#9aa4bc]"
+                )}
+              >
+                {problem.solved ? "Solved" : "Not started"}
+              </span>
+              <button
+                onClick={() =>
+                  setSaved(
+                    saved.includes(problem.title)
+                      ? saved.filter((item) => item !== problem.title)
+                      : [...saved, problem.title]
+                  )
+                }
+                className={cx(
+                  "justify-self-start rounded-lg p-2 transition-colors cursor-pointer",
+                  saved.includes(problem.title) ? "text-[#3157e8]" : "text-[#b6bfd0] hover:text-[#3157e8]"
+                )}
+              >
+                <Bookmark className={cx("h-4 w-4", saved.includes(problem.title) && "fill-current")} />
+              </button>
             </div>
-            <span
-              className={cx(
-                "w-fit rounded-md px-2 py-1 text-[10px] font-bold",
-                problem.difficulty === "Easy"
-                  ? "bg-[#e4f8ee] text-[#23a26d]"
-                  : problem.difficulty === "Medium"
-                  ? "bg-[#fff4db] text-[#d68c20]"
-                  : "bg-[#fff0ed] text-[#ef8354]"
-              )}
-            >
-              {problem.difficulty}
-            </span>
-            <span className="text-xs font-semibold text-[#7c87a4]">{problem.acceptance}</span>
-            <span
-              className={cx(
-                "w-fit text-xs font-bold",
-                problem.solved ? "text-[#23a26d]" : "text-[#9aa4bc]"
-              )}
-            >
-              {problem.solved ? "Solved" : "Not started"}
-            </span>
-            <button
-              onClick={() =>
-                setSaved(
-                  saved.includes(problem.title)
-                    ? saved.filter((item) => item !== problem.title)
-                    : [...saved, problem.title]
-                )
-              }
-              className={cx(
-                "justify-self-start rounded-lg p-2",
-                saved.includes(problem.title) ? "text-[#3157e8]" : "text-[#b6bfd0] hover:text-[#3157e8]"
-              )}
-            >
-              <Bookmark className={cx("h-4 w-4", saved.includes(problem.title) && "fill-current")} />
-            </button>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </>
   );
