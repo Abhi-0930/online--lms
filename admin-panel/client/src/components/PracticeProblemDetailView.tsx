@@ -68,95 +68,37 @@ export default function PracticeProblemDetailView({
   const [newDiscussionOpen, setNewDiscussionOpen] = useState(false);
   const [newDiscussionTitle, setNewDiscussionTitle] = useState("");
   const [newDiscussionBody, setNewDiscussionBody] = useState("");
-  const [discussions, setDiscussions] = useState([
-    {
-      id: "disc-1",
-      title: "Why is HashMap required?",
-      author: "Abhishek",
-      replies: 4,
-      status: "Open",
-      time: "2 hours ago",
-      snippet: "Can we use a sorted two-pointer approach instead of extra memory?",
-    },
-    {
-      id: "disc-2",
-      title: "Can we sort the array first?",
-      author: "Meera Nair",
-      replies: 2,
-      status: "Answered",
-      time: "1 day ago",
-      snippet: "Sorting will lose original indices unless we store index pairs.",
-    },
-    {
-      id: "disc-3",
-      title: "What is the best complexity?",
-      author: "Rohan Verma",
-      replies: 6,
-      status: "Open",
-      time: "2 days ago",
-      snippet: "Optimal is O(n) time and O(n) space using single pass hash map.",
-    },
-  ]);
+  const [discussions, setDiscussions] = useState<Array<{
+    id: string;
+    title: string;
+    author: string;
+    replies: number;
+    status: string;
+    time: string;
+    snippet: string;
+  }>>([]);
 
   // Submissions state
   const [submissionFilter, setSubmissionFilter] = useState<string>("All");
-  const [submissionsList] = useState([
-    {
-      id: "sub-1",
-      student: "Abhishek",
-      language: "Python",
-      submitted: "15 Sep 2026",
-      time: "23 min",
-      attempt: "Attempt 2",
-      status: "Pending Review",
-    },
-    {
-      id: "sub-2",
-      student: "Meera Nair",
-      language: "JavaScript",
-      submitted: "15 Sep 2026",
-      time: "28 min",
-      attempt: "Attempt 1",
-      status: "Approved",
-    },
-    {
-      id: "sub-3",
-      student: "Rohan Verma",
-      language: "C++",
-      submitted: "14 Sep 2026",
-      time: "22 min",
-      attempt: "Attempt 2",
-      status: "Needs improvement",
-    },
-    {
-      id: "sub-4",
-      student: "Ananya Sharma",
-      language: "Python",
-      submitted: "14 Sep 2026",
-      time: "18 min",
-      attempt: "Attempt 1",
-      status: "Approved",
-    },
-    {
-      id: "sub-5",
-      student: "Karthik Iyer",
-      language: "Java",
-      submitted: "13 Sep 2026",
-      time: "31 min",
-      attempt: "Attempt 3",
-      status: "Pending Review",
-    },
-  ]);
+  const [submissionsList] = useState<Array<{
+    id: string;
+    student: string;
+    language: string;
+    submitted: string;
+    time: string;
+    attempt: string;
+    status: string;
+  }>>([]);
 
   // Selected Submission Modal
   const [viewingSubmission, setViewingSubmission] = useState<any | null>(null);
 
   // Parsing & fallbacks
-  const topic = problem.category || "Arrays";
+  const topic = problem.category || "General";
   const difficulty = problem.difficulty || "Easy";
   const isLive = problem.status === "Live";
 
-  // Parse examples if available or use standard default
+  // Parse examples if available
   const examples = useMemo(() => {
     if (problem.sampleInput && problem.sampleOutput) {
       return [
@@ -164,30 +106,11 @@ export default function PracticeProblemDetailView({
           id: 1,
           input: problem.sampleInput,
           output: problem.sampleOutput,
-          explanation: "The selected values satisfy the problem constraints.",
-        },
-        {
-          id: 2,
-          input: "nums = [3, 2, 4], target = 6",
-          output: "[1, 2]",
-          explanation: "Explanation: The selected values add up to the target.",
+          explanation: "Primary sample input and expected output.",
         },
       ];
     }
-    return [
-      {
-        id: 1,
-        input: "nums = [2, 7, 11, 15], target = 9",
-        output: "[0, 1]",
-        explanation: "Explanation: The selected values add up to the target.",
-      },
-      {
-        id: 2,
-        input: "nums = [3, 2, 4], target = 6",
-        output: "[1, 2]",
-        explanation: "Explanation: The selected values add up to the target.",
-      },
-    ];
+    return [];
   }, [problem.sampleInput, problem.sampleOutput]);
 
   // Constraints list
@@ -198,11 +121,7 @@ export default function PracticeProblemDetailView({
         .map((c) => c.trim())
         .filter(Boolean);
     }
-    return [
-      "1 <= nums.length <= 10^4",
-      "-10^9 <= nums[i] <= 10^9",
-      "Exactly one valid answer exists.",
-    ];
+    return [];
   }, [problem.constraints]);
 
   // Hints
@@ -210,11 +129,7 @@ export default function PracticeProblemDetailView({
     if (problem.hints && problem.hints.length > 0) {
       return problem.hints;
     }
-    return [
-      "A really brute force way would be to search for all possible pairs of numbers but that would be too slow.",
-      "Can you use extra space to keep track of numbers seen so far in O(1) lookup time?",
-      "As you iterate through the array, check if target - current_value is already present in the hash map.",
-    ];
+    return [];
   }, [problem.hints]);
 
   // Code solutions
@@ -222,47 +137,7 @@ export default function PracticeProblemDetailView({
     if (problem.starterCode && problem.starterCode[selectedLanguage]) {
       return problem.starterCode[selectedLanguage];
     }
-    if (selectedLanguage === "javascript") {
-      return `function solve(nums, target) {
-    const map = new Map();
-    for (let i = 0; i < nums.length; i++) {
-        const complement = target - nums[i];
-        if (map.has(complement)) {
-            return [map.get(complement), i];
-        }
-        map.set(nums[i], i);
-    }
-    return [];
-}`;
-    }
-    if (selectedLanguage === "cpp") {
-      return `#include <vector>
-#include <unordered_map>
-using namespace std;
-
-class Solution {
-public:
-    vector<int> solve(vector<int>& nums, int target) {
-        unordered_map<int, int> lookup;
-        for (int i = 0; i < (int)nums.size(); i++) {
-            int complement = target - nums[i];
-            if (lookup.count(complement)) {
-                return {lookup[complement], i};
-            }
-            lookup[nums[i]] = i;
-        }
-        return {};
-    }
-};`;
-    }
-    return `def solve(nums, target):
-    seen = {}
-    for i, value in enumerate(nums):
-        complement = target - value
-        if complement in seen:
-            return [seen[complement], i]
-        seen[value] = i
-    return []`;
+    return `// No starter/editorial code configured for ${selectedLanguage}`;
   }, [problem.starterCode, selectedLanguage]);
 
   const handleCopyCode = () => {
@@ -296,11 +171,7 @@ public:
         .filter((p) => p.id !== problem.id)
         .slice(0, 3);
     }
-    return [
-      { id: "rel-1", title: "Contains Duplicate", difficulty: "Easy" },
-      { id: "rel-2", title: "Best Time to Buy Stock", difficulty: "Easy" },
-      { id: "rel-3", title: "Product of Array Except Self", difficulty: "Medium" },
-    ];
+    return [];
   }, [existingProblems, problem.id]);
 
   return (
