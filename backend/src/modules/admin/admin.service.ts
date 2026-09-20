@@ -1,9 +1,53 @@
 import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
 import { AuthService } from '../auth/auth.service';
 import { OnboardingService } from '../onboarding/onboarding.service';
 
 export class AdminService {
-  public static fallbackCourses = new Map<string, any>();
+  private static metaFilePath = path.resolve(process.cwd(), 'data', 'courses_meta.json');
+
+  private static loadCoursesMetaFromFile(): Map<string, any> {
+    try {
+      if (fs.existsSync(AdminService.metaFilePath)) {
+        const raw = fs.readFileSync(AdminService.metaFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const map = new Map<string, any>();
+          for (const item of parsed) {
+            if (item && item.id) {
+              map.set(String(item.id), item);
+            }
+          }
+          return map;
+        } else if (parsed && typeof parsed === 'object') {
+          const map = new Map<string, any>();
+          for (const [k, v] of Object.entries(parsed)) {
+            map.set(String(k), v);
+          }
+          return map;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load courses metadata from file:', err);
+    }
+    return new Map<string, any>();
+  }
+
+  public static saveMetaToFile() {
+    try {
+      const dir = path.dirname(AdminService.metaFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = Object.fromEntries(AdminService.fallbackCourses.entries());
+      fs.writeFileSync(AdminService.metaFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save courses metadata to file:', err);
+    }
+  }
+
+  public static fallbackCourses = AdminService.loadCoursesMetaFromFile();
   public static fallbackAssignments = new Map<string, any>();
   public static fallbackSubmissions = new Map<string, any>();
 
@@ -119,11 +163,15 @@ export class AdminService {
 
     let totalCourses = 0;
     try {
-      totalCourses = await this.prisma.course.count();
+      const dbCourseIds = (await this.prisma.course.findMany({ select: { id: true } })).map((c) => String(c.id));
+      const allCourseIds = new Set(dbCourseIds);
+      for (const id of AdminService.fallbackCourses.keys()) {
+        allCourseIds.add(String(id));
+      }
+      totalCourses = allCourseIds.size;
     } catch {
-      totalCourses = 0;
+      totalCourses = AdminService.fallbackCourses.size;
     }
-    totalCourses += AdminService.fallbackCourses.size;
 
     // Recent activity items based on true last active timestamps
     const recentActivities = allUsers.slice(0, 5).map((u) => {
@@ -335,11 +383,16 @@ export class AdminService {
 
     const courseMap = new Map<string, any>();
     for (const course of dbCourses) {
-      courseMap.set(course.id, course);
+      const fallback = AdminService.fallbackCourses.get(String(course.id)) || {};
+      courseMap.set(String(course.id), {
+        ...fallback,
+        ...course,
+        modules: (fallback.modules && fallback.modules.length > 0) ? fallback.modules : course.modules,
+      });
     }
     for (const fallback of AdminService.fallbackCourses.values()) {
-      if (!courseMap.has(fallback.id)) {
-        courseMap.set(fallback.id, fallback);
+      if (!courseMap.has(String(fallback.id))) {
+        courseMap.set(String(fallback.id), fallback);
       }
     }
 
@@ -388,7 +441,7 @@ export class AdminService {
         };
       });
 
-      const priceStr = course.price !== undefined ? String(course.price) : '0';
+      const priceStr = course.price !== undefined && course.price !== null ? String(course.price) : '0';
 
       return {
         id: course.id,
@@ -401,7 +454,7 @@ export class AdminService {
         coverImageUrl: course.coverImageUrl || course.thumbnailPreview || null,
         thumbnailPreview: course.thumbnailPreview || course.coverImageUrl || null,
         price: priceStr,
-        discountPrice: course.discountPrice !== undefined ? String(course.discountPrice) : '',
+        discountPrice: course.discountPrice !== undefined && course.discountPrice !== null ? String(course.discountPrice) : '',
         currency: course.currency || 'INR ₹',
         courseType: course.courseType || (Number(priceStr) > 0 ? 'Paid' : 'Free'),
         accessType: course.accessType || 'Lifetime Access',
@@ -426,17 +479,17 @@ export class AdminService {
             : course.status === 'DRAFT' || course.status === 'Draft'
             ? 'Draft'
             : 'Review',
-        skillsCovered: course.skillsCovered || course.tags || [],
+        skillsCovered: Array.isArray(course.skillsCovered) ? course.skillsCovered : (Array.isArray(course.tags) ? course.tags : []),
         prerequisites: course.prerequisites || '',
         estimatedDuration: course.estimatedDuration || '12 Weeks',
         certificateAvailable: course.certificateAvailable !== undefined ? course.certificateAvailable : true,
         seoTitle: course.seoTitle || '',
         seoDescription: course.seoDescription || '',
         targetAudience: course.targetAudience || '',
-        learningOutcomes: course.learningOutcomes || [],
-        requirements: course.requirements || [],
-        targetLearners: course.targetLearners || [],
-        tags: course.tags || course.skillsCovered || [],
+        learningOutcomes: Array.isArray(course.learningOutcomes) ? course.learningOutcomes : [],
+        requirements: Array.isArray(course.requirements) ? course.requirements : [],
+        targetLearners: Array.isArray(course.targetLearners) ? course.targetLearners : [],
+        tags: Array.isArray(course.tags) ? course.tags : (Array.isArray(course.skillsCovered) ? course.skillsCovered : []),
         color: course.color || '#dbeafe',
         initials: (course.title || 'COU').slice(0, 3).toUpperCase(),
         createdAt: course.createdAt || new Date().toISOString(),
@@ -605,18 +658,111 @@ export class AdminService {
             }
           }
 
+          const existingFallback = AdminService.fallbackCourses.get(String(updated.id)) || {};
           const fullUpdated = {
+            ...existingFallback,
             ...updated,
             ...data,
             id: updated.id,
+            title: data.title || updated.title,
+            subtitle: data.subtitle !== undefined ? data.subtitle : updated.subtitle,
+            description: data.description || updated.description,
+            price: priceNumber,
+            discountPrice: data.discountPrice !== undefined ? data.discountPrice : (existingFallback.discountPrice !== undefined ? existingFallback.discountPrice : 0),
+            currency: data.currency || existingFallback.currency || 'INR ₹',
+            courseType: data.courseType || (priceNumber > 0 ? 'Paid' : 'Free'),
+            accessType: data.accessType || existingFallback.accessType || 'Lifetime Access',
+            durationCycleMode: data.durationCycleMode || existingFallback.durationCycleMode || 'Date Range',
+            startDate: data.startDate || existingFallback.startDate,
+            endDate: data.endDate || existingFallback.endDate,
+            durationValue: data.durationValue || existingFallback.durationValue || '90',
+            durationUnit: data.durationUnit || existingFallback.durationUnit || 'Days',
+            subscriptionCycle: data.subscriptionCycle || existingFallback.subscriptionCycle || 'Monthly',
+            enrollmentLimit: data.enrollmentLimit || existingFallback.enrollmentLimit || 'Unlimited',
+            courseVisibility: data.courseVisibility || existingFallback.courseVisibility || 'Public',
+            learningOutcomes: data.learningOutcomes || existingFallback.learningOutcomes || [],
+            prerequisites: data.prerequisites !== undefined ? data.prerequisites : (existingFallback.prerequisites || ''),
+            requirements: data.requirements || existingFallback.requirements || [],
+            targetAudience: data.targetAudience !== undefined ? data.targetAudience : (existingFallback.targetAudience || ''),
+            targetLearners: data.targetLearners || existingFallback.targetLearners || [],
+            skillsCovered: data.skillsCovered || data.tags || existingFallback.skillsCovered || [],
+            tags: data.tags || data.skillsCovered || existingFallback.tags || [],
+            modules: (data.modules && data.modules.length > 0) ? data.modules : (existingFallback.modules || []),
             instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
+            instructorName: instructorDisplayName,
+            estimatedDuration: data.estimatedDuration || existingFallback.estimatedDuration || '12 Weeks',
+            certificateAvailable: data.certificateAvailable !== undefined ? data.certificateAvailable : (existingFallback.certificateAvailable !== undefined ? existingFallback.certificateAvailable : true),
+            seoTitle: data.seoTitle !== undefined ? data.seoTitle : (existingFallback.seoTitle || ''),
+            seoDescription: data.seoDescription !== undefined ? data.seoDescription : (existingFallback.seoDescription || ''),
+            status:
+              statusVal === 'PUBLISHED' || statusVal === 'Published'
+                ? 'Published'
+                : statusVal === 'DRAFT' || statusVal === 'Draft'
+                ? 'Draft'
+                : 'Review',
             updatedAt: new Date(),
           };
-          AdminService.fallbackCourses.set(updated.id, fullUpdated);
+          AdminService.fallbackCourses.set(String(updated.id), fullUpdated);
+          AdminService.saveMetaToFile();
           return fullUpdated;
         } catch (updateErr) {
           console.error('Course update DB error:', updateErr);
         }
+      }
+
+      // If not in DB or DB update had issue, update fallback metadata directly
+      if (AdminService.fallbackCourses.has(String(data.id)) || data.id) {
+        const existingFallback = AdminService.fallbackCourses.get(String(data.id)) || {};
+        const fullUpdated = {
+          ...existingFallback,
+          ...data,
+          id: data.id,
+          title: data.title || existingFallback.title || 'Untitled Course',
+          subtitle: data.subtitle !== undefined ? data.subtitle : existingFallback.subtitle,
+          description: data.description || existingFallback.description || '',
+          language: data.language || existingFallback.language || 'English',
+          category: data.category || existingFallback.category || 'Development',
+          level: data.level || existingFallback.level || 'Beginner',
+          coverImageUrl: coverImage !== null ? coverImage : existingFallback.coverImageUrl,
+          thumbnailPreview: coverImage !== null ? coverImage : existingFallback.thumbnailPreview,
+          price: priceNumber,
+          discountPrice: data.discountPrice !== undefined ? data.discountPrice : (existingFallback.discountPrice !== undefined ? existingFallback.discountPrice : 0),
+          currency: data.currency || existingFallback.currency || 'INR ₹',
+          courseType: data.courseType || (priceNumber > 0 ? 'Paid' : 'Free'),
+          accessType: data.accessType || existingFallback.accessType || 'Lifetime Access',
+          durationCycleMode: data.durationCycleMode || existingFallback.durationCycleMode || 'Date Range',
+          startDate: data.startDate || existingFallback.startDate,
+          endDate: data.endDate || existingFallback.endDate,
+          durationValue: data.durationValue || existingFallback.durationValue || '90',
+          durationUnit: data.durationUnit || existingFallback.durationUnit || 'Days',
+          subscriptionCycle: data.subscriptionCycle || existingFallback.subscriptionCycle || 'Monthly',
+          enrollmentLimit: data.enrollmentLimit || existingFallback.enrollmentLimit || 'Unlimited',
+          courseVisibility: data.courseVisibility || existingFallback.courseVisibility || 'Public',
+          learningOutcomes: data.learningOutcomes || existingFallback.learningOutcomes || [],
+          prerequisites: data.prerequisites !== undefined ? data.prerequisites : (existingFallback.prerequisites || ''),
+          requirements: data.requirements || existingFallback.requirements || [],
+          targetAudience: data.targetAudience !== undefined ? data.targetAudience : (existingFallback.targetAudience || ''),
+          targetLearners: data.targetLearners || existingFallback.targetLearners || [],
+          skillsCovered: data.skillsCovered || data.tags || existingFallback.skillsCovered || [],
+          tags: data.tags || data.skillsCovered || existingFallback.tags || [],
+          modules: (data.modules && data.modules.length > 0) ? data.modules : (existingFallback.modules || []),
+          instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
+          instructorName: instructorDisplayName,
+          estimatedDuration: data.estimatedDuration || existingFallback.estimatedDuration || '12 Weeks',
+          certificateAvailable: data.certificateAvailable !== undefined ? data.certificateAvailable : (existingFallback.certificateAvailable !== undefined ? existingFallback.certificateAvailable : true),
+          seoTitle: data.seoTitle !== undefined ? data.seoTitle : (existingFallback.seoTitle || ''),
+          seoDescription: data.seoDescription !== undefined ? data.seoDescription : (existingFallback.seoDescription || ''),
+          status:
+            statusVal === 'PUBLISHED' || statusVal === 'Published'
+              ? 'Published'
+              : statusVal === 'DRAFT' || statusVal === 'Draft'
+              ? 'Draft'
+              : 'Review',
+          updatedAt: new Date(),
+        };
+        AdminService.fallbackCourses.set(String(data.id), fullUpdated);
+        AdminService.saveMetaToFile();
+        return fullUpdated;
       }
     }
 
@@ -715,7 +861,8 @@ export class AdminService {
         id: course.id,
         instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
       };
-      AdminService.fallbackCourses.set(course.id, fullCourse);
+      AdminService.fallbackCourses.set(String(course.id), fullCourse);
+      AdminService.saveMetaToFile();
       return fullCourse;
     } catch (dbErr) {
       console.error('Failed to create course in Prisma:', dbErr);
@@ -763,7 +910,8 @@ export class AdminService {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      AdminService.fallbackCourses.set(fallbackId, fallbackCourse);
+      AdminService.fallbackCourses.set(String(fallbackId), fallbackCourse);
+      AdminService.saveMetaToFile();
       return fallbackCourse;
     }
   }
@@ -797,30 +945,49 @@ export class AdminService {
           ...(mappedStatus ? { status: mappedStatus } : {}),
         },
       });
-      if (AdminService.fallbackCourses.has(id)) {
-        AdminService.fallbackCourses.set(id, {
-          ...AdminService.fallbackCourses.get(id),
-          ...data,
-          ...updated,
-        });
-      }
-      return updated;
+      const existing = AdminService.fallbackCourses.get(String(id)) || {};
+      const full = {
+        ...existing,
+        ...data,
+        ...updated,
+        id: updated.id,
+        price: data.price !== undefined ? data.price : (updated.price !== undefined ? updated.price : existing.price),
+        discountPrice: data.discountPrice !== undefined ? data.discountPrice : existing.discountPrice,
+        learningOutcomes: data.learningOutcomes || existing.learningOutcomes || [],
+        prerequisites: data.prerequisites !== undefined ? data.prerequisites : (existing.prerequisites || ''),
+        requirements: data.requirements || existing.requirements || [],
+        targetAudience: data.targetAudience !== undefined ? data.targetAudience : (existing.targetAudience || ''),
+        targetLearners: data.targetLearners || existing.targetLearners || [],
+        skillsCovered: data.skillsCovered || data.tags || existing.skillsCovered || [],
+        tags: data.tags || data.skillsCovered || existing.tags || [],
+        modules: (data.modules && data.modules.length > 0) ? data.modules : (existing.modules || []),
+        updatedAt: new Date(),
+      };
+      AdminService.fallbackCourses.set(String(id), full);
+      AdminService.saveMetaToFile();
+      return full;
     } catch {
-      if (AdminService.fallbackCourses.has(id)) {
-        const existing = AdminService.fallbackCourses.get(id);
-        const updated = {
-          ...existing,
-          ...data,
-          ...(data.title ? { title: data.title } : {}),
-          ...(data.description ? { description: data.description } : {}),
-          ...(data.price !== undefined ? { price: data.price } : {}),
-          ...(data.status ? { status: data.status } : {}),
-          updatedAt: new Date(),
-        };
-        AdminService.fallbackCourses.set(id, updated);
-        return updated;
-      }
-      return { id, ...data };
+      const existing = AdminService.fallbackCourses.get(String(id)) || {};
+      const updated = {
+        ...existing,
+        ...data,
+        id,
+        price: data.price !== undefined ? data.price : existing.price,
+        discountPrice: data.discountPrice !== undefined ? data.discountPrice : existing.discountPrice,
+        learningOutcomes: data.learningOutcomes || existing.learningOutcomes || [],
+        prerequisites: data.prerequisites !== undefined ? data.prerequisites : (existing.prerequisites || ''),
+        requirements: data.requirements || existing.requirements || [],
+        targetAudience: data.targetAudience !== undefined ? data.targetAudience : (existing.targetAudience || ''),
+        targetLearners: data.targetLearners || existing.targetLearners || [],
+        skillsCovered: data.skillsCovered || data.tags || existing.skillsCovered || [],
+        tags: data.tags || data.skillsCovered || existing.tags || [],
+        modules: (data.modules && data.modules.length > 0) ? data.modules : (existing.modules || []),
+        status: data.status ? data.status : existing.status,
+        updatedAt: new Date(),
+      };
+      AdminService.fallbackCourses.set(String(id), updated);
+      AdminService.saveMetaToFile();
+      return updated;
     }
   }
 
@@ -832,7 +999,8 @@ export class AdminService {
     } catch {
       // ignore db unreachable
     }
-    AdminService.fallbackCourses.delete(id);
+    AdminService.fallbackCourses.delete(String(id));
+    AdminService.saveMetaToFile();
     return { success: true, id };
   }
 
