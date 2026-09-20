@@ -630,23 +630,8 @@ export default function PracticeProblemBuilder({
 
       {/* 2. MAIN BUILDER CONTAINER */}
       <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 py-6 space-y-6">
-        {/* Title, Breadcrumb & Subtitle */}
+        {/* Title & Subtitle */}
         <div className="space-y-1.5">
-          {/* Breadcrumbs & Status Tag */}
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            <span className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-              Practice Problems
-            </span>
-            <span>/</span>
-            <span className="text-slate-600 dark:text-slate-300">
-              {formData.topic || "Arrays"}
-            </span>
-            <span>/</span>
-            <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-              {formData.title || (isEditing ? "Edit Problem" : "New Problem")}
-            </span>
-          </div>
-
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
               {isEditing ? "Edit Practice Problem" : "Create Practice Problem"}
