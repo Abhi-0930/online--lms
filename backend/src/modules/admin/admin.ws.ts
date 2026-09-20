@@ -42,20 +42,21 @@ export class AdminWsBroadcaster {
   private static async sendSnapshot(socket: WebSocket, prisma: PrismaClient, type: string) {
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content, practiceProblems] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
         adminService.getAllAssignments(),
         adminService.getAllSubmissions(),
         adminService.getAllContent(),
+        adminService.getAllPracticeProblems(),
       ]);
 
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(
           JSON.stringify({
             type,
-            data: { stats, students, courses, assignments, submissions, content },
+            data: { stats, students, courses, assignments, submissions, content, practiceProblems },
             timestamp: new Date().toISOString(),
           })
         );
@@ -70,18 +71,19 @@ export class AdminWsBroadcaster {
 
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content, practiceProblems] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
         adminService.getAllAssignments(),
         adminService.getAllSubmissions(),
         adminService.getAllContent(),
+        adminService.getAllPracticeProblems(),
       ]);
 
       const payload = JSON.stringify({
         type: 'DATA_UPDATE',
-        data: { stats, students, courses, assignments, submissions, content },
+        data: { stats, students, courses, assignments, submissions, content, practiceProblems },
         timestamp: new Date().toISOString(),
       });
 
