@@ -19,6 +19,28 @@ export interface PublicProblem {
   constraints?: string;
   hints?: string[];
   starterCode?: Record<string, string>;
+  tags?: string[];
+  companies?: string;
+  examples?: Array<{
+    id?: number | string;
+    input: string;
+    output: string;
+    explanation?: string;
+  }>;
+  editorialApproach?: string;
+  editorialAlgorithm?: string;
+  timeComplexity?: string;
+  spaceComplexity?: string;
+  testCasesList?: Array<{
+    id?: number | string;
+    input: string;
+    output: string;
+    isHidden?: boolean;
+    explanation?: string;
+  }>;
+  referenceSolution?: Record<string, string>;
+  estimatedSolveTime?: string;
+  visibility?: string;
   solved?: boolean;
   attempts?: number;
 }

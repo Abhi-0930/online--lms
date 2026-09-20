@@ -3381,8 +3381,15 @@ export default function Home() {
 
   const handleSaveProblemDraft = async (data: PracticeProblem) => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/admin/practice-problems", {
-        method: "POST",
+      const targetId = editingProblemData?.id;
+      const isExisting = Boolean(targetId);
+      const url = isExisting
+        ? `http://localhost:4000/api/v1/admin/practice-problems/${targetId}`
+        : "http://localhost:4000/api/v1/admin/practice-problems";
+      const method = isExisting ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, status: "Draft" }),
       });
@@ -3404,8 +3411,15 @@ export default function Home() {
 
   const handlePublishProblem = async (data: PracticeProblem) => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/admin/practice-problems", {
-        method: "POST",
+      const targetId = editingProblemData?.id;
+      const isExisting = Boolean(targetId);
+      const url = isExisting
+        ? `http://localhost:4000/api/v1/admin/practice-problems/${targetId}`
+        : "http://localhost:4000/api/v1/admin/practice-problems";
+      const method = isExisting ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, status: "Live" }),
       });

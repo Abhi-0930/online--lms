@@ -100,6 +100,17 @@ export default function PracticeProblemDetailView({
 
   // Parse examples if available
   const examples = useMemo(() => {
+    if (Array.isArray(problem.examples) && problem.examples.length > 0) {
+      const filtered = problem.examples.filter((ex: any) => ex && (ex.input || ex.output));
+      if (filtered.length > 0) {
+        return filtered.map((ex: any, idx: number) => ({
+          id: ex.id || idx + 1,
+          input: ex.input || "N/A",
+          output: ex.output || "N/A",
+          explanation: ex.explanation || "Sample test case.",
+        }));
+      }
+    }
     if (problem.sampleInput && problem.sampleOutput) {
       return [
         {
@@ -111,7 +122,26 @@ export default function PracticeProblemDetailView({
       ];
     }
     return [];
-  }, [problem.sampleInput, problem.sampleOutput]);
+  }, [problem.examples, problem.sampleInput, problem.sampleOutput]);
+
+  // Companies list
+  const companiesList = useMemo(() => {
+    if (typeof problem.companies === "string" && problem.companies.trim()) {
+      return problem.companies.split(",").map((c) => c.trim()).filter(Boolean);
+    }
+    if (Array.isArray(problem.companies) && (problem.companies as any).length > 0) {
+      return problem.companies as any as string[];
+    }
+    return [];
+  }, [problem.companies]);
+
+  // Tags list
+  const tagsList = useMemo(() => {
+    if (Array.isArray(problem.tags) && problem.tags.length > 0) {
+      return problem.tags.filter(Boolean);
+    }
+    return [];
+  }, [problem.tags]);
 
   // Constraints list
   const constraintsList = useMemo(() => {
@@ -132,13 +162,19 @@ export default function PracticeProblemDetailView({
     return [];
   }, [problem.hints]);
 
-  // Code solutions
+  // Code solutions (prefer referenceSolution, fallback to starterCode)
   const editorialCode = useMemo(() => {
+    if (problem.referenceSolution && problem.referenceSolution[selectedLanguage]) {
+      return problem.referenceSolution[selectedLanguage];
+    }
+    if (problem.referenceSolution && problem.referenceSolution.python) {
+      return problem.referenceSolution.python;
+    }
     if (problem.starterCode && problem.starterCode[selectedLanguage]) {
       return problem.starterCode[selectedLanguage];
     }
-    return `// No starter/editorial code configured for ${selectedLanguage}`;
-  }, [problem.starterCode, selectedLanguage]);
+    return `// No reference or starter code configured for ${selectedLanguage}`;
+  }, [problem.referenceSolution, problem.starterCode, selectedLanguage]);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(editorialCode);
@@ -307,17 +343,21 @@ export default function PracticeProblemDetailView({
             </span>
 
             {/* Interactive Tags */}
-            <span className="rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-              Hash Map
-            </span>
-            <span className="rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-              Two Pointers
-            </span>
+            {tagsList.map((tag, idx) => (
+              <span
+                key={idx}
+                className="rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/50 dark:border-indigo-900/40 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300"
+              >
+                {tag}
+              </span>
+            ))}
 
             {/* Companies */}
-            <span className="rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-dashed border-slate-200 dark:border-white/10 px-2.5 py-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-              Amazon · Google · Microsoft
-            </span>
+            {companiesList.length > 0 && (
+              <span className="rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-dashed border-slate-200 dark:border-white/10 px-2.5 py-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                {companiesList.join(" · ")}
+              </span>
+            )}
           </div>
         </div>
 
@@ -542,9 +582,22 @@ export default function PracticeProblemDetailView({
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Use a hash map to store each number's index while scanning the array. For each value, check whether its complement already exists.
+                  <p className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-line leading-relaxed">
+                    {problem.editorialApproach ||
+                      "Use an optimal approach to solve the problem with minimum time and space complexity."}
                   </p>
+
+                  {/* Algorithm Step-by-Step if present */}
+                  {problem.editorialAlgorithm && (
+                    <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4 space-y-2">
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                        Step-by-Step Algorithm
+                      </h3>
+                      <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line font-mono text-[11px] bg-white dark:bg-black/20 p-3 rounded-lg border border-slate-200/60 dark:border-white/5">
+                        {problem.editorialAlgorithm}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Dark Code Block */}
                   <div className="relative rounded-xl border border-slate-800 bg-[#0a0d14] p-4 text-slate-200 font-mono text-xs shadow-inner">
@@ -572,7 +625,7 @@ export default function PracticeProblemDetailView({
                         TIME COMPLEXITY
                       </span>
                       <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300 font-mono mt-1">
-                        O(n)
+                        {problem.timeComplexity || "O(n)"}
                       </p>
                     </div>
 
@@ -581,7 +634,7 @@ export default function PracticeProblemDetailView({
                         SPACE COMPLEXITY
                       </span>
                       <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300 font-mono mt-1">
-                        O(n)
+                        {problem.spaceComplexity || "O(n)"}
                       </p>
                     </div>
                   </div>
@@ -986,8 +1039,8 @@ export default function PracticeProblemDetailView({
 
                 <div className="flex items-center justify-between py-1 border-b border-slate-50 dark:border-white/[0.02]">
                   <span className="text-slate-400 font-medium">Companies asked</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 text-right">
-                    Amazon, Google, Microsoft
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 text-right truncate max-w-[160px]">
+                    {problem.companies || "General"}
                   </span>
                 </div>
 

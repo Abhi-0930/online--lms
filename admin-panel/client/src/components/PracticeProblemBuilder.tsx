@@ -232,7 +232,9 @@ export default function PracticeProblemBuilder({
       ? initialData.hints
       : [""];
 
-    const sampleEx: ProblemExample[] = (initialData.sampleInput || initialData.sampleOutput)
+    const sampleEx: ProblemExample[] = (Array.isArray((initialData as any).examples) && (initialData as any).examples.length > 0)
+      ? (initialData as any).examples
+      : (initialData.sampleInput || initialData.sampleOutput)
       ? [
           {
             id: "ex-1",
@@ -250,6 +252,24 @@ export default function PracticeProblemBuilder({
           },
         ];
 
+    const sampleTc: ProblemTestCase[] = (Array.isArray((initialData as any).testCasesList) && (initialData as any).testCasesList.length > 0)
+      ? (initialData as any).testCasesList
+      : (initialData.sampleInput || initialData.sampleOutput)
+      ? [
+          {
+            id: "tc-1",
+            input: initialData.sampleInput || "",
+            expectedOutput: initialData.sampleOutput || "",
+          },
+        ]
+      : [
+          {
+            id: "tc-1",
+            input: "",
+            expectedOutput: "",
+          },
+        ];
+
     return {
       title: initialData.title || "",
       difficulty: (initialData.difficulty || "Medium") as "Easy" | "Medium" | "Hard",
@@ -264,13 +284,7 @@ export default function PracticeProblemBuilder({
       editorialAlgorithm: (initialData as any).editorialAlgorithm || "",
       timeComplexity: (initialData as any).timeComplexity || "",
       spaceComplexity: (initialData as any).spaceComplexity || "",
-      testCasesList: [
-        {
-          id: "tc-1",
-          input: initialData.sampleInput || "",
-          expectedOutput: initialData.sampleOutput || "",
-        },
-      ],
+      testCasesList: sampleTc,
       starterCode: {
         python: initialData.starterCode?.python || "",
         javascript: initialData.starterCode?.javascript || "",
@@ -286,7 +300,7 @@ export default function PracticeProblemBuilder({
         cpp: (initialData as any).referenceSolution?.cpp || "",
       },
       estimatedSolveTime: (initialData as any).estimatedSolveTime || "15 minutes",
-      visibility: "Public" as const,
+      visibility: ((initialData as any).visibility || "Public") as "Public" | "Private",
       status: (initialData.status === "Live" ? "Live" : "Draft") as "Draft" | "Live",
       acceptanceRate: initialData.acceptance || "0.0%",
       submissionsCount: initialData.submissions || 0,
@@ -422,7 +436,7 @@ export default function PracticeProblemBuilder({
 
   // Build Payload to sync with backend & database
   const buildPayload = (status: "Draft" | "Live"): PracticeProblem => {
-    const id = initialData?.id || String(Date.now());
+    const id = initialData?.id;
     const primarySampleInput =
       formData.examples[0]?.input || formData.testCasesList[0]?.input || "";
     const primarySampleOutput =
@@ -445,6 +459,17 @@ export default function PracticeProblemBuilder({
       constraints: formData.constraints,
       hints: formData.hints.filter((h) => h.trim().length > 0),
       starterCode: formData.starterCode,
+      tags: formData.tags,
+      companies: formData.companies,
+      examples: formData.examples,
+      editorialApproach: formData.editorialApproach,
+      editorialAlgorithm: formData.editorialAlgorithm,
+      timeComplexity: formData.timeComplexity,
+      spaceComplexity: formData.spaceComplexity,
+      testCasesList: formData.testCasesList,
+      referenceSolution: formData.referenceSolution,
+      estimatedSolveTime: formData.estimatedSolveTime,
+      visibility: formData.visibility,
     };
   };
 

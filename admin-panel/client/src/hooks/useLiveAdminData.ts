@@ -103,6 +103,27 @@ export interface PracticeProblem {
   constraints?: string;
   hints?: string[];
   starterCode?: Record<string, string>;
+  tags?: string[];
+  companies?: string;
+  examples?: Array<{
+    id: string;
+    input: string;
+    output: string;
+    explanation: string;
+  }>;
+  editorialApproach?: string;
+  editorialAlgorithm?: string;
+  timeComplexity?: string;
+  spaceComplexity?: string;
+  testCasesList?: Array<{
+    id: string;
+    input: string;
+    expectedOutput: string;
+  }>;
+  referenceSolution?: Record<string, string>;
+  estimatedSolveTime?: string;
+  visibility?: "Public" | "Private";
+  likesCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -286,9 +307,9 @@ export function useLiveAdminData() {
         title: prob.title || "Untitled Problem",
         category: prob.category || "Arrays",
         difficulty: prob.difficulty || "Medium",
-        acceptance: prob.acceptance || "75.0%",
+        acceptance: prob.acceptance || "0.0%",
         submissions: typeof prob.submissions === "number" ? prob.submissions : 0,
-        testCases: typeof prob.testCases === "number" ? prob.testCases : 10,
+        testCases: typeof prob.testCases === "number" ? prob.testCases : (prob.testCasesList?.length || 0),
         status: prob.status === "Draft" || prob.status === "DRAFT" ? "Draft" : "Live",
         description: prob.description || "",
         sampleInput: prob.sampleInput || "",
@@ -296,6 +317,18 @@ export function useLiveAdminData() {
         constraints: prob.constraints || "",
         hints: Array.isArray(prob.hints) ? prob.hints : [],
         starterCode: prob.starterCode || {},
+        tags: Array.isArray(prob.tags) ? prob.tags : [],
+        companies: prob.companies || "",
+        examples: Array.isArray(prob.examples) ? prob.examples : [],
+        editorialApproach: prob.editorialApproach || "",
+        editorialAlgorithm: prob.editorialAlgorithm || "",
+        timeComplexity: prob.timeComplexity || "",
+        spaceComplexity: prob.spaceComplexity || "",
+        testCasesList: Array.isArray(prob.testCasesList) ? prob.testCasesList : [],
+        referenceSolution: prob.referenceSolution || {},
+        estimatedSolveTime: prob.estimatedSolveTime || "15 minutes",
+        visibility: prob.visibility || "Public",
+        likesCount: typeof prob.likesCount === "number" ? prob.likesCount : 0,
         createdAt: prob.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

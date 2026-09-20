@@ -1,1 +1,72 @@
-[]
+[
+  {
+    "id": "bfa66c93-dac4-42c9-96ba-73e44c95ce36",
+    "title": "Two Sum",
+    "category": "Hash Table",
+    "difficulty": "Easy",
+    "acceptance": "0.0%",
+    "submissions": 0,
+    "testCases": 1,
+    "status": "Live",
+    "description": "You are given an array of integers nums and an integer target.\n\nReturn the indices of the two numbers such that they add up to the target.\n\nYou may assume that each input has exactly one solution, and you may not use the same element twice.\n\nReturn the answer in any order.",
+    "sampleInput": "nums = [2,7,11,15], target = 9",
+    "sampleOutput": "[0,1]",
+    "constraints": "2 <= nums.length <= 10^4\n\n-10^9 <= nums[i] <= 10^9\n\n-10^9 <= target <= 10^9\n\nExactly one valid answer exists.",
+    "hints": [
+      "Try checking every possible pair.\n\nHow many combinations exist?",
+      "Can you find the number needed to complete the target while traversing the array?",
+      "A HashMap can help you find the required complement in O(1) time."
+    ],
+    "starterCode": {
+      "python": "",
+      "javascript": "",
+      "typescript": "",
+      "java": "",
+      "cpp": ""
+    },
+    "slug": "two-sum",
+    "createdAt": "2026-09-20T18:21:55.056Z",
+    "updatedAt": "2026-09-20T19:33:18.722Z",
+    "tags": [
+      "Array",
+      "Hash Table",
+      "Binary Search",
+      "Two Pointers"
+    ],
+    "companies": "Google, Meta, Amazon, Capgemini, Cognizant",
+    "examples": [
+      {
+        "id": 1,
+        "input": "nums = [2,7,11,15], target = 9",
+        "output": "[0,1]",
+        "explanation": "Because nums[0] + nums[1] == 9, we return [0, 1]."
+      },
+      {
+        "id": "ex-1789932720995",
+        "input": "nums = [3,2,4]\ntarget = 6",
+        "output": "[1,2]",
+        "explanation": "nums[1] + nums[2] = 2 + 4 = 6  Hence return [1,2]"
+      }
+    ],
+    "editorialApproach": "One-pass hash map for O(1) lookups.",
+    "editorialAlgorithm": "1. Initialize map.\n2. Iterate through nums.\n3. Return indices when complement found.",
+    "timeComplexity": "O(n)",
+    "spaceComplexity": "O(n)",
+    "referenceSolution": {
+      "python": "class Solution:\n    def twoSum(self, nums, target):\n        m = {}\n        for i, n in enumerate(nums):\n            if target - n in m:\n                return [m[target - n], i]\n            m[n] = i\n",
+      "javascript": "def twoSum(nums, target):\n    hashmap = {}\n\n    for i in range(len(nums)):\n        complement = target - nums[i]\n\n        if complement in hashmap:\n            return [hashmap[complement], i]\n\n        hashmap[nums[i]] = i\n\n    return []",
+      "typescript": "def twoSum(nums, target):\n    hashmap = {}\n\n    for i in range(len(nums)):\n        complement = target - nums[i]\n\n        if complement in hashmap:\n            return [hashmap[complement], i]\n\n        hashmap[nums[i]] = i\n\n    return []",
+      "java": "def twoSum(nums, target):\n    hashmap = {}\n\n    for i in range(len(nums)):\n        complement = target - nums[i]\n\n        if complement in hashmap:\n            return [hashmap[complement], i]\n\n        hashmap[nums[i]] = i\n\n    return []",
+      "cpp": "def twoSum(nums, target):\n    hashmap = {}\n\n    for i in range(len(nums)):\n        complement = target - nums[i]\n\n        if complement in hashmap:\n            return [hashmap[complement], i]\n\n        hashmap[nums[i]] = i\n\n    return []"
+    },
+    "testCasesList": [
+      {
+        "id": "tc-1",
+        "input": "nums = [2,7,11,15]\ntarget = 9",
+        "expectedOutput": "[0,1]"
+      }
+    ],
+    "estimatedSolveTime": "15 minutes",
+    "visibility": "Public"
+  }
+]

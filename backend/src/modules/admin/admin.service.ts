@@ -1482,9 +1482,9 @@ export class AdminService {
         title: prob.title || 'Untitled Problem',
         category: prob.category || 'General',
         difficulty: prob.difficulty || 'Medium',
-        acceptance: prob.acceptance || '75.0%',
+        acceptance: prob.acceptance || '0.0%',
         submissions: typeof prob.submissions === 'number' ? prob.submissions : 0,
-        testCases: typeof prob.testCases === 'number' ? prob.testCases : 10,
+        testCases: typeof prob.testCases === 'number' ? prob.testCases : 0,
         status: prob.status === 'Draft' || prob.status === 'DRAFT' ? 'Draft' : 'Live',
         description: prob.description || '',
         sampleInput: prob.sampleInput || '',
@@ -1492,6 +1492,17 @@ export class AdminService {
         constraints: prob.constraints || '',
         hints: Array.isArray(prob.hints) ? prob.hints : [],
         starterCode: prob.starterCode || {},
+        tags: Array.isArray(prob.tags) ? prob.tags : [],
+        companies: prob.companies || '',
+        examples: Array.isArray(prob.examples) ? prob.examples : [],
+        editorialApproach: prob.editorialApproach || '',
+        editorialAlgorithm: prob.editorialAlgorithm || '',
+        timeComplexity: prob.timeComplexity || '',
+        spaceComplexity: prob.spaceComplexity || '',
+        testCasesList: Array.isArray(prob.testCasesList) ? prob.testCasesList : [],
+        referenceSolution: prob.referenceSolution || {},
+        estimatedSolveTime: prob.estimatedSolveTime || '15 minutes',
+        visibility: prob.visibility || 'Public',
         createdAt: prob.createdAt || new Date().toISOString(),
         updatedAt: prob.updatedAt || new Date().toISOString(),
       }));
@@ -1506,9 +1517,9 @@ export class AdminService {
         title: prob.title || 'Untitled Problem',
         category: prob.category || 'General',
         difficulty: prob.difficulty || 'Medium',
-        acceptance: prob.acceptance || '75.0%',
+        acceptance: prob.acceptance || '0.0%',
         submissions: typeof prob.submissions === 'number' ? prob.submissions : 0,
-        testCases: typeof prob.testCases === 'number' ? prob.testCases : 10,
+        testCases: typeof prob.testCases === 'number' ? prob.testCases : 0,
         status: prob.status === 'Draft' || prob.status === 'DRAFT' ? 'Draft' : 'Live',
         description: prob.description || '',
         sampleInput: prob.sampleInput || '',
@@ -1516,6 +1527,17 @@ export class AdminService {
         constraints: prob.constraints || '',
         hints: Array.isArray(prob.hints) ? prob.hints : [],
         starterCode: prob.starterCode || {},
+        tags: Array.isArray(prob.tags) ? prob.tags : [],
+        companies: prob.companies || '',
+        examples: Array.isArray(prob.examples) ? prob.examples : [],
+        editorialApproach: prob.editorialApproach || '',
+        editorialAlgorithm: prob.editorialAlgorithm || '',
+        timeComplexity: prob.timeComplexity || '',
+        spaceComplexity: prob.spaceComplexity || '',
+        testCasesList: Array.isArray(prob.testCasesList) ? prob.testCasesList : [],
+        referenceSolution: prob.referenceSolution || {},
+        estimatedSolveTime: prob.estimatedSolveTime || '15 minutes',
+        visibility: prob.visibility || 'Public',
         createdAt: prob.createdAt || new Date().toISOString(),
         updatedAt: prob.updatedAt || new Date().toISOString(),
       };
@@ -1537,6 +1559,17 @@ export class AdminService {
     constraints?: string;
     hints?: string[];
     starterCode?: Record<string, string>;
+    tags?: string[];
+    companies?: string;
+    examples?: any[];
+    editorialApproach?: string;
+    editorialAlgorithm?: string;
+    timeComplexity?: string;
+    spaceComplexity?: string;
+    testCasesList?: any[];
+    referenceSolution?: Record<string, string>;
+    estimatedSolveTime?: string;
+    visibility?: string;
   }) {
     const baseSlug = (data.title || 'problem')
       .toLowerCase()
@@ -1553,9 +1586,9 @@ export class AdminService {
           title: data.title || 'Untitled Problem',
           category: data.category || 'Arrays',
           difficulty: data.difficulty || 'Medium',
-          acceptance: data.acceptance || '75.0%',
+          acceptance: data.acceptance || '0.0%',
           submissions: typeof data.submissions === 'number' ? data.submissions : 0,
-          testCases: typeof data.testCases === 'number' ? data.testCases : 10,
+          testCases: typeof data.testCases === 'number' ? data.testCases : (data.testCasesList?.length || 0),
           status: data.status || 'Live',
           description: data.description || null,
           sampleInput: data.sampleInput || null,
@@ -1563,6 +1596,17 @@ export class AdminService {
           constraints: data.constraints || null,
           hints: Array.isArray(data.hints) ? data.hints : [],
           starterCode: data.starterCode || {},
+          tags: Array.isArray(data.tags) ? data.tags : [],
+          companies: data.companies || null,
+          examples: Array.isArray(data.examples) ? data.examples : [],
+          editorialApproach: data.editorialApproach || null,
+          editorialAlgorithm: data.editorialAlgorithm || null,
+          timeComplexity: data.timeComplexity || null,
+          spaceComplexity: data.spaceComplexity || null,
+          testCasesList: Array.isArray(data.testCasesList) ? data.testCasesList : [],
+          referenceSolution: data.referenceSolution || {},
+          estimatedSolveTime: data.estimatedSolveTime || '15 minutes',
+          visibility: data.visibility || 'Public',
         },
       });
     } catch (dbErr) {
@@ -1577,9 +1621,9 @@ export class AdminService {
       title: data.title || 'Untitled Problem',
       category: data.category || 'Arrays',
       difficulty: data.difficulty || 'Medium',
-      acceptance: data.acceptance || '75.0%',
+      acceptance: data.acceptance || '0.0%',
       submissions: typeof data.submissions === 'number' ? data.submissions : 0,
-      testCases: typeof data.testCases === 'number' ? data.testCases : 10,
+      testCases: typeof data.testCases === 'number' ? data.testCases : (data.testCasesList?.length || 0),
       status: data.status || 'Live',
       description: data.description || '',
       sampleInput: data.sampleInput || '',
@@ -1587,6 +1631,17 @@ export class AdminService {
       constraints: data.constraints || '',
       hints: Array.isArray(data.hints) ? data.hints : [],
       starterCode: data.starterCode || {},
+      tags: Array.isArray(data.tags) ? data.tags : [],
+      companies: data.companies || '',
+      examples: Array.isArray(data.examples) ? data.examples : [],
+      editorialApproach: data.editorialApproach || '',
+      editorialAlgorithm: data.editorialAlgorithm || '',
+      timeComplexity: data.timeComplexity || '',
+      spaceComplexity: data.spaceComplexity || '',
+      testCasesList: Array.isArray(data.testCasesList) ? data.testCasesList : [],
+      referenceSolution: data.referenceSolution || {},
+      estimatedSolveTime: data.estimatedSolveTime || '15 minutes',
+      visibility: data.visibility || 'Public',
       createdAt: createdDbProblem?.createdAt || new Date().toISOString(),
       updatedAt: createdDbProblem?.updatedAt || new Date().toISOString(),
     };
@@ -1610,6 +1665,17 @@ export class AdminService {
     constraints: string;
     hints: string[];
     starterCode: Record<string, string>;
+    tags: string[];
+    companies: string;
+    examples: any[];
+    editorialApproach: string;
+    editorialAlgorithm: string;
+    timeComplexity: string;
+    spaceComplexity: string;
+    testCasesList: any[];
+    referenceSolution: Record<string, string>;
+    estimatedSolveTime: string;
+    visibility: string;
   }>) {
     let updatedDbProblem: any = null;
     try {
@@ -1629,6 +1695,17 @@ export class AdminService {
           ...(data.constraints !== undefined ? { constraints: data.constraints } : {}),
           ...(data.hints !== undefined ? { hints: data.hints } : {}),
           ...(data.starterCode !== undefined ? { starterCode: data.starterCode } : {}),
+          ...(data.tags !== undefined ? { tags: data.tags } : {}),
+          ...(data.companies !== undefined ? { companies: data.companies } : {}),
+          ...(data.examples !== undefined ? { examples: data.examples } : {}),
+          ...(data.editorialApproach !== undefined ? { editorialApproach: data.editorialApproach } : {}),
+          ...(data.editorialAlgorithm !== undefined ? { editorialAlgorithm: data.editorialAlgorithm } : {}),
+          ...(data.timeComplexity !== undefined ? { timeComplexity: data.timeComplexity } : {}),
+          ...(data.spaceComplexity !== undefined ? { spaceComplexity: data.spaceComplexity } : {}),
+          ...(data.testCasesList !== undefined ? { testCasesList: data.testCasesList } : {}),
+          ...(data.referenceSolution !== undefined ? { referenceSolution: data.referenceSolution } : {}),
+          ...(data.estimatedSolveTime !== undefined ? { estimatedSolveTime: data.estimatedSolveTime } : {}),
+          ...(data.visibility !== undefined ? { visibility: data.visibility } : {}),
         },
       });
     } catch (dbErr) {
@@ -1647,9 +1724,9 @@ export class AdminService {
       title: data.title !== undefined ? data.title : (existing.title || 'Untitled Problem'),
       category: data.category !== undefined ? data.category : (existing.category || 'General'),
       difficulty: data.difficulty !== undefined ? data.difficulty : (existing.difficulty || 'Medium'),
-      acceptance: data.acceptance !== undefined ? data.acceptance : (existing.acceptance || '75.0%'),
+      acceptance: data.acceptance !== undefined ? data.acceptance : (existing.acceptance || '0.0%'),
       submissions: data.submissions !== undefined ? data.submissions : (existing.submissions || 0),
-      testCases: data.testCases !== undefined ? data.testCases : (existing.testCases || 10),
+      testCases: data.testCases !== undefined ? data.testCases : (existing.testCases || (data.testCasesList?.length || 0)),
       status: data.status !== undefined ? data.status : (existing.status || 'Live'),
       description: data.description !== undefined ? data.description : (existing.description || ''),
       sampleInput: data.sampleInput !== undefined ? data.sampleInput : (existing.sampleInput || ''),
@@ -1657,6 +1734,17 @@ export class AdminService {
       constraints: data.constraints !== undefined ? data.constraints : (existing.constraints || ''),
       hints: data.hints !== undefined ? data.hints : (existing.hints || []),
       starterCode: data.starterCode !== undefined ? data.starterCode : (existing.starterCode || {}),
+      tags: data.tags !== undefined ? data.tags : (existing.tags || []),
+      companies: data.companies !== undefined ? data.companies : (existing.companies || ''),
+      examples: data.examples !== undefined ? data.examples : (existing.examples || []),
+      editorialApproach: data.editorialApproach !== undefined ? data.editorialApproach : (existing.editorialApproach || ''),
+      editorialAlgorithm: data.editorialAlgorithm !== undefined ? data.editorialAlgorithm : (existing.editorialAlgorithm || ''),
+      timeComplexity: data.timeComplexity !== undefined ? data.timeComplexity : (existing.timeComplexity || ''),
+      spaceComplexity: data.spaceComplexity !== undefined ? data.spaceComplexity : (existing.spaceComplexity || ''),
+      testCasesList: data.testCasesList !== undefined ? data.testCasesList : (existing.testCasesList || []),
+      referenceSolution: data.referenceSolution !== undefined ? data.referenceSolution : (existing.referenceSolution || {}),
+      estimatedSolveTime: data.estimatedSolveTime !== undefined ? data.estimatedSolveTime : (existing.estimatedSolveTime || '15 minutes'),
+      visibility: data.visibility !== undefined ? data.visibility : (existing.visibility || 'Public'),
       updatedAt: new Date().toISOString(),
     };
 

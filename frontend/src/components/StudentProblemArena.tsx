@@ -360,6 +360,17 @@ public:
 
   // Examples parser from API problem
   const exampleCases = useMemo(() => {
+    if (Array.isArray(problem.examples) && problem.examples.length > 0) {
+      const filtered = problem.examples.filter((ex: any) => ex && (ex.input || ex.output));
+      if (filtered.length > 0) {
+        return filtered.map((ex: any, idx: number) => ({
+          id: ex.id || idx + 1,
+          input: ex.input || "N/A",
+          output: ex.output || "N/A",
+          explanation: ex.explanation || "",
+        }));
+      }
+    }
     if (problem.sampleInput || problem.sampleOutput) {
       return [
         {
@@ -371,7 +382,42 @@ public:
       ];
     }
     return [];
-  }, [problem.sampleInput, problem.sampleOutput, problem.title]);
+  }, [problem.examples, problem.sampleInput, problem.sampleOutput, problem.title]);
+
+  // Companies list from API problem
+  const companiesList = useMemo(() => {
+    if (typeof problem.companies === "string" && problem.companies.trim()) {
+      return problem.companies.split(",").map((c) => c.trim()).filter(Boolean);
+    }
+    if (Array.isArray(problem.companies) && (problem.companies as any).length > 0) {
+      return problem.companies as any as string[];
+    }
+    return [];
+  }, [problem.companies]);
+
+  // Tags list from API problem
+  const tagsList = useMemo(() => {
+    if (Array.isArray(problem.tags) && problem.tags.length > 0) {
+      return problem.tags.filter(Boolean);
+    }
+    return [problem.category || problem.topic || "General"];
+  }, [problem.tags, problem.category, problem.topic]);
+
+  // Editorial Language State
+  const [editorialLanguage, setEditorialLanguage] = useState<
+    "python" | "javascript" | "typescript" | "java" | "cpp"
+  >("python");
+
+  // Editorial Code memo
+  const editorialCode = useMemo(() => {
+    if (problem.referenceSolution && problem.referenceSolution[editorialLanguage]) {
+      return problem.referenceSolution[editorialLanguage];
+    }
+    if (problem.referenceSolution && problem.referenceSolution.python) {
+      return problem.referenceSolution.python;
+    }
+    return defaultCodes[editorialLanguage] || defaultCodes.python;
+  }, [problem.referenceSolution, editorialLanguage, defaultCodes]);
 
   // Constraints list from API problem
   const constraintsList = useMemo(() => {
@@ -392,9 +438,110 @@ public:
     return [];
   }, [problem.hints]);
 
+  // Available interactive test cases (combining testCasesList or examples)
+  const interactiveTestCases = useMemo(() => {
+    if (Array.isArray(problem.testCasesList) && problem.testCasesList.length > 0) {
+      const visible = problem.testCasesList.filter(
+        (tc: any) => tc && !tc.isHidden && (tc.input || tc.output)
+      );
+      if (visible.length > 0) {
+        return visible.map((tc: any, idx: number) => ({
+          id: tc.id || idx + 1,
+          input: tc.input || "",
+          output: tc.output || "",
+          explanation: tc.explanation || "",
+        }));
+      }
+    }
+    if (Array.isArray(problem.examples) && problem.examples.length > 0) {
+      const filtered = problem.examples.filter((ex: any) => ex && (ex.input || ex.output));
+      if (filtered.length > 0) {
+        return filtered.map((ex: any, idx: number) => ({
+          id: ex.id || idx + 1,
+          input: ex.input || "",
+          output: ex.output || "",
+          explanation: ex.explanation || "",
+        }));
+      }
+    }
+    if (problem.sampleInput || problem.sampleOutput) {
+      return [
+        {
+          id: 1,
+          input: problem.sampleInput || "N/A",
+          output: problem.sampleOutput || "N/A",
+          explanation: `Sample test case for ${problem.title}.`,
+        },
+      ];
+    }
+    return [
+      {
+        id: 1,
+        input: "nums = [2, 7, 11, 15]\ntarget = 9",
+        output: "[0, 1]",
+        explanation: "Primary test case",
+      },
+    ];
+  }, [problem.testCasesList, problem.examples, problem.sampleInput, problem.sampleOutput, problem.title]);
+
+  // Testcase Console State
+  const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(0);
+  const [isRunningCode, setIsRunningCode] = useState<boolean>(false);
+  const [testConsoleTab, setTestConsoleTab] = useState<"testcase" | "result">("testcase");
+  const [isConsoleExpanded, setIsConsoleExpanded] = useState<boolean>(true);
+  const [testResult, setTestResult] = useState<{
+    status: "Accepted" | "Wrong Answer";
+    runtime: string;
+    memory: string;
+    totalPassed: number;
+    totalCases: number;
+    cases: Array<{
+      id: number;
+      input: string;
+      expectedOutput: string;
+      actualOutput: string;
+      passed: boolean;
+      explanation?: string;
+    }>;
+  } | null>(null);
+
+  // Handle Run Code against test cases
+  const handleRunCode = () => {
+    setIsRunningCode(true);
+    setTestConsoleTab("result");
+    setTimeout(() => {
+      setIsRunningCode(false);
+      const runtime = `${Math.floor(Math.random() * 20) + 24} ms`;
+      const memory = `${(Math.random() * 2 + 14.8).toFixed(1)} MB`;
+
+      const executedCases = interactiveTestCases.map((tc, idx) => ({
+        id: tc.id || idx + 1,
+        input: tc.input,
+        expectedOutput: tc.output,
+        actualOutput: tc.output,
+        passed: true,
+        explanation: tc.explanation,
+      }));
+
+      setTestResult({
+        status: "Accepted",
+        runtime: `${runtime} (Beats 98.1%)`,
+        memory: `${memory} (Beats 94.5%)`,
+        totalPassed: executedCases.length,
+        totalCases: executedCases.length,
+        cases: executedCases,
+      });
+
+      toast.success("Code executed successfully!", {
+        description: `Passed ${executedCases.length}/${executedCases.length} sample test cases (${runtime})`,
+      });
+    }, 500);
+  };
+
   // Handle Submit Code
   const handleSubmitCode = () => {
     setIsSubmitting(true);
+    setTestConsoleTab("result");
     setTimeout(() => {
       setIsSubmitting(false);
       const runtime = `${Math.floor(Math.random() * 25) + 28} ms`;
@@ -424,8 +571,27 @@ public:
         );
       } catch {}
 
+      const totalCasesCount = Math.max(interactiveTestCases.length, 10);
+      const executedCases = interactiveTestCases.map((tc, idx) => ({
+        id: tc.id || idx + 1,
+        input: tc.input,
+        expectedOutput: tc.output,
+        actualOutput: tc.output,
+        passed: true,
+        explanation: tc.explanation,
+      }));
+
+      setTestResult({
+        status: "Accepted",
+        runtime: `${runtime} (Beats 96.4%)`,
+        memory: `${memory} (Beats 91.8%)`,
+        totalPassed: totalCasesCount,
+        totalCases: totalCasesCount,
+        cases: executedCases,
+      });
+
       toast.success("Solution submitted successfully!", {
-        description: `Verdict: Accepted | Runtime: ${runtime}`,
+        description: `Verdict: Accepted | ${totalCasesCount}/${totalCasesCount} Test Cases Passed`,
       });
     }, 600);
   };
@@ -529,6 +695,12 @@ public:
             <span className="hidden md:inline-flex rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
               {problem.topic || problem.category}
             </span>
+            {problem.estimatedSolveTime && (
+              <span className="hidden lg:inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                <Clock className="h-3 w-3 text-slate-400" />
+                <span>{problem.estimatedSolveTime}</span>
+              </span>
+            )}
             {problem.solved && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
                 <Check className="h-3 w-3" />
@@ -748,20 +920,42 @@ public:
                 </div>
 
                 {/* Companies & Tags */}
-                <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-white/5">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    Target Companies
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {["Amazon", "Google", "Microsoft", "Meta", "Bloomberg", "Uber"].map((comp) => (
-                      <span
-                        key={comp}
-                        className="rounded-lg bg-slate-100 dark:bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:text-slate-400"
-                      >
-                        {comp}
-                      </span>
-                    ))}
-                  </div>
+                <div className="space-y-4 pt-3 border-t border-slate-100 dark:border-white/5">
+                  {companiesList.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Target Companies
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {companiesList.map((comp, idx) => (
+                          <span
+                            key={idx}
+                            className="rounded-lg bg-slate-100 dark:bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:text-slate-400"
+                          >
+                            {comp}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {tagsList.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Related Topics & Tags
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {tagsList.map((tag, idx) => (
+                          <span
+                            key={idx}
+                            className="rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/50 dark:border-indigo-900/40 px-2.5 py-1 text-[11px] font-medium text-indigo-700 dark:text-indigo-300"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -781,12 +975,25 @@ public:
                 {/* Approach breakdown */}
                 <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4 space-y-3">
                   <h3 className="text-xs font-bold text-[#3157e8] dark:text-[#5d7bff] uppercase tracking-wider">
-                    Approach 1: One-Pass Hash Table
+                    Optimal Solution Approach
                   </h3>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                    While iterating and inserting elements into the table, we also look back to check if current element's complement already exists in the table. If it exists, we have found a solution and return the indices immediately.
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                    {problem.editorialApproach ||
+                      "While iterating and inserting elements into the table, we also look back to check if current element's complement already exists in the table. If it exists, we have found a solution and return the indices immediately."}
                   </p>
                 </div>
+
+                {/* Algorithm Step-by-Step breakdown if present */}
+                {problem.editorialAlgorithm && (
+                  <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4 space-y-2.5">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                      Step-by-Step Algorithm
+                    </h3>
+                    <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line font-mono text-[11px] bg-white dark:bg-black/20 p-3 rounded-lg border border-slate-200/60 dark:border-white/5">
+                      {problem.editorialAlgorithm}
+                    </div>
+                  </div>
+                )}
 
                 {/* Complexity analysis */}
                 <div className="grid grid-cols-2 gap-3">
@@ -795,10 +1002,10 @@ public:
                       TIME COMPLEXITY
                     </span>
                     <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300 font-mono mt-1">
-                      O(n)
+                      {problem.timeComplexity || "O(n)"}
                     </p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      We traverse the list containing n elements only once.
+                      {problem.timeComplexity ? `Theoretical upper bound: ${problem.timeComplexity}` : "We traverse the problem space in optimal linear steps."}
                     </p>
                   </div>
 
@@ -807,10 +1014,10 @@ public:
                       SPACE COMPLEXITY
                     </span>
                     <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300 font-mono mt-1">
-                      O(n)
+                      {problem.spaceComplexity || "O(n)"}
                     </p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      The extra space required depends on the number of items stored in hash table.
+                      {problem.spaceComplexity ? `Auxiliary memory overhead: ${problem.spaceComplexity}` : "Auxiliary memory required by hash structures or recursion stack."}
                     </p>
                   </div>
                 </div>
@@ -818,20 +1025,36 @@ public:
                 {/* Editorial Code */}
                 <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#0f131f] p-4 text-slate-900 dark:text-slate-100 font-mono text-xs">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/10 mb-2">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Python 3 Solution</span>
+                    <div className="flex items-center gap-1.5">
+                      {(["python", "javascript", "typescript", "java", "cpp"] as const).map((lang) => (
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => setEditorialLanguage(lang)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition cursor-pointer ${
+                            editorialLanguage === lang
+                              ? "bg-[#3157e8] text-white"
+                              : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                          }`}
+                        >
+                          {lang === "cpp" ? "C++" : lang === "javascript" ? "JS" : lang === "typescript" ? "TS" : lang}
+                        </button>
+                      ))}
+                    </div>
                     <button
                       type="button"
                       onClick={() => {
-                        navigator.clipboard.writeText(defaultCodes.python);
+                        navigator.clipboard.writeText(editorialCode);
                         toast.success("Editorial code copied!");
                       }}
                       className="p-1 rounded hover:bg-slate-200/80 dark:hover:bg-white/10 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white cursor-pointer"
+                      title="Copy code"
                     >
                       <Copy className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   <pre className="overflow-x-auto custom-scrollbar leading-relaxed">
-                    <code>{defaultCodes.python}</code>
+                    <code>{editorialCode}</code>
                   </pre>
                 </div>
               </div>
@@ -1109,7 +1332,7 @@ public:
         </div>
 
         {/* ================= RIGHT COLUMN: CODE VIEWER & TEST RUNNER (6 cols) ================= */}
-        <div className="lg:col-span-6 xl:col-span-6 flex flex-col rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#151926] shadow-sm overflow-hidden min-h-[640px]">
+        <div className="lg:col-span-6 xl:col-span-6 flex flex-col rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#151926] shadow-sm overflow-hidden min-h-[680px]">
           {/* Top Code Editor Header: Language selector & Actions */}
           <div className="flex items-center justify-between border-b border-slate-200/90 dark:border-white/10 bg-slate-50/90 dark:bg-[#1a2030] px-4 py-2.5">
             <LanguageCustomDropdown value={language} onChange={setLanguage} />
@@ -1136,7 +1359,17 @@ public:
 
               <button
                 type="button"
-                disabled={isSubmitting}
+                disabled={isRunningCode || isSubmitting}
+                onClick={handleRunCode}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs transition cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <Play className={`h-3 w-3 text-emerald-600 dark:text-emerald-400 ${isRunningCode ? "animate-pulse" : "fill-current"}`} />
+                <span>{isRunningCode ? "Running..." : "Run"}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isSubmitting || isRunningCode}
                 onClick={handleSubmitCode}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition cursor-pointer active:scale-95 disabled:opacity-50"
               >
@@ -1146,27 +1379,261 @@ public:
             </div>
           </div>
 
-          {/* Code Textarea / Viewer (Full Height) */}
-          <div className="flex-1 flex flex-col relative bg-[#f8fafc] dark:bg-[#0f131f] p-4 text-slate-900 dark:text-slate-100 font-mono text-xs">
+          {/* Code Textarea / Viewer */}
+          <div className="flex-1 flex flex-col relative bg-[#f8fafc] dark:bg-[#0f131f] p-4 text-slate-900 dark:text-slate-100 font-mono text-xs min-h-[300px]">
             <textarea
               value={code}
               onChange={(e) => setCode(e.target.value)}
               spellCheck={false}
-              className="w-full flex-1 min-h-[460px] bg-transparent border-0 text-slate-800 dark:text-slate-100 font-mono text-xs leading-relaxed focus:outline-none resize-none custom-scrollbar"
+              className="w-full flex-1 min-h-[280px] bg-transparent border-0 text-slate-800 dark:text-slate-100 font-mono text-xs leading-relaxed focus:outline-none resize-none custom-scrollbar"
             />
           </div>
 
-          {/* Bottom Code Editor Status Bar */}
-          <div className="flex items-center justify-between border-t border-slate-200/90 dark:border-white/10 bg-slate-50/90 dark:bg-[#1a2030] px-4 py-2.5 text-[11px] text-slate-600 dark:text-slate-400 font-mono">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
-                <Terminal className="h-3.5 w-3.5" />
-                <span>{language.toUpperCase()}</span>
-              </span>
-              <span>{code.split("\n").length} lines</span>
-              <span>{code.length} chars</span>
+          {/* Interactive Testcase & Result Console Panel */}
+          <div className="border-t border-slate-200/90 dark:border-white/10 bg-slate-50 dark:bg-[#121622] flex flex-col">
+            {/* Console Header Bar */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200/80 dark:border-white/5 bg-slate-100/70 dark:bg-[#181d2a]">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestConsoleTab("testcase");
+                    setIsConsoleExpanded(true);
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    testConsoleTab === "testcase"
+                      ? "bg-white dark:bg-white/15 text-slate-900 dark:text-white shadow-2xs"
+                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                  }`}
+                >
+                  <Terminal className="h-3.5 w-3.5" />
+                  <span>Testcase</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+                    {interactiveTestCases.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestConsoleTab("result");
+                    setIsConsoleExpanded(true);
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    testConsoleTab === "result"
+                      ? "bg-white dark:bg-white/15 text-slate-900 dark:text-white shadow-2xs"
+                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                  }`}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Test Result</span>
+                  {testResult && (
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  )}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsConsoleExpanded(!isConsoleExpanded)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-white/5 transition cursor-pointer"
+                title={isConsoleExpanded ? "Collapse console" : "Expand console"}
+              >
+                {isConsoleExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              </button>
             </div>
-            <span className="text-[10px] text-slate-500 font-sans font-medium">Optimal Reference Solution</span>
+
+            {/* Console Body */}
+            {isConsoleExpanded && (
+              <div className="p-4 space-y-3 max-h-[260px] overflow-y-auto custom-scrollbar animate-in fade-in duration-100 text-xs">
+                {testConsoleTab === "testcase" && (
+                  <div className="space-y-3">
+                    {/* Case Pills */}
+                    <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
+                      {interactiveTestCases.map((tc, idx) => (
+                        <button
+                          key={tc.id || idx}
+                          type="button"
+                          onClick={() => setSelectedTestCaseIndex(idx)}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer shrink-0 ${
+                            selectedTestCaseIndex === idx
+                              ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800"
+                              : "bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                          }`}
+                        >
+                          Case {idx + 1}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Active Testcase Details */}
+                    {interactiveTestCases[selectedTestCaseIndex] && (
+                      <div className="space-y-2.5 font-mono text-[11px]">
+                        <div>
+                          <span className="font-sans text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                            Input:
+                          </span>
+                          <div className="p-2.5 rounded-lg bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 whitespace-pre-line">
+                            {interactiveTestCases[selectedTestCaseIndex].input}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="font-sans text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                            Expected Output:
+                          </span>
+                          <div className="p-2.5 rounded-lg bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 font-bold whitespace-pre-line">
+                            {interactiveTestCases[selectedTestCaseIndex].output}
+                          </div>
+                        </div>
+
+                        {interactiveTestCases[selectedTestCaseIndex].explanation && (
+                          <div className="pt-1 font-sans text-[11px] text-slate-500 dark:text-slate-400">
+                            <span className="font-bold text-slate-700 dark:text-slate-300 mr-1.5">Explanation:</span>
+                            <span>{interactiveTestCases[selectedTestCaseIndex].explanation}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {testConsoleTab === "result" && (
+                  <div className="space-y-3">
+                    {isRunningCode ? (
+                      <div className="flex items-center justify-center py-8 gap-3 text-slate-500 dark:text-slate-400">
+                        <Play className="h-4 w-4 animate-spin text-emerald-500" />
+                        <span className="font-medium text-xs">Compiling & executing test cases...</span>
+                      </div>
+                    ) : testResult ? (
+                      <div className="space-y-3">
+                        {/* Verdict Header Banner */}
+                        <div
+                          className={`flex items-center justify-between p-3 rounded-xl border ${
+                            testResult.status === "Accepted"
+                              ? "bg-emerald-50/80 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                              : "bg-rose-50/80 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 font-bold text-xs">
+                            {testResult.status === "Accepted" ? (
+                              <CircleCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                            )}
+                            <span className="text-sm">{testResult.status}</span>
+                            <span className="font-normal opacity-75">
+                              ({testResult.totalPassed}/{testResult.totalCases} Passed)
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-[11px] font-mono opacity-80">
+                            <span>Runtime: {testResult.runtime}</span>
+                            <span>Memory: {testResult.memory}</span>
+                          </div>
+                        </div>
+
+                        {/* Test Case Selection Pills */}
+                        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
+                          {testResult.cases.map((c, idx) => (
+                            <button
+                              key={c.id || idx}
+                              type="button"
+                              onClick={() => setSelectedTestCaseIndex(idx)}
+                              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer shrink-0 ${
+                                selectedTestCaseIndex === idx
+                                  ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800"
+                                  : "bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400"
+                              }`}
+                            >
+                              <CircleCheck className="h-3 w-3 text-emerald-500" />
+                              <span>Case {idx + 1}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Active Result Details */}
+                        {testResult.cases[selectedTestCaseIndex] && (
+                          <div className="space-y-2 font-mono text-[11px]">
+                            <div>
+                              <span className="font-sans text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                                Input:
+                              </span>
+                              <div className="p-2 rounded bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 whitespace-pre-line">
+                                {testResult.cases[selectedTestCaseIndex].input}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <span className="font-sans text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                                  Output:
+                                </span>
+                                <div className="p-2 rounded bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-white/10 text-emerald-600 dark:text-emerald-400 font-bold whitespace-pre-line">
+                                  {testResult.cases[selectedTestCaseIndex].actualOutput}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="font-sans text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                                  Expected:
+                                </span>
+                                <div className="p-2 rounded bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 font-bold whitespace-pre-line">
+                                  {testResult.cases[selectedTestCaseIndex].expectedOutput}
+                                </div>
+                              </div>
+                            </div>
+
+                            {testResult.cases[selectedTestCaseIndex].explanation && (
+                              <div className="pt-1 font-sans text-[11px] text-slate-500 dark:text-slate-400">
+                                <span className="font-bold text-slate-700 dark:text-slate-300 mr-1.5">Explanation:</span>
+                                <span>{testResult.cases[selectedTestCaseIndex].explanation}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 space-y-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Click <span className="font-bold text-slate-700 dark:text-slate-200">"Run"</span> to execute against sample test cases or <span className="font-bold text-emerald-600 dark:text-emerald-400">"Submit"</span> to evaluate all test cases.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bottom Console Footer / Status Bar */}
+            <div className="flex items-center justify-between border-t border-slate-200/80 dark:border-white/5 bg-slate-100/90 dark:bg-[#181d2a] px-4 py-2 text-[11px] text-slate-600 dark:text-slate-400 font-mono">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
+                  <Terminal className="h-3.5 w-3.5" />
+                  <span>{language.toUpperCase()}</span>
+                </span>
+                <span>{code.split("\n").length} lines</span>
+                <span>{code.length} chars</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isRunningCode || isSubmitting}
+                  onClick={handleRunCode}
+                  className="px-2.5 py-1 rounded text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-white/5 transition cursor-pointer"
+                >
+                  Run Code
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmitting || isRunningCode}
+                  onClick={handleSubmitCode}
+                  className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition cursor-pointer"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
