@@ -106,5 +106,45 @@ export default async function adminController(fastify: FastifyInstance) {
   fastify.get('/content', async () => {
     return adminService.getAllContent();
   });
+
+  // Practice Problems management
+  fastify.get('/practice-problems', async () => {
+    return adminService.getAllPracticeProblems();
+  });
+
+  fastify.post('/practice-problems', async (request, reply) => {
+    const body = request.body as any;
+    try {
+      const problem = await adminService.savePracticeProblem(body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(problem);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to create practice problem' });
+    }
+  });
+
+  fastify.patch('/practice-problems/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    try {
+      const updated = await adminService.updatePracticeProblem(id, body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(updated);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to update practice problem' });
+    }
+  });
+
+  fastify.delete('/practice-problems/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await adminService.deletePracticeProblem(id);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to delete practice problem' });
+    }
+  });
 }
+
 
