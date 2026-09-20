@@ -1762,7 +1762,6 @@ function PracticeProblemsView({
                           <p className="text-[12px] font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                             {item.title}
                           </p>
-                          {item.slug && <p className="text-[10px] font-mono text-slate-400">/{item.slug}</p>}
                         </div>
                       </div>
                     </td>
