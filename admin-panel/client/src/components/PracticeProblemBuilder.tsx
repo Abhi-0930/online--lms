@@ -865,7 +865,7 @@ export default function PracticeProblemBuilder({
                         setFormData({ ...formData, statement: e.target.value })
                       }
                       placeholder="Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target..."
-                      className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono leading-relaxed transition resize-y"
+                      className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono leading-relaxed transition resize-y custom-scrollbar"
                     />
                   </div>
 
@@ -884,7 +884,7 @@ export default function PracticeProblemBuilder({
                         })
                       }
                       placeholder="1 <= nums.length <= 10^4&#10;-10^9 <= nums[i] <= 10^9&#10;Only one valid answer exists."
-                      className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono leading-relaxed transition resize-y"
+                      className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono leading-relaxed transition resize-y custom-scrollbar"
                     />
                   </div>
                 </div>
@@ -950,7 +950,7 @@ export default function PracticeProblemBuilder({
                               )
                             }
                             placeholder="nums = [2,7,11,15], target = 9"
-                            className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 custom-scrollbar"
                           />
                         </div>
                         <div>
@@ -968,7 +968,7 @@ export default function PracticeProblemBuilder({
                               )
                             }
                             placeholder="[0, 1]"
-                            className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 custom-scrollbar"
                           />
                         </div>
                       </div>
@@ -1032,7 +1032,7 @@ export default function PracticeProblemBuilder({
                         value={hint}
                         onChange={(e) => handleUpdateHint(idx, e.target.value)}
                         placeholder="Describe a hint or intuition trigger..."
-                        className="flex-1 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y"
+                        className="flex-1 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y custom-scrollbar"
                       />
                       {formData.hints.length > 1 && (
                         <button
@@ -1076,7 +1076,7 @@ export default function PracticeProblemBuilder({
                         })
                       }
                       placeholder="Explain the core insights and why it works..."
-                      className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium leading-relaxed transition resize-y"
+                      className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium leading-relaxed transition resize-y custom-scrollbar"
                     />
                   </div>
 
@@ -1095,7 +1095,7 @@ export default function PracticeProblemBuilder({
                         })
                       }
                       placeholder="Describe the step-by-step logic flow and edge cases..."
-                      className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium leading-relaxed transition resize-y"
+                      className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium leading-relaxed transition resize-y custom-scrollbar"
                     />
                   </div>
 
@@ -1206,7 +1206,7 @@ export default function PracticeProblemBuilder({
                               )
                             }
                             placeholder="nums = [3,2,4], target = 6"
-                            className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 custom-scrollbar"
                           />
                         </div>
                         <div>
@@ -1224,7 +1224,7 @@ export default function PracticeProblemBuilder({
                               )
                             }
                             placeholder="[1, 2]"
-                            className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 custom-scrollbar"
                           />
                         </div>
                       </div>
@@ -1459,7 +1459,7 @@ export default function PracticeProblemBuilder({
             </div>
 
             {/* Language Selector Tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
               {[
                 { id: "python", label: "Python (3.x)" },
                 { id: "javascript", label: "JavaScript (Node 18+)" },
@@ -1547,7 +1547,7 @@ export default function PracticeProblemBuilder({
                       }));
                     }
                   }}
-                  className="w-full bg-transparent border-0 text-slate-100 font-mono text-xs leading-relaxed focus:outline-none resize-y"
+                  className="w-full bg-transparent border-0 text-slate-100 font-mono text-xs leading-relaxed focus:outline-none resize-y custom-scrollbar"
                   spellCheck={false}
                 />
               </div>
@@ -1567,7 +1567,7 @@ export default function PracticeProblemBuilder({
               </p>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-white/5 text-[11px] uppercase tracking-wider text-slate-400">
