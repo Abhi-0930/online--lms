@@ -126,116 +126,19 @@ const ESTIMATED_TIMES = [
 ];
 
 const DEFAULT_STARTER_CODES: Record<string, string> = {
-  python: `class Solution:
-    def solve(self, nums: list[int], target: int) -> list[int]:
-        # Write your optimal code here
-        pass
-`,
-  javascript: `/**
- * @param {number[]} nums
- * @param {number} target
- * @return {number[]}
- */
-function solve(nums, target) {
-    // Write your optimal code here
-}
-`,
-  typescript: `function solve(nums: number[], target: number): number[] {
-    // Write your optimal code here
-    return [];
-}
-`,
-  java: `class Solution {
-    public int[] solve(int[] nums, int target) {
-        // Write your optimal code here
-        return new int[]{};
-    }
-}
-`,
-  cpp: `#include <vector>
-using namespace std;
-
-class Solution {
-public:
-    vector<int> solve(vector<int>& nums, int target) {
-        // Write your optimal code here
-        return {};
-    }
-};
-`,
+  python: "",
+  javascript: "",
+  typescript: "",
+  java: "",
+  cpp: "",
 };
 
 const DEFAULT_REFERENCE_SOLUTIONS: Record<string, string> = {
-  python: `class Solution:
-    def solve(self, nums: list[int], target: int) -> list[int]:
-        lookup = {}
-        for i, num in enumerate(nums):
-            diff = target - num
-            if diff in lookup:
-                return [lookup[diff], i]
-            lookup[num] = i
-        return []
-`,
-  javascript: `function solve(nums, target) {
-    const map = new Map();
-    for (let i = 0; i < nums.length; i++) {
-        const complement = target - nums[i];
-        if (map.has(complement)) {
-            return [map.get(complement), i];
-        }
-        map.set(nums[i], i);
-    }
-    return [];
-}
-`,
-  typescript: `function solve(nums: number[], target: number): number[] {
-    const map = new Map<number, number>();
-    for (let i = 0; i < nums.length; i++) {
-        const complement = target - nums[i];
-        if (map.has(complement)) {
-            return [map.get(complement)!, i];
-        }
-        map.set(nums[i], i);
-    }
-    return [];
-}
-`,
-  java: `import java.util.HashMap;
-import java.util.Map;
-
-class Solution {
-    public int[] solve(int[] nums, int target) {
-        Map<Integer, Integer> map = new HashMap<>();
-        for (int i = 0; i < nums.length; i++) {
-            int complement = target - nums[i];
-            if (map.containsKey(complement)) {
-                return new int[] { map.get(complement), i };
-            }
-            map.put(nums[i], i);
-        }
-        return new int[]{};
-    }
-}
-`,
-  cpp: `#include <vector>
-#include <unordered_map>
-using namespace std;
-
-class Solution {
-public:
-    vector<int> solve(vector<int>& nums, int target) {
-        unordered_map<int, int> lookup;
-        for (int i = 0; i < (int)nums.size(); i++) {
-            int complement = target - nums[i];
-            if (lookup.count(complement)) {
-                return {lookup[complement], i};
-            }
-            lookup[nums[i]] = i;
-        }
-        return {};
-    }
-};
-`,
+  python: "",
+  javascript: "",
+  typescript: "",
+  java: "",
+  cpp: "",
 };
 
 export default function PracticeProblemBuilder({
@@ -277,117 +180,117 @@ export default function PracticeProblemBuilder({
         title: "",
         difficulty: "Medium" as const,
         topic: "Arrays",
-        tags: ["Array", "Hash Table"],
-        companies: "Amazon, Google, Microsoft, Meta",
-        statement:
-          "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\nYou can return the answer in any order.",
-        constraints:
-          "2 <= nums.length <= 10^4\n-10^9 <= nums[i] <= 10^9\n-10^9 <= target <= 10^9\nOnly one valid answer exists.",
+        tags: [],
+        companies: "",
+        statement: "",
+        constraints: "",
         examples: [
           {
             id: "ex-1",
-            input: "nums = [2,7,11,15], target = 9",
-            output: "[0, 1]",
-            explanation:
-              "Because nums[0] + nums[1] == 9, we return [0, 1].",
-          },
-          {
-            id: "ex-2",
-            input: "nums = [3,2,4], target = 6",
-            output: "[1, 2]",
-            explanation: "Because nums[1] + nums[2] == 6, we return [1, 2].",
+            input: "",
+            output: "",
+            explanation: "",
           },
         ],
-        hints: [
-          "A really brute force way would be to search for all possible pairs of numbers, but would that be too slow?",
-          "Can you use a Hash Map to reduce the lookup time to O(1) by storing elements you have visited?",
-        ],
-        editorialApproach:
-          "Explain the core insights and intuition: We can traverse the array once while storing each number's index in a hash map. For each element, we check if `target - nums[i]` has already been seen.",
-        editorialAlgorithm:
-          "1. Initialize an empty hash map `lookup` mapping value -> index.\n2. Iterate through `nums` with index `i` and value `x`.\n3. Compute `complement = target - x`.\n4. If `complement` exists in `lookup`, return `[lookup[complement], i]`.\n5. Otherwise, insert `lookup[x] = i`.\n6. Return empty list if no pair is found.",
-        timeComplexity: "O(N)",
-        spaceComplexity: "O(N)",
+        hints: [""],
+        editorialApproach: "",
+        editorialAlgorithm: "",
+        timeComplexity: "",
+        spaceComplexity: "",
         testCasesList: [
           {
             id: "tc-1",
-            input: "nums = [2,7,11,15]\ntarget = 9",
-            expectedOutput: "[0, 1]",
-          },
-          {
-            id: "tc-2",
-            input: "nums = [3,2,4]\ntarget = 6",
-            expectedOutput: "[1, 2]",
-          },
-          {
-            id: "tc-3",
-            input: "nums = [3,3]\ntarget = 6",
-            expectedOutput: "[0, 1]",
+            input: "",
+            expectedOutput: "",
           },
         ],
-        starterCode: { ...DEFAULT_STARTER_CODES },
-        referenceSolution: { ...DEFAULT_REFERENCE_SOLUTIONS },
+        starterCode: {
+          python: "",
+          javascript: "",
+          typescript: "",
+          java: "",
+          cpp: "",
+        },
+        referenceSolution: {
+          python: "",
+          javascript: "",
+          typescript: "",
+          java: "",
+          cpp: "",
+        },
         estimatedSolveTime: "15 minutes",
         visibility: "Public" as const,
         status: "Draft" as const,
-        acceptanceRate: "74.8%",
-        submissionsCount: 3420,
-        likesCount: 474,
+        acceptanceRate: "0.0%",
+        submissionsCount: 0,
+        likesCount: 0,
       };
     }
 
     // Process from initialData
     const hintsList = Array.isArray(initialData.hints) && initialData.hints.length > 0
       ? initialData.hints
-      : ["Consider optimal data structures to reduce time complexity."];
+      : [""];
 
-    const sampleEx: ProblemExample[] = [
-      {
-        id: "ex-1",
-        input: initialData.sampleInput || "nums = [2,7,11,15], target = 9",
-        output: initialData.sampleOutput || "[0, 1]",
-        explanation: "nums[0] + nums[1] == 9, so return [0, 1].",
-      },
-    ];
+    const sampleEx: ProblemExample[] = (initialData.sampleInput || initialData.sampleOutput)
+      ? [
+          {
+            id: "ex-1",
+            input: initialData.sampleInput || "",
+            output: initialData.sampleOutput || "",
+            explanation: "",
+          },
+        ]
+      : [
+          {
+            id: "ex-1",
+            input: "",
+            output: "",
+            explanation: "",
+          },
+        ];
 
     return {
       title: initialData.title || "",
       difficulty: (initialData.difficulty || "Medium") as "Easy" | "Medium" | "Hard",
       topic: initialData.category || "Arrays",
-      tags: ["Array", "Algorithm", initialData.category || "Arrays"],
-      companies: "Amazon, Google, Microsoft, Meta",
-      statement:
-        initialData.description ||
-        "Write a clear description with input/output format and constraints for learners of every proficiency level.",
-      constraints:
-        initialData.constraints ||
-        "1 <= nums.length <= 10^5\n-10^9 <= nums[i] <= 10^9",
+      tags: Array.isArray(initialData.tags) ? initialData.tags : [],
+      companies: initialData.companies || "",
+      statement: initialData.description || "",
+      constraints: initialData.constraints || "",
       examples: sampleEx,
       hints: hintsList,
-      editorialApproach:
-        "Optimal one-pass hash map algorithm to check complement indices.",
-      editorialAlgorithm:
-        "Iterate over input elements and store seen entries in a hash map for O(1) lookup.",
-      timeComplexity: "O(N)",
-      spaceComplexity: "O(N)",
+      editorialApproach: (initialData as any).editorialApproach || "",
+      editorialAlgorithm: (initialData as any).editorialAlgorithm || "",
+      timeComplexity: (initialData as any).timeComplexity || "",
+      spaceComplexity: (initialData as any).spaceComplexity || "",
       testCasesList: [
         {
           id: "tc-1",
-          input: initialData.sampleInput || "nums = [2,7,11,15]\ntarget = 9",
-          expectedOutput: initialData.sampleOutput || "[0, 1]",
+          input: initialData.sampleInput || "",
+          expectedOutput: initialData.sampleOutput || "",
         },
       ],
       starterCode: {
-        ...DEFAULT_STARTER_CODES,
-        ...(initialData.starterCode || {}),
+        python: initialData.starterCode?.python || "",
+        javascript: initialData.starterCode?.javascript || "",
+        typescript: initialData.starterCode?.typescript || "",
+        java: initialData.starterCode?.java || "",
+        cpp: initialData.starterCode?.cpp || "",
       },
-      referenceSolution: { ...DEFAULT_REFERENCE_SOLUTIONS },
-      estimatedSolveTime: "15 minutes",
+      referenceSolution: {
+        python: (initialData as any).referenceSolution?.python || "",
+        javascript: (initialData as any).referenceSolution?.javascript || "",
+        typescript: (initialData as any).referenceSolution?.typescript || "",
+        java: (initialData as any).referenceSolution?.java || "",
+        cpp: (initialData as any).referenceSolution?.cpp || "",
+      },
+      estimatedSolveTime: (initialData as any).estimatedSolveTime || "15 minutes",
       visibility: "Public" as const,
       status: (initialData.status === "Live" ? "Live" : "Draft") as "Draft" | "Live",
-      acceptanceRate: initialData.acceptance || "74.8%",
-      submissionsCount: initialData.submissions || 120,
-      likesCount: 54,
+      acceptanceRate: initialData.acceptance || "0.0%",
+      submissionsCount: initialData.submissions || 0,
+      likesCount: (initialData as any).likesCount || 0,
     };
   }, [initialData]);
 
@@ -408,15 +311,7 @@ export default function PracticeProblemBuilder({
         (p.category?.toLowerCase() === currentTopic ||
           p.difficulty === formData.difficulty)
     );
-    if (matches.length > 0) return matches.slice(0, 4);
-
-    // Fallbacks
-    return [
-      { id: "rel-1", title: "Contains Duplicate", difficulty: "Easy", category: formData.topic },
-      { id: "rel-2", title: "Best Time to Buy and Sell Stock", difficulty: "Easy", category: formData.topic },
-      { id: "rel-3", title: "Product of Array Except Self", difficulty: "Medium", category: formData.topic },
-      { id: "rel-4", title: "Maximum Subarray", difficulty: "Medium", category: formData.topic },
-    ];
+    return matches.slice(0, 4);
   }, [existingProblems, initialData?.id, formData.topic, formData.difficulty]);
 
   // Tag Handlers
@@ -439,9 +334,9 @@ export default function PracticeProblemBuilder({
   const handleAddExample = () => {
     const newEx: ProblemExample = {
       id: `ex-${Date.now()}`,
-      input: "nums = [1, 2, 3], target = 4",
-      output: "[0, 2]",
-      explanation: "Explanation of why this output is correct.",
+      input: "",
+      output: "",
+      explanation: "",
     };
     setFormData((prev) => ({
       ...prev,
@@ -496,8 +391,8 @@ export default function PracticeProblemBuilder({
   const handleAddTestCase = () => {
     const newTc: ProblemTestCase = {
       id: `tc-${Date.now()}`,
-      input: "nums = [5, 7, 9], target = 12",
-      expectedOutput: "[0, 1]",
+      input: "",
+      expectedOutput: "",
     };
     setFormData((prev) => ({
       ...prev,
@@ -540,9 +435,9 @@ export default function PracticeProblemBuilder({
       title: formData.title.trim() || "Untitled Practice Problem",
       category: formData.topic || "Arrays",
       difficulty: formData.difficulty,
-      acceptance: formData.acceptanceRate || "74.8%",
+      acceptance: formData.acceptanceRate || "0.0%",
       submissions: formData.submissionsCount || 0,
-      testCases: Math.max(formData.testCasesList.length, 10),
+      testCases: formData.testCasesList.length,
       status,
       description: formData.statement,
       sampleInput: primarySampleInput,
@@ -1567,87 +1462,10 @@ export default function PracticeProblemBuilder({
               </p>
             </div>
 
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-white/5 text-[11px] uppercase tracking-wider text-slate-400">
-                    <th className="pb-3 font-semibold">User</th>
-                    <th className="pb-3 font-semibold">Status</th>
-                    <th className="pb-3 font-semibold">Language</th>
-                    <th className="pb-3 font-semibold">Runtime</th>
-                    <th className="pb-3 font-semibold">Memory</th>
-                    <th className="pb-3 font-semibold text-right">Submitted</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                  {[
-                    {
-                      user: "Alex Rivera",
-                      status: "Accepted",
-                      lang: "Python",
-                      time: "42 ms",
-                      mem: "16.2 MB",
-                      submitted: "2 mins ago",
-                    },
-                    {
-                      user: "Sarah Jenkins",
-                      status: "Accepted",
-                      lang: "C++",
-                      time: "4 ms",
-                      mem: "9.8 MB",
-                      submitted: "14 mins ago",
-                    },
-                    {
-                      user: "Devon Miles",
-                      status: "Wrong Answer",
-                      lang: "JavaScript",
-                      time: "68 ms",
-                      mem: "44.1 MB",
-                      submitted: "1 hour ago",
-                    },
-                    {
-                      user: "Elena Rostova",
-                      status: "Time Limit Exceeded",
-                      lang: "Java",
-                      time: "> 2000 ms",
-                      mem: "52.3 MB",
-                      submitted: "3 hours ago",
-                    },
-                  ].map((sub, i) => (
-                    <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.02]">
-                      <td className="py-3 font-bold text-slate-800 dark:text-slate-200">
-                        {sub.user}
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
-                            sub.status === "Accepted"
-                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
-                              : sub.status === "Wrong Answer"
-                              ? "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
-                              : "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
-                          )}
-                        >
-                          {sub.status}
-                        </span>
-                      </td>
-                      <td className="py-3 font-mono text-slate-600 dark:text-slate-400">
-                        {sub.lang}
-                      </td>
-                      <td className="py-3 font-mono text-slate-600 dark:text-slate-400">
-                        {sub.time}
-                      </td>
-                      <td className="py-3 font-mono text-slate-600 dark:text-slate-400">
-                        {sub.mem}
-                      </td>
-                      <td className="py-3 text-right text-slate-400">
-                        {sub.submitted}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="py-12 text-center text-xs text-slate-400">
+              <FileCode2 className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600 mb-2" />
+              <p className="font-semibold text-slate-600 dark:text-slate-300">No submissions recorded yet</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">When students submit solutions to this problem, their live runtimes and verdicts will appear here.</p>
             </div>
           </div>
         )}
@@ -1672,7 +1490,7 @@ export default function PracticeProblemBuilder({
                 Avg. Solution Time
               </p>
               <p className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
-                12m 40s
+                {formData.submissionsCount > 0 ? "12m 40s" : "—"}
               </p>
               <p className="text-[11px] text-slate-500">
                 Estimated target: {formData.estimatedSolveTime}
@@ -1684,10 +1502,10 @@ export default function PracticeProblemBuilder({
                 Popular Language
               </p>
               <p className="text-3xl font-extrabold text-slate-800 dark:text-white">
-                Python 3
+                {formData.submissionsCount > 0 ? "Python 3" : "—"}
               </p>
               <p className="text-[11px] text-slate-500">
-                54% of all submissions
+                {formData.submissionsCount > 0 ? "54% of all submissions" : "No submission data"}
               </p>
             </div>
           </div>
