@@ -149,6 +149,76 @@ export function useLiveAdminData() {
     writeCache(CACHE_KEYS.COURSES, data);
   };
 
+  const upsertCourse = (course: any) => {
+    if (!course || !course.id) return;
+    setCoursesList((prev) => {
+      const idx = prev.findIndex((c) => String(c.id) === String(course.id));
+      let updated: Course[];
+      const priceStr = course.price !== undefined ? String(course.price) : "0";
+      const formatted: Course = {
+        id: String(course.id),
+        title: course.title || "Untitled Course",
+        subtitle: course.subtitle || "",
+        description: course.description || "",
+        language: course.language || "English",
+        category: course.category || "Development",
+        level: course.level || "Beginner",
+        thumbnailPreview: course.thumbnailPreview || course.coverImageUrl || null,
+        coverImageUrl: course.coverImageUrl || course.thumbnailPreview || null,
+        price: priceStr,
+        discountPrice: course.discountPrice !== undefined && course.discountPrice !== null ? String(course.discountPrice) : "",
+        currency: course.currency || "INR ₹",
+        courseType: course.courseType || (Number(priceStr) > 0 ? "Paid" : "Free"),
+        accessType: course.accessType || "Lifetime Access",
+        durationCycleMode: course.durationCycleMode || "Date Range",
+        startDate: course.startDate || "",
+        endDate: course.endDate || "",
+        durationValue: course.durationValue || "90",
+        durationUnit: course.durationUnit || "Days",
+        subscriptionCycle: course.subscriptionCycle || "Monthly",
+        enrollmentLimit: course.enrollmentLimit || "Unlimited",
+        courseVisibility: course.courseVisibility || "Public",
+        modules: course.modules || [],
+        track: course.subtitle || course.track || "General track",
+        instructor: course.instructor?.fullName || course.instructorName || course.instructor || "Platform Admin",
+        instructorName: course.instructor?.fullName || course.instructorName || course.instructor || "Platform Admin",
+        students: course.students !== undefined ? course.students : 0,
+        completion: course.completion !== undefined ? course.completion : 0,
+        revenue: course.revenue || (Number(priceStr) > 0 ? `₹${priceStr}` : "₹0"),
+        status:
+          course.status === "PUBLISHED" || course.status === "Published"
+            ? "Published"
+            : course.status === "DRAFT" || course.status === "Draft"
+            ? "Draft"
+            : "Review",
+        skillsCovered: course.skillsCovered || course.tags || [],
+        prerequisites: course.prerequisites || "",
+        estimatedDuration: course.estimatedDuration || "12 Weeks",
+        certificateAvailable: course.certificateAvailable !== undefined ? course.certificateAvailable : true,
+        seoTitle: course.seoTitle || "",
+        seoDescription: course.seoDescription || "",
+        targetAudience: course.targetAudience || "",
+        learningOutcomes: course.learningOutcomes || [],
+        requirements: course.requirements || [],
+        targetLearners: course.targetLearners || [],
+        tags: course.tags || course.skillsCovered || [],
+        color: course.color || "#dbeafe",
+        initials: (course.title || "COU").slice(0, 3).toUpperCase(),
+        createdAt: course.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (idx >= 0) {
+        updated = [...prev];
+        updated[idx] = { ...updated[idx], ...formatted };
+      } else {
+        updated = [formatted, ...prev];
+      }
+      writeCache(CACHE_KEYS.COURSES, updated);
+      return updated;
+    });
+  };
+
   const updateStats = (data: AdminStats) => {
     setStats(data);
     writeCache(CACHE_KEYS.STATS, data);
@@ -301,8 +371,8 @@ export function useLiveAdminData() {
     };
   }, []);
 
-  const refresh = () => {
-    fetchCourses();
+  const refresh = async () => {
+    await fetchCourses();
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "REFRESH" }));
     } else {
@@ -320,5 +390,7 @@ export function useLiveAdminData() {
     isLoading,
     isWsConnected,
     refresh,
+    upsertCourse,
+    setCourses: updateCourses,
   };
 }
