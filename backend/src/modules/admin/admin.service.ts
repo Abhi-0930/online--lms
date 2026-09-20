@@ -6,6 +6,7 @@ import { OnboardingService } from '../onboarding/onboarding.service';
 
 export class AdminService {
   private static metaFilePath = path.resolve(process.cwd(), 'data', 'courses_meta.json');
+  private static problemsFilePath = path.resolve(process.cwd(), 'data', 'practice_problems.json');
 
   private static loadCoursesMetaFromFile(): Map<string, any> {
     try {
@@ -34,6 +35,33 @@ export class AdminService {
     return new Map<string, any>();
   }
 
+  private static loadProblemsFromFile(): Map<string, any> {
+    try {
+      if (fs.existsSync(AdminService.problemsFilePath)) {
+        const raw = fs.readFileSync(AdminService.problemsFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const map = new Map<string, any>();
+          for (const item of parsed) {
+            if (item && item.id) {
+              map.set(String(item.id), item);
+            }
+          }
+          return map;
+        } else if (parsed && typeof parsed === 'object') {
+          const map = new Map<string, any>();
+          for (const [k, v] of Object.entries(parsed)) {
+            map.set(String(k), v);
+          }
+          return map;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load practice problems from file:', err);
+    }
+    return new Map<string, any>();
+  }
+
   public static saveMetaToFile() {
     try {
       const dir = path.dirname(AdminService.metaFilePath);
@@ -47,7 +75,21 @@ export class AdminService {
     }
   }
 
+  public static saveProblemsToFile() {
+    try {
+      const dir = path.dirname(AdminService.problemsFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = Array.from(AdminService.fallbackProblems.values());
+      fs.writeFileSync(AdminService.problemsFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save practice problems to file:', err);
+    }
+  }
+
   public static fallbackCourses = AdminService.loadCoursesMetaFromFile();
+  public static fallbackProblems = AdminService.loadProblemsFromFile();
   public static fallbackAssignments = new Map<string, any>();
   public static fallbackSubmissions = new Map<string, any>();
 
@@ -1421,6 +1463,248 @@ export class AdminService {
     } catch {}
 
     return items;
+  }
+
+  async getAllPracticeProblems() {
+    let dbProblems: any[] = [];
+    try {
+      dbProblems = await (this.prisma as any).practiceProblem.findMany({
+        orderBy: { createdAt: 'asc' },
+      });
+    } catch {
+      dbProblems = [];
+    }
+
+    // Auto-seed into DB if database table is currently empty
+    if (dbProblems.length === 0 && AdminService.fallbackProblems.size > 0) {
+      try {
+        for (const p of AdminService.fallbackProblems.values()) {
+          const baseSlug = (p.title || 'problem')
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
+          const created = await (this.prisma as any).practiceProblem.create({
+            data: {
+              slug: p.slug || baseSlug || `prob-${Date.now()}`,
+              title: p.title || 'Untitled Problem',
+              category: p.category || 'Arrays',
+              difficulty: p.difficulty || 'Medium',
+              acceptance: p.acceptance || '75.0%',
+              submissions: typeof p.submissions === 'number' ? p.submissions : 100,
+              testCases: typeof p.testCases === 'number' ? p.testCases : 10,
+              status: p.status === 'Draft' || p.status === 'DRAFT' ? 'Draft' : 'Live',
+              description: p.description || null,
+              sampleInput: p.sampleInput || null,
+              sampleOutput: p.sampleOutput || null,
+              constraints: p.constraints || null,
+              hints: Array.isArray(p.hints) ? p.hints : [],
+              starterCode: p.starterCode || {},
+            },
+          });
+          dbProblems.push(created);
+        }
+      } catch (seedErr) {
+        console.warn('Practice problems auto-seed error:', seedErr);
+      }
+    }
+
+    const probMap = new Map<string, any>();
+    for (const prob of dbProblems) {
+      const key = prob.slug || prob.title || String(prob.id);
+      probMap.set(key, prob);
+      AdminService.fallbackProblems.set(String(prob.id), prob);
+    }
+
+    if (dbProblems.length === 0) {
+      for (const fallback of AdminService.fallbackProblems.values()) {
+        const key = fallback.slug || fallback.title || String(fallback.id);
+        if (!probMap.has(key)) {
+          probMap.set(key, fallback);
+        }
+      }
+    }
+
+    const all = Array.from(probMap.values());
+    return all.map((prob, index) => {
+      const id = String(prob.id || `prob-${index + 1}`);
+      return {
+        id,
+        slug: prob.slug || (prob.title ? prob.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : `problem-${id}`),
+        title: prob.title || 'Untitled Problem',
+        category: prob.category || 'General',
+        difficulty: prob.difficulty || 'Medium',
+        acceptance: prob.acceptance || '75.0%',
+        submissions: typeof prob.submissions === 'number' ? prob.submissions : 100,
+        testCases: typeof prob.testCases === 'number' ? prob.testCases : 10,
+        status: prob.status === 'Draft' || prob.status === 'DRAFT' ? 'Draft' : 'Live',
+        description: prob.description || '',
+        sampleInput: prob.sampleInput || '',
+        sampleOutput: prob.sampleOutput || '',
+        constraints: prob.constraints || '',
+        hints: Array.isArray(prob.hints) ? prob.hints : [],
+        starterCode: prob.starterCode || {},
+        createdAt: prob.createdAt || new Date().toISOString(),
+        updatedAt: prob.updatedAt || new Date().toISOString(),
+      };
+    });
+  }
+
+  async savePracticeProblem(data: {
+    id?: string;
+    title: string;
+    category?: string;
+    difficulty?: 'Easy' | 'Medium' | 'Hard';
+    acceptance?: string;
+    submissions?: number;
+    testCases?: number;
+    status?: 'Live' | 'Draft';
+    description?: string;
+    sampleInput?: string;
+    sampleOutput?: string;
+    constraints?: string;
+    hints?: string[];
+    starterCode?: Record<string, string>;
+  }) {
+    const baseSlug = (data.title || 'problem')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    const slug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+
+    let createdDbProblem: any = null;
+    try {
+      createdDbProblem = await (this.prisma as any).practiceProblem.create({
+        data: {
+          slug,
+          title: data.title || 'Untitled Problem',
+          category: data.category || 'Arrays',
+          difficulty: data.difficulty || 'Medium',
+          acceptance: data.acceptance || '75.0%',
+          submissions: typeof data.submissions === 'number' ? data.submissions : 0,
+          testCases: typeof data.testCases === 'number' ? data.testCases : 10,
+          status: data.status || 'Live',
+          description: data.description || null,
+          sampleInput: data.sampleInput || null,
+          sampleOutput: data.sampleOutput || null,
+          constraints: data.constraints || null,
+          hints: Array.isArray(data.hints) ? data.hints : [],
+          starterCode: data.starterCode || {},
+        },
+      });
+    } catch (dbErr) {
+      console.warn('Practice problem DB create fallback:', dbErr);
+    }
+
+    const id = createdDbProblem ? String(createdDbProblem.id) : (data.id || `prob-${Date.now()}`);
+    const result = {
+      ...data,
+      id,
+      slug: createdDbProblem?.slug || slug,
+      title: data.title || 'Untitled Problem',
+      category: data.category || 'Arrays',
+      difficulty: data.difficulty || 'Medium',
+      acceptance: data.acceptance || '75.0%',
+      submissions: typeof data.submissions === 'number' ? data.submissions : 0,
+      testCases: typeof data.testCases === 'number' ? data.testCases : 10,
+      status: data.status || 'Live',
+      description: data.description || '',
+      sampleInput: data.sampleInput || '',
+      sampleOutput: data.sampleOutput || '',
+      constraints: data.constraints || '',
+      hints: Array.isArray(data.hints) ? data.hints : [],
+      starterCode: data.starterCode || {},
+      createdAt: createdDbProblem?.createdAt || new Date().toISOString(),
+      updatedAt: createdDbProblem?.updatedAt || new Date().toISOString(),
+    };
+
+    AdminService.fallbackProblems.set(id, result);
+    AdminService.saveProblemsToFile();
+    return result;
+  }
+
+  async updatePracticeProblem(id: string, data: Partial<{
+    title: string;
+    category: string;
+    difficulty: 'Easy' | 'Medium' | 'Hard';
+    acceptance: string;
+    submissions: number;
+    testCases: number;
+    status: 'Live' | 'Draft';
+    description: string;
+    sampleInput: string;
+    sampleOutput: string;
+    constraints: string;
+    hints: string[];
+    starterCode: Record<string, string>;
+  }>) {
+    let updatedDbProblem: any = null;
+    try {
+      updatedDbProblem = await (this.prisma as any).practiceProblem.update({
+        where: { id },
+        data: {
+          ...(data.title ? { title: data.title } : {}),
+          ...(data.category ? { category: data.category } : {}),
+          ...(data.difficulty ? { difficulty: data.difficulty } : {}),
+          ...(data.acceptance ? { acceptance: data.acceptance } : {}),
+          ...(data.submissions !== undefined ? { submissions: data.submissions } : {}),
+          ...(data.testCases !== undefined ? { testCases: data.testCases } : {}),
+          ...(data.status ? { status: data.status } : {}),
+          ...(data.description !== undefined ? { description: data.description } : {}),
+          ...(data.sampleInput !== undefined ? { sampleInput: data.sampleInput } : {}),
+          ...(data.sampleOutput !== undefined ? { sampleOutput: data.sampleOutput } : {}),
+          ...(data.constraints !== undefined ? { constraints: data.constraints } : {}),
+          ...(data.hints !== undefined ? { hints: data.hints } : {}),
+          ...(data.starterCode !== undefined ? { starterCode: data.starterCode } : {}),
+        },
+      });
+    } catch (dbErr) {
+      console.warn('Practice problem DB update fallback:', dbErr);
+    }
+
+    const existing = AdminService.fallbackProblems.get(String(id)) || {};
+    const updated = {
+      ...existing,
+      ...data,
+      ...updatedDbProblem,
+      id,
+      slug: data.title
+        ? data.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+        : (existing.slug || `problem-${id}`),
+      title: data.title !== undefined ? data.title : (existing.title || 'Untitled Problem'),
+      category: data.category !== undefined ? data.category : (existing.category || 'General'),
+      difficulty: data.difficulty !== undefined ? data.difficulty : (existing.difficulty || 'Medium'),
+      acceptance: data.acceptance !== undefined ? data.acceptance : (existing.acceptance || '75.0%'),
+      submissions: data.submissions !== undefined ? data.submissions : (existing.submissions || 0),
+      testCases: data.testCases !== undefined ? data.testCases : (existing.testCases || 10),
+      status: data.status !== undefined ? data.status : (existing.status || 'Live'),
+      description: data.description !== undefined ? data.description : (existing.description || ''),
+      sampleInput: data.sampleInput !== undefined ? data.sampleInput : (existing.sampleInput || ''),
+      sampleOutput: data.sampleOutput !== undefined ? data.sampleOutput : (existing.sampleOutput || ''),
+      constraints: data.constraints !== undefined ? data.constraints : (existing.constraints || ''),
+      hints: data.hints !== undefined ? data.hints : (existing.hints || []),
+      starterCode: data.starterCode !== undefined ? data.starterCode : (existing.starterCode || {}),
+      updatedAt: new Date().toISOString(),
+    };
+
+    AdminService.fallbackProblems.set(String(id), updated);
+    AdminService.saveProblemsToFile();
+    return updated;
+  }
+
+  async deletePracticeProblem(id: string) {
+    try {
+      await (this.prisma as any).practiceProblem.delete({
+        where: { id },
+      });
+    } catch (dbErr) {
+      console.warn('Practice problem DB delete fallback:', dbErr);
+    }
+
+    AdminService.fallbackProblems.delete(String(id));
+    AdminService.saveProblemsToFile();
+    return { success: true, id };
   }
 }
 
