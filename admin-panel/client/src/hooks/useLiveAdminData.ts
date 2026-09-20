@@ -73,6 +73,8 @@ export interface Course {
   requirements?: string[];
   targetLearners?: string[];
   tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ContentItem {
@@ -85,6 +87,26 @@ export interface ContentItem {
   updated: string;
 }
 
+export interface PracticeProblem {
+  id: string | number;
+  slug?: string;
+  title: string;
+  category: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  acceptance: string;
+  submissions: number;
+  testCases: number;
+  status: "Live" | "Draft";
+  description?: string;
+  sampleInput?: string;
+  sampleOutput?: string;
+  constraints?: string;
+  hints?: string[];
+  starterCode?: Record<string, string>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 const CACHE_KEYS = {
   STATS: "lms_admin_cache_stats",
   STUDENTS: "lms_admin_cache_students",
@@ -92,6 +114,7 @@ const CACHE_KEYS = {
   ASSIGNMENTS: "lms_admin_cache_assignments",
   SUBMISSIONS: "lms_admin_cache_submissions",
   CONTENT: "lms_admin_cache_content",
+  PRACTICE_PROBLEMS: "lms_admin_cache_practice_problems",
 };
 
 function readCache<T>(key: string, fallback: T): T {
@@ -136,6 +159,9 @@ export function useLiveAdminData() {
   );
   const [contentList, setContentList] = useState<ContentItem[]>(() =>
     readCache<ContentItem[]>(CACHE_KEYS.CONTENT, [])
+  );
+  const [practiceProblemsList, setPracticeProblemsList] = useState<PracticeProblem[]>(() =>
+    readCache<PracticeProblem[]>(CACHE_KEYS.PRACTICE_PROBLEMS, [])
   );
   const [isLoading, setIsLoading] = useState(() => {
     const cached = readCache<Course[]>(CACHE_KEYS.COURSES, []);
@@ -244,6 +270,77 @@ export function useLiveAdminData() {
     writeCache(CACHE_KEYS.CONTENT, data);
   };
 
+  const updatePracticeProblems = (data: PracticeProblem[]) => {
+    setPracticeProblemsList(data);
+    writeCache(CACHE_KEYS.PRACTICE_PROBLEMS, data);
+  };
+
+  const upsertPracticeProblem = (prob: any) => {
+    if (!prob || !prob.id) return;
+    setPracticeProblemsList((prev) => {
+      const idx = prev.findIndex((p) => String(p.id) === String(prob.id));
+      let updated: PracticeProblem[];
+      const formatted: PracticeProblem = {
+        id: String(prob.id),
+        slug: prob.slug || (prob.title ? prob.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : `prob-${prob.id}`),
+        title: prob.title || "Untitled Problem",
+        category: prob.category || "Arrays",
+        difficulty: prob.difficulty || "Medium",
+        acceptance: prob.acceptance || "75.0%",
+        submissions: typeof prob.submissions === "number" ? prob.submissions : 0,
+        testCases: typeof prob.testCases === "number" ? prob.testCases : 10,
+        status: prob.status === "Draft" || prob.status === "DRAFT" ? "Draft" : "Live",
+        description: prob.description || "",
+        sampleInput: prob.sampleInput || "",
+        sampleOutput: prob.sampleOutput || "",
+        constraints: prob.constraints || "",
+        hints: Array.isArray(prob.hints) ? prob.hints : [],
+        starterCode: prob.starterCode || {},
+        createdAt: prob.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (idx >= 0) {
+        updated = [...prev];
+        updated[idx] = { ...updated[idx], ...formatted };
+      } else {
+        updated = [formatted, ...prev];
+      }
+      writeCache(CACHE_KEYS.PRACTICE_PROBLEMS, updated);
+      return updated;
+    });
+  };
+
+  const deletePracticeProblem = async (id: string | number) => {
+    setPracticeProblemsList((prev) => {
+      const updated = prev.filter((p) => String(p.id) !== String(id));
+      writeCache(CACHE_KEYS.PRACTICE_PROBLEMS, updated);
+      return updated;
+    });
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/practice-problems/${id}`, {
+        method: "DELETE",
+      });
+    } catch {}
+  };
+
+  const toggleProblemStatus = async (id: string | number) => {
+    const target = practiceProblemsList.find((p) => String(p.id) === String(id));
+    if (!target) return;
+    const newStatus = target.status === "Live" ? "Draft" : "Live";
+    
+    upsertPracticeProblem({ ...target, status: newStatus });
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/practice-problems/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch {}
+  };
+
   const fetchCourses = async () => {
     try {
       const res = await fetch("http://localhost:4000/api/v1/admin/courses");
@@ -254,9 +351,20 @@ export function useLiveAdminData() {
     } catch {}
   };
 
+  const fetchPracticeProblems = async () => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/practice-problems");
+      if (res.ok) {
+        const data = await res.json();
+        updatePracticeProblems(data);
+      }
+    } catch {}
+  };
+
   const fetchInitialSnapshot = async () => {
     try {
       fetchCourses();
+      fetchPracticeProblems();
 
       fetch("http://localhost:4000/api/v1/admin/stats")
         .then((r) => (r.ok ? r.json() : null))
@@ -336,6 +444,9 @@ export function useLiveAdminData() {
               if (payload.data?.content) {
                 updateContent(payload.data.content);
               }
+              if (payload.data?.practiceProblems) {
+                updatePracticeProblems(payload.data.practiceProblems);
+              }
               setIsLoading(false);
             }
           } catch {
@@ -372,7 +483,7 @@ export function useLiveAdminData() {
   }, []);
 
   const refresh = async () => {
-    await fetchCourses();
+    await Promise.all([fetchCourses(), fetchPracticeProblems()]);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "REFRESH" }));
     } else {
@@ -387,10 +498,16 @@ export function useLiveAdminData() {
     assignments: assignmentsList,
     submissions: submissionsList,
     content: contentList,
+    practiceProblems: practiceProblemsList,
     isLoading,
     isWsConnected,
     refresh,
     upsertCourse,
     setCourses: updateCourses,
+    upsertPracticeProblem,
+    deletePracticeProblem,
+    toggleProblemStatus,
+    setPracticeProblems: updatePracticeProblems,
   };
 }
+
