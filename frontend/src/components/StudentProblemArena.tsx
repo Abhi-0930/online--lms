@@ -318,97 +318,26 @@ public:
     []
   );
 
-  // Default optimal codes per language
+  // Default starter codes per language from API problem object
   const defaultCodes: Record<string, string> = useMemo(
     () => ({
       python:
         problem.starterCode?.python ||
-        `class Solution:
-    def solve(self, nums: list[int], target: int) -> list[int]:
-        # Hash map to record seen numbers and their indices
-        lookup = {}
-        for i, num in enumerate(nums):
-            diff = target - num
-            if diff in lookup:
-                return [lookup[diff], i]
-            lookup[num] = i
-        return []
-`,
+        `class Solution:\n    def solve(self) -> None:\n        # Write your solution for ${problem.title} here\n        pass\n`,
       javascript:
         problem.starterCode?.javascript ||
-        `/**
- * @param {number[]} nums
- * @param {number} target
- * @return {number[]}
- */
-function solve(nums, target) {
-    const map = new Map();
-    for (let i = 0; i < nums.length; i++) {
-        const diff = target - nums[i];
-        if (map.has(diff)) {
-            return [map.get(diff), i];
-        }
-        map.set(nums[i], i);
-    }
-    return [];
-}
-`,
+        `/**\n * Solution for ${problem.title}\n */\nfunction solve() {\n    // Write your solution here\n}\n`,
       typescript:
         problem.starterCode?.typescript ||
-        `function solve(nums: number[], target: number): number[] {
-    const map = new Map<number, number>();
-    for (let i = 0; i < nums.length; i++) {
-        const diff = target - nums[i];
-        if (map.has(diff)) {
-            return [map.get(diff)!, i];
-        }
-        map.set(nums[i], i);
-    }
-    return [];
-}
-`,
+        `function solve(): void {\n    // Write your solution for ${problem.title} here\n}\n`,
       java:
         problem.starterCode?.java ||
-        `import java.util.HashMap;
-import java.util.Map;
-
-class Solution {
-    public int[] solve(int[] nums, int target) {
-        Map<Integer, Integer> map = new HashMap<>();
-        for (int i = 0; i < nums.length; i++) {
-            int complement = target - nums[i];
-            if (map.containsKey(complement)) {
-                return new int[] { map.get(complement), i };
-            }
-            map.put(nums[i], i);
-        }
-        return new int[]{};
-    }
-}
-`,
+        `class Solution {\n    public void solve() {\n        // Write your solution for ${problem.title} here\n    }\n}\n`,
       cpp:
         problem.starterCode?.cpp ||
-        `#include <vector>
-#include <unordered_map>
-using namespace std;
-
-class Solution {
-public:
-    vector<int> solve(vector<int>& nums, int target) {
-        unordered_map<int, int> lookup;
-        for (int i = 0; i < (int)nums.size(); i++) {
-            int complement = target - nums[i];
-            if (lookup.count(complement)) {
-                return {lookup[complement], i};
-            }
-            lookup[nums[i]] = i;
-        }
-        return {};
-    }
-};
-`,
+        `#include <iostream>\nusing namespace std;\n\nclass Solution {\npublic:\n    void solve() {\n        // Write your solution for ${problem.title} here\n    }\n};\n`,
     }),
-    [problem.starterCode]
+    [problem.starterCode, problem.title]
   );
 
   // Initialize and switch code when language or problem changes
@@ -423,47 +352,28 @@ public:
       const savedSubs = localStorage.getItem(storageKey);
       if (savedSubs) {
         setMySubmissions(JSON.parse(savedSubs));
-      } else if (problem.solved) {
-        setMySubmissions([
-          {
-            id: "sub-init-1",
-            status: "Accepted",
-            runtime: "38 ms",
-            memory: "16.8 MB",
-            language: "Python",
-            timestamp: "Earlier today",
-            codeSnippet: defaultCodes.python,
-          },
-        ]);
+      } else {
+        setMySubmissions([]);
       }
     } catch {}
-  }, [problem.id, problem.slug, problem.solved, defaultCodes.python]);
+  }, [problem.id, problem.slug]);
 
-  // Examples parser
+  // Examples parser from API problem
   const exampleCases = useMemo(() => {
-    return [
-      {
-        id: 1,
-        input: problem.sampleInput || "nums = [2, 7, 11, 15], target = 9",
-        output: problem.sampleOutput || "[0, 1]",
-        explanation: "nums[0] + nums[1] == 2 + 7 == 9, so return [0, 1].",
-      },
-      {
-        id: 2,
-        input: "nums = [3, 2, 4], target = 6",
-        output: "[1, 2]",
-        explanation: "nums[1] + nums[2] == 2 + 4 == 6, so return [1, 2].",
-      },
-      {
-        id: 3,
-        input: "nums = [3, 3], target = 6",
-        output: "[0, 1]",
-        explanation: "Both elements add up to target.",
-      },
-    ];
-  }, [problem.sampleInput, problem.sampleOutput]);
+    if (problem.sampleInput || problem.sampleOutput) {
+      return [
+        {
+          id: 1,
+          input: problem.sampleInput || "N/A",
+          output: problem.sampleOutput || "N/A",
+          explanation: `Sample test case for ${problem.title}.`,
+        },
+      ];
+    }
+    return [];
+  }, [problem.sampleInput, problem.sampleOutput, problem.title]);
 
-  // Constraints list
+  // Constraints list from API problem
   const constraintsList = useMemo(() => {
     if (problem.constraints) {
       return problem.constraints
@@ -471,24 +381,15 @@ public:
         .map((c) => c.trim())
         .filter(Boolean);
     }
-    return [
-      "2 <= nums.length <= 10^4",
-      "-10^9 <= nums[i] <= 10^9",
-      "-10^9 <= target <= 10^9",
-      "Only one valid answer exists.",
-    ];
+    return [];
   }, [problem.constraints]);
 
-  // Hints
+  // Hints from API problem
   const hintsList = useMemo(() => {
-    if (problem.hints && problem.hints.length > 0) {
-      return problem.hints;
+    if (Array.isArray(problem.hints) && problem.hints.length > 0) {
+      return problem.hints.filter(Boolean);
     }
-    return [
-      "A really brute force way would be to search for all possible pairs of numbers but that would be slow O(n^2).",
-      "Can we use extra space with a hash table to look up if (target - num) exists in O(1)?",
-      "As you iterate through the list, insert each element into the hash table while checking if its complement was already registered.",
-    ];
+    return [];
   }, [problem.hints]);
 
   // Handle Submit Code

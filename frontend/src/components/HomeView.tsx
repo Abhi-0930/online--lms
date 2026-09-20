@@ -11,7 +11,7 @@ import { initiateRazorpayCheckout } from "@/lib/razorpay";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { useLiveCourses, LiveCourseItem } from "@/hooks/useLiveCourses";
 import { useAssignments, LiveAssignmentItem } from "@/hooks/useAssignments";
-import { useLiveProblems, PublicProblem, DEFAULT_PROBLEMS } from "@/hooks/useLiveProblems";
+import { useLiveProblems, PublicProblem } from "@/hooks/useLiveProblems";
 import StudentProblemArena from "@/components/StudentProblemArena";
 
 function getSecureHref(path: string, params?: Record<string, any>) {
@@ -3244,14 +3244,7 @@ export default function Home({
           p.slug === activeProblemSlug ||
           String(p.id) === activeProblemSlug ||
           p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeProblemSlug
-      ) ||
-      DEFAULT_PROBLEMS.find(
-        (p) =>
-          p.slug === activeProblemSlug ||
-          String(p.id) === activeProblemSlug ||
-          p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") === activeProblemSlug
-      ) ||
-      null
+      ) || null
     );
   }, [activeProblemSlug, liveProblems]);
 

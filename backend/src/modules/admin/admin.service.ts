@@ -1469,64 +1469,36 @@ export class AdminService {
     let dbProblems: any[] = [];
     try {
       dbProblems = await (this.prisma as any).practiceProblem.findMany({
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: 'desc' },
       });
     } catch {
       dbProblems = [];
     }
 
-    // Auto-seed into DB if database table is currently empty
-    if (dbProblems.length === 0 && AdminService.fallbackProblems.size > 0) {
-      try {
-        for (const p of AdminService.fallbackProblems.values()) {
-          const baseSlug = (p.title || 'problem')
-            .toLowerCase()
-            .trim()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/(^-|-$)/g, '');
-          const created = await (this.prisma as any).practiceProblem.create({
-            data: {
-              slug: p.slug || baseSlug || `prob-${Date.now()}`,
-              title: p.title || 'Untitled Problem',
-              category: p.category || 'Arrays',
-              difficulty: p.difficulty || 'Medium',
-              acceptance: p.acceptance || '75.0%',
-              submissions: typeof p.submissions === 'number' ? p.submissions : 100,
-              testCases: typeof p.testCases === 'number' ? p.testCases : 10,
-              status: p.status === 'Draft' || p.status === 'DRAFT' ? 'Draft' : 'Live',
-              description: p.description || null,
-              sampleInput: p.sampleInput || null,
-              sampleOutput: p.sampleOutput || null,
-              constraints: p.constraints || null,
-              hints: Array.isArray(p.hints) ? p.hints : [],
-              starterCode: p.starterCode || {},
-            },
-          });
-          dbProblems.push(created);
-        }
-      } catch (seedErr) {
-        console.warn('Practice problems auto-seed error:', seedErr);
-      }
+    if (dbProblems.length > 0) {
+      return dbProblems.map((prob) => ({
+        id: String(prob.id),
+        slug: prob.slug || (prob.title ? prob.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : `problem-${prob.id}`),
+        title: prob.title || 'Untitled Problem',
+        category: prob.category || 'General',
+        difficulty: prob.difficulty || 'Medium',
+        acceptance: prob.acceptance || '75.0%',
+        submissions: typeof prob.submissions === 'number' ? prob.submissions : 0,
+        testCases: typeof prob.testCases === 'number' ? prob.testCases : 10,
+        status: prob.status === 'Draft' || prob.status === 'DRAFT' ? 'Draft' : 'Live',
+        description: prob.description || '',
+        sampleInput: prob.sampleInput || '',
+        sampleOutput: prob.sampleOutput || '',
+        constraints: prob.constraints || '',
+        hints: Array.isArray(prob.hints) ? prob.hints : [],
+        starterCode: prob.starterCode || {},
+        createdAt: prob.createdAt || new Date().toISOString(),
+        updatedAt: prob.updatedAt || new Date().toISOString(),
+      }));
     }
 
-    const probMap = new Map<string, any>();
-    for (const prob of dbProblems) {
-      const key = prob.slug || prob.title || String(prob.id);
-      probMap.set(key, prob);
-      AdminService.fallbackProblems.set(String(prob.id), prob);
-    }
-
-    if (dbProblems.length === 0) {
-      for (const fallback of AdminService.fallbackProblems.values()) {
-        const key = fallback.slug || fallback.title || String(fallback.id);
-        if (!probMap.has(key)) {
-          probMap.set(key, fallback);
-        }
-      }
-    }
-
-    const all = Array.from(probMap.values());
-    return all.map((prob, index) => {
+    const fallbackList = Array.from(AdminService.fallbackProblems.values());
+    return fallbackList.map((prob, index) => {
       const id = String(prob.id || `prob-${index + 1}`);
       return {
         id,
@@ -1535,7 +1507,7 @@ export class AdminService {
         category: prob.category || 'General',
         difficulty: prob.difficulty || 'Medium',
         acceptance: prob.acceptance || '75.0%',
-        submissions: typeof prob.submissions === 'number' ? prob.submissions : 100,
+        submissions: typeof prob.submissions === 'number' ? prob.submissions : 0,
         testCases: typeof prob.testCases === 'number' ? prob.testCases : 10,
         status: prob.status === 'Draft' || prob.status === 'DRAFT' ? 'Draft' : 'Live',
         description: prob.description || '',

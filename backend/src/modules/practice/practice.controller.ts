@@ -5,7 +5,7 @@ export default async function practiceController(fastify: FastifyInstance) {
   const adminService = new AdminService(fastify.prisma);
 
   // Get all public live practice problems
-  fastify.get('/', async (request, reply) => {
+  fastify.get('/', async (request) => {
     const { difficulty, topic, category, search } = request.query as {
       difficulty?: string;
       topic?: string;

@@ -77,7 +77,7 @@ const CONTENT_TYPES: ContentTypeOption[] = [
     id: "practice_problem",
     title: "Practice Problem",
     description: "Create coding practice problems.",
-    tags: "Two Sum · Binary Search · Merge Intervals",
+    tags: "Algorithm · Data Structure · Interview Pattern",
     icon: Code2,
     iconBg: "bg-purple-50 dark:bg-purple-950/60",
     iconColor: "text-purple-600 dark:text-purple-400",
@@ -190,7 +190,7 @@ function getTitlePlaceholder(typeId: string): string {
     case "notes_pdf":
       return "e.g. Recursion & Backtracking Worksheet";
     case "practice_problem":
-      return "e.g. Two Sum & Sliding Window";
+      return "e.g. Binary Search Algorithm";
     case "assignment":
     case "assessment":
       return "e.g. Fullstack JWT Auth Project";
