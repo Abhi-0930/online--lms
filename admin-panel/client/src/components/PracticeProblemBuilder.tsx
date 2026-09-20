@@ -922,7 +922,7 @@ export default function PracticeProblemBuilder({
                     className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/40 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    <span>+ Add example</span>
+                    <span>Add example</span>
                   </button>
                 </div>
 
@@ -1029,7 +1029,7 @@ export default function PracticeProblemBuilder({
                     className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/40 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    <span>+ Add hint</span>
+                    <span>Add hint</span>
                   </button>
                 </div>
 
@@ -1178,7 +1178,7 @@ export default function PracticeProblemBuilder({
                     className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/40 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    <span>+ Add test case</span>
+                    <span>Add test case</span>
                   </button>
                 </div>
 
@@ -1707,19 +1707,6 @@ export default function PracticeProblemBuilder({
             </div>
           </div>
         )}
-
-        {/* 8. PREVIEW BANNER AT BOTTOM */}
-        <div className="rounded-xl border border-amber-200/80 dark:border-amber-900/40 bg-amber-50/80 dark:bg-amber-950/20 px-4 py-3 flex items-center justify-between text-xs text-amber-800 dark:text-amber-300">
-          <div className="flex items-center gap-2 font-medium">
-            <Zap className="h-4 w-4 text-amber-500 shrink-0" />
-            <span>
-              <strong>Preview Mode:</strong> This page is reactive and synchronized directly with PostgreSQL &amp; the live student practice arena.
-            </span>
-          </div>
-          <span className="font-mono text-[11px] text-amber-700/80 dark:text-amber-400/70 hidden sm:inline">
-            Status: {formData.status.toUpperCase()}
-          </span>
-        </div>
       </main>
 
       {/* DELETE CONFIRMATION MODAL */}
