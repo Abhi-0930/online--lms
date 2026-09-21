@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Code2, Sparkles, CheckCircle2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { PracticeProblem } from "../hooks/useLiveAdminData";
+import { CompanySearchSelect } from "./CompanySearchSelect";
 
 interface PracticeProblemModalProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ export default function PracticeProblemModal({
   const [sampleOutput, setSampleOutput] = useState("");
   const [constraints, setConstraints] = useState("");
   const [hints, setHints] = useState<string[]>([""]);
+  const [companies, setCompanies] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"details" | "code" | "hints">("details");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -66,6 +68,13 @@ export default function PracticeProblemModal({
       setSampleInput(problemToEdit.sampleInput || "");
       setSampleOutput(problemToEdit.sampleOutput || "");
       setConstraints(problemToEdit.constraints || "");
+      setCompanies(
+        typeof problemToEdit.companies === "string"
+          ? problemToEdit.companies
+          : Array.isArray(problemToEdit.companies)
+          ? (problemToEdit.companies as any).join(", ")
+          : ""
+      );
       setHints(
         Array.isArray(problemToEdit.hints) && problemToEdit.hints.length > 0
           ? problemToEdit.hints
@@ -85,6 +94,7 @@ export default function PracticeProblemModal({
       setSampleInput("");
       setSampleOutput("");
       setConstraints("");
+      setCompanies("");
       setHints([""]);
       setJsStarter("");
       setPyStarter("");
@@ -130,6 +140,7 @@ export default function PracticeProblemModal({
       sampleInput: sampleInput.trim(),
       sampleOutput: sampleOutput.trim(),
       constraints: constraints.trim(),
+      companies: companies.trim(),
       hints: hints.filter((h) => h.trim().length > 0),
       starterCode: {
         javascript: jsStarter.trim(),
@@ -356,6 +367,13 @@ export default function PracticeProblemModal({
                   className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-semibold"
                 />
               </div>
+
+              {/* Target Companies */}
+              <CompanySearchSelect
+                value={companies}
+                onChange={setCompanies}
+                placeholder="Search target companies (e.g. Google, Amazon, Microsoft...)"
+              />
 
               {/* Description */}
               <div>
