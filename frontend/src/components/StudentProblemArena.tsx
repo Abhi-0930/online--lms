@@ -860,9 +860,6 @@ export default function StudentProblemArena({
             >
               {problem.difficulty}
             </span>
-            <span className="hidden md:inline-flex rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
-              {problem.topic || problem.category}
-            </span>
             {problem.estimatedSolveTime && (
               <span className="hidden lg:inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
                 <Clock className="h-3 w-3 text-slate-400" />
@@ -968,11 +965,6 @@ export default function StudentProblemArena({
                       }`}
                     >
                       {problem.difficulty}
-                    </span>
-
-                    {/* Topic */}
-                    <span className="rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 px-2.5 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                      {problem.topic || problem.category}
                     </span>
 
                     {/* Acceptance */}
