@@ -725,15 +725,6 @@ export default function StudentProblemArena({
     ];
   }, [testCasesParsed, exampleCases, problem.sampleInput, problem.sampleOutput, problem.title]);
 
-  // Console & Submission State
-  const [isConsoleExpanded, setIsConsoleExpanded] = useState<boolean>(true);
-  const [testResult, setTestResult] = useState<{
-    status: "Accepted" | "Wrong Answer";
-    runtime: string;
-    memory: string;
-    message?: string;
-  } | null>(null);
-
   // Handle Submit Code
   const handleSubmitCode = () => {
     setIsSubmitting(true);
@@ -765,13 +756,6 @@ export default function StudentProblemArena({
           JSON.stringify(updatedSubs)
         );
       } catch {}
-
-      setTestResult({
-        status: "Accepted",
-        runtime: `${runtime} (Beats 96.4%)`,
-        memory: `${memory} (Beats 91.8%)`,
-        message: "Solution compiled and executed successfully with all constraints satisfied.",
-      });
 
       toast.success("Solution submitted successfully!", {
         description: `Verdict: Accepted | Runtime: ${runtime}`,
@@ -1662,99 +1646,27 @@ export default function StudentProblemArena({
             />
           </div>
 
-          {/* Interactive Result Console Panel */}
-          <div className="border-t border-slate-200/90 dark:border-white/10 bg-slate-50 dark:bg-[#121622] flex flex-col">
-            {/* Console Header Bar */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200/80 dark:border-white/5 bg-slate-100/70 dark:bg-[#181d2a]">
-              <div className="flex items-center gap-2">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-white/15 text-slate-900 dark:text-white shadow-2xs">
-                  <Terminal className="h-3.5 w-3.5 text-indigo-500" />
-                  <span>Submission Output</span>
-                  {testResult && (
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse ml-1" />
-                  )}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsConsoleExpanded(!isConsoleExpanded)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-white/5 transition cursor-pointer"
-                title={isConsoleExpanded ? "Collapse console" : "Expand console"}
-              >
-                {isConsoleExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-              </button>
+          {/* Bottom Editor Status Bar */}
+          <div className="flex items-center justify-between border-t border-slate-200/80 dark:border-white/5 bg-slate-100/90 dark:bg-[#181d2a] px-4 py-2.5 text-[11px] text-slate-600 dark:text-slate-400 font-mono">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
+                <Terminal className="h-3.5 w-3.5" />
+                <span>{language.toUpperCase()}</span>
+              </span>
+              <span>{code.split("\n").length} lines</span>
+              <span>{code.length} chars</span>
             </div>
 
-            {/* Console Body */}
-            {isConsoleExpanded && (
-              <div className="p-4 space-y-3 max-h-[260px] overflow-y-auto custom-scrollbar animate-in fade-in duration-100 text-xs">
-                {isSubmitting ? (
-                  <div className="flex items-center justify-center py-8 gap-3 text-slate-500 dark:text-slate-400">
-                    <Send className="h-4 w-4 animate-spin text-emerald-500" />
-                    <span className="font-medium text-xs">Evaluating and executing solution...</span>
-                  </div>
-                ) : testResult ? (
-                  <div className="space-y-3">
-                    {/* Verdict Header Banner */}
-                    <div
-                      className={`flex items-center justify-between p-3 rounded-xl border ${
-                        testResult.status === "Accepted"
-                          ? "bg-emerald-50/80 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
-                          : "bg-rose-50/80 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 font-bold text-xs">
-                        {testResult.status === "Accepted" ? (
-                          <CircleCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
-                        )}
-                        <span className="text-sm font-display">{testResult.status}</span>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-[11px] font-mono opacity-80">
-                        <span>Runtime: {testResult.runtime}</span>
-                        <span>Memory: {testResult.memory}</span>
-                      </div>
-                    </div>
-
-                    <div className="p-3.5 rounded-lg bg-white dark:bg-[#0b0e14] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 font-mono text-[11px] space-y-1">
-                      <p className="text-emerald-600 dark:text-emerald-400 font-bold">✓ Solution submitted and evaluated successfully.</p>
-                      <p className="text-slate-500 dark:text-slate-400 text-[10px]">All execution metrics and complexity bounds evaluated.</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-6 space-y-1">
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Click <span className="font-bold text-emerald-600 dark:text-emerald-400">"Submit"</span> to evaluate your code and record your submission.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Bottom Console Footer / Status Bar */}
-            <div className="flex items-center justify-between border-t border-slate-200/80 dark:border-white/5 bg-slate-100/90 dark:bg-[#181d2a] px-4 py-2 text-[11px] text-slate-600 dark:text-slate-400 font-mono">
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
-                  <Terminal className="h-3.5 w-3.5" />
-                  <span>{language.toUpperCase()}</span>
-                </span>
-                <span>{code.split("\n").length} lines</span>
-                <span>{code.length} chars</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={handleSubmitCode}
-                  className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition cursor-pointer disabled:opacity-50"
-                >
-                  {isSubmitting ? "Submitting..." : "Submit"}
-                </button>
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleSubmitCode}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <Send className={`h-3 w-3 ${isSubmitting ? "animate-spin" : ""}`} />
+                <span>{isSubmitting ? "Submitting..." : "Submit"}</span>
+              </button>
             </div>
           </div>
         </div>
