@@ -452,11 +452,6 @@ export default function PracticeProblemDetailView({
               {difficulty}
             </span>
 
-            {/* Topic / Category */}
-            <span className="rounded-lg bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-900/50 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
-              {topic}
-            </span>
-
             {/* Target Companies */}
             {companiesList.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 ml-1">
