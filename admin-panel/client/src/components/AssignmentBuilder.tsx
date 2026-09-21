@@ -231,11 +231,40 @@ export default function AssignmentBuilder({
   availableCourses,
   courses,
 }: AssignmentBuilderProps) {
+  const [localCourses, setLocalCourses] = useState<any[]>(courses || []);
+
+  useEffect(() => {
+    if (courses && courses.length > 0) {
+      setLocalCourses(courses);
+    }
+  }, [courses]);
+
+  useEffect(() => {
+    if (!courses || courses.length === 0) {
+      fetch("http://localhost:4000/api/v1/admin/courses")
+        .then((r) => (r.ok ? r.json() : []))
+        .then((apiData) => {
+          if (Array.isArray(apiData) && apiData.length > 0) {
+            setLocalCourses(apiData);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [courses]);
+
+  const activeCoursesList = useMemo(() => {
+    if (localCourses && localCourses.length > 0) return localCourses;
+    if (courses && courses.length > 0) return courses;
+    return [];
+  }, [localCourses, courses]);
+
   const courseNames = useMemo(() => {
-    if (courses && courses.length > 0) return courses.map((c) => c.title);
+    if (activeCoursesList && activeCoursesList.length > 0) {
+      return activeCoursesList.map((c: any) => c.title || c.name).filter(Boolean);
+    }
     if (availableCourses && availableCourses.length > 0) return availableCourses;
     return [];
-  }, [courses, availableCourses]);
+  }, [activeCoursesList, availableCourses]);
 
   const [activeStep, setActiveStep] = useState(1);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -248,57 +277,89 @@ export default function AssignmentBuilder({
   const [difficultyFilter, setDifficultyFilter] = useState("All difficulties");
   const [topicFilter, setTopicFilter] = useState("All topics");
 
-  const [data, setData] = useState<AssignmentData>({
-    id: initialData?.id,
-    title: initialData?.title || "",
-    description: initialData?.description || "",
-    instructions: initialData?.instructions || "",
-    course: initialData?.course || (courseNames.length > 0 ? courseNames[0] : ""),
-    module: initialData?.module || "",
-    topic: initialData?.topic || "",
-    difficulty: initialData?.difficulty || "Medium",
-    problemsCount: initialData?.problemsCount || initialProblems.length,
-    problemsList: initialProblems,
-    releaseDate: initialData?.releaseDate || new Date().toISOString().split("T")[0],
-    startTime: initialData?.startTime || "18:00",
-    deadline: initialData?.deadline || "",
-    deadlineTime: initialData?.deadlineTime || "23:59",
-    allowLate: initialData?.allowLate ?? false,
-    latePenalty: initialData?.latePenalty || "10% per day",
-    resources: initialData?.resources || [],
-    submissionTypes: initialData?.submissionTypes || ["Code Editor / IDE", "ZIP / File upload", "GitHub repository link"],
-    maxFileSize: initialData?.maxFileSize || "25 MB",
-    maxAttempts: initialData?.maxAttempts || "Unlimited",
-    totalMarks: initialData?.totalMarks || (initialProblems.length > 0 ? initialProblems.reduce((acc, p) => acc + p.points, 0) : 100),
-    passingMarks: initialData?.passingMarks || 40,
-    gradingMode: initialData?.gradingMode || "Automated Test Cases + Manual Code Review",
-    targetCohort: initialData?.targetCohort || "All Enrolled Students",
-    status: initialData?.status || "Draft",
-    notifyStudents: initialData?.notifyStudents ?? true,
+  const [data, setData] = useState<AssignmentData>(() => {
+    const initialCourse = initialData?.course || (courseNames.length > 0 ? courseNames[0] : "");
+    return {
+      id: initialData?.id,
+      title: initialData?.title || "",
+      description: initialData?.description || "",
+      instructions: initialData?.instructions || "",
+      course: initialCourse,
+      module: initialData?.module || "",
+      topic: initialData?.topic || "",
+      difficulty: initialData?.difficulty || "Medium",
+      problemsCount: initialData?.problemsCount || initialProblems.length,
+      problemsList: initialProblems,
+      releaseDate: initialData?.releaseDate || new Date().toISOString().split("T")[0],
+      startTime: initialData?.startTime || "18:00",
+      deadline: initialData?.deadline || "",
+      deadlineTime: initialData?.deadlineTime || "23:59",
+      allowLate: initialData?.allowLate ?? false,
+      latePenalty: initialData?.latePenalty || "10% per day",
+      resources: initialData?.resources || [],
+      submissionTypes: initialData?.submissionTypes || ["Code Editor / IDE", "ZIP / File upload", "GitHub repository link"],
+      maxFileSize: initialData?.maxFileSize || "25 MB",
+      maxAttempts: initialData?.maxAttempts || "Unlimited",
+      totalMarks: initialData?.totalMarks || (initialProblems.length > 0 ? initialProblems.reduce((acc, p) => acc + p.points, 0) : 100),
+      passingMarks: initialData?.passingMarks || 40,
+      gradingMode: initialData?.gradingMode || "Automated Test Cases + Manual Code Review",
+      targetCohort: initialData?.targetCohort || "All Enrolled Students",
+      status: initialData?.status || "Draft",
+      notifyStudents: initialData?.notifyStudents ?? true,
+    };
   });
 
   const selectedCourseObj = useMemo(() => {
-    return (courses || []).find((c) => c.title === data.course);
-  }, [courses, data.course]);
+    return activeCoursesList.find(
+      (c: any) =>
+        (c.title && c.title === data.course) ||
+        (c.name && c.name === data.course) ||
+        (c.id && String(c.id) === String(data.course))
+    );
+  }, [activeCoursesList, data.course]);
 
   const availableModules = useMemo(() => {
-    if (selectedCourseObj?.modules && selectedCourseObj.modules.length > 0) {
-      return selectedCourseObj.modules.map((m: any) => m.title);
+    if (selectedCourseObj?.modules && Array.isArray(selectedCourseObj.modules) && selectedCourseObj.modules.length > 0) {
+      return selectedCourseObj.modules
+        .map((m: any) => {
+          if (typeof m === "string") return m;
+          return m?.title || m?.name || (m?.id ? `Module ${m.id}` : "");
+        })
+        .filter(Boolean);
     }
     return [];
   }, [selectedCourseObj]);
 
   useEffect(() => {
-    if (courseNames.length > 0 && !data.course) {
-      setData((prev) => ({ ...prev, course: courseNames[0] }));
+    if (courseNames.length > 0) {
+      if (!data.course || !courseNames.includes(data.course)) {
+        const firstCourse = courseNames[0];
+        const matched = activeCoursesList.find(
+          (c: any) => c.title === firstCourse || c.name === firstCourse || String(c.id) === String(firstCourse)
+        );
+        const mods = (matched?.modules || [])
+          .map((m: any) => (typeof m === "string" ? m : (m?.title || m?.name || "")))
+          .filter(Boolean);
+        setData((prev) => ({
+          ...prev,
+          course: firstCourse,
+          module: prev.module && mods.includes(prev.module) ? prev.module : (mods[0] || ""),
+        }));
+      }
     }
-  }, [courseNames, data.course]);
+  }, [courseNames, activeCoursesList]);
 
   useEffect(() => {
-    if (availableModules.length > 0 && (!data.module || !availableModules.includes(data.module))) {
-      setData((prev) => ({ ...prev, module: availableModules[0] }));
+    if (availableModules.length > 0) {
+      if (!data.module || !availableModules.includes(data.module)) {
+        setData((prev) => ({ ...prev, module: availableModules[0] }));
+      }
+    } else if (selectedCourseObj) {
+      if (data.module) {
+        setData((prev) => ({ ...prev, module: "" }));
+      }
     }
-  }, [availableModules, data.module]);
+  }, [availableModules, selectedCourseObj]);
 
   const handleToggleProblem = (id: number) => {
     setProblemsBank((current) => {
@@ -546,11 +607,18 @@ export default function AssignmentBuilder({
                       <CustomDropdown
                         value={data.course}
                         onChange={(val) => {
-                          const matched = (courses || []).find((c: any) => c.title === val);
-                          const modName = matched?.modules?.[0]?.title || "";
-                          setData({ ...data, course: val, module: modName });
+                          const matched = activeCoursesList.find(
+                            (c: any) => c.title === val || c.name === val || String(c.id) === String(val)
+                          );
+                          const mods = (matched?.modules || [])
+                            .map((m: any) => (typeof m === "string" ? m : (m?.title || m?.name || "")))
+                            .filter(Boolean);
+                          const modName = mods.length > 0 ? mods[0] : "";
+                          setData((prev) => ({ ...prev, course: val, module: modName }));
                         }}
-                        options={courseNames.length > 0 ? courseNames : ["General Library"]}
+                        options={courseNames}
+                        placeholder={courseNames.length > 0 ? "Select Target Course" : "No courses available on Admin Panel"}
+                        disabled={courseNames.length === 0}
                         className="w-full"
                         buttonClassName="w-full py-3.5 px-4 text-xs font-semibold min-h-[48px]"
                         menuClassName="w-full min-w-full"
@@ -563,12 +631,25 @@ export default function AssignmentBuilder({
                       </label>
                       <CustomDropdown
                         value={data.module}
-                        onChange={(val) => setData({ ...data, module: val })}
+                        onChange={(val) => setData((prev) => ({ ...prev, module: val }))}
                         options={availableModules}
+                        placeholder={
+                          availableModules.length > 0
+                            ? "Select Target Module"
+                            : data.course
+                            ? "No modules found in this course"
+                            : "Select a course first"
+                        }
+                        disabled={availableModules.length === 0}
                         className="w-full"
                         buttonClassName="w-full py-3.5 px-4 text-xs font-semibold min-h-[48px]"
                         menuClassName="w-full min-w-full"
                       />
+                      {data.course && availableModules.length === 0 && (
+                        <p className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+                          Note: This course currently has no curriculum modules added. You can add modules in Course Builder.
+                        </p>
+                      )}
                     </div>
                   </div>
 
