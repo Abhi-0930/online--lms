@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { PracticeProblem } from "@/hooks/useLiveAdminData";
 import CustomConfirmDialog from "@/components/CustomConfirmDialog";
+import { CompanySearchSelect } from "@/components/CompanySearchSelect";
 
 export interface ProblemExample {
   id: string;
@@ -708,20 +709,13 @@ export default function PracticeProblemBuilder({
                   </div>
 
                   {/* Companies (Optional) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      Companies <span className="text-slate-400 font-normal">(optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.companies}
-                      onChange={(e) =>
-                        setFormData({ ...formData, companies: e.target.value })
-                      }
-                      placeholder="Amazon, Google, Microsoft, Meta"
-                      className="w-full rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium transition"
-                    />
-                  </div>
+                  <CompanySearchSelect
+                    value={formData.companies}
+                    onChange={(val) =>
+                      setFormData({ ...formData, companies: val })
+                    }
+                    placeholder="Search companies (e.g. Google, Amazon, Microsoft...)"
+                  />
                 </div>
               </div>
 
