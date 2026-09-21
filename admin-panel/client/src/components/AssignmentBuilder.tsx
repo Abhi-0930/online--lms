@@ -137,7 +137,7 @@ function CustomDropdown({
   const displayLabel = selectedOption ? selectedOption.label : placeholder || value || "Select...";
 
   return (
-    <div ref={containerRef} className={cn("relative inline-block", className)}>
+    <div ref={containerRef} className={cn("relative w-full", className)}>
       <button
         type="button"
         disabled={disabled}
@@ -538,7 +538,7 @@ export default function AssignmentBuilder({
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-5">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
                         Target Course <span className="text-rose-500">*</span>
@@ -551,7 +551,9 @@ export default function AssignmentBuilder({
                           setData({ ...data, course: val, module: modName });
                         }}
                         options={courseNames.length > 0 ? courseNames : ["General Library"]}
-                        buttonClassName="py-3"
+                        className="w-full"
+                        buttonClassName="w-full py-3.5 px-4 text-xs font-semibold min-h-[48px]"
+                        menuClassName="w-full min-w-full"
                       />
                     </div>
 
@@ -563,7 +565,9 @@ export default function AssignmentBuilder({
                         value={data.module}
                         onChange={(val) => setData({ ...data, module: val })}
                         options={availableModules}
-                        buttonClassName="py-3"
+                        className="w-full"
+                        buttonClassName="w-full py-3.5 px-4 text-xs font-semibold min-h-[48px]"
+                        menuClassName="w-full min-w-full"
                       />
                     </div>
                   </div>
