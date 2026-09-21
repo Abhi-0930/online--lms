@@ -2229,61 +2229,33 @@ function PracticePage({
             No practice problems match the selected filters.
           </div>
         ) : (
-          filtered.map((problem) => {
-            const problemCompanies = typeof problem.companies === "string" && problem.companies.trim()
-              ? problem.companies
-                  .replace(/[\[\]"']/g, "")
-                  .split(",")
-                  .map((c) => c.trim())
-                  .filter(Boolean)
-              : [];
-
-            return (
-              <div
-                key={String(problem.id || problem.title)}
-                onClick={() => {
-                  if (onSelectProblem) {
-                    onSelectProblem(problem.slug || String(problem.id));
-                  }
-                }}
-                className="grid gap-3 border-b border-[#edf0f6] px-5 py-4 last:border-0 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] sm:items-center sm:gap-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer group"
-              >
-                <div className="flex min-w-0 items-start gap-3">
-                  <span
-                    className={cx(
-                      "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg group-hover:scale-105 transition-transform",
-                      problem.solved
-                        ? "bg-[#e4f8ee] text-[#23a26d]"
-                        : "bg-[#f1f3f8] text-[#9aa4bc] dark:bg-white/10"
-                    )}
-                  >
-                    <Code2 className="h-3.5 w-3.5" />
+          filtered.map((problem) => (
+            <div
+              key={String(problem.id || problem.title)}
+              onClick={() => {
+                if (onSelectProblem) {
+                  onSelectProblem(problem.slug || String(problem.id));
+                }
+              }}
+              className="grid gap-3 border-b border-[#edf0f6] px-5 py-4 last:border-0 dark:border-white/10 sm:grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] sm:items-center sm:gap-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer group"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  className={cx(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg group-hover:scale-105 transition-transform",
+                    problem.solved
+                      ? "bg-[#e4f8ee] text-[#23a26d]"
+                      : "bg-[#f1f3f8] text-[#9aa4bc] dark:bg-white/10"
+                  )}
+                >
+                  <Code2 className="h-3.5 w-3.5" />
+                </span>
+                <div className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-[#17223d] group-hover:text-[#3157e8] dark:text-white transition-colors">
+                    {problem.title}
                   </span>
-                  <div className="min-w-0">
-                    <span className="block truncate text-sm font-bold text-[#17223d] group-hover:text-[#3157e8] dark:text-white transition-colors">
-                      {problem.title}
-                    </span>
-                    <div className="mt-1 flex items-center gap-2 flex-wrap">
-                      <p className="text-[10px] text-[#9aa4bc]">
-                        {problem.topic || problem.category} · {(problem.attempts || 0)} attempts
-                      </p>
-                      {problemCompanies.length > 0 && (
-                        <div className="flex items-center gap-1">
-                          {problemCompanies.slice(0, 3).map((comp) => (
-                            <span
-                              key={comp}
-                              className="inline-flex items-center gap-1 rounded bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-300"
-                              title={comp}
-                            >
-                              <CompanyLogo name={comp} size="xs" />
-                              <span className="hidden md:inline">{comp}</span>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
                 </div>
+              </div>
               <span
                 className={cx(
                   "w-fit rounded-md px-2 py-1 text-[10px] font-bold",
@@ -2322,8 +2294,7 @@ function PracticePage({
                 <Bookmark className={cx("h-4 w-4", saved.includes(problem.title) && "fill-current")} />
               </button>
             </div>
-            );
-          })
+          ))
         )}
       </div>
     </>
