@@ -53,8 +53,32 @@ export interface UserSubmissionItem {
   submittedAt: string;
 }
 
+const DEFAULT_ASSIGNMENTS: LiveAssignmentItem[] = [];
+
+const CACHE_KEY = "lms_user_cached_assignments";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+function readCached(): LiveAssignmentItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+function writeCached(items: LiveAssignmentItem[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(items));
+  } catch {}
+}
+
 export function useAssignments() {
-  const [assignments, setAssignments] = useState<LiveAssignmentItem[]>([]);
+  const [assignments, setAssignments] = useState<LiveAssignmentItem[]>(() => readCached());
   const [submissions, setSubmissions] = useState<UserSubmissionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,11 +87,11 @@ export function useAssignments() {
   const fetchAssignmentsData = useCallback(async () => {
     try {
       const [asgRes, subRes] = await Promise.all([
-        fetch("http://localhost:4000/api/v1/assignments", {
+        fetch(`${API_BASE_URL}/api/v1/assignments`, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
-        fetch("http://localhost:4000/api/v1/assignments/my-submissions", {
+        fetch(`${API_BASE_URL}/api/v1/assignments/my-submissions`, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
@@ -78,11 +102,8 @@ export function useAssignments() {
         const list = Array.isArray(data) ? data : data.assignments || [];
         if (isMountedRef.current) {
           setAssignments(list);
+          writeCached(list);
           setError(null);
-        }
-      } else {
-        if (isMountedRef.current) {
-          setAssignments([]);
         }
       }
 
@@ -94,9 +115,7 @@ export function useAssignments() {
         }
       }
     } catch {
-      if (isMountedRef.current) {
-        setAssignments([]);
-      }
+      // Keep cached / default assignments
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
@@ -109,13 +128,33 @@ export function useAssignments() {
     data: { content?: string; fileUrl?: string; githubUrl?: string; userId?: string }
   ) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/assignments/${assignmentId}/submit`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/assignments/${assignmentId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
       if (res.ok) {
+        // Optimistically update assignment status in state
+        setAssignments((prev) =>
+          prev.map((a) =>
+            a.id === assignmentId
+              ? {
+                  ...a,
+                  userSubmission: {
+                    id: `SUB-${Date.now()}`,
+                    status: "PENDING",
+                    score: null,
+                    maxScore: a.totalMarks || 100,
+                    submittedAt: new Date().toISOString(),
+                    content: data.content,
+                    githubUrl: data.githubUrl,
+                    fileUrl: data.fileUrl,
+                  },
+                }
+              : a
+          )
+        );
         await fetchAssignmentsData();
         return { success: true };
       }
@@ -136,9 +175,9 @@ export function useAssignments() {
     const connectWs = () => {
       if (!isMountedRef.current) return;
       try {
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const host = window.location.hostname || "localhost";
-        const wsUrl = `${protocol}//${host}:4000/api/v1/admin/ws`;
+        const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsHost = window.location.hostname || "localhost";
+        const wsUrl = `${wsProtocol}//${wsHost}:4000/api/v1/admin/ws`;
 
         socket = new WebSocket(wsUrl);
 

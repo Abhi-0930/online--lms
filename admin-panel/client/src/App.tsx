@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AdminAuthProvider, useAdminAuth } from "./contexts/AdminAuthContext";
+import { ConfirmAlertProvider } from "./contexts/ConfirmAlertContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 
@@ -39,8 +40,10 @@ function App() {
       <ThemeProvider defaultTheme="light" switchable>
         <TooltipProvider>
           <AdminAuthProvider>
-            <Toaster position="top-right" richColors />
-            <Router />
+            <ConfirmAlertProvider>
+              <Toaster position="top-right" richColors />
+              <Router />
+            </ConfirmAlertProvider>
           </AdminAuthProvider>
         </TooltipProvider>
       </ThemeProvider>

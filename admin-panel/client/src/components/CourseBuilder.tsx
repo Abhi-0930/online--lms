@@ -36,6 +36,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import CustomConfirmDialog from "@/components/CustomConfirmDialog";
+import CustomAlertDialog from "@/components/CustomAlertDialog";
 import {
   extractTextFromDocument,
   parseSyllabusText,
@@ -1180,6 +1182,19 @@ export default function CourseBuilder({
     onConfirm: () => {},
   });
 
+  // Custom alert dialog state
+  const [customAlert, setCustomAlert] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: "danger" | "warning" | "info" | "success";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "warning",
+  });
+
   const promptDeleteModule = (mod: CourseModule) => {
     setDeleteConfirm({
       isOpen: true,
@@ -1458,11 +1473,21 @@ export default function CourseBuilder({
 
   const handleFileChange = (file: File) => {
     if (!file.type.startsWith("image/")) {
-      alert("Please upload a valid image file (PNG, JPG, WEBP).");
+      setCustomAlert({
+        isOpen: true,
+        title: "Invalid Image Format",
+        message: "Please upload a valid image file (PNG, JPG, JPEG, WEBP).",
+        variant: "warning",
+      });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert("Image size should not exceed 5 MB.");
+      setCustomAlert({
+        isOpen: true,
+        title: "Image Size Limit Exceeded",
+        message: "The selected image exceeds the maximum size limit of 5 MB. Please upload a smaller image file.",
+        variant: "warning",
+      });
       return;
     }
     const reader = new FileReader();
@@ -3486,60 +3511,27 @@ export default function CourseBuilder({
         </div>
       )}
 
-      {/* MODAL 4: Delete Confirmation Alert Modal */}
-      {deleteConfirm.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-150">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-50 border border-rose-100 text-rose-600">
-                <AlertTriangle className="h-6 w-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-slate-900">
-                    {deleteConfirm.title}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirm((prev) => ({ ...prev, isOpen: false }))}
-                    className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
+      {/* MODAL 4: Delete Confirmation Dialog */}
+      <CustomConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={deleteConfirm.onConfirm}
+        title={deleteConfirm.title || "Confirm Delete"}
+        description={deleteConfirm.message}
+        targetName={deleteConfirm.targetName}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+      />
 
-                {deleteConfirm.targetName && (
-                  <div className="mt-2.5 rounded-xl bg-slate-50 border border-slate-200/80 px-3 py-2 text-xs font-semibold text-slate-800 break-words flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0"></span>
-                    <span className="truncate">{deleteConfirm.targetName}</span>
-                  </div>
-                )}
-
-                <p className="mt-2.5 text-xs sm:text-[13px] text-slate-500 leading-relaxed">
-                  {deleteConfirm.message}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm((prev) => ({ ...prev, isOpen: false }))}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs sm:text-[13px] font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={deleteConfirm.onConfirm}
-                className="flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 px-5 py-2.5 text-xs sm:text-[13px] font-bold text-white shadow-sm shadow-rose-500/20 transition cursor-pointer"
-              >
-                <Trash2 className="h-4 w-4" /> Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MODAL: Custom Alert Dialog */}
+      <CustomAlertDialog
+        isOpen={customAlert.isOpen}
+        onClose={() => setCustomAlert((prev) => ({ ...prev, isOpen: false }))}
+        title={customAlert.title}
+        message={customAlert.message}
+        variant={customAlert.variant}
+      />
 
       {/* MODAL 5: Document Syllabus Extractor (Pure JS) */}
       {isExtractModalOpen && (

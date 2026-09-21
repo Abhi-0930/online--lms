@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import logger from '../../utils/logger';
+import { AdminService } from '../admin/admin.service';
 
 export class AssignmentsService {
   public static fallbackAssignments = new Map<string, any>();
@@ -9,32 +10,43 @@ export class AssignmentsService {
 
   async getPublishedAssignments(userId?: string) {
     try {
-      const assignments = await this.prisma.assignment.findMany({
-        where: {
-          status: { in: ['PUBLISHED', 'Published'] },
-        },
-        include: {
-          course: {
-            select: { id: true, title: true, slug: true },
+      let assignments: any[] = [];
+      try {
+        assignments = await this.prisma.assignment.findMany({
+          where: {
+            status: { in: ['PUBLISHED', 'Published'] },
           },
-          submissions: userId
-            ? {
-                where: { userId },
-                take: 1,
-                orderBy: { submittedAt: 'desc' },
-              }
-            : false,
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+          include: {
+            course: {
+              select: { id: true, title: true, slug: true },
+            },
+            submissions: userId
+              ? {
+                  where: { userId },
+                  take: 1,
+                  orderBy: { submittedAt: 'desc' },
+                }
+              : false,
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+      } catch {
+        assignments = [];
+      }
 
-      // Merge with in-memory fallbacks if any
+      // Merge with in-memory / file fallbacks
       const map = new Map<string, any>();
       for (const a of assignments) {
         map.set(a.id, a);
       }
+      const fallbackList = AdminService.loadAssignmentsFromFile();
+      for (const fa of fallbackList.values()) {
+        if ((fa.status || 'PUBLISHED').toUpperCase() === 'PUBLISHED' && !map.has(fa.id)) {
+          map.set(fa.id, fa);
+        }
+      }
       for (const fa of AssignmentsService.fallbackAssignments.values()) {
-        if ((fa.status || '').toUpperCase() === 'PUBLISHED' && !map.has(fa.id)) {
+        if ((fa.status || 'PUBLISHED').toUpperCase() === 'PUBLISHED' && !map.has(fa.id)) {
           map.set(fa.id, fa);
         }
       }
@@ -46,7 +58,7 @@ export class AssignmentsService {
           title: a.title,
           description: a.description || '',
           instructions: a.instructions || '',
-          course: a.course?.title || a.courseName || 'General',
+          course: a.course?.title || a.courseName || (typeof a.course === 'string' ? a.course : 'General'),
           courseId: a.courseId || a.course?.id || null,
           module: a.module || 'General',
           topic: a.topic || '',

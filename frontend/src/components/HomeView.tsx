@@ -96,6 +96,7 @@ const navItems: NavItem[] = [
   { label: "Browse courses", href: "/courses", icon: Library },
   { label: "My learning", href: "/my-courses", icon: BookOpen },
   { label: "Practice problems", href: "/practice", icon: Code2 },
+  { label: "Assignments", href: "/assignments", icon: ClipboardCheck },
 ];
 
 const utilityItems: NavItem[] = [
@@ -156,6 +157,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
   const { problems: liveProblems } = useLiveProblems();
   const { courses } = useLiveCourses();
   const { enrollments } = useEnrollments();
+  const { assignments } = useAssignments();
   const isActive = (href: string) => href === "/" ? location === "/" : location.startsWith(href);
 
   const dynamicNavItems: NavItem[] = [
@@ -163,6 +165,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
     { label: "Browse courses", href: "/courses", icon: Library, badge: courses.length > 0 ? String(courses.length) : undefined },
     { label: "My learning", href: "/my-courses", icon: BookOpen, badge: enrollments.length > 0 ? String(enrollments.length) : undefined },
     { label: "Practice problems", href: "/practice", icon: Code2, badge: liveProblems.length > 0 ? String(liveProblems.length) : undefined },
+    { label: "Assignments", href: "/assignments", icon: ClipboardCheck, badge: assignments.length > 0 ? String(assignments.length) : undefined },
   ];
 
   return (
@@ -435,6 +438,7 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
   const { problems: liveProblems } = useLiveProblems();
   const { courses } = useLiveCourses();
   const { enrollments } = useEnrollments();
+  const { assignments } = useAssignments();
   const displayName = resolveDisplayName(user);
   if (!open) return null;
 
@@ -443,6 +447,7 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
     { label: "Browse courses", href: "/courses", icon: Library, badge: courses.length > 0 ? String(courses.length) : undefined },
     { label: "My learning", href: "/my-courses", icon: BookOpen, badge: enrollments.length > 0 ? String(enrollments.length) : undefined },
     { label: "Practice problems", href: "/practice", icon: Code2, badge: liveProblems.length > 0 ? String(liveProblems.length) : undefined },
+    { label: "Assignments", href: "/assignments", icon: ClipboardCheck, badge: assignments.length > 0 ? String(assignments.length) : undefined },
   ];
 
   return <div className="fixed inset-0 z-[60] lg:hidden"><button aria-label="Close menu" onClick={onClose} className="absolute inset-0 bg-[#17223d]/40 backdrop-blur-sm" /><aside className="relative flex h-full w-[82%] max-w-[310px] flex-col bg-[#fbfcff] shadow-2xl dark:bg-[#10172b]"><div className="flex h-[78px] items-center justify-between border-b border-[#e5e8f0] px-6 dark:border-white/10"><Logo /><button onClick={onClose} className="rounded-lg p-2 text-[#7c87a4] hover:bg-[#eef2ff]"><X className="h-5 w-5" /></button></div><div className="flex-1 px-4 py-6"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>{[...dynamicNavItems, ...utilityItems].map((item) => <div key={item.href} onClick={onClose}><SidebarLink item={item} active={item.href === "/" ? location === "/" : location.startsWith(item.href)} collapsed={false} /></div>)}</div><div className="border-t border-[#e5e8f0] p-5 dark:border-white/10"><div className="flex items-center gap-3"><Avatar name={displayName} /><div><p suppressHydrationWarning className="text-sm font-bold text-[#17223d] dark:text-white truncate max-w-[180px]">{displayName}</p><p className="text-xs text-[#9aa4bc]">7 day learning streak</p></div></div></div></aside></div>;
@@ -1733,6 +1738,7 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
 function MyCoursesPage() {
   const { enrollments } = useEnrollments();
   const { courses, loading } = useLiveCourses();
+  const { assignments } = useAssignments();
   const [filter, setFilter] = useState("All");
 
   const enrolledCourses = courses.filter((c) =>
@@ -1830,6 +1836,81 @@ function MyCoursesPage() {
           </Link>
         </div>
       )}
+
+      {/* Course Assignments & Assessments Section */}
+      {assignments.length > 0 && (
+        <section className="mt-12">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="font-display text-xl font-bold tracking-tight text-[#17223d] dark:text-white">
+                Assignments & Problem Sets ({assignments.length})
+              </h2>
+              <p className="mt-0.5 text-xs text-[#9aa4bc]">
+                Practical challenges, project checkpoints, and coding assignments available for your courses.
+              </p>
+            </div>
+            <Link
+              href={getSecureHref("/assignments")}
+              className="inline-flex items-center gap-1 text-xs font-bold text-[#3157e8] hover:underline"
+            >
+              Open assignment workspace <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+            {assignments.map((a) => {
+              const isSubmitted = Boolean(a.userSubmission);
+              return (
+                <Link
+                  key={a.id}
+                  href={getSecureHref("/assignments")}
+                  className="card-surface p-5 flex flex-col justify-between hover:border-[#3157e8]/40 hover:shadow-md transition-all group"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/15 dark:text-blue-300">
+                          {a.course}
+                        </span>
+                        {a.module && (
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-white/10 dark:text-white/80">
+                            {a.module}
+                          </span>
+                        )}
+                      </div>
+                      {isSubmitted ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="h-3 w-3" /> Submitted
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                          <Clock3 className="h-3 w-3" /> {a.dueDate}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="mt-3 text-sm font-bold text-[#17223d] group-hover:text-[#3157e8] dark:text-white transition">
+                      {a.title}
+                    </h3>
+                    {a.description && (
+                      <p className="mt-1 line-clamp-2 text-xs text-[#7c87a4]">
+                        {a.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-4 flex items-center justify-between border-t border-[#edf0f6] pt-3 text-xs dark:border-white/10">
+                    <span className="text-[11px] font-semibold text-[#9aa4bc]">
+                      {a.problemsCount > 0 ? `${a.problemsCount} Problems · ` : ""}{a.totalMarks} pts
+                    </span>
+                    <span className="font-bold text-[#3157e8] inline-flex items-center gap-1">
+                      {isSubmitted ? "View Submission" : "Start Assignment"} <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </>
   );
 }
@@ -1887,6 +1968,7 @@ function MyCourseCard({ course }: { course: LiveCourseItem }) {
 }
 
 function PlayerPage() {
+  const { assignments } = useAssignments();
   const [tab, setTab] = useState("Notes");
   const [completed, setCompleted] = useState(false);
   const [moduleOpen, setModuleOpen] = useState(1);
@@ -2018,7 +2100,51 @@ function PlayerPage() {
                 </div>
               </div>
             )}
-            {tab !== "Notes" && (
+            {tab === "Assignments" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                    Module Assignments ({assignments.length})
+                  </h2>
+                  <Link href={getSecureHref("/assignments")} className="text-xs font-bold text-[#3157e8] hover:underline inline-flex items-center gap-1">
+                    Full Workspace <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+                <div className="space-y-3">
+                  {assignments.map((a) => {
+                    const isSubmitted = Boolean(a.userSubmission);
+                    return (
+                      <div key={a.id} className="rounded-2xl border border-[#edf0f6] bg-white p-5 dark:border-white/10 dark:bg-white/5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">
+                                {a.module || a.course}
+                              </span>
+                              {isSubmitted && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                  <CheckCircle2 className="h-3 w-3" /> Submitted
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="mt-2 text-sm font-bold text-[#17223d] dark:text-white">{a.title}</h3>
+                            <p className="mt-1 text-xs text-[#7c87a4]">{a.description}</p>
+                          </div>
+                          <span className="shrink-0 text-xs font-bold text-[#3157e8]">{a.totalMarks} pts</span>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between border-t border-[#edf0f6] pt-3 text-xs dark:border-white/10">
+                          <span className="text-[11px] text-amber-600 font-semibold">{a.dueDate}</span>
+                          <Link href={getSecureHref("/assignments")} className="button-primary !py-1.5 !px-3 !text-xs">
+                            {isSubmitted ? "View Submission" : "Open & Submit"}
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {tab !== "Notes" && tab !== "Assignments" && (
               <div className="rounded-2xl bg-[#f7f9fc] p-8 text-center dark:bg-white/5">
                 <FolderOpen className="mx-auto h-8 w-8 text-[#c4cada]" />
                 <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">{tab} for this lesson</h3>
@@ -2838,6 +2964,11 @@ function NotificationsPage() {
 function AssignmentsPage() {
   const { assignments, submissions, loading, submitAssignment } = useAssignments();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "submitted">("all");
+  const [courseFilter, setCourseFilter] = useState<string>("all");
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
+
   const [submissionText, setSubmissionText] = useState("");
   const [githubUrl, setGithubUrl] = useState("");
   const [fileUrl, setFileUrl] = useState("");
@@ -2846,9 +2977,10 @@ function AssignmentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedForCurrent, setSubmittedForCurrent] = useState(false);
 
-  // Default selected assignment
-  const currentAssignment = assignments.find((a) => a.id === selectedId) || assignments[0] || null;
+  // Selected assignment for detail view
+  const currentAssignment = assignments.find((a) => a.id === selectedId) || null;
 
+  // Sync form inputs when an assignment is selected
   useEffect(() => {
     if (currentAssignment) {
       if (currentAssignment.userSubmission) {
@@ -2856,6 +2988,8 @@ function AssignmentsPage() {
         setSubmissionText(currentAssignment.userSubmission.content || "");
         setGithubUrl(currentAssignment.userSubmission.githubUrl || "");
         setFileUrl(currentAssignment.userSubmission.fileUrl || "");
+        setShowGithubInput(Boolean(currentAssignment.userSubmission.githubUrl));
+        setShowFileInput(Boolean(currentAssignment.userSubmission.fileUrl));
       } else {
         setSubmittedForCurrent(false);
         setSubmissionText("");
@@ -2866,6 +3000,59 @@ function AssignmentsPage() {
       }
     }
   }, [currentAssignment?.id, currentAssignment?.userSubmission]);
+
+  // Derived metrics
+  const totalCount = assignments.length;
+  const submittedCount = assignments.filter((a) => Boolean(a.userSubmission)).length;
+  const pendingCount = totalCount - submittedCount;
+  const totalPointsAvailable = assignments.reduce((acc, a) => acc + (a.totalMarks || 100), 0);
+
+  // Filter courses list for dropdown
+  const uniqueCourses = useMemo(() => {
+    const courses = new Set<string>();
+    assignments.forEach((a) => {
+      if (a.course) courses.add(a.course);
+    });
+    return Array.from(courses);
+  }, [assignments]);
+
+  const courseDropdownOptions = useMemo(() => [
+    { label: "All Courses", value: "all" },
+    ...uniqueCourses.map((c) => ({ label: c, value: c })),
+  ], [uniqueCourses]);
+
+  const difficultyDropdownOptions = useMemo(() => [
+    { label: "All Difficulties", value: "all" },
+    { label: "Easy", value: "Easy" },
+    { label: "Medium", value: "Medium" },
+    { label: "Hard", value: "Hard" },
+  ], []);
+
+  // Filtered assignments list
+  const filteredAssignments = useMemo(() => {
+    return assignments.filter((a) => {
+      const matchesSearch =
+        searchQuery.trim() === "" ||
+        a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.course.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (a.topic && a.topic.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (a.module && a.module.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const isSubmitted = Boolean(a.userSubmission);
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "submitted" && isSubmitted) ||
+        (statusFilter === "pending" && !isSubmitted);
+
+      const matchesCourse = courseFilter === "all" || a.course === courseFilter;
+      const matchesDifficulty =
+        difficultyFilter === "all" ||
+        (a.difficulty || "Medium").toLowerCase() === difficultyFilter.toLowerCase();
+
+      return matchesSearch && matchesStatus && matchesCourse && matchesDifficulty;
+    });
+  }, [assignments, searchQuery, statusFilter, courseFilter, difficultyFilter]);
 
   const handleSubmit = async () => {
     if (!currentAssignment) return;
@@ -2896,26 +3083,34 @@ function AssignmentsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Show your work"
-        title="Assignments"
-        description="Turn your practice into proof with thoughtful submissions and mentor feedback."
+        eyebrow="Show your work & master concepts"
+        title="Course Assignments & Problem Sets"
+        description="Complete practical problem sets, build end-to-end projects, and submit your code for mentor evaluation."
       />
 
       {loading ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="card-surface h-96 animate-pulse p-7" />
-          <div className="card-surface h-96 animate-pulse p-7" />
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="card-surface h-24 animate-pulse p-4" />
+            ))}
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="card-surface h-64 animate-pulse p-6" />
+            ))}
+          </div>
         </div>
       ) : assignments.length === 0 ? (
         <div className="card-surface p-12 text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300 mb-4">
-            <ClipboardCheck className="h-7 w-7" />
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300 mb-4">
+            <ClipboardCheck className="h-8 w-8" />
           </div>
           <h2 className="font-display text-xl font-bold text-[#17223d] dark:text-white">
             No assignments available yet
           </h2>
           <p className="mt-2 text-xs text-[#9aa4bc] max-w-md mx-auto">
-            Assignments created and published from the Admin Panel will appear here in real time. Check back soon or explore available courses!
+            Assignments created and published from the Admin Panel will appear here automatically in real time.
           </p>
           <Link
             href={getSecureHref("/courses")}
@@ -2924,96 +3119,142 @@ function AssignmentsPage() {
             Browse courses <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-      ) : (
+      ) : currentAssignment ? (
+        /* ============================================================ */
+        /* SINGLE ASSIGNMENT DETAIL & SUBMISSION WORKSPACE */
+        /* ============================================================ */
         <div className="space-y-6">
-          {/* Assignment Switcher if multiple */}
-          {assignments.length > 1 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-[#7c87a4]">Select assignment:</span>
-              {assignments.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => setSelectedId(a.id)}
-                  className={cx(
-                    "rounded-xl px-3 py-1.5 text-xs font-bold transition-colors",
-                    (currentAssignment?.id === a.id)
-                      ? "bg-[#3157e8] text-white shadow-sm"
-                      : "bg-[#f0f2f8] text-[#52617f] hover:bg-[#e2e6f0] dark:bg-white/10 dark:text-white/80"
-                  )}
-                >
-                  {a.title}
-                </button>
-              ))}
+          {/* Back button and assignment breadcrumbs */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              className="inline-flex items-center gap-2 rounded-xl border border-[#e5e8f0] bg-white px-4 py-2 text-xs font-bold text-[#52617f] transition hover:bg-[#f7f9fc] hover:text-[#17223d] dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to all assignments ({assignments.length})
+            </button>
+            <div className="flex items-center gap-2">
+              <span
+                className={cx(
+                  "rounded-lg px-2.5 py-1 text-[11px] font-bold",
+                  (currentAssignment.difficulty || "Medium").toLowerCase() === "easy"
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    : (currentAssignment.difficulty || "Medium").toLowerCase() === "hard"
+                    ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                    : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                )}
+              >
+                {currentAssignment.difficulty || "Medium"}
+              </span>
+              <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-[#3157e8] dark:bg-[#3157e8]/15 dark:text-blue-300">
+                {currentAssignment.totalMarks || 100} pts
+              </span>
             </div>
-          )}
+          </div>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            {currentAssignment && (
-              <section className="card-surface p-5 sm:p-7">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#fff0ed] text-[#ef8354]">
-                      <ClipboardCheck className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-md bg-[#fff0ed] px-2 py-1 text-[10px] font-bold text-[#ef8354]">
-                          {currentAssignment.dueDate}
-                        </span>
-                        {currentAssignment.difficulty && (
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-white/10 dark:text-white/80">
-                            {currentAssignment.difficulty}
-                          </span>
-                        )}
-                      </div>
-                      <h2 className="mt-2 font-display text-2xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white">
-                        {currentAssignment.title}
-                      </h2>
-                      <p className="mt-1 text-xs text-[#9aa4bc]">
-                        {currentAssignment.course} {currentAssignment.module ? `· ${currentAssignment.module}` : ""}
-                      </p>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+            {/* Main Assignment Content */}
+            <div className="space-y-6">
+              <section className="card-surface p-6 sm:p-8">
+                <div className="flex items-start gap-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#eaf0ff] text-[#3157e8] dark:bg-[#3157e8]/20">
+                    <ClipboardCheck className="h-6 w-6" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#7c87a4]">
+                      <span>{currentAssignment.course}</span>
+                      {currentAssignment.module && (
+                        <>
+                          <span>·</span>
+                          <span>{currentAssignment.module}</span>
+                        </>
+                      )}
+                      {currentAssignment.topic && (
+                        <>
+                          <span>·</span>
+                          <span className="text-[#3157e8]">{currentAssignment.topic}</span>
+                        </>
+                      )}
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-[#7c87a4]">Total Marks</span>
-                    <p className="font-display text-lg font-bold text-[#17223d] dark:text-white">
-                      {currentAssignment.totalMarks} pts
-                    </p>
+                    <h1 className="mt-2 font-display text-2xl font-bold tracking-tight text-[#17223d] dark:text-white">
+                      {currentAssignment.title}
+                    </h1>
+                    <div className="mt-3 flex flex-wrap items-center gap-4 text-xs font-semibold text-[#7c87a4]">
+                      <span className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                        <Clock3 className="h-4 w-4" /> Due: {currentAssignment.dueDate}
+                      </span>
+                      {currentAssignment.allowLate && (
+                        <span className="inline-flex items-center gap-1 text-slate-500">
+                          <Check className="h-3.5 w-3.5" /> Late submissions allowed
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {currentAssignment.description && (
-                  <p className="mt-5 text-sm leading-relaxed text-[#52617f] dark:text-white/70">
-                    {currentAssignment.description}
-                  </p>
+                  <div className="mt-6 border-t border-[#edf0f6] pt-6 dark:border-white/10">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-[#9aa4bc]">
+                      Assignment Overview
+                    </h2>
+                    <p className="mt-2 text-sm leading-relaxed text-[#52617f] dark:text-white/75">
+                      {currentAssignment.description}
+                    </p>
+                  </div>
                 )}
 
                 {currentAssignment.instructions && (
-                  <div className="mt-5 rounded-xl bg-[#f7f9fc] p-5 dark:bg-white/5">
-                    <p className="text-sm font-bold text-[#17223d] dark:text-white">Instructions</p>
-                    <p className="mt-2 text-sm leading-6 text-[#7c87a4] whitespace-pre-line">
+                  <div className="mt-6 rounded-2xl bg-[#f8fafc] p-5 dark:bg-white/5 border border-slate-100 dark:border-white/10">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#17223d] dark:text-white">
+                      Instructions & Submission Guidelines
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-[#52617f] dark:text-white/70 whitespace-pre-line">
                       {currentAssignment.instructions}
                     </p>
                   </div>
                 )}
 
-                {/* Problem bank items if attached */}
+                {/* Attached Problems Bank */}
                 {Array.isArray(currentAssignment.problemsList) && currentAssignment.problemsList.length > 0 && (
-                  <div className="mt-6 space-y-2">
-                    <p className="text-xs font-bold text-[#52617f] dark:text-white/80">
-                      Problems Included ({currentAssignment.problemsList.length})
-                    </p>
-                    <div className="divide-y divide-[#edf0f6] rounded-xl border border-[#edf0f6] dark:divide-white/10 dark:border-white/10">
+                  <div className="mt-6 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#9aa4bc]">
+                        Attached Problems ({currentAssignment.problemsList.length})
+                      </h3>
+                      <span className="text-[11px] text-[#7c87a4]">Solve directly in practice arena</span>
+                    </div>
+                    <div className="divide-y divide-[#edf0f6] rounded-2xl border border-[#edf0f6] dark:divide-white/10 dark:border-white/10">
                       {currentAssignment.problemsList.map((p: any, idx: number) => (
-                        <div key={p.id || idx} className="flex items-center justify-between p-3 text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-[#9aa4bc]">#{idx + 1}</span>
-                            <span className="font-bold text-[#17223d] dark:text-white">{p.title}</span>
-                            {p.category && <span className="text-[10px] text-[#9aa4bc]">({p.category})</span>}
+                        <div key={p.id || idx} className="flex items-center justify-between p-3.5 text-xs">
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono font-bold text-[#9aa4bc]">#{idx + 1}</span>
+                            <div>
+                              <p className="font-bold text-[#17223d] dark:text-white">{p.title}</p>
+                              {p.category && <p className="text-[10px] text-[#9aa4bc]">{p.category}</p>}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-semibold text-[#7c87a4]">{p.difficulty || "Medium"}</span>
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={cx(
+                                "rounded px-2 py-0.5 text-[10px] font-bold",
+                                (p.difficulty || "Medium").toLowerCase() === "easy"
+                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                  : (p.difficulty || "Medium").toLowerCase() === "hard"
+                                  ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                                  : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                              )}
+                            >
+                              {p.difficulty || "Medium"}
+                            </span>
                             <span className="font-bold text-[#3157e8]">{p.points || 25} pts</span>
+                            <Link
+                              href={getSecureHref("/practice", {
+                                slug: p.slug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                              })}
+                              className="rounded-lg bg-[#eaf0ff] px-2.5 py-1 text-[11px] font-bold text-[#3157e8] transition hover:bg-[#d8e4ff] dark:bg-[#3157e8]/20 dark:text-white"
+                            >
+                              Solve →
+                            </Link>
                           </div>
                         </div>
                       ))}
@@ -3021,52 +3262,94 @@ function AssignmentsPage() {
                   </div>
                 )}
 
-                <div className="mt-6 border-t border-[#edf0f6] pt-6 dark:border-white/10">
-                  <div className="flex items-center justify-between">
+                {/* Resources List */}
+                {Array.isArray(currentAssignment.resources) && currentAssignment.resources.length > 0 && (
+                  <div className="mt-6 space-y-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#9aa4bc]">
+                      Attached Resources & Templates ({currentAssignment.resources.length})
+                    </h3>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {currentAssignment.resources.map((r: any, idx: number) => (
+                        <div
+                          key={r.id || idx}
+                          className="flex items-center justify-between rounded-xl border border-[#edf0f6] bg-[#f8fafc] p-3 text-xs dark:border-white/10 dark:bg-white/5"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="h-4 w-4 shrink-0 text-[#3157e8]" />
+                            <span className="truncate font-semibold text-[#17223d] dark:text-white">
+                              {r.name || `Resource_${idx + 1}`}
+                            </span>
+                          </div>
+                          {r.size && <span className="shrink-0 text-[10px] text-[#9aa4bc]">{r.size}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* Submission Box */}
+              <section className="card-surface p-6 sm:p-8">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                      Your Submission Workspace
+                    </h2>
+                    <p className="mt-0.5 text-xs text-[#7c87a4]">
+                      Provide code explanations, approach analysis, GitHub link, or cloud asset URLs.
+                    </p>
+                  </div>
+                  {submittedForCurrent && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                      <CheckCircle2 className="h-4 w-4" /> Submitted for Review
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-5 space-y-4">
+                  <div>
                     <label className="block text-xs font-bold text-[#52617f] dark:text-white/80">
-                      Your submission
+                      Solution Code & Approach Explanation
                     </label>
-                    {submittedForCurrent && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                        <Check className="h-3.5 w-3.5" /> Submitted
-                      </span>
-                    )}
+                    <textarea
+                      value={submissionText}
+                      onChange={(e) => setSubmissionText(e.target.value)}
+                      placeholder="Paste your solution code, time/space complexity breakdown, algorithm explanation, and test case proofs here..."
+                      className="mt-2 min-h-[160px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 font-mono text-xs leading-relaxed text-[#17223d] outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                    />
                   </div>
 
-                  <textarea
-                    value={submissionText}
-                    onChange={(e) => setSubmissionText(e.target.value)}
-                    placeholder="Paste your explanation, code solution, or approach notes here..."
-                    className="mt-2 min-h-[150px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
-                  />
-
                   {showGithubInput && (
-                    <div className="mt-3">
-                      <label className="block text-[11px] font-bold text-[#7c87a4]">GitHub Repository / PR Link</label>
+                    <div>
+                      <label className="flex items-center gap-1.5 text-xs font-bold text-[#52617f] dark:text-white/80">
+                        <Github className="h-3.5 w-3.5 text-[#17223d] dark:text-white" /> GitHub Repository / PR Link
+                      </label>
                       <input
                         type="url"
                         value={githubUrl}
                         onChange={(e) => setGithubUrl(e.target.value)}
-                        placeholder="https://github.com/username/project"
-                        className="mt-1 w-full rounded-xl border border-[#e5e8f0] bg-white px-3 py-2 text-xs outline-none focus:border-[#9db3ff] dark:border-white/10 dark:bg-white/5 dark:text-white"
+                        placeholder="https://github.com/username/project-repository"
+                        className="mt-1.5 w-full rounded-xl border border-[#e5e8f0] bg-white px-3.5 py-2.5 text-xs outline-none focus:border-[#9db3ff] dark:border-white/10 dark:bg-white/5 dark:text-white"
                       />
                     </div>
                   )}
 
                   {showFileInput && (
-                    <div className="mt-3">
-                      <label className="block text-[11px] font-bold text-[#7c87a4]">File or Document URL / Cloud Link</label>
+                    <div>
+                      <label className="flex items-center gap-1.5 text-xs font-bold text-[#52617f] dark:text-white/80">
+                        <FileText className="h-3.5 w-3.5 text-[#3157e8]" /> File / Cloud Asset Link
+                      </label>
                       <input
                         type="text"
                         value={fileUrl}
                         onChange={(e) => setFileUrl(e.target.value)}
-                        placeholder="https://drive.google.com/... or cloud asset link"
-                        className="mt-1 w-full rounded-xl border border-[#e5e8f0] bg-white px-3 py-2 text-xs outline-none focus:border-[#9db3ff] dark:border-white/10 dark:bg-white/5 dark:text-white"
+                        placeholder="https://drive.google.com/... or uploaded document link"
+                        className="mt-1.5 w-full rounded-xl border border-[#e5e8f0] bg-white px-3.5 py-2.5 text-xs outline-none focus:border-[#9db3ff] dark:border-white/10 dark:bg-white/5 dark:text-white"
                       />
                     </div>
                   )}
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 pt-2 sm:grid-cols-2">
                     <button
                       type="button"
                       onClick={() => setShowFileInput(!showFileInput)}
@@ -3077,7 +3360,7 @@ function AssignmentsPage() {
                           : "border-[#cbd4e5] text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"
                       )}
                     >
-                      <Plus className="h-4 w-4" /> {fileUrl ? "File Link Added" : "Attach a file / URL"}
+                      <Plus className="h-4 w-4" /> {fileUrl ? "File Link Added" : "Attach File / Cloud URL"}
                     </button>
                     <button
                       type="button"
@@ -3089,11 +3372,18 @@ function AssignmentsPage() {
                           : "border-[#cbd4e5] text-[#7c87a4] hover:border-[#3157e8] hover:text-[#3157e8] dark:border-white/15"
                       )}
                     >
-                      <Github className="h-4 w-4" /> {githubUrl ? "GitHub Linked" : "Add GitHub link"}
+                      <Github className="h-4 w-4" /> {githubUrl ? "GitHub Linked" : "Add GitHub Link"}
                     </button>
                   </div>
 
-                  <div className="mt-6 flex justify-end">
+                  <div className="flex items-center justify-between border-t border-[#edf0f6] pt-5 dark:border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(null)}
+                      className="text-xs font-bold text-[#7c87a4] hover:text-[#17223d] dark:hover:text-white"
+                    >
+                      Cancel
+                    </button>
                     <button
                       type="button"
                       onClick={handleSubmit}
@@ -3101,27 +3391,69 @@ function AssignmentsPage() {
                       className="button-primary inline-flex items-center gap-2"
                     >
                       <Send className="h-4 w-4" />
-                      {isSubmitting ? "Submitting..." : submittedForCurrent ? "Update submission" : "Submit assignment"}
+                      {isSubmitting
+                        ? "Submitting..."
+                        : submittedForCurrent
+                        ? "Update Submission"
+                        : "Submit Assignment"}
                     </button>
                   </div>
                 </div>
               </section>
-            )}
+            </div>
 
-            {/* Right sidebar with Submission History */}
+            {/* Sidebar info */}
             <aside className="space-y-5">
               <div className="card-surface p-5">
-                <p className="text-xs font-bold text-[#7c87a4]">Submission history</p>
-                <div className="mt-4 space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#7c87a4]">
+                  Assignment Criteria
+                </h3>
+                <div className="mt-4 space-y-3 text-xs">
+                  <div className="flex items-center justify-between py-1 border-b border-[#edf0f6] dark:border-white/10">
+                    <span className="text-[#9aa4bc]">Total Marks:</span>
+                    <span className="font-bold text-[#17223d] dark:text-white">
+                      {currentAssignment.totalMarks || 100} pts
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-[#edf0f6] dark:border-white/10">
+                    <span className="text-[#9aa4bc]">Passing Score:</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      {currentAssignment.passingMarks || 40} pts (
+                      {Math.round(((currentAssignment.passingMarks || 40) / (currentAssignment.totalMarks || 100)) * 100)}%)
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-[#edf0f6] dark:border-white/10">
+                    <span className="text-[#9aa4bc]">Deadline:</span>
+                    <span className="font-bold text-amber-600 dark:text-amber-400">
+                      {currentAssignment.dueDate}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-[#9aa4bc]">Submission Type:</span>
+                    <span className="font-bold text-[#17223d] dark:text-white">
+                      {Array.isArray(currentAssignment.submissionTypes)
+                        ? currentAssignment.submissionTypes.join(", ")
+                        : "Code / GitHub"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submissions for this assignment */}
+              <div className="card-surface p-5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#7c87a4]">
+                  Submission History
+                </h3>
+                <div className="mt-4 space-y-3">
                   {submissions.length === 0 ? (
-                    <p className="text-xs text-[#9aa4bc] py-4 text-center">
-                      No submissions yet. Submit your first assignment on the left!
+                    <p className="py-3 text-center text-xs text-[#9aa4bc]">
+                      No submissions recorded yet.
                     </p>
                   ) : (
                     submissions.map((s) => {
                       const isGraded = (s.status || "").toUpperCase() === "GRADED";
                       return (
-                        <div key={s.id} className="flex items-start gap-3">
+                        <div key={s.id} className="flex items-start gap-3 rounded-xl bg-[#f8fafc] p-3 text-xs dark:bg-white/5">
                           <span
                             className={cx(
                               "mt-1 h-2 w-2 shrink-0 rounded-full",
@@ -3129,12 +3461,15 @@ function AssignmentsPage() {
                             )}
                           />
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-[#17223d] dark:text-white truncate">
+                            <p className="truncate font-bold text-[#17223d] dark:text-white">
                               {s.assignment?.title || "Assignment Submission"}
                             </p>
                             <p className="mt-0.5 text-[10px] text-[#9aa4bc]">
-                              {isGraded ? `Score: ${s.score}/${s.maxScore || 100}` : "Pending Review"} ·{" "}
-                              {new Date(s.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              {isGraded ? `Grade: ${s.score}/${s.maxScore || 100}` : "Under Review"} ·{" "}
+                              {new Date(s.submittedAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}
                             </p>
                           </div>
                         </div>
@@ -3146,19 +3481,260 @@ function AssignmentsPage() {
 
               <div className="rounded-2xl bg-[#eaf0ff] p-5 dark:bg-[#3157e8]/20">
                 <Headphones className="h-5 w-5 text-[#3157e8]" />
-                <p className="mt-4 text-sm font-bold text-[#17223d] dark:text-white">Need a second pair of eyes?</p>
-                <p className="mt-2 text-xs leading-5 text-[#5f6c8c] dark:text-white/65">
-                  Ask your cohort in Community or bring the question to your next clinic.
+                <p className="mt-4 text-sm font-bold text-[#17223d] dark:text-white">Have questions or stuck?</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-[#5f6c8c] dark:text-white/70">
+                  Ask your peers and instructors in the Community channels or attend live clinics.
                 </p>
                 <Link
                   href={getSecureHref("/community")}
-                  className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#3157e8]"
+                  className="mt-3.5 inline-flex items-center gap-1 text-xs font-bold text-[#3157e8]"
                 >
-                  Open community <ArrowRight className="h-3.5 w-3.5" />
+                  Open community discussion <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
             </aside>
           </div>
+        </div>
+      ) : (
+        /* ============================================================ */
+        /* ALL ASSIGNMENTS CATALOG & GRID VIEW */
+        /* ============================================================ */
+        <div className="space-y-6">
+          {/* Top Metric Cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="card-surface p-5 flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#3157e8] dark:bg-[#3157e8]/15 dark:text-blue-300">
+                <ClipboardCheck className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-[#9aa4bc]">Total Assignments</p>
+                <p className="mt-1 font-display text-2xl font-bold text-[#17223d] dark:text-white">
+                  {totalCount}
+                </p>
+              </div>
+            </div>
+
+            <div className="card-surface p-5 flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300">
+                <Clock3 className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-[#9aa4bc]">Pending Submissions</p>
+                <p className="mt-1 font-display text-2xl font-bold text-amber-600 dark:text-amber-400">
+                  {pendingCount}
+                </p>
+              </div>
+            </div>
+
+            <div className="card-surface p-5 flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-[#9aa4bc]">Submitted & Completed</p>
+                <p className="mt-1 font-display text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                  {submittedCount}
+                </p>
+              </div>
+            </div>
+
+            <div className="card-surface p-5 flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300">
+                <Trophy className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-[#9aa4bc]">Total Marks Available</p>
+                <p className="mt-1 font-display text-2xl font-bold text-purple-600 dark:text-purple-400">
+                  {totalPointsAvailable} pts
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Search and Filters Bar */}
+          <div className="card-surface p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            {/* Status Tabs */}
+            <div className="flex flex-wrap items-center gap-1.5 rounded-xl bg-[#f5f7fb] p-1 dark:bg-white/5">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={cx(
+                  "rounded-lg px-3 py-1.5 text-xs font-bold transition",
+                  statusFilter === "all"
+                    ? "bg-white text-[#17223d] shadow-sm dark:bg-white/15 dark:text-white"
+                    : "text-[#7c87a4] hover:text-[#17223d] dark:hover:text-white"
+                )}
+              >
+                All ({totalCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("pending")}
+                className={cx(
+                  "rounded-lg px-3 py-1.5 text-xs font-bold transition",
+                  statusFilter === "pending"
+                    ? "bg-white text-amber-600 shadow-sm dark:bg-white/15 dark:text-amber-300"
+                    : "text-[#7c87a4] hover:text-[#17223d] dark:hover:text-white"
+                )}
+              >
+                Pending ({pendingCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("submitted")}
+                className={cx(
+                  "rounded-lg px-3 py-1.5 text-xs font-bold transition",
+                  statusFilter === "submitted"
+                    ? "bg-white text-emerald-600 shadow-sm dark:bg-white/15 dark:text-emerald-300"
+                    : "text-[#7c87a4] hover:text-[#17223d] dark:hover:text-white"
+                )}
+              >
+                Submitted ({submittedCount})
+              </button>
+            </div>
+
+            {/* Search + Custom Dropdowns */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative min-w-[200px] flex-1 sm:flex-none">
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9aa4bc]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search assignments..."
+                  className="h-10 w-full rounded-xl border border-[#e5e8f0] bg-white pl-9 pr-3 text-xs outline-none focus:border-[#9db3ff] dark:border-white/10 dark:bg-white/5 dark:text-white"
+                />
+              </div>
+
+              <CustomDropdown
+                value={courseFilter}
+                onChange={setCourseFilter}
+                options={courseDropdownOptions}
+                icon={<BookOpen className="h-4 w-4 text-[#9aa4bc]" />}
+              />
+
+              <CustomDropdown
+                value={difficultyFilter}
+                onChange={setDifficultyFilter}
+                options={difficultyDropdownOptions}
+                icon={<BarChart2 className="h-4 w-4 text-[#9aa4bc]" />}
+              />
+            </div>
+          </div>
+
+          {/* Assignments Cards Grid */}
+          {filteredAssignments.length === 0 ? (
+            <div className="card-surface p-12 text-center">
+              <ClipboardCheck className="mx-auto h-10 w-10 text-[#9aa4bc]" />
+              <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">
+                No assignments match your search or filter
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("all");
+                  setCourseFilter("all");
+                  setDifficultyFilter("all");
+                }}
+                className="mt-4 text-xs font-bold text-[#3157e8] underline"
+              >
+                Reset filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2">
+              {filteredAssignments.map((a) => {
+                const isSubmitted = Boolean(a.userSubmission);
+                const isGraded = isSubmitted && (a.userSubmission?.status || "").toUpperCase() === "GRADED";
+                const isUrgent =
+                  !isSubmitted &&
+                  (a.dueDate.toLowerCase().includes("today") ||
+                    a.dueDate.toLowerCase().includes("tomorrow") ||
+                    a.dueDate.toLowerCase().includes("3 days"));
+
+                return (
+                  <div
+                    key={a.id}
+                    onClick={() => setSelectedId(a.id)}
+                    className="card-surface group flex cursor-pointer flex-col justify-between p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:border-[#3157e8]/30 dark:hover:border-[#3157e8]/50"
+                  >
+                    <div>
+                      {/* Card Header Tags */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/15 dark:text-blue-300">
+                            {a.course}
+                          </span>
+                          {a.module && (
+                            <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-white/10 dark:text-white/80">
+                              {a.module}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Status Badge */}
+                        {isSubmitted ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                            <CheckCircle2 className="h-3 w-3" />
+                            {isGraded ? `Graded: ${a.userSubmission?.score}/${a.totalMarks}` : "Submitted"}
+                          </span>
+                        ) : (
+                          <span
+                            className={cx(
+                              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold",
+                              isUrgent
+                                ? "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
+                                : "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
+                            )}
+                          >
+                            <Clock3 className="h-3 w-3" />
+                            Pending
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title & Description */}
+                      <h3 className="mt-4 font-display text-lg font-bold tracking-tight text-[#17223d] transition group-hover:text-[#3157e8] dark:text-white dark:group-hover:text-[#839efc]">
+                        {a.title}
+                      </h3>
+                      {a.description && (
+                        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-[#7c87a4]">
+                          {a.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Footer Row & Chips */}
+                    <div className="mt-6 border-t border-[#edf0f6] pt-4 dark:border-white/10">
+                      <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-[#7c87a4]">
+                          <span className={cx("inline-flex items-center gap-1", isUrgent ? "text-rose-600 font-bold dark:text-rose-400" : "")}>
+                            <Clock3 className="h-3.5 w-3.5" />
+                            {a.dueDate}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[#3157e8]">
+                            <Award className="h-3.5 w-3.5" />
+                            {a.totalMarks} pts
+                          </span>
+                          {a.problemsCount > 0 && (
+                            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-white/70">
+                              <Code2 className="h-3.5 w-3.5" />
+                              {a.problemsCount} Problems
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-[#3157e8] group-hover:translate-x-0.5 transition-transform">
+                          {isSubmitted ? "View / Edit Submission" : "Open & Submit"} <ArrowRight className="h-3.5 w-3.5" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </>

@@ -48,6 +48,35 @@ export interface PublicProblem {
 const SOLVED_KEY = "lms_user_solved_problems";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
+function parseArray(val: any): any[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function parseObject(val: any): Record<string, string> {
+  if (!val) return {};
+  if (typeof val === "object" && !Array.isArray(val)) return val;
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (!trimmed) return {};
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    } catch {}
+  }
+  return {};
+}
+
 export function useLiveProblems() {
   const [problems, setProblems] = useState<PublicProblem[]>([]);
   const [solvedIds, setSolvedIds] = useState<string[]>([]);
@@ -78,6 +107,18 @@ export function useLiveProblems() {
             ...p,
             id: String(p.id),
             topic: p.category || p.topic || "General",
+            tags: parseArray(p.tags),
+            companies:
+              typeof p.companies === "string"
+                ? p.companies
+                : Array.isArray(p.companies)
+                ? p.companies.join(", ")
+                : "",
+            examples: parseArray(p.examples),
+            hints: parseArray(p.hints),
+            starterCode: parseObject(p.starterCode),
+            referenceSolution: parseObject(p.referenceSolution),
+            testCasesList: parseArray(p.testCasesList),
             solved:
               solvedIds.includes(String(p.id)) ||
               (p.slug && solvedIds.includes(p.slug)),
