@@ -8,6 +8,8 @@ import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal
 import PracticeProblemModal from "@/components/PracticeProblemModal";
 import PracticeProblemBuilder from "@/components/PracticeProblemBuilder";
 import PracticeProblemDetailView from "@/components/PracticeProblemDetailView";
+import CustomConfirmDialog from "@/components/CustomConfirmDialog";
+import CustomAlertDialog from "@/components/CustomAlertDialog";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useAdminRoute, navigateAdmin } from "@/lib/navigation";
 import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus, ContentItem, PracticeProblem } from "@/hooks/useLiveAdminData";
@@ -181,7 +183,7 @@ const sectionDescriptions: Record<string, string> = {
   courses: "Manage your catalog, instructors, pricing, and completion health.",
   students: "Keep track of learners, cohorts, progress, and engagement signals.",
   content: "Organize modules, lessons, practice problems, and learning resources.",
-  practice_problems: "Build, organize, and manage coding challenge banks and test cases.",
+  practice_problems: "Build, organize, and manage coding challenge banks.",
   assignments: "Create and track student course assignments, homework, and projects.",
   assessments: "Build tests, mock interviews, rubrics, and coding evaluations.",
   submissions: "Review, evaluate, and grade learner assignments and code submissions.",
@@ -1016,60 +1018,19 @@ function CoursesView({
         </div>
       </DataCard>
 
-      {/* Delete Confirmation Alert Modal UI */}
-      {courseToDelete && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150"
-          onClick={() => !isDeleting && setCourseToDelete(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 dark:bg-slate-900 dark:border-slate-800 animate-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
-                <AlertTriangle className="h-6 w-6" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Delete Course?
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Are you sure you want to delete{" "}
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    &ldquo;{courseToDelete.title}&rdquo;
-                  </span>
-                  ? All curriculum modules, lessons, and enrollment records will be permanently removed.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setCourseToDelete(null)}
-                disabled={isDeleting}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 transition cursor-pointer shadow-xs disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                autoFocus
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleConfirmDelete();
-                }}
-                disabled={isDeleting}
-                className="flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 px-4 py-2.5 text-xs font-bold text-white shadow-sm shadow-rose-500/20 transition cursor-pointer disabled:opacity-50"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {isDeleting ? "Deleting..." : "Delete course"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Custom Delete Confirmation Dialog */}
+      <CustomConfirmDialog
+        isOpen={!!courseToDelete}
+        onClose={() => !isDeleting && setCourseToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Course?"
+        description="Are you sure you want to delete this course? All curriculum modules, lessons, and enrollment records will be permanently removed."
+        targetName={courseToDelete?.title}
+        confirmText="Delete course"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
@@ -1655,13 +1616,27 @@ function PracticeProblemsView({
     }
   };
 
-  const handleDelete = (prob: PracticeProblem) => {
-    if (confirm(`Are you sure you want to delete problem "${prob.title}"?`)) {
+  const [problemToDelete, setProblemToDelete] = useState<PracticeProblem | null>(null);
+  const [isDeletingProblem, setIsDeletingProblem] = useState(false);
+
+  const handleConfirmDeleteProblem = async () => {
+    if (!problemToDelete || isDeletingProblem) return;
+    setIsDeletingProblem(true);
+    try {
       if (onDeleteProblem) {
-        onDeleteProblem(prob.id);
+        await onDeleteProblem(problemToDelete.id);
       }
-      onToast(`Deleted problem "${prob.title}"`);
+      onToast(`Deleted problem "${problemToDelete.title}"`);
+      setProblemToDelete(null);
+    } catch {
+      onToast(`Failed to delete problem`);
+    } finally {
+      setIsDeletingProblem(false);
     }
+  };
+
+  const handleDelete = (prob: PracticeProblem) => {
+    setProblemToDelete(prob);
   };
 
   const handleExport = () => {
@@ -1727,7 +1702,6 @@ function PracticeProblemsView({
                 <th className="px-4 py-3">Difficulty</th>
                 <th className="px-4 py-3">Acceptance</th>
                 <th className="px-4 py-3">Submissions</th>
-                <th className="px-4 py-3">Test cases</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right pr-6">Actions</th>
               </tr>
@@ -1735,7 +1709,7 @@ function PracticeProblemsView({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-xs text-[var(--muted)]">
+                  <td colSpan={7} className="py-12 text-center text-xs text-[var(--muted)]">
                     No practice problems found. Click "Create problem" to add the first challenge!
                   </td>
                 </tr>
@@ -1781,7 +1755,6 @@ function PracticeProblemsView({
                     </td>
                     <td className="px-4 py-4 text-[12px] font-bold">{item.acceptance || "75.0%"}</td>
                     <td className="px-4 py-4 text-[12px] font-semibold text-[var(--muted)]">{(item.submissions || 0).toLocaleString()}</td>
-                    <td className="px-4 py-4 text-[11px] font-bold">{item.testCases || 10} cases</td>
                     <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => onToggleStatus && onToggleStatus(item.id)}
@@ -1832,6 +1805,20 @@ function PracticeProblemsView({
         }}
         onToast={onToast}
       />
+
+      {/* Custom Problem Delete Confirmation Dialog */}
+      <CustomConfirmDialog
+        isOpen={!!problemToDelete}
+        onClose={() => !isDeletingProblem && setProblemToDelete(null)}
+        onConfirm={handleConfirmDeleteProblem}
+        title="Delete Practice Problem?"
+        description="Are you sure you want to permanently delete this practice problem? It will be removed from the library and student practice arena."
+        targetName={problemToDelete?.title}
+        confirmText="Delete problem"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={isDeletingProblem}
+      />
     </div>
   );
 }
@@ -1855,6 +1842,8 @@ function AssignmentsView({
 }) {
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
+  const [assignmentToDelete, setAssignmentToDelete] = useState<any | null>(null);
+  const [isDeletingAssignment, setIsDeletingAssignment] = useState(false);
 
   const rows = assignments;
   const filtered = rows.filter(
@@ -1889,20 +1878,30 @@ function AssignmentsView({
     }
   };
 
-  const handleDeleteAssignment = async (item: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm(`Are you sure you want to delete assignment "${item.title}"?`)) return;
+  const handleConfirmDeleteAssignment = async () => {
+    if (!assignmentToDelete || isDeletingAssignment) return;
+    setIsDeletingAssignment(true);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/admin/assignments/${item.id}`, {
+      const res = await fetch(`http://localhost:4000/api/v1/admin/assignments/${assignmentToDelete.id}`, {
         method: "DELETE",
       });
       if (res.ok) {
         onToast(`Assignment deleted`);
         if (onRefresh) onRefresh();
+      } else {
+        onToast(`Failed to delete assignment`);
       }
+      setAssignmentToDelete(null);
     } catch {
       onToast(`Failed to delete assignment`);
+    } finally {
+      setIsDeletingAssignment(false);
     }
+  };
+
+  const handleDeleteAssignment = (item: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAssignmentToDelete(item);
   };
 
   return (
@@ -2019,6 +2018,20 @@ function AssignmentsView({
           )}
         </div>
       </DataCard>
+
+      {/* Custom Assignment Delete Confirmation Dialog */}
+      <CustomConfirmDialog
+        isOpen={!!assignmentToDelete}
+        onClose={() => !isDeletingAssignment && setAssignmentToDelete(null)}
+        onConfirm={handleConfirmDeleteAssignment}
+        title="Delete Assignment?"
+        description="Are you sure you want to delete this assignment? All associated learner submissions, grades, and attachments will be permanently removed."
+        targetName={assignmentToDelete?.title}
+        confirmText="Delete assignment"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={isDeletingAssignment}
+      />
     </div>
   );
 }
