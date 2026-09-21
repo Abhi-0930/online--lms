@@ -32,6 +32,7 @@ import {
   Flame,
 } from "lucide-react";
 import { PracticeProblem } from "@/hooks/useLiveAdminData";
+import CustomConfirmDialog from "@/components/CustomConfirmDialog";
 
 export interface ProblemExample {
   id: string;
@@ -401,48 +402,11 @@ export default function PracticeProblemBuilder({
     }));
   };
 
-  // Test Case Handlers
-  const handleAddTestCase = () => {
-    const newTc: ProblemTestCase = {
-      id: `tc-${Date.now()}`,
-      input: "",
-      expectedOutput: "",
-    };
-    setFormData((prev) => ({
-      ...prev,
-      testCasesList: [...prev.testCasesList, newTc],
-    }));
-  };
-
-  const handleUpdateTestCase = (
-    id: string,
-    field: keyof ProblemTestCase,
-    val: string
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      testCasesList: prev.testCasesList.map((tc) =>
-        tc.id === id ? { ...tc, [field]: val } : tc
-      ),
-    }));
-  };
-
-  const handleDeleteTestCase = (id: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      testCasesList: prev.testCasesList.filter((tc) => tc.id !== id),
-    }));
-  };
-
   // Build Payload to sync with backend & database
   const buildPayload = (status: "Draft" | "Live"): PracticeProblem => {
-    const id = initialData?.id;
-    const primarySampleInput =
-      formData.examples[0]?.input || formData.testCasesList[0]?.input || "";
-    const primarySampleOutput =
-      formData.examples[0]?.output ||
-      formData.testCasesList[0]?.expectedOutput ||
-      "";
+    const id = initialData?.id || `prob-${Date.now()}`;
+    const primarySampleInput = formData.examples[0]?.input || "";
+    const primarySampleOutput = formData.examples[0]?.output || "";
 
     return {
       id,
@@ -451,7 +415,7 @@ export default function PracticeProblemBuilder({
       difficulty: formData.difficulty,
       acceptance: formData.acceptanceRate || "0.0%",
       submissions: formData.submissionsCount || 0,
-      testCases: formData.testCasesList.length,
+      testCases: 0,
       status,
       description: formData.statement,
       sampleInput: primarySampleInput,
@@ -466,7 +430,7 @@ export default function PracticeProblemBuilder({
       editorialAlgorithm: formData.editorialAlgorithm,
       timeComplexity: formData.timeComplexity,
       spaceComplexity: formData.spaceComplexity,
-      testCasesList: formData.testCasesList,
+      testCasesList: [],
       referenceSolution: formData.referenceSolution,
       estimatedSolveTime: formData.estimatedSolveTime,
       visibility: formData.visibility,
@@ -1065,93 +1029,6 @@ export default function PracticeProblemBuilder({
                   </div>
                 </div>
               </div>
-
-              {/* SECTION F: Test cases */}
-              <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
-                  <div>
-                    <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                      Test cases
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Automated execution test cases to validate student submissions.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddTestCase}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/40 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>Add test case</span>
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {formData.testCasesList.map((tc, idx) => (
-                    <div
-                      key={tc.id}
-                      className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4 space-y-3 relative group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                          Test Case {idx + 1}
-                        </span>
-                        {formData.testCasesList.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTestCase(tc.id)}
-                            className="text-slate-400 hover:text-rose-500 p-1 transition cursor-pointer"
-                            title="Delete test case"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* 2-Col Input / Expected Output */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                            Input
-                          </label>
-                          <textarea
-                            rows={2}
-                            value={tc.input}
-                            onChange={(e) =>
-                              handleUpdateTestCase(
-                                tc.id,
-                                "input",
-                                e.target.value
-                              )
-                            }
-                            placeholder="nums = [3,2,4], target = 6"
-                            className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 custom-scrollbar"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                            Expected output
-                          </label>
-                          <textarea
-                            rows={2}
-                            value={tc.expectedOutput}
-                            onChange={(e) =>
-                              handleUpdateTestCase(
-                                tc.id,
-                                "expectedOutput",
-                                e.target.value
-                              )
-                            }
-                            placeholder="[1, 2]"
-                            className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white font-mono placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 custom-scrollbar"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
 
             {/* Right Column (4 cols): Sticky Sidebar */}
@@ -1538,47 +1415,17 @@ export default function PracticeProblemBuilder({
       </main>
 
       {/* DELETE CONFIRMATION MODAL */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200/60 dark:border-rose-900/50">
-                <AlertTriangle className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                  Delete Practice Problem?
-                </h3>
-                <p className="text-xs text-slate-500">
-                  This action cannot be undone.
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Are you sure you want to permanently delete{" "}
-              <strong>"{formData.title || "this problem"}"</strong>? It will be removed from the database and student practice lists.
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="rounded-xl border border-slate-200 dark:border-white/10 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteAction}
-                className="rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2 text-xs font-bold text-white shadow-md shadow-rose-600/20 transition cursor-pointer"
-              >
-                Yes, delete problem
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CustomConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteAction}
+        title="Delete Practice Problem?"
+        description="Are you sure you want to permanently delete this practice problem? It will be removed from the database and student practice lists."
+        targetName={formData.title || "this problem"}
+        confirmText="Delete problem"
+        cancelText="Cancel"
+        variant="destructive"
+      />
     </div>
   );
 }
