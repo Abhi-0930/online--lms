@@ -255,7 +255,7 @@ interface UploadRecordingBuilderProps {
   contentItems?: ContentLibraryItem[];
 }
 
-export function UploadRecordingBuilder({
+export default function UploadRecordingBuilder({
   initialData,
   onClose,
   onSaveDraft,
@@ -264,37 +264,69 @@ export function UploadRecordingBuilder({
   courses,
   contentItems = [],
 }: UploadRecordingBuilderProps) {
+  const [localCourses, setLocalCourses] = useState<any[]>(courses || []);
+
+  useEffect(() => {
+    if (courses && courses.length > 0) {
+      setLocalCourses(courses);
+    }
+  }, [courses]);
+
+  useEffect(() => {
+    if (!courses || courses.length === 0) {
+      fetch("http://localhost:4000/api/v1/admin/courses")
+        .then((r) => (r.ok ? r.json() : []))
+        .then((apiData) => {
+          if (Array.isArray(apiData) && apiData.length > 0) {
+            setLocalCourses(apiData);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [courses]);
+
+  const activeCoursesList = useMemo(() => {
+    if (localCourses && localCourses.length > 0) return localCourses;
+    if (courses && courses.length > 0) return courses;
+    return [];
+  }, [localCourses, courses]);
+
   const courseNames = useMemo(() => {
-    if (courses && courses.length > 0) return courses.map((c) => c.title);
+    if (activeCoursesList && activeCoursesList.length > 0) {
+      return activeCoursesList.map((c: any) => c.title || c.name).filter(Boolean);
+    }
     if (availableCourses && availableCourses.length > 0) return availableCourses;
     return [];
-  }, [courses, availableCourses]);
+  }, [activeCoursesList, availableCourses]);
 
-  const [data, setData] = useState<RecordingData>({
-    title: initialData?.title || "",
-    instructor: initialData?.instructor || "Platform Admin",
-    recordingType: initialData?.recordingType || "Live Session Recording",
-    description: initialData?.description || "",
-    course: initialData?.course || (courseNames.length > 0 ? courseNames[0] : ""),
-    module: initialData?.module || "",
-    topic: initialData?.topic || "",
-    targetCohort: initialData?.targetCohort || "All Enrolled Students",
-    videoFileName: initialData?.videoFileName || "",
-    videoFileSize: initialData?.videoFileSize || "",
-    videoUrl: initialData?.videoUrl || "",
-    date: initialData?.date || new Date().toISOString().split("T")[0],
-    duration: initialData?.duration || "01:00:00",
-    sessionTime: initialData?.sessionTime || "18:00 - 19:00 IST",
-    resources: initialData?.resources || [],
-    chapters: initialData?.chapters || [],
-    visibility: initialData?.visibility || "All enrolled students",
-    accessType: initialData?.accessType || "Full Access",
-    allowDownload: initialData?.allowDownload ?? false,
-    showInCurriculum: initialData?.showInCurriculum ?? true,
-    generateAiNotes: initialData?.generateAiNotes ?? true,
-    enableComments: initialData?.enableComments ?? true,
-    status: initialData?.status || "Published",
-    releaseDate: initialData?.releaseDate || new Date().toISOString().split("T")[0],
+  const [data, setData] = useState<RecordingData>(() => {
+    const initialCourse = initialData?.course || (courseNames.length > 0 ? courseNames[0] : "");
+    return {
+      title: initialData?.title || "",
+      instructor: initialData?.instructor || "Platform Admin",
+      recordingType: initialData?.recordingType || "Live Session Recording",
+      description: initialData?.description || "",
+      course: initialCourse,
+      module: initialData?.module || "",
+      topic: initialData?.topic || "",
+      targetCohort: initialData?.targetCohort || "All Enrolled Students",
+      videoFileName: initialData?.videoFileName || "",
+      videoFileSize: initialData?.videoFileSize || "",
+      videoUrl: initialData?.videoUrl || "",
+      date: initialData?.date || new Date().toISOString().split("T")[0],
+      duration: initialData?.duration || "01:00:00",
+      sessionTime: initialData?.sessionTime || "18:00 - 19:00 IST",
+      resources: initialData?.resources || [],
+      chapters: initialData?.chapters || [],
+      visibility: initialData?.visibility || "All enrolled students",
+      accessType: initialData?.accessType || "Full Access",
+      allowDownload: initialData?.allowDownload ?? false,
+      showInCurriculum: initialData?.showInCurriculum ?? true,
+      generateAiNotes: initialData?.generateAiNotes ?? true,
+      enableComments: initialData?.enableComments ?? true,
+      status: initialData?.status || "Published",
+      releaseDate: initialData?.releaseDate || new Date().toISOString().split("T")[0],
+    };
   });
 
   const [showAttachModal, setShowAttachModal] = useState(false);
@@ -303,27 +335,56 @@ export function UploadRecordingBuilder({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedCourseObj = useMemo(() => {
-    return (courses || []).find((c) => c.title === data.course);
-  }, [courses, data.course]);
+    return activeCoursesList.find(
+      (c: any) =>
+        (c.title && c.title === data.course) ||
+        (c.name && c.name === data.course) ||
+        (c.id && String(c.id) === String(data.course))
+    );
+  }, [activeCoursesList, data.course]);
 
   const availableModules = useMemo(() => {
-    if (selectedCourseObj?.modules && selectedCourseObj.modules.length > 0) {
-      return selectedCourseObj.modules.map((m: any) => m.title);
+    if (selectedCourseObj?.modules && Array.isArray(selectedCourseObj.modules) && selectedCourseObj.modules.length > 0) {
+      return selectedCourseObj.modules
+        .map((m: any) => {
+          if (typeof m === "string") return m;
+          return m?.title || m?.name || (m?.id ? `Module ${m.id}` : "");
+        })
+        .filter(Boolean);
     }
     return [];
   }, [selectedCourseObj]);
 
   useEffect(() => {
-    if (courseNames.length > 0 && !data.course) {
-      setData((prev) => ({ ...prev, course: courseNames[0] }));
+    if (courseNames.length > 0) {
+      if (!data.course || !courseNames.includes(data.course)) {
+        const firstCourse = courseNames[0];
+        const matched = activeCoursesList.find(
+          (c: any) => c.title === firstCourse || c.name === firstCourse || String(c.id) === String(firstCourse)
+        );
+        const mods = (matched?.modules || [])
+          .map((m: any) => (typeof m === "string" ? m : (m?.title || m?.name || "")))
+          .filter(Boolean);
+        setData((prev) => ({
+          ...prev,
+          course: firstCourse,
+          module: prev.module && mods.includes(prev.module) ? prev.module : (mods[0] || ""),
+        }));
+      }
     }
-  }, [courseNames, data.course]);
+  }, [courseNames, activeCoursesList]);
 
   useEffect(() => {
-    if (availableModules.length > 0 && (!data.module || !availableModules.includes(data.module))) {
-      setData((prev) => ({ ...prev, module: availableModules[0] }));
+    if (availableModules.length > 0) {
+      if (!data.module || !availableModules.includes(data.module)) {
+        setData((prev) => ({ ...prev, module: availableModules[0] }));
+      }
+    } else if (selectedCourseObj) {
+      if (data.module) {
+        setData((prev) => ({ ...prev, module: "" }));
+      }
     }
-  }, [availableModules, data.module]);
+  }, [availableModules, selectedCourseObj]);
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -574,11 +635,18 @@ export function UploadRecordingBuilder({
                   <CustomDropdown
                     value={data.course}
                     onChange={(val) => {
-                      const matched = (courses || []).find((c) => c.title === val);
-                      const modName = matched?.modules?.[0]?.title || "";
+                      const matched = activeCoursesList.find(
+                        (c: any) => c.title === val || c.name === val || String(c.id) === String(val)
+                      );
+                      const mods = (matched?.modules || [])
+                        .map((m: any) => (typeof m === "string" ? m : (m?.title || m?.name || "")))
+                        .filter(Boolean);
+                      const modName = mods.length > 0 ? mods[0] : "";
                       setData({ ...data, course: val, module: modName });
                     }}
-                    options={courseNames.length > 0 ? courseNames : ["General Library"]}
+                    options={courseNames}
+                    placeholder={courseNames.length > 0 ? "Select Target Course" : "No courses available on Admin Panel"}
+                    disabled={courseNames.length === 0}
                   />
                 </div>
 
@@ -590,6 +658,14 @@ export function UploadRecordingBuilder({
                     value={data.module}
                     onChange={(val) => setData({ ...data, module: val })}
                     options={availableModules}
+                    placeholder={
+                      availableModules.length > 0
+                        ? "Select Target Module"
+                        : data.course
+                        ? "No modules found in this course"
+                        : "Select a course first"
+                    }
+                    disabled={availableModules.length === 0}
                   />
                 </div>
 
@@ -1260,5 +1336,3 @@ export function UploadRecordingBuilder({
     </div>
   );
 }
-
-export default UploadRecordingBuilder;
