@@ -343,34 +343,18 @@ export default function PracticeProblemModal({
                 </div>
               </div>
 
-              {/* Test Cases and Acceptance Rate */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Hidden Test Cases Count
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={200}
-                    value={testCases}
-                    onChange={(e) => setTestCases(Number(e.target.value))}
-                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-semibold"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Estimated Acceptance Rate
-                  </label>
-                  <input
-                    type="text"
-                    value={acceptance}
-                    onChange={(e) => setAcceptance(e.target.value)}
-                    placeholder="e.g. 78.5%"
-                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-semibold"
-                  />
-                </div>
+              {/* Acceptance Rate */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                  Estimated Acceptance Rate
+                </label>
+                <input
+                  type="text"
+                  value={acceptance}
+                  onChange={(e) => setAcceptance(e.target.value)}
+                  placeholder="e.g. 78.5%"
+                  className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-semibold"
+                />
               </div>
 
               {/* Description */}
