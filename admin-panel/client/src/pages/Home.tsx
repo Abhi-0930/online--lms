@@ -41,7 +41,6 @@ import {
   Download,
   Edit3,
   Ellipsis,
-  FileCheck2,
   FileText,
   Filter,
   GraduationCap,
@@ -80,12 +79,6 @@ const courses: Course[] = [];
 const learners: StudentItem[] = [];
 const contentItems: ContentItem[] = [];
 
-const assessments = [
-  { id: 1, title: "Weekly Test · Graphs", type: "Weekly test", questions: 25, attempts: 642, passRate: "78%", status: "Live", date: "Today, 6:00 PM" },
-  { id: 2, title: "Mock Placement Test #04", type: "Mock test", questions: 60, attempts: 318, passRate: "64%", status: "Live", date: "Sep 18, 2026" },
-  { id: 3, title: "Module 3 · Recursion", type: "Module test", questions: 18, attempts: 904, passRate: "82%", status: "Closed", date: "Sep 10, 2026" },
-  { id: 4, title: "Amazon-style coding screen", type: "Placement test", questions: 12, attempts: 146, passRate: "41%", status: "Draft", date: "Not scheduled" },
-];
 
 const sessions = [
   { id: 1, title: "Graphs: BFS vs DFS", course: "DSA Mastery", time: "Today · 6:30 PM", attendees: 86, type: "Live class", status: "Upcoming" },
@@ -185,7 +178,6 @@ const sectionDescriptions: Record<string, string> = {
   content: "Organize modules, lessons, practice problems, and learning resources.",
   practice_problems: "Build, organize, and manage coding challenge banks.",
   assignments: "Create and track student course assignments, homework, and projects.",
-  assessments: "Build tests, mock interviews, rubrics, and coding evaluations.",
   submissions: "Review, evaluate, and grade learner assignments and code submissions.",
   announcements: "Broadcast platform announcements, live class alerts, and cohort updates.",
   live: "Coordinate sessions, attendance, and instructor calendars.",
@@ -1433,10 +1425,6 @@ function ContentView({
   );
 }
 
-function AssessmentsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
-  const [filter, setFilter] = useState("All"); const [rows, setRows] = useState(assessments); const filtered = rows.filter((item) => filter === "All" || item.status === filter);
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="assessments" description={sectionDescriptions.assessments} actionLabel="Create assessment" onAction={() => onAction({ title: "Create an assessment", description: "Choose questions, scoring, timing, and visibility controls.", fields: ["Assessment title", "Assessment type", "Duration"] })} onExport={() => onToast("Assessment report exported") } /><MetricStrip items={[{ label: "Live assessments", value: "18", change: "+3 this week" }, { label: "Avg. pass rate", value: "74.8%", change: "+6.1%" }, { label: "Total attempts", value: "8,420", change: "+14.8%" }, { label: "Pending reviews", value: "128", change: "Due today", tone: "text-amber-600" }]} /><DataCard title="Assessment center" subtitle="Tests, mock exams, coding screens, and question banks" toolbar={<div className="flex items-center gap-2"><CustomDropdown value={filter} onChange={setFilter} options={["All", "Live", "Closed", "Draft"]} icon={<Filter className="h-3.5 w-3.5 text-[var(--muted)]" />} /></div>}><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left"><thead><tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]"><th className="px-5 py-3 sm:px-6">Assessment</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Questions</th><th className="px-4 py-3">Attempts</th><th className="px-4 py-3">Pass rate</th><th className="px-4 py-3">Schedule</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead><tbody>{filtered.map((item) => <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"><td className="px-5 py-4 sm:px-6"><p className="text-[12px] font-bold">{item.title}</p><p className="text-[10px] text-[var(--muted)]">Question bank · MCQ + coding</p></td><td className="px-4 py-4 text-[11px] font-semibold">{item.type}</td><td className="px-4 py-4 text-[12px] font-bold">{item.questions}</td><td className="px-4 py-4 text-[12px] font-bold">{item.attempts}</td><td className="px-4 py-4 text-[12px] font-bold">{item.passRate}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.date}</td><td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td><td className="px-4 py-4"><button onClick={() => setRows((current) => current.map((row) => row.id === item.id ? { ...row, status: row.status === "Live" ? "Closed" : "Live" } : row))} className="text-[10px] font-bold text-[var(--brand)]">{item.status === "Live" ? "Close" : "Publish"}</button></td></tr>)}</tbody></table></div></DataCard></div>;
-}
 
 function LiveView({
   onAction,
@@ -2356,7 +2344,7 @@ function HelpCenterView({ onAction, onToast }: { onAction: (state: DialogState) 
           { title: "Student Management & Cohorts", desc: "Track enrollments, attendance, progress signals, and certificates." },
           { title: "Live Streaming & Video Hosting", desc: "Integrate Zoom, Google Meet, or upload recordings to cloud storage." },
           { title: "Payments, Invoices & Refunds", desc: "Configuring UPI, Razorpay, Stripe, automated invoices, and payouts." },
-          { title: "Assessments & Rubrics", desc: "Creating coding evaluation screens, MCQ banks, and timer controls." },
+          { title: "Assignments & Evaluation", desc: "Creating practice problem sets, homework deadlines, and submission grading." },
           { title: "Platform Security & Access", desc: "Setting up 2FA, admin roles, audit logs, and IP restrictions." },
         ].map((guide, idx) => (
           <div key={idx} className="surface-card p-5 hover:border-indigo-300 dark:hover:border-white/20 transition-all cursor-pointer" onClick={() => onToast(`Opened: ${guide.title}`)}>
@@ -3902,8 +3890,6 @@ export default function Home() {
         submissions={liveSubmissions}
         onRefresh={refresh}
       />
-    ) : section === "assessments" ? (
-      <AssessmentsView onAction={onAction} onToast={onToast} />
     ) : section === "submissions" ? (
       <SubmissionsView
         onAction={onAction}
