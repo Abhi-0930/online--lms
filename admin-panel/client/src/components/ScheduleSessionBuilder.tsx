@@ -290,43 +290,75 @@ export default function ScheduleSessionBuilder({
   courses,
   contentItems = [],
 }: ScheduleSessionBuilderProps) {
+  const [localCourses, setLocalCourses] = useState<any[]>(courses || []);
+
+  useEffect(() => {
+    if (courses && courses.length > 0) {
+      setLocalCourses(courses);
+    }
+  }, [courses]);
+
+  useEffect(() => {
+    if (!courses || courses.length === 0) {
+      fetch("http://localhost:4000/api/v1/admin/courses")
+        .then((r) => (r.ok ? r.json() : []))
+        .then((apiData) => {
+          if (Array.isArray(apiData) && apiData.length > 0) {
+            setLocalCourses(apiData);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [courses]);
+
+  const activeCoursesList = useMemo(() => {
+    if (localCourses && localCourses.length > 0) return localCourses;
+    if (courses && courses.length > 0) return courses;
+    return [];
+  }, [localCourses, courses]);
+
   const courseNames = useMemo(() => {
-    if (courses && courses.length > 0) return courses.map((c) => c.title);
+    if (activeCoursesList && activeCoursesList.length > 0) {
+      return activeCoursesList.map((c: any) => c.title || c.name).filter(Boolean);
+    }
     if (availableCourses && availableCourses.length > 0) return availableCourses;
     return [];
-  }, [courses, availableCourses]);
+  }, [activeCoursesList, availableCourses]);
 
-  const [data, setData] = useState<LiveSessionData>({
-    title: initialData?.title || "",
-    instructor: initialData?.instructor || "Platform Admin",
-    sessionType: initialData?.sessionType || "Live Class",
-    description: initialData?.description || "",
-    course: initialData?.course || (courseNames.length > 0 ? courseNames[0] : ""),
-    module: initialData?.module || "",
-    topic: initialData?.topic || "",
-    targetCohort: initialData?.targetCohort || "All Enrolled Students",
-    date: initialData?.date || new Date().toISOString().split("T")[0],
-    timezone: initialData?.timezone || "IST (UTC+5:30) - Asia/Kolkata",
-    startTime: initialData?.startTime || "18:00",
-    endTime: initialData?.endTime || "19:30",
-    platform: initialData?.platform || "Google Meet",
-    meetingLink: initialData?.meetingLink || "",
-    passcode: initialData?.passcode || "",
-    hostNotes: initialData?.hostNotes || "",
-    resources: initialData?.resources || [],
-    emailReminders: initialData?.emailReminders ?? true,
-    inAppNotifications: initialData?.inAppNotifications ?? true,
-    reminderSchedule: initialData?.reminderSchedule || "30 minutes before",
-    autoRecord: initialData?.autoRecord ?? true,
-    uploadRecording: initialData?.uploadRecording ?? true,
-    aiNotes: initialData?.aiNotes ?? true,
-    autoPublishRecording: initialData?.autoPublishRecording ?? false,
-    trackAttendance: initialData?.trackAttendance ?? true,
-    attendanceMethod: initialData?.attendanceMethod || "Automatic on join (min 15 mins)",
-    attendanceThreshold: initialData?.attendanceThreshold || "75%",
-    maxAttendees: initialData?.maxAttendees || "250",
-    visibility: initialData?.visibility || "All enrolled students",
-    status: initialData?.status || "Scheduled",
+  const [data, setData] = useState<LiveSessionData>(() => {
+    const initialCourse = initialData?.course || (courseNames.length > 0 ? courseNames[0] : "");
+    return {
+      title: initialData?.title || "",
+      instructor: initialData?.instructor || "Platform Admin",
+      sessionType: initialData?.sessionType || "Live Class",
+      description: initialData?.description || "",
+      course: initialCourse,
+      module: initialData?.module || "",
+      topic: initialData?.topic || "",
+      targetCohort: initialData?.targetCohort || "All Enrolled Students",
+      date: initialData?.date || new Date().toISOString().split("T")[0],
+      timezone: initialData?.timezone || "IST (UTC+5:30) - Asia/Kolkata",
+      startTime: initialData?.startTime || "18:00",
+      endTime: initialData?.endTime || "19:30",
+      platform: initialData?.platform || "Google Meet",
+      meetingLink: initialData?.meetingLink || "",
+      passcode: initialData?.passcode || "",
+      hostNotes: initialData?.hostNotes || "",
+      resources: initialData?.resources || [],
+      emailReminders: initialData?.emailReminders ?? true,
+      inAppNotifications: initialData?.inAppNotifications ?? true,
+      reminderSchedule: initialData?.reminderSchedule || "30 minutes before",
+      autoRecord: initialData?.autoRecord ?? true,
+      uploadRecording: initialData?.uploadRecording ?? true,
+      aiNotes: initialData?.aiNotes ?? true,
+      autoPublishRecording: initialData?.autoPublishRecording ?? false,
+      trackAttendance: initialData?.trackAttendance ?? true,
+      attendanceMethod: initialData?.attendanceMethod || "Automatic on join (min 15 mins)",
+      attendanceThreshold: initialData?.attendanceThreshold || "75%",
+      maxAttendees: initialData?.maxAttendees || "250",
+      visibility: initialData?.visibility || "All enrolled students",
+      status: initialData?.status || "Scheduled",
+    };
   });
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -336,27 +368,56 @@ export default function ScheduleSessionBuilder({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedCourseObj = useMemo(() => {
-    return (courses || []).find((c) => c.title === data.course);
-  }, [courses, data.course]);
+    return activeCoursesList.find(
+      (c: any) =>
+        (c.title && c.title === data.course) ||
+        (c.name && c.name === data.course) ||
+        (c.id && String(c.id) === String(data.course))
+    );
+  }, [activeCoursesList, data.course]);
 
   const availableModules = useMemo(() => {
-    if (selectedCourseObj?.modules && selectedCourseObj.modules.length > 0) {
-      return selectedCourseObj.modules.map((m: any) => m.title);
+    if (selectedCourseObj?.modules && Array.isArray(selectedCourseObj.modules) && selectedCourseObj.modules.length > 0) {
+      return selectedCourseObj.modules
+        .map((m: any) => {
+          if (typeof m === "string") return m;
+          return m?.title || m?.name || (m?.id ? `Module ${m.id}` : "");
+        })
+        .filter(Boolean);
     }
     return [];
   }, [selectedCourseObj]);
 
   useEffect(() => {
-    if (courseNames.length > 0 && !data.course) {
-      setData((prev) => ({ ...prev, course: courseNames[0] }));
+    if (courseNames.length > 0) {
+      if (!data.course || !courseNames.includes(data.course)) {
+        const firstCourse = courseNames[0];
+        const matched = activeCoursesList.find(
+          (c: any) => c.title === firstCourse || c.name === firstCourse || String(c.id) === String(firstCourse)
+        );
+        const mods = (matched?.modules || [])
+          .map((m: any) => (typeof m === "string" ? m : (m?.title || m?.name || "")))
+          .filter(Boolean);
+        setData((prev) => ({
+          ...prev,
+          course: firstCourse,
+          module: prev.module && mods.includes(prev.module) ? prev.module : (mods[0] || ""),
+        }));
+      }
     }
-  }, [courseNames, data.course]);
+  }, [courseNames, activeCoursesList]);
 
   useEffect(() => {
-    if (availableModules.length > 0 && (!data.module || !availableModules.includes(data.module))) {
-      setData((prev) => ({ ...prev, module: availableModules[0] }));
+    if (availableModules.length > 0) {
+      if (!data.module || !availableModules.includes(data.module)) {
+        setData((prev) => ({ ...prev, module: availableModules[0] }));
+      }
+    } else if (selectedCourseObj) {
+      if (data.module) {
+        setData((prev) => ({ ...prev, module: "" }));
+      }
     }
-  }, [availableModules, data.module]);
+  }, [availableModules, selectedCourseObj]);
 
   const durationStr = useMemo(() => calculateDurationHours(data.startTime, data.endTime), [data.startTime, data.endTime]);
 
@@ -582,11 +643,18 @@ export default function ScheduleSessionBuilder({
                   <CustomDropdown
                     value={data.course}
                     onChange={(val) => {
-                      const matched = (courses || []).find((c: any) => c.title === val);
-                      const modName = matched?.modules?.[0]?.title || "";
+                      const matched = activeCoursesList.find(
+                        (c: any) => c.title === val || c.name === val || String(c.id) === String(val)
+                      );
+                      const mods = (matched?.modules || [])
+                        .map((m: any) => (typeof m === "string" ? m : (m?.title || m?.name || "")))
+                        .filter(Boolean);
+                      const modName = mods.length > 0 ? mods[0] : "";
                       setData({ ...data, course: val, module: modName });
                     }}
-                    options={courseNames.length > 0 ? courseNames : ["General Library"]}
+                    options={courseNames}
+                    placeholder={courseNames.length > 0 ? "Select Target Course" : "No courses available on Admin Panel"}
+                    disabled={courseNames.length === 0}
                   />
                 </div>
 
@@ -598,6 +666,14 @@ export default function ScheduleSessionBuilder({
                     value={data.module}
                     onChange={(val) => setData({ ...data, module: val })}
                     options={availableModules}
+                    placeholder={
+                      availableModules.length > 0
+                        ? "Select Target Module"
+                        : data.course
+                        ? "No modules found in this course"
+                        : "Select a course first"
+                    }
+                    disabled={availableModules.length === 0}
                   />
                 </div>
 
