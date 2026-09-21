@@ -11,7 +11,6 @@ import {
   CircleDollarSign,
   ClipboardCheck,
   Code2,
-  FileCheck2,
   FileText,
   GraduationCap,
   LayoutDashboard,
@@ -43,7 +42,6 @@ export const navLabelMap: Record<string, string> = {
   content: "Content Library",
   practice_problems: "Practice Problems",
   assignments: "Assignments",
-  assessments: "Assessments",
   submissions: "Submissions",
   announcements: "Announcements",
   live: "Live Sessions",
@@ -101,7 +99,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             icon: ClipboardCheck,
             badge: assignments.length > 0 ? String(assignments.length) : undefined,
           },
-          { id: "assessments", label: "Assessments", icon: FileCheck2 },
           {
             id: "submissions",
             label: "Submissions",
