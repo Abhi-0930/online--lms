@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { PublicProblem, useLiveProblems } from "@/hooks/useLiveProblems";
 import { toast } from "sonner";
+import { CompanyLogo } from "@/components/CompanyLogo";
 
 function parseArray(val: any): any[] {
   if (!val) return [];
@@ -1140,10 +1141,10 @@ export default function StudentProblemArena({
                       {companiesList.map((comp, idx) => (
                         <span
                           key={idx}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs hover:bg-slate-200/60 dark:hover:bg-white/10 transition"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-white dark:bg-white/5 border border-slate-200/80 dark:border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs hover:bg-slate-50 dark:hover:bg-white/10 transition"
                         >
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#3157e8]" />
-                          {comp}
+                          <CompanyLogo name={comp} size="xs" />
+                          <span>{comp}</span>
                         </span>
                       ))}
                     </div>
