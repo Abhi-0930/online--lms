@@ -8,6 +8,14 @@ import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal
 import PracticeProblemModal from "@/components/PracticeProblemModal";
 import PracticeProblemBuilder from "@/components/PracticeProblemBuilder";
 import PracticeProblemDetailView from "@/components/PracticeProblemDetailView";
+import ActiveDraftBanner from "@/components/ActiveDraftBanner";
+import {
+  DraftType,
+  getDraft,
+  clearDraft,
+  formatTimeAgo,
+  hasDraftContent,
+} from "@/lib/draftManager";
 import CustomConfirmDialog from "@/components/CustomConfirmDialog";
 import CustomAlertDialog from "@/components/CustomAlertDialog";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -24,6 +32,7 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowDownRight,
+  ArrowRight,
   ArrowUpRight,
   BarChart3,
   Bell,
@@ -780,6 +789,20 @@ function CoursesView({
   // Track deleted courses optimistically
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [courseDraft, setCourseDraft] = useState(() => getDraft("course"));
+
+  useEffect(() => {
+    const update = () => {
+      setCourseDraft(getDraft("course"));
+    };
+    update();
+    window.addEventListener("lms:draft-change", update);
+    window.addEventListener("storage", update);
+    return () => {
+      window.removeEventListener("lms:draft-change", update);
+      window.removeEventListener("storage", update);
+    };
+  }, []);
 
   // Sync rows with live data when liveCourses updates
   useEffect(() => {
@@ -856,6 +879,60 @@ function CoursesView({
 
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      {/* Dedicated In-Section Active Draft Banner */}
+      {courseDraft && hasDraftContent(courseDraft) && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-200/90 dark:border-indigo-800/40 bg-gradient-to-r from-indigo-50/90 via-violet-50/80 to-purple-50/90 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-[#161329] p-4 sm:p-5 shadow-sm animate-in fade-in-0 slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/25">
+              <BookOpen className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#121620]" />
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <span className="inline-flex items-center gap-1 rounded-md bg-indigo-600/10 dark:bg-indigo-400/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  Unfinished Course Draft
+                </span>
+                <span className="flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-slate-400">
+                  <Clock3 className="h-3 w-3" />
+                  Saved {formatTimeAgo(courseDraft.timestamp)}
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                Continue editing: <span className="text-indigo-600 dark:text-indigo-300 font-semibold">"{courseDraft.title || "Untitled Course"}"</span>
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                You were creating a course curriculum. Pick up right where you left off.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={() => {
+                clearDraft("course");
+                setCourseDraft(null);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50/80 dark:hover:bg-rose-950/30 transition cursor-pointer shadow-xs"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Discard draft</span>
+            </button>
+            <button
+              type="button"
+              onClick={onCreateCourse}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/25 transition cursor-pointer active:scale-95"
+            >
+              <span>Continue filling course</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <SectionHeader
         section="courses"
         description={sectionDescriptions.courses}
@@ -1437,9 +1514,78 @@ function LiveView({
 }) {
   const [filter, setFilter] = useState("All");
   const [rows, setRows] = useState(sessions);
+  const [liveDraft, setLiveDraft] = useState(() => getDraft("schedule_session"));
+
+  useEffect(() => {
+    const update = () => {
+      setLiveDraft(getDraft("schedule_session"));
+    };
+    update();
+    window.addEventListener("lms:draft-change", update);
+    window.addEventListener("storage", update);
+    return () => {
+      window.removeEventListener("lms:draft-change", update);
+      window.removeEventListener("storage", update);
+    };
+  }, []);
+
   const filtered = rows.filter((item) => filter === "All" || item.status === filter);
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      {/* Dedicated In-Section Active Draft Banner */}
+      {liveDraft && hasDraftContent(liveDraft) && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-200/90 dark:border-indigo-800/40 bg-gradient-to-r from-indigo-50/90 via-violet-50/80 to-purple-50/90 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-[#161329] p-4 sm:p-5 shadow-sm animate-in fade-in-0 slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/25">
+              <Video className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#121620]" />
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <span className="inline-flex items-center gap-1 rounded-md bg-indigo-600/10 dark:bg-indigo-400/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  Unfinished Live Session Draft
+                </span>
+                <span className="flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-slate-400">
+                  <Clock3 className="h-3 w-3" />
+                  Saved {formatTimeAgo(liveDraft.timestamp)}
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                Continue editing: <span className="text-indigo-600 dark:text-indigo-300 font-semibold">"{liveDraft.title || "Untitled Live Session"}"</span>
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                You were scheduling a live class or office hours session. Pick up right where you left off.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={() => {
+                clearDraft("schedule_session");
+                setLiveDraft(null);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50/80 dark:hover:bg-rose-950/30 transition cursor-pointer shadow-xs"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Discard draft</span>
+            </button>
+            <button
+              type="button"
+              onClick={onScheduleSession}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/25 transition cursor-pointer active:scale-95"
+            >
+              <span>Continue scheduling</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <SectionHeader
         section="live"
         description={sectionDescriptions.live}
@@ -1562,6 +1708,20 @@ function PracticeProblemsView({
   const [query, setQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [problemToEdit, setProblemToEdit] = useState<PracticeProblem | null>(null);
+  const [problemDraft, setProblemDraft] = useState(() => getDraft("practice_problem") || getDraft("practice_problem_modal"));
+
+  useEffect(() => {
+    const update = () => {
+      setProblemDraft(getDraft("practice_problem") || getDraft("practice_problem_modal"));
+    };
+    update();
+    window.addEventListener("lms:draft-change", update);
+    window.addEventListener("storage", update);
+    return () => {
+      window.removeEventListener("lms:draft-change", update);
+      window.removeEventListener("storage", update);
+    };
+  }, []);
 
   const rows = practiceProblems || [];
 
@@ -1640,6 +1800,61 @@ function PracticeProblemsView({
 
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      {/* Dedicated In-Section Active Draft Banner */}
+      {problemDraft && hasDraftContent(problemDraft) && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-200/90 dark:border-indigo-800/40 bg-gradient-to-r from-indigo-50/90 via-violet-50/80 to-purple-50/90 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-[#161329] p-4 sm:p-5 shadow-sm animate-in fade-in-0 slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/25">
+              <Code2 className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#121620]" />
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <span className="inline-flex items-center gap-1 rounded-md bg-indigo-600/10 dark:bg-indigo-400/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  Unfinished Problem Draft
+                </span>
+                <span className="flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-slate-400">
+                  <Clock3 className="h-3 w-3" />
+                  Saved {formatTimeAgo(problemDraft.timestamp)}
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                Continue editing: <span className="text-indigo-600 dark:text-indigo-300 font-semibold">"{problemDraft.title || "Untitled Practice Problem"}"</span>
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                You were creating a challenge in this section. Pick up right where you left off.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={() => {
+                clearDraft("practice_problem");
+                clearDraft("practice_problem_modal");
+                setProblemDraft(null);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50/80 dark:hover:bg-rose-950/30 transition cursor-pointer shadow-xs"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Discard draft</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateNew}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/25 transition cursor-pointer active:scale-95"
+            >
+              <span>Continue filling problem</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <SectionHeader
         section="practice_problems"
         description={sectionDescriptions.practice_problems}
@@ -1832,6 +2047,20 @@ function AssignmentsView({
   const [query, setQuery] = useState("");
   const [assignmentToDelete, setAssignmentToDelete] = useState<any | null>(null);
   const [isDeletingAssignment, setIsDeletingAssignment] = useState(false);
+  const [assignmentDraft, setAssignmentDraft] = useState(() => getDraft("assignment"));
+
+  useEffect(() => {
+    const update = () => {
+      setAssignmentDraft(getDraft("assignment"));
+    };
+    update();
+    window.addEventListener("lms:draft-change", update);
+    window.addEventListener("storage", update);
+    return () => {
+      window.removeEventListener("lms:draft-change", update);
+      window.removeEventListener("storage", update);
+    };
+  }, []);
 
   const rows = assignments;
   const filtered = rows.filter(
@@ -1894,6 +2123,60 @@ function AssignmentsView({
 
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      {/* Dedicated In-Section Active Draft Banner */}
+      {assignmentDraft && hasDraftContent(assignmentDraft) && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-200/90 dark:border-indigo-800/40 bg-gradient-to-r from-indigo-50/90 via-violet-50/80 to-purple-50/90 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-[#161329] p-4 sm:p-5 shadow-sm animate-in fade-in-0 slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/25">
+              <ClipboardCheck className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#121620]" />
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <span className="inline-flex items-center gap-1 rounded-md bg-indigo-600/10 dark:bg-indigo-400/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  Unfinished Assignment Draft
+                </span>
+                <span className="flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-slate-400">
+                  <Clock3 className="h-3 w-3" />
+                  Saved {formatTimeAgo(assignmentDraft.timestamp)}
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                Continue editing: <span className="text-indigo-600 dark:text-indigo-300 font-semibold">"{assignmentDraft.title || "Untitled Assignment"}"</span>
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                You were creating an assignment task. Pick up right where you left off.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={() => {
+                clearDraft("assignment");
+                setAssignmentDraft(null);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50/80 dark:hover:bg-rose-950/30 transition cursor-pointer shadow-xs"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Discard draft</span>
+            </button>
+            <button
+              type="button"
+              onClick={onCreateAssignment}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/25 transition cursor-pointer active:scale-95"
+            >
+              <span>Continue filling assignment</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <SectionHeader
         section="assignments"
         description={sectionDescriptions.assignments}
@@ -2225,6 +2508,20 @@ function RecordingsView({
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
   const [rows] = useState(recordingsData);
+  const [recordingDraft, setRecordingDraft] = useState(() => getDraft("upload_recording"));
+
+  useEffect(() => {
+    const update = () => {
+      setRecordingDraft(getDraft("upload_recording"));
+    };
+    update();
+    window.addEventListener("lms:draft-change", update);
+    window.addEventListener("storage", update);
+    return () => {
+      window.removeEventListener("lms:draft-change", update);
+      window.removeEventListener("storage", update);
+    };
+  }, []);
 
   const filtered = rows.filter(
     (item) =>
@@ -2234,6 +2531,60 @@ function RecordingsView({
 
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      {/* Dedicated In-Section Active Draft Banner */}
+      {recordingDraft && hasDraftContent(recordingDraft) && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-200/90 dark:border-indigo-800/40 bg-gradient-to-r from-indigo-50/90 via-violet-50/80 to-purple-50/90 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-[#161329] p-4 sm:p-5 shadow-sm animate-in fade-in-0 slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/25">
+              <PlayCircle className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#121620]" />
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <span className="inline-flex items-center gap-1 rounded-md bg-indigo-600/10 dark:bg-indigo-400/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  Unfinished Recording Upload Draft
+                </span>
+                <span className="flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-slate-400">
+                  <Clock3 className="h-3 w-3" />
+                  Saved {formatTimeAgo(recordingDraft.timestamp)}
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                Continue editing: <span className="text-indigo-600 dark:text-indigo-300 font-semibold">"{recordingDraft.title || "Untitled Recording"}"</span>
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                You were uploading a lecture recording. Pick up right where you left off.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={() => {
+                clearDraft("upload_recording");
+                setRecordingDraft(null);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50/80 dark:hover:bg-rose-950/30 transition cursor-pointer shadow-xs"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Discard draft</span>
+            </button>
+            <button
+              type="button"
+              onClick={onUploadRecording}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/25 transition cursor-pointer active:scale-95"
+            >
+              <span>Continue upload</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <SectionHeader
         section="recordings"
         description={sectionDescriptions.recordings}
@@ -3944,6 +4295,30 @@ export default function Home() {
       />
     );
 
+  const handleResumeDraft = (type: DraftType) => {
+    switch (type) {
+      case "course":
+        handleOpenCourseBuilder();
+        break;
+      case "assignment":
+        handleOpenAssignmentBuilder();
+        break;
+      case "practice_problem":
+      case "practice_problem_modal":
+        handleOpenPracticeProblemBuilder();
+        break;
+      case "schedule_session":
+        handleOpenScheduleSession();
+        break;
+      case "upload_recording":
+        handleOpenUploadRecording();
+        break;
+      default:
+        handleOpenCourseBuilder();
+        break;
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="relative">
@@ -3961,6 +4336,12 @@ export default function Home() {
           </button>
           <AdminProfileDropdown variant="topbar" align="end" />
         </div>
+        
+        {/* Contextual / Global Unsaved Draft Banner */}
+        <div className="px-5 pt-4 sm:px-8 empty:hidden">
+          <ActiveDraftBanner currentSection={section} onResume={handleResumeDraft} />
+        </div>
+
         {content}
         {dialog && (
           <Dialog
