@@ -2540,9 +2540,9 @@ function AnnouncementsView({
 
       {/* In-page Announcement Draft Banner */}
       {hasActiveAnnouncementDraft && onResumeDraft && (
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-pink-500/10 via-rose-500/5 to-transparent border border-pink-500/30 dark:border-pink-500/20 shadow-sm animate-in fade-in duration-300">
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-violet-500/5 to-transparent border border-indigo-500/30 dark:border-indigo-500/20 shadow-sm animate-in fade-in duration-300">
           <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-pink-500 text-white shadow-sm shadow-pink-500/30">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-600/30">
               <Megaphone className="h-4 w-4" />
             </div>
             <div>
@@ -2550,7 +2550,7 @@ function AnnouncementsView({
                 <p className="text-xs font-bold text-[var(--foreground)]">
                   Unsaved Announcement Draft
                 </p>
-                <span className="text-[10px] font-semibold text-pink-600 dark:text-pink-400 bg-pink-100/70 dark:bg-pink-950/60 px-2 py-0.5 rounded-full border border-pink-200 dark:border-pink-800">
+                <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-100/70 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
                   {formatTimeAgo(announcementDraft.timestamp)}
                 </span>
               </div>
@@ -2572,7 +2572,7 @@ function AnnouncementsView({
             </button>
             <button
               onClick={onResumeDraft}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold shadow-sm shadow-pink-600/20 transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-600/20 transition-all"
             >
               <span>Resume</span>
               <ArrowRight className="h-3.5 w-3.5" />
@@ -2611,7 +2611,7 @@ function AnnouncementsView({
       >
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300 mb-3 shadow-inner">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300 mb-3 shadow-inner">
               <Megaphone className="h-6 w-6" />
             </div>
             <h3 className="text-sm font-bold text-[var(--foreground)]">No announcements found</h3>
@@ -2622,7 +2622,7 @@ function AnnouncementsView({
             </p>
             <button
               onClick={onPostAnnouncement}
-              className="mt-4 px-4 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white shadow-md shadow-pink-600/20 flex items-center gap-1.5 transition-all"
+              className="mt-4 px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all"
             >
               <Plus className="h-4 w-4" /> Post announcement
             </button>
@@ -2637,7 +2637,7 @@ function AnnouncementsView({
                   item.isPinned && "bg-amber-500/[0.02]"
                 )}
               >
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300 border border-pink-200/50 dark:border-pink-800/50 shadow-sm">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50 shadow-sm">
                   <Megaphone className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
