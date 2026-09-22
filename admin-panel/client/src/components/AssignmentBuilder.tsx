@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Calendar,
@@ -88,6 +89,7 @@ interface CustomDropdownProps {
   menuClassName?: string;
   align?: "left" | "right";
   disabled?: boolean;
+  hasError?: boolean;
 }
 
 function CustomDropdown({
@@ -100,6 +102,7 @@ function CustomDropdown({
   menuClassName,
   align = "left",
   disabled = false,
+  hasError = false,
 }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -143,8 +146,12 @@ function CustomDropdown({
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn(
-          "w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2.5 hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all cursor-pointer shadow-xs select-none",
-          isOpen && "ring-2 ring-indigo-500/20 border-indigo-500 bg-white dark:bg-[#151926] shadow-sm",
+          "w-full rounded-2xl border px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2.5 hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all cursor-pointer shadow-xs select-none",
+          hasError
+            ? "border-rose-500 bg-rose-50/20 dark:bg-rose-950/20 ring-2 ring-rose-500/20 text-rose-900 dark:text-rose-200"
+            : "border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02]",
+          isOpen && !hasError && "ring-2 ring-indigo-500/20 border-indigo-500 bg-white dark:bg-[#151926] shadow-sm",
+          isOpen && hasError && "ring-2 ring-rose-500/30 border-rose-500 bg-white dark:bg-[#151926] shadow-sm",
           disabled && "opacity-50 cursor-not-allowed",
           buttonClassName
         )}
@@ -153,7 +160,8 @@ function CustomDropdown({
         <ChevronDown
           className={cn(
             "h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform duration-200",
-            isOpen && "rotate-180 text-indigo-600 dark:text-indigo-400"
+            isOpen && "rotate-180 text-indigo-600 dark:text-indigo-400",
+            hasError && "text-rose-500"
           )}
         />
       </button>
@@ -361,6 +369,175 @@ export default function AssignmentBuilder({
     }
   }, [availableModules, selectedCourseObj]);
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [stepErrorBanner, setStepErrorBanner] = useState<string | null>(null);
+
+  const clearError = (field: string) => {
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const copy = { ...prev };
+      delete copy[field];
+      return copy;
+    });
+    setStepErrorBanner(null);
+  };
+
+  const validateStep = (stepNumber: number, currentData: AssignmentData = data): { isValid: boolean; errors: Record<string, string>; message?: string } => {
+    const newErrors: Record<string, string> = {};
+    let message: string | undefined = undefined;
+
+    switch (stepNumber) {
+      case 1:
+        if (!currentData.title || !currentData.title.trim()) {
+          newErrors.title = "Assignment title is required";
+        }
+        if (!currentData.description || !currentData.description.trim()) {
+          newErrors.description = "Assignment description is required";
+        }
+        if (!currentData.instructions || !currentData.instructions.trim()) {
+          newErrors.instructions = "Instructions are required";
+        }
+        break;
+
+      case 2:
+        if (!currentData.course || !currentData.course.trim()) {
+          newErrors.course = "Please select a target course";
+        }
+        if (availableModules.length > 0 && (!currentData.module || !currentData.module.trim())) {
+          newErrors.module = "Please select a target module";
+        }
+        break;
+
+      case 3:
+        if (!currentData.problemsList || currentData.problemsList.length === 0) {
+          newErrors.problemsList = "Please add at least one problem to the assignment";
+          message = "Please add at least one practice problem before proceeding.";
+        }
+        break;
+
+      case 4:
+        if (!currentData.releaseDate || !currentData.releaseDate.trim()) {
+          newErrors.releaseDate = "Assignment start date is required";
+        }
+        if (!currentData.deadline || !currentData.deadline.trim()) {
+          newErrors.deadline = "Submission deadline date is required";
+        }
+        break;
+
+      case 5:
+        // Resources: Optional
+        break;
+
+      case 6:
+        if (!currentData.submissionTypes || currentData.submissionTypes.length === 0) {
+          newErrors.submissionTypes = "Please select at least one submission format";
+          message = "Please select at least one submission format before proceeding.";
+        }
+        break;
+
+      case 7:
+        if (
+          currentData.totalMarks === undefined ||
+          currentData.totalMarks === null ||
+          isNaN(Number(currentData.totalMarks)) ||
+          Number(currentData.totalMarks) <= 0
+        ) {
+          newErrors.totalMarks = "Total marks must be greater than 0";
+        }
+        if (
+          currentData.passingMarks === undefined ||
+          currentData.passingMarks === null ||
+          isNaN(Number(currentData.passingMarks)) ||
+          Number(currentData.passingMarks) < 0
+        ) {
+          newErrors.passingMarks = "Passing marks cannot be negative";
+        } else if (Number(currentData.passingMarks) > Number(currentData.totalMarks)) {
+          newErrors.passingMarks = "Passing marks cannot exceed total marks";
+        }
+        break;
+
+      case 8:
+        if (!currentData.targetCohort || !currentData.targetCohort.trim()) {
+          newErrors.targetCohort = "Target cohort is required";
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    return {
+      isValid: Object.keys(newErrors).length === 0,
+      errors: newErrors,
+      message,
+    };
+  };
+
+  const handleNextStep = () => {
+    const result = validateStep(activeStep, data);
+    if (!result.isValid) {
+      setErrors(result.errors);
+      if (result.message) {
+        setStepErrorBanner(result.message);
+      } else {
+        setStepErrorBanner("Please fill in all required fields marked with * before continuing.");
+      }
+      return;
+    }
+    setErrors({});
+    setStepErrorBanner(null);
+    setActiveStep((s) => Math.min(8, s + 1));
+  };
+
+  const handleStepTabClick = (targetStep: number) => {
+    if (targetStep === activeStep) return;
+    if (targetStep < activeStep) {
+      setErrors({});
+      setStepErrorBanner(null);
+      setActiveStep(targetStep);
+      return;
+    }
+
+    // Validate preceding steps before jumping forward
+    for (let s = 1; s < targetStep; s++) {
+      const result = validateStep(s, data);
+      if (!result.isValid) {
+        setErrors(result.errors);
+        if (result.message) {
+          setStepErrorBanner(result.message);
+        } else {
+          setStepErrorBanner(`Please complete step ${s} (${STEPS[s - 1].label}) required fields first.`);
+        }
+        setActiveStep(s);
+        return;
+      }
+    }
+
+    setErrors({});
+    setStepErrorBanner(null);
+    setActiveStep(targetStep);
+  };
+
+  const handlePublishClick = () => {
+    for (let s = 1; s <= 8; s++) {
+      const result = validateStep(s, data);
+      if (!result.isValid) {
+        setErrors(result.errors);
+        if (result.message) {
+          setStepErrorBanner(result.message);
+        } else {
+          setStepErrorBanner(`Please complete required fields in step ${s} (${STEPS[s - 1].label}) before publishing.`);
+        }
+        setActiveStep(s);
+        return;
+      }
+    }
+
+    setErrors({});
+    setStepErrorBanner(null);
+    onPublish({ ...data, status: "Published" });
+  };
+
   const handleToggleProblem = (id: number) => {
     setProblemsBank((current) => {
       const updated = current.map((p) => (p.id === id ? { ...p, isAdded: !p.isAdded } : p));
@@ -371,6 +548,9 @@ export default function AssignmentBuilder({
         problemsCount: addedList.length,
         totalMarks: addedList.reduce((acc, p) => acc + p.points, 0) || 100,
       }));
+      if (addedList.length > 0) {
+        clearError("problemsList");
+      }
       return updated;
     });
   };
@@ -394,6 +574,7 @@ export default function AssignmentBuilder({
         totalMarks: addedList.reduce((acc, p) => acc + p.points, 0),
       };
     });
+    clearError("problemsList");
     setIsAddModalOpen(false);
   };
 
@@ -412,11 +593,15 @@ export default function AssignmentBuilder({
   const toggleSubmissionType = (type: string) => {
     setData((prev) => {
       const exists = prev.submissionTypes.includes(type);
+      const updatedTypes = exists
+        ? prev.submissionTypes.filter((t) => t !== type)
+        : [...prev.submissionTypes, type];
+      if (updatedTypes.length > 0) {
+        clearError("submissionTypes");
+      }
       return {
         ...prev,
-        submissionTypes: exists
-          ? prev.submissionTypes.filter((t) => t !== type)
-          : [...prev.submissionTypes, type],
+        submissionTypes: updatedTypes,
       };
     });
   };
@@ -448,7 +633,7 @@ export default function AssignmentBuilder({
           </button>
           <button
             type="button"
-            onClick={() => onPublish({ ...data, status: "Published" })}
+            onClick={handlePublishClick}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
           >
             <Send className="h-3.5 w-3.5" />
@@ -503,7 +688,7 @@ export default function AssignmentBuilder({
                     <button
                       key={step.id}
                       type="button"
-                      onClick={() => setActiveStep(step.id)}
+                      onClick={() => handleStepTabClick(step.id)}
                       className={cn(
                         "relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0",
                         isActive
@@ -534,6 +719,20 @@ export default function AssignmentBuilder({
 
             {/* Active Step Form Card */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 sm:p-8 shadow-sm">
+              {stepErrorBanner && (
+                <div className="mb-6 p-4 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/80 dark:bg-rose-950/30 flex items-center gap-3 text-xs text-rose-800 dark:text-rose-300 font-semibold animate-in fade-in-0 duration-150">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                  <span className="flex-1">{stepErrorBanner}</span>
+                  <button
+                    type="button"
+                    onClick={() => setStepErrorBanner(null)}
+                    className="text-rose-500 hover:text-rose-700 dark:hover:text-rose-200 p-1 cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
               {/* Step 1: Basic Information */}
               {activeStep === 1 && (
                 <div className="space-y-6">
@@ -553,10 +752,24 @@ export default function AssignmentBuilder({
                     <input
                       type="text"
                       value={data.title}
-                      onChange={(e) => setData({ ...data, title: e.target.value })}
+                      onChange={(e) => {
+                        setData({ ...data, title: e.target.value });
+                        if (errors.title) clearError("title");
+                      }}
                       placeholder="Week 1 Assignment"
-                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
+                      className={cn(
+                        "w-full rounded-2xl border bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all font-medium",
+                        errors.title
+                          ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20 dark:bg-rose-950/20"
+                          : "border-slate-200/90 dark:border-white/10 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:ring-indigo-500/20"
+                      )}
                     />
+                    {errors.title && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                        <span>{errors.title}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -565,11 +778,25 @@ export default function AssignmentBuilder({
                     </label>
                     <textarea
                       value={data.description}
-                      onChange={(e) => setData({ ...data, description: e.target.value })}
+                      onChange={(e) => {
+                        setData({ ...data, description: e.target.value });
+                        if (errors.description) clearError("description");
+                      }}
                       placeholder="Practice arrays and problem-solving fundamentals."
                       rows={4}
-                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium resize-none"
+                      className={cn(
+                        "w-full rounded-2xl border bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all font-medium resize-none",
+                        errors.description
+                          ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20 dark:bg-rose-950/20"
+                          : "border-slate-200/90 dark:border-white/10 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:ring-indigo-500/20"
+                      )}
                     />
+                    {errors.description && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                        <span>{errors.description}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -578,11 +805,25 @@ export default function AssignmentBuilder({
                     </label>
                     <textarea
                       value={data.instructions}
-                      onChange={(e) => setData({ ...data, instructions: e.target.value })}
+                      onChange={(e) => {
+                        setData({ ...data, instructions: e.target.value });
+                        if (errors.instructions) clearError("instructions");
+                      }}
                       placeholder="Complete all problems and submit before the deadline."
                       rows={4}
-                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium resize-none"
+                      className={cn(
+                        "w-full rounded-2xl border bg-slate-50/50 dark:bg-white/[0.02] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all font-medium resize-none",
+                        errors.instructions
+                          ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20 dark:bg-rose-950/20"
+                          : "border-slate-200/90 dark:border-white/10 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:ring-indigo-500/20"
+                      )}
                     />
+                    {errors.instructions && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                        <span>{errors.instructions}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -615,23 +856,35 @@ export default function AssignmentBuilder({
                             .filter(Boolean);
                           const modName = mods.length > 0 ? mods[0] : "";
                           setData((prev) => ({ ...prev, course: val, module: modName }));
+                          if (errors.course) clearError("course");
+                          if (errors.module && modName) clearError("module");
                         }}
                         options={courseNames}
                         placeholder={courseNames.length > 0 ? "Select Target Course" : "No courses available on Admin Panel"}
                         disabled={courseNames.length === 0}
+                        hasError={!!errors.course}
                         className="w-full"
                         buttonClassName="w-full py-3.5 px-4 text-xs font-semibold min-h-[48px]"
                         menuClassName="w-full min-w-full"
                       />
+                      {errors.course && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                          <span>{errors.course}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
-                        Target Module <span className="text-rose-500">*</span>
+                        Target Module {availableModules.length > 0 && <span className="text-rose-500">*</span>}
                       </label>
                       <CustomDropdown
                         value={data.module}
-                        onChange={(val) => setData((prev) => ({ ...prev, module: val }))}
+                        onChange={(val) => {
+                          setData((prev) => ({ ...prev, module: val }));
+                          if (errors.module) clearError("module");
+                        }}
                         options={availableModules}
                         placeholder={
                           availableModules.length > 0
@@ -641,11 +894,18 @@ export default function AssignmentBuilder({
                             : "Select a course first"
                         }
                         disabled={availableModules.length === 0}
+                        hasError={!!errors.module}
                         className="w-full"
                         buttonClassName="w-full py-3.5 px-4 text-xs font-semibold min-h-[48px]"
                         menuClassName="w-full min-w-full"
                       />
-                      {data.course && availableModules.length === 0 && (
+                      {errors.module && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                          <span>{errors.module}</span>
+                        </div>
+                      )}
+                      {data.course && availableModules.length === 0 && !errors.module && (
                         <p className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400">
                           Note: This course currently has no curriculum modules added. You can add modules in Course Builder.
                         </p>
@@ -700,10 +960,10 @@ export default function AssignmentBuilder({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                        Assignment Problems
+                        Assignment Problems <span className="text-rose-500">*</span>
                       </h2>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        Select and order existing practice problems.
+                        Select and order practice problems. (At least 1 problem required)
                       </p>
                     </div>
 
@@ -716,6 +976,13 @@ export default function AssignmentBuilder({
                       <span>Add existing problem</span>
                     </button>
                   </div>
+
+                  {errors.problemsList && (
+                    <div className="p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/60 dark:bg-rose-950/30 flex items-center gap-2.5 text-xs text-rose-700 dark:text-rose-300 font-semibold animate-in fade-in-0">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
+                      <span>{errors.problemsList}</span>
+                    </div>
+                  )}
 
                   {/* Search and Filters Bar */}
                   <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
@@ -847,18 +1114,32 @@ export default function AssignmentBuilder({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
-                          Assignment Start Date
+                          Assignment Start Date <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative flex items-center">
                           <input
                             type="text"
                             value={data.releaseDate}
-                            onChange={(e) => setData({ ...data, releaseDate: e.target.value })}
+                            onChange={(e) => {
+                              setData({ ...data, releaseDate: e.target.value });
+                              if (errors.releaseDate) clearError("releaseDate");
+                            }}
                             placeholder="15-09-2026"
-                            className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
+                            className={cn(
+                              "w-full rounded-2xl border bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all font-medium",
+                              errors.releaseDate
+                                ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20 dark:bg-rose-950/20"
+                                : "border-slate-200/90 dark:border-white/10 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:ring-indigo-500/20"
+                            )}
                           />
                           <Calendar className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
                         </div>
+                        {errors.releaseDate && (
+                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                            <span>{errors.releaseDate}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -882,18 +1163,32 @@ export default function AssignmentBuilder({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
-                          Submission Deadline
+                          Submission Deadline <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative flex items-center">
                           <input
                             type="text"
                             value={data.deadline}
-                            onChange={(e) => setData({ ...data, deadline: e.target.value })}
+                            onChange={(e) => {
+                              setData({ ...data, deadline: e.target.value });
+                              if (errors.deadline) clearError("deadline");
+                            }}
                             placeholder="22-09-2026"
-                            className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium"
+                            className={cn(
+                              "w-full rounded-2xl border bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all font-medium",
+                              errors.deadline
+                                ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20 dark:bg-rose-950/20"
+                                : "border-slate-200/90 dark:border-white/10 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:ring-indigo-500/20"
+                            )}
                           />
                           <Calendar className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
                         </div>
+                        {errors.deadline && (
+                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                            <span>{errors.deadline}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -1013,7 +1308,7 @@ export default function AssignmentBuilder({
                         <button
                           type="button"
                           onClick={() => setData({ ...data, resources: data.resources.filter((r) => r.id !== res.id) })}
-                          className="text-slate-400 hover:text-rose-500"
+                          className="text-slate-400 hover:text-rose-500 cursor-pointer"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -1028,12 +1323,19 @@ export default function AssignmentBuilder({
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                      Submission Settings
+                      Submission Settings <span className="text-rose-500">*</span>
                     </h2>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Select what format learners can use to submit their work.
+                      Select what format learners can use to submit their work. (At least 1 format required)
                     </p>
                   </div>
+
+                  {errors.submissionTypes && (
+                    <div className="p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/60 dark:bg-rose-950/30 flex items-center gap-2.5 text-xs text-rose-700 dark:text-rose-300 font-semibold animate-in fade-in-0">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
+                      <span>{errors.submissionTypes}</span>
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     {[
@@ -1095,9 +1397,23 @@ export default function AssignmentBuilder({
                       <input
                         type="number"
                         value={data.totalMarks}
-                        onChange={(e) => setData({ ...data, totalMarks: Number(e.target.value) })}
-                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-bold"
+                        onChange={(e) => {
+                          setData({ ...data, totalMarks: Number(e.target.value) });
+                          if (errors.totalMarks) clearError("totalMarks");
+                        }}
+                        className={cn(
+                          "w-full rounded-2xl border bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-bold",
+                          errors.totalMarks
+                            ? "border-rose-500 focus:border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/20 dark:bg-rose-950/20"
+                            : "border-slate-200/90 dark:border-white/10 focus:border-indigo-500"
+                        )}
                       />
+                      {errors.totalMarks && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                          <span>{errors.totalMarks}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -1107,9 +1423,23 @@ export default function AssignmentBuilder({
                       <input
                         type="number"
                         value={data.passingMarks}
-                        onChange={(e) => setData({ ...data, passingMarks: Number(e.target.value) })}
-                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-bold"
+                        onChange={(e) => {
+                          setData({ ...data, passingMarks: Number(e.target.value) });
+                          if (errors.passingMarks) clearError("passingMarks");
+                        }}
+                        className={cn(
+                          "w-full rounded-2xl border bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-bold",
+                          errors.passingMarks
+                            ? "border-rose-500 focus:border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/20 dark:bg-rose-950/20"
+                            : "border-slate-200/90 dark:border-white/10 focus:border-indigo-500"
+                        )}
                       />
+                      {errors.passingMarks && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                          <span>{errors.passingMarks}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1145,14 +1475,29 @@ export default function AssignmentBuilder({
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
-                      Target Cohort / Batch
+                      Target Cohort / Batch <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={data.targetCohort}
-                      onChange={(e) => setData({ ...data, targetCohort: e.target.value })}
-                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-medium"
+                      onChange={(e) => {
+                        setData({ ...data, targetCohort: e.target.value });
+                        if (errors.targetCohort) clearError("targetCohort");
+                      }}
+                      placeholder="e.g. All Enrolled Students, Batch 2026-A"
+                      className={cn(
+                        "w-full rounded-2xl border bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-medium",
+                        errors.targetCohort
+                          ? "border-rose-500 focus:border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/20 dark:bg-rose-950/20"
+                          : "border-slate-200/90 dark:border-white/10 focus:border-indigo-500"
+                      )}
                     />
+                    {errors.targetCohort && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                        <span>{errors.targetCohort}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] flex items-center justify-between">
@@ -1205,7 +1550,7 @@ export default function AssignmentBuilder({
                   {activeStep < 8 ? (
                     <button
                       type="button"
-                      onClick={() => setActiveStep((s) => Math.min(8, s + 1))}
+                      onClick={handleNextStep}
                       className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
                     >
                       <span>Continue</span>
@@ -1214,7 +1559,7 @@ export default function AssignmentBuilder({
                   ) : (
                     <button
                       type="button"
-                      onClick={() => onPublish({ ...data, status: "Published" })}
+                      onClick={handlePublishClick}
                       className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
                     >
                       <Send className="h-3.5 w-3.5" />
