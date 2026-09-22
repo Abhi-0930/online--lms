@@ -108,17 +108,28 @@ export function hasDraftContent(draft: StoredDraft | null): boolean {
   if (d.description && typeof d.description === "string" && d.description.trim().length > 0) return true;
   if (d.instructions && typeof d.instructions === "string" && d.instructions.trim().length > 0) return true;
   if (d.constraints && typeof d.constraints === "string" && d.constraints.trim().length > 0) return true;
+  if (d.companies && typeof d.companies === "string" && d.companies.trim().length > 0) return true;
+  if (d.editorialApproach && typeof d.editorialApproach === "string" && d.editorialApproach.trim().length > 0) return true;
+  if (d.editorialAlgorithm && typeof d.editorialAlgorithm === "string" && d.editorialAlgorithm.trim().length > 0) return true;
+  if (d.timeComplexity && typeof d.timeComplexity === "string" && d.timeComplexity.trim().length > 0) return true;
+  if (d.spaceComplexity && typeof d.spaceComplexity === "string" && d.spaceComplexity.trim().length > 0) return true;
   if (d.sampleInput && typeof d.sampleInput === "string" && d.sampleInput.trim().length > 0) return true;
+  if (d.sampleOutput && typeof d.sampleOutput === "string" && d.sampleOutput.trim().length > 0) return true;
   if (d.meetingLink && typeof d.meetingLink === "string" && d.meetingLink.trim().length > 0) return true;
   if (d.videoUrl && typeof d.videoUrl === "string" && d.videoUrl.trim().length > 0) return true;
   if (d.videoFileName && typeof d.videoFileName === "string" && d.videoFileName.trim().length > 0) return true;
   if (d.formTitle && typeof d.formTitle === "string" && d.formTitle.trim().length > 0) return true;
+  if (d.prerequisites && typeof d.prerequisites === "string" && d.prerequisites.trim().length > 0) return true;
+  if (d.targetAudience && typeof d.targetAudience === "string" && d.targetAudience.trim().length > 0) return true;
+  if (d.jsStarter || d.pyStarter || d.cppStarter) return true;
 
   // Check array fields
   if (Array.isArray(d.modules) && d.modules.length > 0) return true;
   if (Array.isArray(d.problemsList) && d.problemsList.length > 0) return true;
   if (Array.isArray(d.tags) && d.tags.length > 0) return true;
   if (Array.isArray(d.hints) && d.hints.some((h: any) => typeof h === "string" && h.trim().length > 0)) return true;
+  if (Array.isArray(d.learningOutcomes) && d.learningOutcomes.some((o: any) => typeof o === "string" && o.trim().length > 0)) return true;
+  if (Array.isArray(d.requirements) && d.requirements.some((r: any) => typeof r === "string" && r.trim().length > 0)) return true;
   if (
     Array.isArray(d.examples) &&
     d.examples.some((ex: any) => ex?.input?.trim() || ex?.output?.trim() || ex?.explanation?.trim())
@@ -136,11 +147,18 @@ export function hasDraftContent(draft: StoredDraft | null): boolean {
       return true;
     }
   }
+  if (d.referenceSolution && typeof d.referenceSolution === "object") {
+    if (Object.values(d.referenceSolution).some((code: any) => typeof code === "string" && code.trim().length > 0)) {
+      return true;
+    }
+  }
 
+  // Fallback: check if title was customized
   return (
+    typeof draft.title === "string" &&
+    draft.title.trim().length > 0 &&
     draft.title !== `Untitled ${DRAFT_LABELS[draft.type]}` &&
-    !draft.title.startsWith("Untitled") &&
-    draft.title.trim().length > 0
+    !draft.title.startsWith("Untitled")
   );
 }
 
