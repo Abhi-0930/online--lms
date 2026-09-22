@@ -8,6 +8,7 @@ import AddContentModal, { ContentTypeOption } from "@/components/AddContentModal
 import PracticeProblemModal from "@/components/PracticeProblemModal";
 import PracticeProblemBuilder from "@/components/PracticeProblemBuilder";
 import PracticeProblemDetailView from "@/components/PracticeProblemDetailView";
+import PostAnnouncementModal, { AnnouncementItem } from "@/components/PostAnnouncementModal";
 import ActiveDraftBanner from "@/components/ActiveDraftBanner";
 import {
   DraftType,
@@ -58,9 +59,13 @@ import {
   LifeBuoy,
   ListChecks,
   Lock,
+  Mail,
+  Megaphone,
+  MessageSquare,
   MessageSquareText,
   MoreHorizontal,
   Palette,
+  Pin,
   PlayCircle,
   Plus,
   Save,
@@ -79,6 +84,7 @@ import {
   Users,
   Video,
   X,
+  ExternalLink,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useRef } from "react";
 
@@ -2483,37 +2489,104 @@ function SubmissionsView({
   );
 }
 
-function AnnouncementsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
+function AnnouncementsView({
+  onToast,
+  announcements = [],
+  onPostAnnouncement,
+  onEditAnnouncement,
+  onDeleteAnnouncement,
+  onResumeDraft,
+}: {
+  onToast: (message: string) => void;
+  announcements: AnnouncementItem[];
+  onPostAnnouncement: () => void;
+  onEditAnnouncement: (ann: AnnouncementItem) => void;
+  onDeleteAnnouncement: (id: string | number) => void;
+  onResumeDraft?: () => void;
+}) {
   const [filter, setFilter] = useState("All");
-  const [rows] = useState<any[]>(announcementsData);
-  const filtered = rows.filter((item) => filter === "All" || item.status === filter);
+  const [query, setQuery] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | number | null>(null);
+
+  const announcementDraft = getDraft("announcement");
+  const hasActiveAnnouncementDraft = announcementDraft && hasDraftContent(announcementDraft);
+
+  const rows = announcements;
+  const filtered = rows.filter((item) => {
+    const matchesFilter =
+      filter === "All" ||
+      (filter === "Pinned" ? item.isPinned : item.status === filter);
+    const matchesQuery =
+      `${item.title || ""} ${item.cohort || ""} ${item.category || ""} ${item.author || ""}`
+        .toLowerCase()
+        .includes(query.toLowerCase());
+    return matchesFilter && matchesQuery;
+  });
 
   const publishedCount = rows.filter((r) => r.status === "Published").length;
   const draftCount = rows.filter((r) => r.status === "Draft").length;
+  const pinnedCount = rows.filter((r) => r.isPinned).length;
   const cohortCount = new Set(rows.map((r) => r.cohort).filter(Boolean)).size;
 
   return (
-    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9 space-y-6">
       <SectionHeader
         section="announcements"
         description={sectionDescriptions.announcements}
         actionLabel="Post announcement"
-        onAction={() =>
-          onAction({
-            title: "Broadcast announcement",
-            description: "Send push alerts, email digest, and in-app notices to selected student cohorts.",
-            fields: ["Title", "Target cohort", "Message", "Channels (Email/Telegram/In-app)"],
-          })
-        }
+        onAction={onPostAnnouncement}
         onExport={() => onToast("Announcements log exported")}
       />
+
+      {/* In-page Announcement Draft Banner */}
+      {hasActiveAnnouncementDraft && onResumeDraft && (
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-pink-500/10 via-rose-500/5 to-transparent border border-pink-500/30 dark:border-pink-500/20 shadow-sm animate-in fade-in duration-300">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-pink-500 text-white shadow-sm shadow-pink-500/30">
+              <Megaphone className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold text-[var(--foreground)]">
+                  Unsaved Announcement Draft
+                </p>
+                <span className="text-[10px] font-semibold text-pink-600 dark:text-pink-400 bg-pink-100/70 dark:bg-pink-950/60 px-2 py-0.5 rounded-full border border-pink-200 dark:border-pink-800">
+                  {formatTimeAgo(announcementDraft.timestamp)}
+                </span>
+              </div>
+              <p className="text-[11px] text-[var(--muted)] truncate max-w-md">
+                "{announcementDraft.title || "Untitled Announcement"}" — Click resume to continue broadcasting.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                clearDraft("announcement");
+                onToast("Announcement draft cleared");
+              }}
+              className="p-1.5 text-xs text-[var(--muted)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+              title="Discard draft"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={onResumeDraft}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold shadow-sm shadow-pink-600/20 transition-all"
+            >
+              <span>Resume</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <MetricStrip
         items={[
           { label: "Announcements sent", value: String(rows.length), change: rows.length > 0 ? "Total posted" : "No broadcasts" },
           { label: "Active cohorts reached", value: String(cohortCount), change: cohortCount > 0 ? "Delivered" : "None" },
           { label: "Published notices", value: String(publishedCount), change: "Live on portal" },
-          { label: "Draft announcements", value: String(draftCount), change: "Pending send" },
+          { label: "Pinned notices", value: String(pinnedCount), change: "Top highlight" },
         ]}
       />
 
@@ -2521,31 +2594,35 @@ function AnnouncementsView({ onAction, onToast }: { onAction: (state: DialogStat
         title="Broadcast center"
         subtitle="Platform news, batch updates, live session reminders, and schedule changes"
         toolbar={
-          <div className="flex items-center gap-2">
-            <CustomDropdown value={filter} onChange={setFilter} options={["All", "Published", "Draft"]} />
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--muted)]" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search announcements..."
+                className="h-8.5 w-48 sm:w-64 pl-8 pr-3 text-xs rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] focus:outline-none focus:border-[var(--brand)]"
+              />
+            </div>
+            <CustomDropdown value={filter} onChange={setFilter} options={["All", "Published", "Draft", "Pinned"]} />
           </div>
         }
       >
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300 mb-3">
-              <Send className="h-6 w-6" />
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300 mb-3 shadow-inner">
+              <Megaphone className="h-6 w-6" />
             </div>
-            <h3 className="text-sm font-bold text-[var(--foreground)]">No announcements yet</h3>
+            <h3 className="text-sm font-bold text-[var(--foreground)]">No announcements found</h3>
             <p className="mt-1 text-xs text-[var(--muted)] max-w-sm">
-              {filter !== "All"
-                ? "No announcements match your filter."
-                : "You haven't posted any announcements yet. Broadcast announcements will reach your cohorts in real time."}
+              {query || filter !== "All"
+                ? "No announcements match your search or filter."
+                : "You haven't posted any announcements yet. Create notices to broadcast updates, live sessions, and milestones to student cohorts."}
             </p>
             <button
-              onClick={() =>
-                onAction({
-                  title: "Broadcast announcement",
-                  description: "Send push alerts, email digest, and in-app notices to selected student cohorts.",
-                  fields: ["Title", "Target cohort", "Message", "Channels (Email/Telegram/In-app)"],
-                })
-              }
-              className="primary-button mt-4"
+              onClick={onPostAnnouncement}
+              className="mt-4 px-4 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white shadow-md shadow-pink-600/20 flex items-center gap-1.5 transition-all"
             >
               <Plus className="h-4 w-4" /> Post announcement
             </button>
@@ -2553,32 +2630,93 @@ function AnnouncementsView({ onAction, onToast }: { onAction: (state: DialogStat
         ) : (
           <div className="divide-y divide-[var(--app-line)]">
             {filtered.map((item) => (
-              <div key={item.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:px-6">
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300">
-                  <Send className="h-4 w-4" />
+              <div
+                key={item.id}
+                className={cn(
+                  "flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:px-6 hover:bg-[var(--subtle-bg)]/40 transition-colors",
+                  item.isPinned && "bg-amber-500/[0.02]"
+                )}
+              >
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300 border border-pink-200/50 dark:border-pink-800/50 shadow-sm">
+                  <Megaphone className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-[13px] font-bold">{item.title}</p>
+                    <p className="text-[13px] font-bold text-[var(--foreground)]">{item.title}</p>
                     <StatusBadge>{item.status}</StatusBadge>
+                    {item.category && (
+                      <span className="rounded-md bg-[var(--subtle-bg)] border border-[var(--app-line)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
+                        {item.category}
+                      </span>
+                    )}
+                    {item.isPinned && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/50">
+                        <Pin className="h-3 w-3 fill-amber-500 text-amber-500" /> Pinned
+                      </span>
+                    )}
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-[var(--muted)]">
-                    <span>Target: <strong className="text-[var(--app-ink)]">{item.cohort}</strong></span>
+
+                  {item.body && (
+                    <p className="mt-1.5 text-xs text-[var(--muted)] leading-relaxed line-clamp-2">
+                      {item.body}
+                    </p>
+                  )}
+
+                  <div className="mt-2.5 flex flex-wrap items-center gap-3 text-[11px] text-[var(--muted)]">
+                    <span>
+                      Target: <strong className="text-[var(--foreground)]">{item.cohort}</strong>
+                    </span>
                     <span>·</span>
                     <span>By {item.author}</span>
                     <span>·</span>
                     <span>{item.date}</span>
+                    {item.ctaLabel && (
+                      <>
+                        <span>·</span>
+                        <span className="text-[var(--brand)] font-semibold flex items-center gap-1">
+                          <ExternalLink className="h-3 w-3" /> CTA: {item.ctaLabel}
+                        </span>
+                      </>
+                    )}
                   </div>
-                  <p className="mt-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-                    Channels: {item.channels}
-                  </p>
+
+                  {item.channels && item.channels.length > 0 && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 mr-1">
+                        Channels:
+                      </span>
+                      {item.channels.map((ch: string) => (
+                        <span
+                          key={ch}
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[var(--input-bg)] text-[var(--muted)] border border-[var(--app-line)]"
+                        >
+                          {ch}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="flex items-center gap-2 self-start">
                   <button
                     onClick={() => onToast(`Announcement resent to ${item.cohort}`)}
                     className="secondary-button"
                   >
                     Resend
+                  </button>
+                  <button
+                    onClick={() => onEditAnnouncement(item)}
+                    className="p-1.5 text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-lg transition-colors"
+                    title="Edit announcement"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirmId(item.id)}
+                    className="p-1.5 text-[var(--muted)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                    title="Delete announcement"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
@@ -2586,6 +2724,22 @@ function AnnouncementsView({ onAction, onToast }: { onAction: (state: DialogStat
           </div>
         )}
       </DataCard>
+
+      {/* Delete Confirmation Dialog */}
+      <CustomConfirmDialog
+        isOpen={deleteConfirmId !== null}
+        title="Delete Announcement"
+        description="Are you sure you want to delete this announcement? It will be removed from all student feeds and notifications."
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteConfirmId !== null) {
+            onDeleteAnnouncement(deleteConfirmId);
+            setDeleteConfirmId(null);
+          }
+        }}
+        onClose={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 }
@@ -3639,6 +3793,44 @@ export default function Home() {
   const [isPracticeProblemBuilderOpen, setIsPracticeProblemBuilderOpen] = useState(false);
   const [editingProblemData, setEditingProblemData] = useState<Partial<PracticeProblem> | null>(null);
   const [viewingProblemData, setViewingProblemData] = useState<PracticeProblem | null>(null);
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+  const [editingAnnouncementData, setEditingAnnouncementData] = useState<AnnouncementItem | null>(null);
+  const [announcementsList, setAnnouncementsList] = useState<AnnouncementItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("lms_admin_announcements");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleSaveAnnouncement = (ann: AnnouncementItem) => {
+    setAnnouncementsList((prev) => {
+      const exists = prev.some((item) => String(item.id) === String(ann.id));
+      const next = exists
+        ? prev.map((item) => (String(item.id) === String(ann.id) ? ann : item))
+        : [ann, ...prev];
+      try {
+        localStorage.setItem("lms_admin_announcements", JSON.stringify(next));
+        window.dispatchEvent(new CustomEvent("lms_announcements_updated", { detail: next }));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleDeleteAnnouncement = (id: string | number) => {
+    setAnnouncementsList((prev) => {
+      const next = prev.filter((item) => String(item.id) !== String(id));
+      try {
+        localStorage.setItem("lms_admin_announcements", JSON.stringify(next));
+        window.dispatchEvent(new CustomEvent("lms_announcements_updated", { detail: next }));
+      } catch {}
+      return next;
+    });
+    onToast("Announcement deleted");
+  };
+
   const [dialog, setDialog] = useState<DialogState>(null);
   const [toast, setToast] = useState<string | null>(null);
   const {
@@ -4343,7 +4535,23 @@ export default function Home() {
         onRefresh={refresh}
       />
     ) : section === "announcements" ? (
-      <AnnouncementsView onAction={onAction} onToast={onToast} />
+      <AnnouncementsView
+        announcements={announcementsList}
+        onPostAnnouncement={() => {
+          setEditingAnnouncementData(null);
+          setIsAnnouncementModalOpen(true);
+        }}
+        onEditAnnouncement={(ann) => {
+          setEditingAnnouncementData(ann);
+          setIsAnnouncementModalOpen(true);
+        }}
+        onDeleteAnnouncement={handleDeleteAnnouncement}
+        onResumeDraft={() => {
+          setEditingAnnouncementData(null);
+          setIsAnnouncementModalOpen(true);
+        }}
+        onToast={onToast}
+      />
     ) : section === "live" || section === "live_sessions" ? (
       <LiveView onAction={onAction} onToast={onToast} onScheduleSession={handleOpenScheduleSession} />
     ) : section === "recordings" ? (
@@ -4407,6 +4615,10 @@ export default function Home() {
       case "upload_recording":
         handleOpenUploadRecording();
         break;
+      case "announcement":
+        setEditingAnnouncementData(null);
+        setIsAnnouncementModalOpen(true);
+        break;
       default:
         handleOpenCourseBuilder();
         break;
@@ -4437,6 +4649,19 @@ export default function Home() {
         </div>
 
         {content}
+
+        {/* Post / Edit Announcement Modal */}
+        <PostAnnouncementModal
+          isOpen={isAnnouncementModalOpen}
+          onClose={() => {
+            setIsAnnouncementModalOpen(false);
+            setEditingAnnouncementData(null);
+          }}
+          onSuccess={handleSaveAnnouncement}
+          onToast={onToast}
+          announcementToEdit={editingAnnouncementData}
+        />
+
         {dialog && (
           <Dialog
             state={dialog}
