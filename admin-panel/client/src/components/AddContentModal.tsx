@@ -17,7 +17,14 @@ import {
   Search,
   ChevronDown,
   Upload,
+  Sparkles,
 } from "lucide-react";
+import {
+  saveDraft,
+  getDraft,
+  clearDraft,
+  formatTimeAgo,
+} from "@/lib/draftManager";
 
 export interface ContentTypeOption {
   id: string;
@@ -235,6 +242,8 @@ export default function AddContentModal({
   const [formContentType, setFormContentType] = useState<string>("module");
   const [formAttachTo, setFormAttachTo] = useState<string>(availableCourses[0] || "General Library");
   const [formDescription, setFormDescription] = useState("");
+  const [isRestoredDraft, setIsRestoredDraft] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<number | null>(null);
 
   React.useEffect(() => {
     if (availableCourses.length > 0 && (!formAttachTo || formAttachTo === "General Library" || !availableCourses.includes(formAttachTo))) {
@@ -244,6 +253,63 @@ export default function AddContentModal({
   const [uploadedFileName, setUploadedFileName] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Restore draft if available when opening modal
+  React.useEffect(() => {
+    if (isOpen) {
+      const draft = getDraft<any>("add_content");
+      if (draft?.data && (draft.data.formTitle || draft.data.formDescription || draft.data.step === "create_form")) {
+        setStep(draft.data.step || "create_form");
+        setSelectedType(draft.data.selectedType || "module");
+        setFormContentType(draft.data.formContentType || "module");
+        setFormTitle(draft.data.formTitle || "");
+        setFormAttachTo(draft.data.formAttachTo || availableCourses[0] || "General Library");
+        setFormDescription(draft.data.formDescription || "");
+        setUploadedFileName(draft.data.uploadedFileName || "");
+        setIsRestoredDraft(true);
+        setLastSavedTime(draft.timestamp);
+      } else {
+        setIsRestoredDraft(false);
+        setLastSavedTime(null);
+      }
+    }
+  }, [isOpen]);
+
+  // Auto-save form state to draft
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const hasData = Boolean(formTitle.trim() || formDescription.trim() || uploadedFileName);
+    if (!hasData) return;
+
+    const timer = setTimeout(() => {
+      saveDraft(
+        "add_content",
+        {
+          step,
+          selectedType,
+          formContentType,
+          formAttachTo,
+          formTitle,
+          formDescription,
+          uploadedFileName,
+        },
+        { title: formTitle || `New Content Item` }
+      );
+      setLastSavedTime(Date.now());
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, step, selectedType, formContentType, formAttachTo, formTitle, formDescription, uploadedFileName]);
+
+  const handleDiscardDraft = () => {
+    clearDraft("add_content");
+    setFormTitle("");
+    setFormDescription("");
+    setUploadedFileName("");
+    setIsRestoredDraft(false);
+    setLastSavedTime(null);
+    setStep("select_type");
+  };
 
   const filteredTypes = useMemo(() => {
     if (!searchQuery.trim()) return CONTENT_TYPES;
@@ -308,6 +374,7 @@ export default function AddContentModal({
 
   const handleFinalSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    clearDraft("add_content");
     const typeOption = CONTENT_TYPES.find((t) => t.id === formContentType) || currentTypeOption;
     const finalTitle = formTitle.trim() || `${typeOption.title} - ${formAttachTo}`;
 
@@ -552,6 +619,25 @@ export default function AddContentModal({
           {step === "create_form" && (
             <form onSubmit={handleFinalSubmit} className="flex flex-col flex-1 min-h-0">
               <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+                {/* Restored Draft Alert Banner */}
+                {isRestoredDraft && (
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-indigo-200/90 bg-indigo-50/80 dark:border-indigo-900/40 dark:bg-indigo-950/30 px-4 py-2.5 shadow-xs">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                      <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                        Draft Restored {lastSavedTime && `(${formatTimeAgo(lastSavedTime)})`}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDiscardDraft}
+                      className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+                    >
+                      Start fresh
+                    </button>
+                  </div>
+                )}
+
                 {/* Back to content types selector */}
                 <button
                   type="button"
