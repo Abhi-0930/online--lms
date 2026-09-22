@@ -167,11 +167,7 @@ const practiceProblemsData: PracticeProblem[] = [];
 const assignmentsData: any[] = [];
 const submissionsData: any[] = [];
 
-const announcementsData = [
-  { id: 1, title: "🚀 Live System Design Mock Interview with FAANG Staff Engineer", cohort: "Spring Cohort & Placement Prep", date: "Today, 10:00 AM", author: "Admin Team", channels: "Email · App Notification · Telegram", status: "Published" },
-  { id: 2, title: "📢 Graph Algorithms Marathon - 48h Coding Sprint Announcement", cohort: "DSA Placement Program", date: "Yesterday", author: "Arjun Mehta", channels: "App Notification · Portal Banner", status: "Published" },
-  { id: 3, title: "🛠️ Scheduled Platform Maintenance on Sunday 2:00 AM - 4:00 AM IST", cohort: "All Learners", date: "Sep 14, 2026", author: "DevOps Team", channels: "Email · Portal Banner", status: "Published" },
-];
+const announcementsData: any[] = [];
 
 const recordingsData = [
   { id: 1, title: "Graphs: BFS, DFS & Cycle Detection in Directed Graphs", instructor: "Arjun Mehta", course: "DSA Mastery", date: "Sep 15, 2026", duration: "1h 45m", views: 248, status: "Ready" },
@@ -2489,8 +2485,12 @@ function SubmissionsView({
 
 function AnnouncementsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
   const [filter, setFilter] = useState("All");
-  const [rows] = useState(announcementsData);
+  const [rows] = useState<any[]>(announcementsData);
   const filtered = rows.filter((item) => filter === "All" || item.status === filter);
+
+  const publishedCount = rows.filter((r) => r.status === "Published").length;
+  const draftCount = rows.filter((r) => r.status === "Draft").length;
+  const cohortCount = new Set(rows.map((r) => r.cohort).filter(Boolean)).size;
 
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
@@ -2510,10 +2510,10 @@ function AnnouncementsView({ onAction, onToast }: { onAction: (state: DialogStat
 
       <MetricStrip
         items={[
-          { label: "Announcements sent", value: "38", change: "+4 this month" },
-          { label: "Active cohorts reached", value: "4", change: "100% delivered" },
-          { label: "Avg. open rate", value: "94.2%", change: "+6.1%" },
-          { label: "Pinned notices", value: "2", change: "Live on portal" },
+          { label: "Announcements sent", value: String(rows.length), change: rows.length > 0 ? "Total posted" : "No broadcasts" },
+          { label: "Active cohorts reached", value: String(cohortCount), change: cohortCount > 0 ? "Delivered" : "None" },
+          { label: "Published notices", value: String(publishedCount), change: "Live on portal" },
+          { label: "Draft announcements", value: String(draftCount), change: "Pending send" },
         ]}
       />
 
@@ -2526,39 +2526,65 @@ function AnnouncementsView({ onAction, onToast }: { onAction: (state: DialogStat
           </div>
         }
       >
-        <div className="divide-y divide-[var(--app-line)]">
-          {filtered.map((item) => (
-            <div key={item.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:px-6">
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300">
-                <Send className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[13px] font-bold">{item.title}</p>
-                  <StatusBadge>{item.status}</StatusBadge>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-[var(--muted)]">
-                  <span>Target: <strong className="text-[var(--app-ink)]">{item.cohort}</strong></span>
-                  <span>·</span>
-                  <span>By {item.author}</span>
-                  <span>·</span>
-                  <span>{item.date}</span>
-                </div>
-                <p className="mt-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-                  Channels: {item.channels}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => onToast(`Announcement resent to ${item.cohort}`)}
-                  className="secondary-button"
-                >
-                  Resend
-                </button>
-              </div>
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300 mb-3">
+              <Send className="h-6 w-6" />
             </div>
-          ))}
-        </div>
+            <h3 className="text-sm font-bold text-[var(--foreground)]">No announcements yet</h3>
+            <p className="mt-1 text-xs text-[var(--muted)] max-w-sm">
+              {filter !== "All"
+                ? "No announcements match your filter."
+                : "You haven't posted any announcements yet. Broadcast announcements will reach your cohorts in real time."}
+            </p>
+            <button
+              onClick={() =>
+                onAction({
+                  title: "Broadcast announcement",
+                  description: "Send push alerts, email digest, and in-app notices to selected student cohorts.",
+                  fields: ["Title", "Target cohort", "Message", "Channels (Email/Telegram/In-app)"],
+                })
+              }
+              className="primary-button mt-4"
+            >
+              <Plus className="h-4 w-4" /> Post announcement
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-[var(--app-line)]">
+            {filtered.map((item) => (
+              <div key={item.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:px-6">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300">
+                  <Send className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[13px] font-bold">{item.title}</p>
+                    <StatusBadge>{item.status}</StatusBadge>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-[var(--muted)]">
+                    <span>Target: <strong className="text-[var(--app-ink)]">{item.cohort}</strong></span>
+                    <span>·</span>
+                    <span>By {item.author}</span>
+                    <span>·</span>
+                    <span>{item.date}</span>
+                  </div>
+                  <p className="mt-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                    Channels: {item.channels}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onToast(`Announcement resent to ${item.cohort}`)}
+                    className="secondary-button"
+                  >
+                    Resend
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </DataCard>
     </div>
   );
