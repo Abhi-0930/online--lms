@@ -5,7 +5,8 @@ export type DraftType =
   | "assignment"
   | "schedule_session"
   | "upload_recording"
-  | "add_content";
+  | "add_content"
+  | "announcement";
 
 export interface StoredDraft<T = any> {
   type: DraftType;
@@ -26,6 +27,7 @@ export const DRAFT_KEYS: Record<DraftType, string> = {
   schedule_session: `${DRAFT_STORAGE_PREFIX}schedule_session`,
   upload_recording: `${DRAFT_STORAGE_PREFIX}upload_recording`,
   add_content: `${DRAFT_STORAGE_PREFIX}add_content`,
+  announcement: `${DRAFT_STORAGE_PREFIX}announcement`,
 };
 
 export const DRAFT_LABELS: Record<DraftType, string> = {
@@ -36,6 +38,7 @@ export const DRAFT_LABELS: Record<DraftType, string> = {
   schedule_session: "Live Session Schedule",
   upload_recording: "Lecture Recording",
   add_content: "Content Item",
+  announcement: "Broadcast Announcement",
 };
 
 export function saveDraft<T = any>(
@@ -173,6 +176,7 @@ export function getAllDrafts(): StoredDraft[] {
     "schedule_session",
     "upload_recording",
     "add_content",
+    "announcement",
   ];
 
   for (const type of types) {
@@ -193,6 +197,7 @@ export function isDraftForSection(type: DraftType, section: string = ""): boolea
   if ((s.includes("session") || s === "live" || s.includes("schedule")) && type === "schedule_session") return true;
   if ((s.includes("recording") || s.includes("upload")) && type === "upload_recording") return true;
   if (s.includes("content") && (type === "add_content" || type === "course")) return true;
+  if (s.includes("announcement") && type === "announcement") return true;
   return false;
 }
 
