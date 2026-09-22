@@ -124,10 +124,10 @@ export default function PracticeProblemModal({
   // Auto-save modal draft
   useEffect(() => {
     if (!isOpen || problemToEdit) return;
-    const hasData = Boolean(title.trim() || description.trim() || sampleInput.trim());
+    const hasData = Boolean(title.trim() || description.trim() || sampleInput.trim() || constraints.trim());
     if (!hasData) return;
 
-    const timer = setTimeout(() => {
+    const performSave = () => {
       saveDraft(
         "practice_problem_modal",
         {
@@ -146,11 +146,16 @@ export default function PracticeProblemModal({
           pyStarter,
           cppStarter,
         },
-        { title: title || "Untitled Practice Problem" }
+        { title: title.trim() || "Untitled Practice Problem" }
       );
-    }, 400);
+    };
 
-    return () => clearTimeout(timer);
+    const timer = setTimeout(performSave, 250);
+
+    return () => {
+      clearTimeout(timer);
+      performSave();
+    };
   }, [
     isOpen,
     problemToEdit,
