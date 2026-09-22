@@ -23,6 +23,12 @@ import {
   Video,
   X,
 } from "lucide-react";
+import {
+  saveDraft,
+  getDraft,
+  clearDraft,
+  formatTimeAgo,
+} from "@/lib/draftManager";
 
 export interface SessionResourceItem {
   id: number;
@@ -325,41 +331,159 @@ export default function ScheduleSessionBuilder({
     return [];
   }, [activeCoursesList, availableCourses]);
 
+  // Check if a saved local draft exists (only if not editing an existing session by id)
+  const existingDraft = useMemo(() => {
+    if (initialData?.id) return null;
+    return getDraft<LiveSessionData>("schedule_session");
+  }, [initialData?.id]);
+
+  const [isRestoredFromDraft, setIsRestoredFromDraft] = useState<boolean>(() => {
+    if (initialData?.id) return false;
+    return Boolean(
+      existingDraft?.data &&
+        (existingDraft.data.title || existingDraft.data.description || existingDraft.data.meetingLink)
+    );
+  });
+
+  const [lastSavedTime, setLastSavedTime] = useState<number | null>(() => {
+    if (initialData?.id) return null;
+    return existingDraft?.timestamp || null;
+  });
+
   const [data, setData] = useState<LiveSessionData>(() => {
-    const initialCourse = initialData?.course || (courseNames.length > 0 ? courseNames[0] : "");
+    const initialCourse = initialData?.course || existingDraft?.data?.course || (courseNames.length > 0 ? courseNames[0] : "");
+    if (initialData) {
+      return {
+        id: initialData?.id,
+        title: initialData?.title || "",
+        instructor: initialData?.instructor || "Platform Admin",
+        sessionType: initialData?.sessionType || "Live Class",
+        description: initialData?.description || "",
+        course: initialCourse,
+        module: initialData?.module || "",
+        topic: initialData?.topic || "",
+        targetCohort: initialData?.targetCohort || "All Enrolled Students",
+        date: initialData?.date || new Date().toISOString().split("T")[0],
+        timezone: initialData?.timezone || "IST (UTC+5:30) - Asia/Kolkata",
+        startTime: initialData?.startTime || "18:00",
+        endTime: initialData?.endTime || "19:30",
+        platform: initialData?.platform || "Google Meet",
+        meetingLink: initialData?.meetingLink || "",
+        passcode: initialData?.passcode || "",
+        hostNotes: initialData?.hostNotes || "",
+        resources: initialData?.resources || [],
+        emailReminders: initialData?.emailReminders ?? true,
+        inAppNotifications: initialData?.inAppNotifications ?? true,
+        reminderSchedule: initialData?.reminderSchedule || "30 minutes before",
+        autoRecord: initialData?.autoRecord ?? true,
+        uploadRecording: initialData?.uploadRecording ?? true,
+        aiNotes: initialData?.aiNotes ?? true,
+        autoPublishRecording: initialData?.autoPublishRecording ?? false,
+        trackAttendance: initialData?.trackAttendance ?? true,
+        attendanceMethod: initialData?.attendanceMethod || "Automatic on join (min 15 mins)",
+        attendanceThreshold: initialData?.attendanceThreshold || "75%",
+        maxAttendees: initialData?.maxAttendees || "250",
+        visibility: initialData?.visibility || "All enrolled students",
+        status: initialData?.status || "Scheduled",
+      };
+    }
+    if (existingDraft?.data) {
+      return {
+        ...existingDraft.data,
+        course: existingDraft.data.course || initialCourse,
+      };
+    }
     return {
-      title: initialData?.title || "",
-      instructor: initialData?.instructor || "Platform Admin",
-      sessionType: initialData?.sessionType || "Live Class",
-      description: initialData?.description || "",
+      title: "",
+      instructor: "Platform Admin",
+      sessionType: "Live Class",
+      description: "",
       course: initialCourse,
-      module: initialData?.module || "",
-      topic: initialData?.topic || "",
-      targetCohort: initialData?.targetCohort || "All Enrolled Students",
-      date: initialData?.date || new Date().toISOString().split("T")[0],
-      timezone: initialData?.timezone || "IST (UTC+5:30) - Asia/Kolkata",
-      startTime: initialData?.startTime || "18:00",
-      endTime: initialData?.endTime || "19:30",
-      platform: initialData?.platform || "Google Meet",
-      meetingLink: initialData?.meetingLink || "",
-      passcode: initialData?.passcode || "",
-      hostNotes: initialData?.hostNotes || "",
-      resources: initialData?.resources || [],
-      emailReminders: initialData?.emailReminders ?? true,
-      inAppNotifications: initialData?.inAppNotifications ?? true,
-      reminderSchedule: initialData?.reminderSchedule || "30 minutes before",
-      autoRecord: initialData?.autoRecord ?? true,
-      uploadRecording: initialData?.uploadRecording ?? true,
-      aiNotes: initialData?.aiNotes ?? true,
-      autoPublishRecording: initialData?.autoPublishRecording ?? false,
-      trackAttendance: initialData?.trackAttendance ?? true,
-      attendanceMethod: initialData?.attendanceMethod || "Automatic on join (min 15 mins)",
-      attendanceThreshold: initialData?.attendanceThreshold || "75%",
-      maxAttendees: initialData?.maxAttendees || "250",
-      visibility: initialData?.visibility || "All enrolled students",
-      status: initialData?.status || "Scheduled",
+      module: "",
+      topic: "",
+      targetCohort: "All Enrolled Students",
+      date: new Date().toISOString().split("T")[0],
+      timezone: "IST (UTC+5:30) - Asia/Kolkata",
+      startTime: "18:00",
+      endTime: "19:30",
+      platform: "Google Meet",
+      meetingLink: "",
+      passcode: "",
+      hostNotes: "",
+      resources: [],
+      emailReminders: true,
+      inAppNotifications: true,
+      reminderSchedule: "30 minutes before",
+      autoRecord: true,
+      uploadRecording: true,
+      aiNotes: true,
+      autoPublishRecording: false,
+      trackAttendance: true,
+      attendanceMethod: "Automatic on join (min 15 mins)",
+      attendanceThreshold: "75%",
+      maxAttendees: "250",
+      visibility: "All enrolled students",
+      status: "Scheduled",
     };
   });
+
+  // Auto-save form state to local draft when creating a new session
+  useEffect(() => {
+    if (data.id) return; // Do not overwrite drafts when editing an established session
+    const hasData = Boolean(
+      data.title.trim() ||
+        data.description.trim() ||
+        data.meetingLink.trim()
+    );
+    if (!hasData) return;
+
+    const timer = setTimeout(() => {
+      saveDraft("schedule_session", data, {
+        title: data.title || "Untitled Live Session",
+      });
+      setLastSavedTime(Date.now());
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [data]);
+
+  const handleDiscardDraft = () => {
+    clearDraft("schedule_session");
+    setData({
+      title: "",
+      instructor: "Platform Admin",
+      sessionType: "Live Class",
+      description: "",
+      course: courseNames[0] || "",
+      module: "",
+      topic: "",
+      targetCohort: "All Enrolled Students",
+      date: new Date().toISOString().split("T")[0],
+      timezone: "IST (UTC+5:30) - Asia/Kolkata",
+      startTime: "18:00",
+      endTime: "19:30",
+      platform: "Google Meet",
+      meetingLink: "",
+      passcode: "",
+      hostNotes: "",
+      resources: [],
+      emailReminders: true,
+      inAppNotifications: true,
+      reminderSchedule: "30 minutes before",
+      autoRecord: true,
+      uploadRecording: true,
+      aiNotes: true,
+      autoPublishRecording: false,
+      trackAttendance: true,
+      attendanceMethod: "Automatic on join (min 15 mins)",
+      attendanceThreshold: "75%",
+      maxAttendees: "250",
+      visibility: "All enrolled students",
+      status: "Scheduled",
+    });
+    setIsRestoredFromDraft(false);
+    setLastSavedTime(null);
+  };
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [newResourceName, setNewResourceName] = useState("");
@@ -500,7 +624,10 @@ export default function ScheduleSessionBuilder({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => onSaveDraft({ ...data, status: "Draft" })}
+            onClick={() => {
+              clearDraft("schedule_session");
+              onSaveDraft({ ...data, status: "Draft" });
+            }}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer shadow-xs"
           >
             <Save className="h-3.5 w-3.5" />
@@ -508,7 +635,10 @@ export default function ScheduleSessionBuilder({
           </button>
           <button
             type="button"
-            onClick={() => onSchedule({ ...data, status: "Scheduled" })}
+            onClick={() => {
+              clearDraft("schedule_session");
+              onSchedule({ ...data, status: "Scheduled" });
+            }}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
           >
             <Send className="h-3.5 w-3.5" />
@@ -526,6 +656,46 @@ export default function ScheduleSessionBuilder({
 
       {/* Main Form Container */}
       <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 py-7">
+        {/* Restored Draft Notification Banner */}
+        {isRestoredFromDraft && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200/80 bg-indigo-50/80 dark:border-indigo-900/40 dark:bg-indigo-950/30 px-5 py-3.5 shadow-sm animate-in fade-in-0 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Restored from auto-saved draft
+                  {lastSavedTime && (
+                    <span className="ml-2 text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                      ({formatTimeAgo(lastSavedTime)})
+                    </span>
+                  )}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Your previous progress has been automatically restored. You can continue editing or start fresh.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="rounded-xl border border-slate-200/80 bg-white dark:border-white/10 dark:bg-white/5 px-3 py-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer shadow-xs"
+              >
+                Start fresh
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRestoredFromDraft(false)}
+                className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition cursor-pointer shadow-xs"
+              >
+                Continue draft
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Title & Banner */}
         <div className="mb-6">
           <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">
