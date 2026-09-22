@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -34,6 +34,13 @@ import {
 import { PracticeProblem } from "@/hooks/useLiveAdminData";
 import CustomConfirmDialog from "@/components/CustomConfirmDialog";
 import { CompanySearchSelect } from "@/components/CompanySearchSelect";
+import {
+  saveDraft,
+  getDraft,
+  clearDraft,
+  formatTimeAgo,
+  hasDraftContent,
+} from "@/lib/draftManager";
 
 export interface ProblemExample {
   id: string;
@@ -175,9 +182,28 @@ export default function PracticeProblemBuilder({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Check if an unsaved draft exists
+  const existingDraft = useMemo(() => {
+    if (initialData?.id) return null;
+    return getDraft<PracticeProblemBuilderData>("practice_problem");
+  }, [initialData?.id]);
+
+  const [isRestoredFromDraft, setIsRestoredFromDraft] = useState<boolean>(() => {
+    if (initialData?.id) return false;
+    return Boolean(existingDraft?.data && hasDraftContent(existingDraft));
+  });
+
+  const [lastSavedTime, setLastSavedTime] = useState<number | null>(() => {
+    if (initialData?.id) return null;
+    return existingDraft?.timestamp || null;
+  });
+
   // Helper to parse existing raw problem description/examples if serialized
   const parsedDefaults = useMemo(() => {
-    if (!initialData) {
+    if (!initialData || !initialData.id) {
+      if (existingDraft?.data && hasDraftContent(existingDraft)) {
+        return existingDraft.data;
+      }
       return {
         title: "",
         difficulty: "Medium" as const,
@@ -438,11 +464,117 @@ export default function PracticeProblemBuilder({
     };
   };
 
+function checkHasProblemData(data: PracticeProblemBuilderData): boolean {
+  if (!data) return false;
+  return Boolean(
+    data.title?.trim() ||
+      data.statement?.trim() ||
+      data.constraints?.trim() ||
+      data.companies?.trim() ||
+      (data.tags && data.tags.length > 0) ||
+      (data.hints && data.hints.some((h) => h && h.trim())) ||
+      (data.examples && data.examples.some((ex) => ex?.input?.trim() || ex?.output?.trim() || ex?.explanation?.trim())) ||
+      (data.testCasesList && data.testCasesList.some((tc) => tc?.input?.trim() || tc?.expectedOutput?.trim())) ||
+      data.editorialApproach?.trim() ||
+      data.editorialAlgorithm?.trim() ||
+      data.timeComplexity?.trim() ||
+      data.spaceComplexity?.trim() ||
+      (data.starterCode && Object.values(data.starterCode).some((code) => typeof code === "string" && code.trim())) ||
+      (data.referenceSolution && Object.values(data.referenceSolution).some((code) => typeof code === "string" && code.trim()))
+  );
+}
+
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
+
+  const performSaveDraft = useCallback(() => {
+    if (initialData?.id) return;
+    const current = formDataRef.current;
+    if (!checkHasProblemData(current)) return;
+    saveDraft("practice_problem", current, {
+      title: current.title?.trim() || "Untitled Practice Problem",
+    });
+    setLastSavedTime(Date.now());
+  }, [initialData?.id]);
+
+  // Auto-save form state to local draft when creating a new problem (and immediately on unmount/navigation)
+  useEffect(() => {
+    if (initialData?.id) return;
+    if (!checkHasProblemData(formData)) return;
+
+    const timer = setTimeout(() => {
+      performSaveDraft();
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+      performSaveDraft();
+    };
+  }, [formData, initialData?.id, performSaveDraft]);
+
+  const handleDiscardDraft = () => {
+    clearDraft("practice_problem");
+    setIsRestoredFromDraft(false);
+    setLastSavedTime(null);
+    setFormData({
+      title: "",
+      difficulty: "Medium",
+      topic: "Arrays",
+      tags: [],
+      companies: "",
+      statement: "",
+      constraints: "",
+      examples: [
+        {
+          id: "ex-1",
+          input: "",
+          output: "",
+          explanation: "",
+        },
+      ],
+      hints: [""],
+      editorialApproach: "",
+      editorialAlgorithm: "",
+      timeComplexity: "",
+      spaceComplexity: "",
+      testCasesList: [
+        {
+          id: "tc-1",
+          input: "",
+          expectedOutput: "",
+        },
+      ],
+      starterCode: {
+        python: "",
+        javascript: "",
+        typescript: "",
+        java: "",
+        cpp: "",
+      },
+      referenceSolution: {
+        python: "",
+        javascript: "",
+        typescript: "",
+        java: "",
+        cpp: "",
+      },
+      estimatedSolveTime: "15 minutes",
+      visibility: "Public",
+      status: "Draft",
+      acceptanceRate: "0.0%",
+      submissionsCount: 0,
+      likesCount: 0,
+    });
+  };
+
   const handleSaveDraftAction = async () => {
     setIsSaving(true);
     try {
       const payload = buildPayload("Draft");
       await onSaveDraft(payload);
+      clearDraft("practice_problem");
+      setIsRestoredFromDraft(false);
+      setLastSavedTime(null);
     } finally {
       setIsSaving(false);
     }
@@ -453,6 +585,9 @@ export default function PracticeProblemBuilder({
     try {
       const payload = buildPayload("Live");
       await onPublish(payload);
+      clearDraft("practice_problem");
+      setIsRestoredFromDraft(false);
+      setLastSavedTime(null);
     } finally {
       setIsSaving(false);
     }
@@ -515,6 +650,30 @@ export default function PracticeProblemBuilder({
 
       {/* 2. MAIN BUILDER CONTAINER */}
       <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 py-6 space-y-6">
+        {/* Draft Auto-save / Restoration Banner */}
+        {!initialData?.id && (formData.title.trim() || formData.statement.trim() || isRestoredFromDraft) && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200/90 dark:border-amber-900/50 bg-amber-50/90 dark:bg-amber-950/40 px-4 py-2.5 text-xs text-amber-900 dark:text-amber-200 shadow-sm animate-in fade-in slide-in-from-top-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-amber-500 text-white shadow-xs">
+                <Sparkles className="h-3 w-3" />
+              </span>
+              <p className="truncate font-medium">
+                {isRestoredFromDraft ? "Restored from your unsaved draft" : "Auto-saving in progress"}
+                <span className="ml-1 text-amber-700 dark:text-amber-300 font-normal">
+                  {lastSavedTime ? `(Saved ${formatTimeAgo(lastSavedTime)})` : "· Saved locally"}
+                </span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="rounded-md px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 hover:text-rose-600 transition shrink-0 cursor-pointer"
+            >
+              Start fresh
+            </button>
+          </div>
+        )}
+
         {/* Title & Subtitle */}
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-3">
