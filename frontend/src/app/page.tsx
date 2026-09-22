@@ -22,6 +22,7 @@ import {
 import { COUNTRIES, DEFAULT_COUNTRY, type Country } from "@/lib/countries";
 import { CountryFlag } from "@/components/CountryFlag";
 import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
+import { useAuth } from "@/hooks/useAuth";
 
 function AuthForm({
   initialMode = "login",
@@ -30,6 +31,7 @@ function AuthForm({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setUser, refresh } = useAuth();
   const dataParam = searchParams?.get("data") || searchParams?.get("q");
 
   const decoded = decodeDataParam<{
@@ -222,14 +224,21 @@ function AuthForm({
 
       if (res.ok) {
         const resData = await res.json().catch(() => ({}));
-        const userObj = resData?.user || {
-          fullName: formData.fullName.trim() || formData.email.split("@")[0],
-          name: formData.fullName.trim() || formData.email.split("@")[0],
-          email: formData.email,
+        const rawUser = resData?.user || {};
+        const fallbackName = formData.fullName.trim() || formData.email.split("@")[0];
+        const userObj = {
+          ...rawUser,
+          id: rawUser.id || undefined,
+          email: rawUser.email || formData.email,
+          name: rawUser.name || rawUser.fullName || fallbackName,
+          fullName: rawUser.fullName || rawUser.name || fallbackName,
+          role: rawUser.role || "STUDENT",
+          avatarUrl: rawUser.avatarUrl || null,
         };
-        try {
-          localStorage.setItem("lms_user_profile", JSON.stringify(userObj));
-        } catch {}
+
+        // Instantly update AuthContext React state and localStorage
+        setUser(userObj);
+        refresh().catch(() => {});
 
         toast.success(
           isSignUp ? "Account created successfully!" : "Welcome back!"
