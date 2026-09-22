@@ -76,15 +76,26 @@ export default function ActiveDraftBanner({
     };
   }, []);
 
-  if (drafts.length === 0) return null;
+  // Sections that already have dedicated in-page draft banners directly above their content
+  const SECTIONS_WITH_DEDICATED_BANNER = [
+    "courses",
+    "practice_problems",
+    "assignments",
+    "live",
+    "recordings",
+    "content",
+  ];
 
-  // Find relevant draft for current section, or fallback to first draft or explicitly selected draft
-  const matchingSectionDraft = drafts.find((d) => isDraftForSection(d.type, currentSection));
+  // If current section has its own dedicated banner, exclude drafts belonging to this section to avoid duplicate banners
+  const eligibleDrafts = SECTIONS_WITH_DEDICATED_BANNER.includes(currentSection.toLowerCase())
+    ? drafts.filter((d) => !isDraftForSection(d.type, currentSection))
+    : drafts;
+
+  if (eligibleDrafts.length === 0) return null;
 
   const activeDraft =
-    (selectedType && drafts.find((d) => d.type === selectedType)) ||
-    matchingSectionDraft ||
-    drafts[0];
+    (selectedType && eligibleDrafts.find((d) => d.type === selectedType)) ||
+    eligibleDrafts[0];
 
   if (!activeDraft) return null;
 
@@ -185,14 +196,14 @@ export default function ActiveDraftBanner({
       </div>
 
       {/* Multi-draft tabs if more than one draft is present */}
-      {drafts.length > 1 && (
+      {eligibleDrafts.length > 1 && (
         <div className="mt-3.5 pt-3 border-t border-indigo-200/60 dark:border-white/5 flex items-center gap-2 overflow-x-auto [scrollbar-width:none]">
           <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 shrink-0 flex items-center gap-1">
             <Layers className="h-3 w-3" />
             Other drafts:
           </span>
           <div className="flex items-center gap-1.5 flex-nowrap">
-            {drafts.map((d) => {
+            {eligibleDrafts.map((d) => {
               const isSelected = d.type === activeDraft.type;
               const Icon = getDraftIcon(d.type);
               return (
