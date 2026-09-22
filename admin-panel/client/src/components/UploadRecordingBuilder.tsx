@@ -22,6 +22,12 @@ import {
   Video,
   X,
 } from "lucide-react";
+import {
+  saveDraft,
+  getDraft,
+  clearDraft,
+  formatTimeAgo,
+} from "@/lib/draftManager";
 
 export interface RecordingResourceItem {
   id: number;
@@ -299,35 +305,142 @@ export default function UploadRecordingBuilder({
     return [];
   }, [activeCoursesList, availableCourses]);
 
+  // Check if a saved local draft exists (only if not editing an existing recording by id)
+  const existingDraft = useMemo(() => {
+    if (initialData?.id) return null;
+    return getDraft<RecordingData>("upload_recording");
+  }, [initialData?.id]);
+
+  const [isRestoredFromDraft, setIsRestoredFromDraft] = useState<boolean>(() => {
+    if (initialData?.id) return false;
+    return Boolean(
+      existingDraft?.data &&
+        (existingDraft.data.title || existingDraft.data.description || existingDraft.data.videoUrl || existingDraft.data.videoFileName)
+    );
+  });
+
+  const [lastSavedTime, setLastSavedTime] = useState<number | null>(() => {
+    if (initialData?.id) return null;
+    return existingDraft?.timestamp || null;
+  });
+
   const [data, setData] = useState<RecordingData>(() => {
-    const initialCourse = initialData?.course || (courseNames.length > 0 ? courseNames[0] : "");
+    const initialCourse = initialData?.course || existingDraft?.data?.course || (courseNames.length > 0 ? courseNames[0] : "");
+    if (initialData) {
+      return {
+        id: initialData?.id,
+        title: initialData?.title || "",
+        instructor: initialData?.instructor || "Platform Admin",
+        recordingType: initialData?.recordingType || "Live Session Recording",
+        description: initialData?.description || "",
+        course: initialCourse,
+        module: initialData?.module || "",
+        topic: initialData?.topic || "",
+        targetCohort: initialData?.targetCohort || "All Enrolled Students",
+        videoFileName: initialData?.videoFileName || "",
+        videoFileSize: initialData?.videoFileSize || "",
+        videoUrl: initialData?.videoUrl || "",
+        date: initialData?.date || new Date().toISOString().split("T")[0],
+        duration: initialData?.duration || "01:00:00",
+        sessionTime: initialData?.sessionTime || "18:00 - 19:00 IST",
+        resources: initialData?.resources || [],
+        chapters: initialData?.chapters || [],
+        visibility: initialData?.visibility || "All enrolled students",
+        accessType: initialData?.accessType || "Full Access",
+        allowDownload: initialData?.allowDownload ?? false,
+        showInCurriculum: initialData?.showInCurriculum ?? true,
+        generateAiNotes: initialData?.generateAiNotes ?? true,
+        enableComments: initialData?.enableComments ?? true,
+        status: initialData?.status || "Published",
+        releaseDate: initialData?.releaseDate || new Date().toISOString().split("T")[0],
+      };
+    }
+    if (existingDraft?.data) {
+      return {
+        ...existingDraft.data,
+        course: existingDraft.data.course || initialCourse,
+      };
+    }
     return {
-      title: initialData?.title || "",
-      instructor: initialData?.instructor || "Platform Admin",
-      recordingType: initialData?.recordingType || "Live Session Recording",
-      description: initialData?.description || "",
+      title: "",
+      instructor: "Platform Admin",
+      recordingType: "Live Session Recording",
+      description: "",
       course: initialCourse,
-      module: initialData?.module || "",
-      topic: initialData?.topic || "",
-      targetCohort: initialData?.targetCohort || "All Enrolled Students",
-      videoFileName: initialData?.videoFileName || "",
-      videoFileSize: initialData?.videoFileSize || "",
-      videoUrl: initialData?.videoUrl || "",
-      date: initialData?.date || new Date().toISOString().split("T")[0],
-      duration: initialData?.duration || "01:00:00",
-      sessionTime: initialData?.sessionTime || "18:00 - 19:00 IST",
-      resources: initialData?.resources || [],
-      chapters: initialData?.chapters || [],
-      visibility: initialData?.visibility || "All enrolled students",
-      accessType: initialData?.accessType || "Full Access",
-      allowDownload: initialData?.allowDownload ?? false,
-      showInCurriculum: initialData?.showInCurriculum ?? true,
-      generateAiNotes: initialData?.generateAiNotes ?? true,
-      enableComments: initialData?.enableComments ?? true,
-      status: initialData?.status || "Published",
-      releaseDate: initialData?.releaseDate || new Date().toISOString().split("T")[0],
+      module: "",
+      topic: "",
+      targetCohort: "All Enrolled Students",
+      videoFileName: "",
+      videoFileSize: "",
+      videoUrl: "",
+      date: new Date().toISOString().split("T")[0],
+      duration: "01:00:00",
+      sessionTime: "18:00 - 19:00 IST",
+      resources: [],
+      chapters: [],
+      visibility: "All enrolled students",
+      accessType: "Full Access",
+      allowDownload: false,
+      showInCurriculum: true,
+      generateAiNotes: true,
+      enableComments: true,
+      status: "Published",
+      releaseDate: new Date().toISOString().split("T")[0],
     };
   });
+
+  // Auto-save form state to local draft when creating a new recording
+  useEffect(() => {
+    if (data.id) return; // Do not overwrite drafts when editing an established recording
+    const hasData = Boolean(
+      data.title.trim() ||
+        data.description.trim() ||
+        data.videoUrl?.trim() ||
+        data.videoFileName?.trim()
+    );
+    if (!hasData) return;
+
+    const timer = setTimeout(() => {
+      saveDraft("upload_recording", data, {
+        title: data.title || "Untitled Recording",
+      });
+      setLastSavedTime(Date.now());
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [data]);
+
+  const handleDiscardDraft = () => {
+    clearDraft("upload_recording");
+    setData({
+      title: "",
+      instructor: "Platform Admin",
+      recordingType: "Live Session Recording",
+      description: "",
+      course: courseNames[0] || "",
+      module: "",
+      topic: "",
+      targetCohort: "All Enrolled Students",
+      videoFileName: "",
+      videoFileSize: "",
+      videoUrl: "",
+      date: new Date().toISOString().split("T")[0],
+      duration: "01:00:00",
+      sessionTime: "18:00 - 19:00 IST",
+      resources: [],
+      chapters: [],
+      visibility: "All enrolled students",
+      accessType: "Full Access",
+      allowDownload: false,
+      showInCurriculum: true,
+      generateAiNotes: true,
+      enableComments: true,
+      status: "Published",
+      releaseDate: new Date().toISOString().split("T")[0],
+    });
+    setIsRestoredFromDraft(false);
+    setLastSavedTime(null);
+  };
 
   const [showAttachModal, setShowAttachModal] = useState(false);
   const [attachSearch, setAttachSearch] = useState("");
@@ -486,7 +599,10 @@ export default function UploadRecordingBuilder({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => onSaveDraft({ ...data, status: "Draft" })}
+            onClick={() => {
+              clearDraft("upload_recording");
+              onSaveDraft({ ...data, status: "Draft" });
+            }}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer shadow-xs"
           >
             <Save className="h-3.5 w-3.5" />
@@ -494,7 +610,10 @@ export default function UploadRecordingBuilder({
           </button>
           <button
             type="button"
-            onClick={() => onPublish({ ...data, status: "Published" })}
+            onClick={() => {
+              clearDraft("upload_recording");
+              onPublish({ ...data, status: "Published" });
+            }}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
           >
             <Send className="h-3.5 w-3.5" />
@@ -512,6 +631,46 @@ export default function UploadRecordingBuilder({
 
       {/* Main Container */}
       <main className="flex-1 mx-auto w-full max-w-[1440px] px-6 py-7">
+        {/* Restored Draft Notification Banner */}
+        {isRestoredFromDraft && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200/80 bg-indigo-50/80 dark:border-indigo-900/40 dark:bg-indigo-950/30 px-5 py-3.5 shadow-sm animate-in fade-in-0 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Restored from auto-saved draft
+                  {lastSavedTime && (
+                    <span className="ml-2 text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                      ({formatTimeAgo(lastSavedTime)})
+                    </span>
+                  )}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Your previous progress has been automatically restored. You can continue editing or start fresh.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="rounded-xl border border-slate-200/80 bg-white dark:border-white/10 dark:bg-white/5 px-3 py-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer shadow-xs"
+              >
+                Start fresh
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRestoredFromDraft(false)}
+                className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition cursor-pointer shadow-xs"
+              >
+                Continue draft
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Title & Banner */}
         <div className="mb-6">
           <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">
