@@ -608,7 +608,10 @@ function checkHasProblemData(data: PracticeProblemBuilderData): boolean {
         <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              performSaveDraft();
+              onClose();
+            }}
             className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 transition-colors cursor-pointer group"
           >
             <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
@@ -639,7 +642,10 @@ function checkHasProblemData(data: PracticeProblemBuilderData): boolean {
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              performSaveDraft();
+              onClose();
+            }}
             className="grid h-8 w-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-slate-200 transition-colors ml-1 cursor-pointer"
             aria-label="Close builder"
           >
