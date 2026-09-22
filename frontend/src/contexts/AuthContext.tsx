@@ -66,7 +66,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setUser = useCallback((newUserOrFn: User | null | ((prev: User | null) => User | null)) => {
     setUserState((prev) => {
-      const nextUser = typeof newUserOrFn === "function" ? newUserOrFn(prev) : newUserOrFn;
+      let nextUser = typeof newUserOrFn === "function" ? newUserOrFn(prev) : newUserOrFn;
+      if (nextUser && typeof nextUser === "object") {
+        const resolvedName = nextUser.fullName || nextUser.name || "";
+        nextUser = {
+          ...nextUser,
+          name: nextUser.name || resolvedName,
+          fullName: nextUser.fullName || resolvedName,
+        };
+      }
       if (typeof window !== "undefined") {
         try {
           if (nextUser) {
@@ -74,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             localStorage.removeItem(USER_STORAGE_KEY);
           }
+          window.dispatchEvent(new Event("lms:auth-change"));
         } catch {}
       }
       return nextUser;
@@ -98,13 +107,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           if (data?.user) {
-            setUserState(data.user);
+            const resolvedName = data.user.fullName || data.user.name || "";
+            const resolvedUser: User = {
+              ...data.user,
+              name: data.user.name || resolvedName,
+              fullName: data.user.fullName || resolvedName,
+            };
+            setUserState(resolvedUser);
             if (typeof window !== "undefined") {
               try {
-                localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+                localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(resolvedUser));
               } catch {}
             }
-            return data.user;
+            return resolvedUser;
           }
         }
 
@@ -133,6 +148,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchUser();
+
+    const handleAuthChange = () => {
+      try {
+        const stored = localStorage.getItem(USER_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && typeof parsed === "object") {
+            setUserState(parsed);
+          }
+        } else {
+          setUserState(null);
+        }
+      } catch {}
+    };
+
+    window.addEventListener("storage", handleAuthChange);
+    window.addEventListener("lms:auth-change", handleAuthChange);
+    return () => {
+      window.removeEventListener("storage", handleAuthChange);
+      window.removeEventListener("lms:auth-change", handleAuthChange);
+    };
   }, [fetchUser]);
 
   const logout = useCallback(async () => {
