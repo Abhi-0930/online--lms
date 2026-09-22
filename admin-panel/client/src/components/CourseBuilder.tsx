@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   ArrowLeft,
   X,
@@ -42,6 +42,12 @@ import {
   extractTextFromDocument,
   parseSyllabusText,
 } from "@/lib/syllabusExtractor";
+import {
+  saveDraft,
+  getDraft,
+  clearDraft,
+  formatTimeAgo,
+} from "@/lib/draftManager";
 
 const SAMPLE_SYLLABUS_TEXT = `# Module 1: Introduction to Web Development
 ## Topic: HTML5 Fundamentals & Semantic Structure
@@ -784,6 +790,46 @@ function CustomDatePicker({
   );
 }
 
+const DEFAULT_COURSE_FORM_DATA: CourseBuilderData = {
+  title: "",
+  subtitle: "",
+  description: "",
+  language: "English",
+  category: "Development",
+  level: "Beginner",
+  thumbnail: null,
+  thumbnailPreview: null,
+  courseType: "Paid",
+  price: "18,999",
+  discountPrice: "",
+  currency: "INR ₹",
+  accessType: "Lifetime Access",
+  durationCycleMode: "Date Range",
+  startDate: new Date().toISOString().split("T")[0],
+  endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0],
+  durationValue: "90",
+  durationUnit: "Days",
+  subscriptionCycle: "Monthly",
+  enrollmentLimit: "Unlimited",
+  courseVisibility: "Public",
+  modules: [],
+  instructorName: "",
+  skillsCovered: [],
+  prerequisites: "",
+  estimatedDuration: "12 Weeks",
+  certificateAvailable: true,
+  courseStatus: "Published",
+  seoTitle: "",
+  seoDescription: "",
+  targetAudience: "",
+  learningOutcomes: [],
+  requirements: [],
+  targetLearners: [],
+  tags: [],
+};
+
 export default function CourseBuilder({
   onClose,
   onSaveDraft,
@@ -791,67 +837,101 @@ export default function CourseBuilder({
   initialData,
   initialStep = 1,
 }: CourseBuilderProps) {
-  const [currentStep, setCurrentStep] = useState<number>(initialStep);
-  const [formData, setFormData] = useState<CourseBuilderData>({
-    id: initialData?.id || undefined,
-    title: initialData?.title || "",
-    subtitle: initialData?.subtitle || "",
-    description: initialData?.description || "",
-    language: initialData?.language || "English",
-    category: initialData?.category || "Development",
-    level: initialData?.level || "Beginner",
-    thumbnail: initialData?.thumbnail || null,
-    thumbnailPreview: initialData?.thumbnailPreview || null,
+  // Check if a saved local draft exists (only if not editing an existing course by id)
+  const existingDraft = useMemo(() => {
+    if (initialData?.id) return null;
+    return getDraft<CourseBuilderData>("course");
+  }, [initialData?.id]);
 
-    courseType: initialData?.courseType || "Paid",
-    price: initialData?.price !== undefined ? String(initialData.price) : "18,999",
-    discountPrice: initialData?.discountPrice !== undefined ? String(initialData.discountPrice) : "",
-    currency: initialData?.currency || "INR ₹",
-    accessType: initialData?.accessType || "Lifetime Access",
-    durationCycleMode: initialData?.durationCycleMode || "Date Range",
-    startDate: initialData?.startDate || new Date().toISOString().split("T")[0],
-    endDate:
-      initialData?.endDate ||
-      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0],
-    durationValue: initialData?.durationValue || "90",
-    durationUnit: initialData?.durationUnit || "Days",
-    subscriptionCycle: initialData?.subscriptionCycle || "Monthly",
-    enrollmentLimit: initialData?.enrollmentLimit || "Unlimited",
-    courseVisibility: initialData?.courseVisibility || "Public",
-    modules: initialData?.modules || [],
-    instructorName:
-      initialData?.instructorName ||
-      (initialData as any)?.instructor ||
-      "",
-    skillsCovered:
-      initialData?.skillsCovered || initialData?.tags || [],
-    prerequisites:
-      initialData?.prerequisites !== undefined
-        ? initialData.prerequisites
-        : (Array.isArray(initialData?.requirements)
-          ? initialData.requirements.join("\n")
-          : initialData?.requirements || ""),
-    estimatedDuration: initialData?.estimatedDuration || "12 Weeks",
-    certificateAvailable:
-      initialData?.certificateAvailable !== undefined
-        ? initialData.certificateAvailable
-        : true,
-    courseStatus: initialData?.courseStatus || "Published",
-    seoTitle: initialData?.seoTitle || "",
-    seoDescription: initialData?.seoDescription || "",
-    targetAudience:
-      initialData?.targetAudience !== undefined
-        ? initialData.targetAudience
-        : (Array.isArray(initialData?.targetLearners)
-          ? initialData.targetLearners.join(", ")
-          : initialData?.targetLearners ||
-            ""),
-    learningOutcomes: initialData?.learningOutcomes || [],
-    requirements: initialData?.requirements || [],
-    targetLearners: initialData?.targetLearners || [],
-    tags: initialData?.tags || [],
+  const [currentStep, setCurrentStep] = useState<number>(() => {
+    if (initialData) return initialStep;
+    return existingDraft?.step || initialStep;
+  });
+
+  const [isRestoredFromDraft, setIsRestoredFromDraft] = useState<boolean>(() => {
+    if (initialData?.id) return false;
+    return Boolean(
+      existingDraft?.data &&
+        (existingDraft.data.title || existingDraft.data.modules?.length)
+    );
+  });
+
+  const [lastSavedTime, setLastSavedTime] = useState<number | null>(() => {
+    if (initialData?.id) return null;
+    return existingDraft?.timestamp || null;
+  });
+
+  const [formData, setFormData] = useState<CourseBuilderData>(() => {
+    if (initialData) {
+      return {
+        id: initialData.id,
+        title: initialData.title || "",
+        subtitle: initialData.subtitle || "",
+        description: initialData.description || "",
+        language: initialData.language || "English",
+        category: initialData.category || "Development",
+        level: initialData.level || "Beginner",
+        thumbnail: initialData.thumbnail || null,
+        thumbnailPreview: initialData.thumbnailPreview || null,
+        courseType: initialData.courseType || "Paid",
+        price: initialData.price !== undefined ? String(initialData.price) : "18,999",
+        discountPrice: initialData.discountPrice !== undefined ? String(initialData.discountPrice) : "",
+        currency: initialData.currency || "INR ₹",
+        accessType: initialData.accessType || "Lifetime Access",
+        durationCycleMode: initialData.durationCycleMode || "Date Range",
+        startDate: initialData.startDate || new Date().toISOString().split("T")[0],
+        endDate:
+          initialData.endDate ||
+          new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+        durationValue: initialData.durationValue || "90",
+        durationUnit: initialData.durationUnit || "Days",
+        subscriptionCycle: initialData.subscriptionCycle || "Monthly",
+        enrollmentLimit: initialData.enrollmentLimit || "Unlimited",
+        courseVisibility: initialData.courseVisibility || "Public",
+        modules: initialData.modules || [],
+        instructorName:
+          initialData.instructorName ||
+          (initialData as any)?.instructor ||
+          "",
+        skillsCovered:
+          initialData.skillsCovered || initialData.tags || [],
+        prerequisites:
+          initialData.prerequisites !== undefined
+            ? initialData.prerequisites
+            : (Array.isArray(initialData.requirements)
+              ? initialData.requirements.join("\n")
+              : initialData.requirements || ""),
+        estimatedDuration: initialData.estimatedDuration || "12 Weeks",
+        certificateAvailable:
+          initialData.certificateAvailable !== undefined
+            ? initialData.certificateAvailable
+            : true,
+        courseStatus: initialData.courseStatus || "Published",
+        seoTitle: initialData.seoTitle || "",
+        seoDescription: initialData.seoDescription || "",
+        targetAudience:
+          initialData.targetAudience !== undefined
+            ? initialData.targetAudience
+            : (Array.isArray(initialData.targetLearners)
+              ? initialData.targetLearners.join(", ")
+              : initialData.targetLearners || ""),
+        learningOutcomes: initialData.learningOutcomes || [],
+        requirements: initialData.requirements || [],
+        targetLearners: initialData.targetLearners || [],
+        tags: initialData.tags || [],
+      };
+    }
+
+    if (existingDraft?.data) {
+      return {
+        ...DEFAULT_COURSE_FORM_DATA,
+        ...existingDraft.data,
+      };
+    }
+
+    return DEFAULT_COURSE_FORM_DATA;
   });
 
   useEffect(() => {
@@ -895,7 +975,7 @@ export default function CourseBuilder({
             ? initialData.prerequisites
             : (Array.isArray(initialData.requirements)
               ? initialData.requirements.join("\n")
-              : initialData?.requirements || ""),
+              : initialData.requirements || ""),
         estimatedDuration: initialData.estimatedDuration || "12 Weeks",
         certificateAvailable:
           initialData.certificateAvailable !== undefined
@@ -909,8 +989,7 @@ export default function CourseBuilder({
             ? initialData.targetAudience
             : (Array.isArray(initialData.targetLearners)
               ? initialData.targetLearners.join(", ")
-              : initialData.targetLearners ||
-                ""),
+              : initialData.targetLearners || ""),
         learningOutcomes: initialData.learningOutcomes || [],
         requirements: initialData.requirements || [],
         targetLearners: initialData.targetLearners || [],
@@ -919,6 +998,36 @@ export default function CourseBuilder({
       setCurrentStep(1);
     }
   }, [initialData]);
+
+  // Auto-save form state to local draft when creating a new course
+  useEffect(() => {
+    if (formData.id) return; // Do not overwrite drafts when editing an established course
+    const hasData = Boolean(
+      formData.title.trim() ||
+        formData.description.trim() ||
+        formData.modules.length > 0 ||
+        formData.subtitle.trim()
+    );
+    if (!hasData) return;
+
+    const timer = setTimeout(() => {
+      saveDraft("course", formData, {
+        title: formData.title || "Untitled Course",
+        step: currentStep,
+      });
+      setLastSavedTime(Date.now());
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [formData, currentStep]);
+
+  const handleDiscardDraft = () => {
+    clearDraft("course");
+    setFormData(DEFAULT_COURSE_FORM_DATA);
+    setCurrentStep(1);
+    setIsRestoredFromDraft(false);
+    setLastSavedTime(null);
+  };
 
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [isDragging, setIsDragging] = useState(false);
@@ -1606,6 +1715,9 @@ export default function CourseBuilder({
     setFormData(dataToSave);
     if (onSaveDraft) {
       await onSaveDraft(dataToSave);
+      clearDraft("course");
+      setIsRestoredFromDraft(false);
+      setLastSavedTime(null);
     }
     setIsSaving(false);
   };
@@ -1629,6 +1741,9 @@ export default function CourseBuilder({
           const dataToSubmit = prepareFinalFormData();
           setFormData(dataToSubmit);
           await onContinue(dataToSubmit);
+          clearDraft("course");
+          setIsRestoredFromDraft(false);
+          setLastSavedTime(null);
         } finally {
           setIsSubmitting(false);
         }
@@ -1669,6 +1784,32 @@ export default function CourseBuilder({
           <X className="h-4 w-4" />
         </button>
       </div>
+
+      {/* Draft Auto-save / Restoration Banner */}
+      {!formData.id && (formData.title.trim() || formData.modules.length > 0 || isRestoredFromDraft) && (
+        <div className="mx-auto max-w-[1100px] px-6 mb-2">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200/90 bg-amber-50/90 px-4 py-2.5 text-xs text-amber-900 shadow-sm animate-in fade-in slide-in-from-top-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-amber-500 text-white shadow-xs">
+                <Sparkles className="h-3 w-3" />
+              </span>
+              <p className="truncate font-medium">
+                {isRestoredFromDraft ? "Restored from your unsaved draft" : "Auto-saving in progress"}
+                <span className="ml-1 text-amber-700 font-normal">
+                  {lastSavedTime ? `(Saved ${formatTimeAgo(lastSavedTime)})` : "· Saved locally"}
+                </span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="rounded-md px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 hover:text-rose-600 transition shrink-0 cursor-pointer"
+            >
+              Start fresh
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Course Builder Header */}
       <div className="mx-auto max-w-[1100px] px-6 mt-3">
