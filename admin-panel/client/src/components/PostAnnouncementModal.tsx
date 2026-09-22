@@ -28,6 +28,8 @@ import {
   List,
   Link,
   Smile,
+  Users,
+  Tag,
 } from "lucide-react";
 import {
   saveDraft,
@@ -59,14 +61,137 @@ interface PostAnnouncementModalProps {
   announcementToEdit?: AnnouncementItem | null;
 }
 
+interface CustomSelectProps {
+  value: string;
+  onChange: (val: string) => void;
+  options: Array<{ value: string; label: string; badge?: string; badgeColor?: string } | string>;
+  placeholder?: string;
+  icon?: React.ReactNode;
+  className?: string;
+}
+
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select option",
+  icon,
+  className,
+}: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const normalizedOptions = useMemo(() => {
+    return options.map((opt) =>
+      typeof opt === "string" ? { value: opt, label: opt } : opt
+    );
+  }, [options]);
+
+  const selectedOption = normalizedOptions.find((o) => o.value === value) || {
+    value,
+    label: value || placeholder,
+  };
+
+  return (
+    <div ref={dropdownRef} className={cn("relative w-full", className)}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={cn(
+          "w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-xs font-semibold text-[var(--foreground)] transition-all select-none cursor-pointer text-left",
+          isOpen && "ring-2 ring-[var(--brand)]/30 border-[var(--brand)] shadow-sm"
+        )}
+      >
+        <div className="flex items-center gap-2 min-w-0 truncate">
+          {icon}
+          <span className="truncate">{selectedOption.label}</span>
+          {selectedOption.badge && (
+            <span
+              className={cn(
+                "text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 border",
+                selectedOption.badgeColor || "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+              )}
+            >
+              {selectedOption.badge}
+            </span>
+          )}
+        </div>
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 text-[var(--muted)] transition-transform duration-200 shrink-0",
+            isOpen && "rotate-180 text-[var(--brand)]"
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-full rounded-xl border border-[var(--app-line)] bg-[var(--card)] p-1.5 shadow-xl backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-100 max-h-60 overflow-y-auto">
+          <div className="space-y-0.5">
+            {normalizedOptions.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold transition-colors cursor-pointer",
+                    isSelected
+                      ? "bg-indigo-50 font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"
+                      : "text-[var(--foreground)] hover:bg-[var(--subtle-bg)]"
+                  )}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="truncate">{opt.label}</span>
+                    {opt.badge && (
+                      <span
+                        className={cn(
+                          "text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 border",
+                          opt.badgeColor || "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                        )}
+                      >
+                        {opt.badge}
+                      </span>
+                    )}
+                  </div>
+                  {isSelected && (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const CATEGORIES = [
-  { id: "Live Session", label: "Live Session", color: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
-  { id: "Practice & Arena", label: "Practice & Arena", color: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" },
-  { id: "Assignment & Milestone", label: "Assignment & Milestone", color: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
-  { id: "Contest & Sprint", label: "Contest & Sprint", color: "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800" },
-  { id: "Platform Notice", label: "Platform Notice", color: "bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border-pink-200 dark:border-pink-800" },
-  { id: "Career & Placement", label: "Career & Placement", color: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800" },
-  { id: "General", label: "General", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700" },
+  { value: "Live Session", label: "Live Session", badge: "Session", badgeColor: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
+  { value: "Practice & Arena", label: "Practice & Arena", badge: "Coding", badgeColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" },
+  { value: "Assignment & Milestone", label: "Assignment & Milestone", badge: "Graded", badgeColor: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+  { value: "Contest & Sprint", label: "Contest & Sprint", badge: "Contest", badgeColor: "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800" },
+  { value: "Platform Notice", label: "Platform Notice", badge: "Platform", badgeColor: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800" },
+  { value: "Career & Placement", label: "Career & Placement", badge: "Career", badgeColor: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800" },
+  { value: "General", label: "General", badge: "Notice", badgeColor: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700" },
 ];
 
 const COHORTS = [
@@ -339,7 +464,7 @@ export default function PostAnnouncementModal({
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4.5 border-b border-[var(--app-line)] bg-[var(--subtle-bg)]/50">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-md shadow-pink-500/20">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white shadow-md shadow-indigo-600/20">
               <Megaphone className="h-5 w-5" />
             </div>
             <div>
@@ -348,8 +473,8 @@ export default function PostAnnouncementModal({
                   {announcementToEdit ? "Edit Announcement" : "Broadcast Announcement"}
                 </h2>
                 {hasDraft && !announcementToEdit && (
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/60 px-2 py-0.5 rounded-full border border-pink-200 dark:border-pink-800">
-                    <span className="h-1.5 w-1.5 rounded-full bg-pink-500 animate-pulse" />
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
+                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
                     Draft Auto-Saved
                   </span>
                 )}
@@ -409,7 +534,7 @@ export default function PostAnnouncementModal({
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-pink-500" />
+                      <Sparkles className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                       Quick Templates
                     </span>
                     {hasDraft && (
@@ -428,7 +553,7 @@ export default function PostAnnouncementModal({
                         key={tpl.name}
                         type="button"
                         onClick={() => applyTemplate(tpl)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--subtle-bg)] hover:bg-pink-50 hover:text-pink-700 hover:border-pink-300 dark:hover:bg-pink-950/40 dark:hover:text-pink-300 dark:hover:border-pink-800 border border-[var(--app-line)] transition-all"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--subtle-bg)] hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300 dark:hover:border-indigo-800 border border-[var(--app-line)] transition-all"
                       >
                         <span>{tpl.icon}</span>
                         <span>{tpl.name}</span>
@@ -448,45 +573,35 @@ export default function PostAnnouncementModal({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. 🚀 Live System Design Mock Interview with FAANG Staff Engineer"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)]"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)] text-[var(--foreground)]"
                   required
                 />
               </div>
 
-              {/* Category & Cohort Pickers */}
+              {/* Category & Cohort Pickers with Custom Dropdowns */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-[var(--foreground)] mb-1.5">
                     Category Tag
                   </label>
-                  <select
+                  <CustomSelect
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)]"
-                  >
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setCategory}
+                    options={CATEGORIES}
+                    icon={<Tag className="h-3.5 w-3.5 text-[var(--muted)] shrink-0" />}
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[var(--foreground)] mb-1.5">
                     Target Cohort
                   </label>
-                  <select
+                  <CustomSelect
                     value={cohort}
-                    onChange={(e) => setCohort(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)]"
-                  >
-                    {COHORTS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setCohort}
+                    options={COHORTS}
+                    icon={<Users className="h-3.5 w-3.5 text-[var(--muted)] shrink-0" />}
+                  />
                 </div>
               </div>
 
@@ -512,17 +627,17 @@ export default function PostAnnouncementModal({
                         className={cn(
                           "flex flex-col items-start p-3 rounded-xl border text-left transition-all",
                           active
-                            ? "border-pink-500 bg-pink-50/70 text-pink-900 dark:bg-pink-950/40 dark:text-pink-200 dark:border-pink-600 shadow-sm"
+                            ? "border-indigo-600 bg-indigo-50/70 text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-500 shadow-sm"
                             : "border-[var(--app-line)] bg-[var(--card)] hover:bg-[var(--subtle-bg)] text-[var(--muted)]"
                         )}
                       >
                         <div className="flex items-center justify-between w-full mb-1">
-                          <Icon className={cn("h-4 w-4", active ? "text-pink-600 dark:text-pink-400" : "text-[var(--muted)]")} />
+                          <Icon className={cn("h-4 w-4", active ? "text-indigo-600 dark:text-indigo-400" : "text-[var(--muted)]")} />
                           <span
                             className={cn(
                               "h-3.5 w-3.5 rounded-full border flex items-center justify-center text-[9px]",
                               active
-                                ? "border-pink-600 bg-pink-600 text-white"
+                                ? "border-indigo-600 bg-indigo-600 text-white"
                                 : "border-slate-300 dark:border-slate-600"
                             )}
                           >
@@ -584,7 +699,7 @@ export default function PostAnnouncementModal({
                   onChange={(e) => setBody(e.target.value)}
                   rows={4}
                   placeholder="Type the full announcement message, key highlights, dates, or guidelines..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-xs font-normal leading-relaxed focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)]"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-xs font-normal leading-relaxed focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)] text-[var(--foreground)]"
                   required
                 />
               </div>
@@ -603,7 +718,7 @@ export default function PostAnnouncementModal({
                     type="checkbox"
                     checked={hasCta}
                     onChange={(e) => setHasCta(e.target.checked)}
-                    className="h-4 w-4 rounded accent-pink-600"
+                    className="h-4 w-4 rounded accent-indigo-600"
                   />
                 </div>
 
@@ -618,7 +733,7 @@ export default function PostAnnouncementModal({
                         value={ctaLabel}
                         onChange={(e) => setCtaLabel(e.target.value)}
                         placeholder="e.g. Join Live Room"
-                        className="w-full px-3 py-2 rounded-lg bg-[var(--input-bg)] border border-[var(--input-border)] text-xs font-semibold focus:outline-none focus:border-[var(--brand)]"
+                        className="w-full px-3 py-2 rounded-lg bg-[var(--input-bg)] border border-[var(--input-border)] text-xs font-semibold focus:outline-none focus:border-[var(--brand)] text-[var(--foreground)]"
                       />
                     </div>
                     <div>
@@ -630,7 +745,7 @@ export default function PostAnnouncementModal({
                         value={ctaUrl}
                         onChange={(e) => setCtaUrl(e.target.value)}
                         placeholder="e.g. /live-classes or https://zoom.us/..."
-                        className="w-full px-3 py-2 rounded-lg bg-[var(--input-bg)] border border-[var(--input-border)] text-xs font-semibold focus:outline-none focus:border-[var(--brand)]"
+                        className="w-full px-3 py-2 rounded-lg bg-[var(--input-bg)] border border-[var(--input-border)] text-xs font-semibold focus:outline-none focus:border-[var(--brand)] text-[var(--foreground)]"
                       />
                     </div>
                   </div>
@@ -644,7 +759,7 @@ export default function PostAnnouncementModal({
                     type="checkbox"
                     checked={isPinned}
                     onChange={(e) => setIsPinned(e.target.checked)}
-                    className="h-4 w-4 rounded accent-pink-600"
+                    className="h-4 w-4 rounded accent-indigo-600"
                   />
                   <Pin className="h-3.5 w-3.5 text-amber-500" />
                   <span>Pin notice to top of announcements</span>
@@ -684,18 +799,18 @@ export default function PostAnnouncementModal({
           ) : (
             /* Live Student Preview Tab */
             <div className="space-y-6">
-              <div className="p-4 rounded-xl bg-pink-50/60 dark:bg-pink-950/30 border border-pink-200 dark:border-pink-900/40">
-                <div className="flex items-center gap-2 text-xs font-bold text-pink-700 dark:text-pink-300 mb-1">
+              <div className="p-4 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/40">
+                <div className="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 mb-1">
                   <Eye className="h-4 w-4" /> Live Learner Platform View
                 </div>
-                <p className="text-[11px] text-pink-900/80 dark:text-pink-200/80">
+                <p className="text-[11px] text-indigo-950/80 dark:text-indigo-200/80">
                   This is exactly how learners in <strong className="font-bold">{cohort}</strong> will see this announcement on their dashboard.
                 </p>
               </div>
 
               {/* Top Pinned Banner Preview */}
               {isPinned && (
-                <div className="p-3.5 rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-md flex items-center justify-between gap-4">
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2 min-w-0">
                     <Pin className="h-4 w-4 shrink-0 fill-white" />
                     <span className="text-xs font-bold truncate">
@@ -703,7 +818,7 @@ export default function PostAnnouncementModal({
                     </span>
                   </div>
                   {hasCta && ctaLabel && (
-                    <button className="px-3 py-1 text-xs font-bold bg-white text-pink-600 rounded-lg shadow shrink-0">
+                    <button className="px-3 py-1 text-xs font-bold bg-white text-indigo-700 rounded-lg shadow shrink-0">
                       {ctaLabel}
                     </button>
                   )}
@@ -713,12 +828,12 @@ export default function PostAnnouncementModal({
               {/* Feed Card Preview */}
               <article className="p-6 rounded-2xl bg-[var(--card)] border border-[var(--app-line)] shadow-sm">
                 <div className="flex items-start gap-4">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                     <Bell className="h-5 w-5" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200 dark:border-pink-800 px-2 py-0.5 text-[10px] font-bold">
+                      <span className="rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 text-[10px] font-bold">
                         {category}
                       </span>
                       <span className="text-[10px] text-[var(--muted)] font-medium">Just now</span>
@@ -794,7 +909,7 @@ export default function PostAnnouncementModal({
                   if (form) form.requestSubmit();
                 }, 10);
               }}
-              className="px-5 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white shadow-md shadow-pink-600/20 flex items-center gap-1.5 transition-all disabled:opacity-50"
+              className="px-5 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all disabled:opacity-50"
             >
               {isSubmitting ? (
                 <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
