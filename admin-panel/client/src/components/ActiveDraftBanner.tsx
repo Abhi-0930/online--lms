@@ -11,6 +11,7 @@ import {
   FileText,
   Clock,
   Layers,
+  Megaphone,
 } from "lucide-react";
 import {
   DraftType,
@@ -42,6 +43,8 @@ export function getDraftIcon(type: DraftType) {
       return Radio;
     case "upload_recording":
       return Video;
+    case "announcement":
+      return Megaphone;
     case "add_content":
     default:
       return FileText;
