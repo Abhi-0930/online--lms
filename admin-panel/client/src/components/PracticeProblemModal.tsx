@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, Code2, Sparkles, CheckCircle2, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { PracticeProblem } from "../hooks/useLiveAdminData";
 import { CompanySearchSelect } from "./CompanySearchSelect";
+import { saveDraft, getDraft, clearDraft } from "@/lib/draftManager";
 
 interface PracticeProblemModalProps {
   isOpen: boolean;
@@ -83,24 +84,91 @@ export default function PracticeProblemModal({
       setJsStarter(problemToEdit.starterCode?.javascript || "");
       setPyStarter(problemToEdit.starterCode?.python || "");
       setCppStarter(problemToEdit.starterCode?.cpp || "");
-    } else {
-      setTitle("");
-      setCategory("Arrays");
-      setDifficulty("Medium");
-      setStatus("Live");
-      setTestCases(0);
-      setAcceptance("0.0%");
-      setDescription("");
-      setSampleInput("");
-      setSampleOutput("");
-      setConstraints("");
-      setCompanies("");
-      setHints([""]);
-      setJsStarter("");
-      setPyStarter("");
-      setCppStarter("");
+    } else if (isOpen) {
+      const draft = getDraft<any>("practice_problem_modal");
+      if (draft?.data) {
+        setTitle(draft.data.title || "");
+        setCategory(draft.data.category || "Arrays");
+        setDifficulty(draft.data.difficulty || "Medium");
+        setStatus(draft.data.status || "Live");
+        setTestCases(draft.data.testCases || 0);
+        setDescription(draft.data.description || "");
+        setSampleInput(draft.data.sampleInput || "");
+        setSampleOutput(draft.data.sampleOutput || "");
+        setConstraints(draft.data.constraints || "");
+        setCompanies(draft.data.companies || "");
+        setHints(draft.data.hints || [""]);
+        setJsStarter(draft.data.jsStarter || "");
+        setPyStarter(draft.data.pyStarter || "");
+        setCppStarter(draft.data.cppStarter || "");
+      } else {
+        setTitle("");
+        setCategory("Arrays");
+        setDifficulty("Medium");
+        setStatus("Live");
+        setTestCases(0);
+        setAcceptance("0.0%");
+        setDescription("");
+        setSampleInput("");
+        setSampleOutput("");
+        setConstraints("");
+        setCompanies("");
+        setHints([""]);
+        setJsStarter("");
+        setPyStarter("");
+        setCppStarter("");
+      }
     }
   }, [problemToEdit, isOpen]);
+
+  // Auto-save modal draft
+  useEffect(() => {
+    if (!isOpen || problemToEdit) return;
+    const hasData = Boolean(title.trim() || description.trim() || sampleInput.trim());
+    if (!hasData) return;
+
+    const timer = setTimeout(() => {
+      saveDraft(
+        "practice_problem_modal",
+        {
+          title,
+          category,
+          difficulty,
+          status,
+          testCases,
+          description,
+          sampleInput,
+          sampleOutput,
+          constraints,
+          companies,
+          hints,
+          jsStarter,
+          pyStarter,
+          cppStarter,
+        },
+        { title: title || "Untitled Practice Problem" }
+      );
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [
+    isOpen,
+    problemToEdit,
+    title,
+    category,
+    difficulty,
+    status,
+    testCases,
+    description,
+    sampleInput,
+    sampleOutput,
+    constraints,
+    companies,
+    hints,
+    jsStarter,
+    pyStarter,
+    cppStarter,
+  ]);
 
   if (!isOpen) return null;
 
@@ -162,6 +230,7 @@ export default function PracticeProblemModal({
       });
 
       if (res.ok) {
+        clearDraft("practice_problem_modal");
         const saved = await res.json();
         onSave(saved);
         onToast(
@@ -169,6 +238,7 @@ export default function PracticeProblemModal({
         );
         onClose();
       } else {
+        clearDraft("practice_problem_modal");
         // Fallback save in local state
         const fallbackId = problemToEdit?.id || `prob-${Date.now()}`;
         const fallbackProblem: PracticeProblem = {
@@ -181,6 +251,7 @@ export default function PracticeProblemModal({
         onClose();
       }
     } catch {
+      clearDraft("practice_problem_modal");
       const fallbackId = problemToEdit?.id || `prob-${Date.now()}`;
       const fallbackProblem: PracticeProblem = {
         ...payload,
