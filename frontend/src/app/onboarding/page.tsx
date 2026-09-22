@@ -18,6 +18,7 @@ import {
 import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
 import { resolveDisplayName } from "@/lib/nameUtils";
 import { ConfettiAnimation } from "@/components/ConfettiAnimation";
+import { useAuth } from "@/hooks/useAuth";
 
 interface StudyOption {
   id: string;
@@ -370,6 +371,7 @@ function ThankYouSuccessScreen({ onRedirect }: { onRedirect: () => void }) {
 function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setUser } = useAuth();
   const dataParam = searchParams?.get("data") || searchParams?.get("q");
 
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(() => {
@@ -450,11 +452,14 @@ function OnboardingContent() {
         if (res.ok) {
           const data = await res.json();
           if (data?.user) {
-            try {
-              localStorage.setItem("lms_user_profile", JSON.stringify(data.user));
-            } catch {}
+            const resolvedUser = {
+              ...data.user,
+              name: data.user.fullName || data.user.name,
+              fullName: data.user.fullName || data.user.name,
+            };
+            setUser(resolvedUser);
             if (!userName) {
-              const resolved = resolveDisplayName(data.user);
+              const resolved = resolveDisplayName(resolvedUser);
               if (resolved && resolved.toLowerCase() !== "learner") {
                 setUserName(resolved);
               }
@@ -464,7 +469,7 @@ function OnboardingContent() {
       } catch {}
     }
     loadSession();
-  }, [userName]);
+  }, [userName, setUser]);
 
   // Filter roles based on search
   const allAvailableRoles = showMoreRoles
@@ -637,7 +642,7 @@ function OnboardingContent() {
       if (!current.onboarding) current.onboarding = {};
       current.onboarding.primaryGoal = cleanName;
       current.onboarding.isCompleted = true;
-      localStorage.setItem("lms_user_profile", JSON.stringify(current));
+      setUser(current);
     } catch {}
 
     try {
