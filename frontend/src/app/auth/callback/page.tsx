@@ -3,10 +3,12 @@
 import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSecureUrl } from "@/lib/urlParams";
+import { useAuth } from "@/hooks/useAuth";
 
 function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setUser } = useAuth();
 
   useEffect(() => {
     async function processCallback() {
@@ -34,9 +36,12 @@ function CallbackHandler() {
           const data = await res.json();
           const user = data?.user;
           if (user) {
-            try {
-              localStorage.setItem("lms_user_profile", JSON.stringify(user));
-            } catch {}
+            const resolvedUser = {
+              ...user,
+              name: user.fullName || user.name,
+              fullName: user.fullName || user.name,
+            };
+            setUser(resolvedUser);
           }
 
           if (isNewUser || !user?.onboarding?.isCompleted) {
