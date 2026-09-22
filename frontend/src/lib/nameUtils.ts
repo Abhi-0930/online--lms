@@ -1,21 +1,33 @@
 export function resolveDisplayName(userOrName: any): string {
-  if (!userOrName) return "Learner";
+  let target = userOrName;
+
+  // If user object not passed, check localStorage as instant fallback on client
+  if (!target && typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("lms_user_profile");
+      if (stored) {
+        target = JSON.parse(stored);
+      }
+    } catch {}
+  }
+
+  if (!target) return "Learner";
 
   let raw = "";
 
-  if (typeof userOrName === "string") {
-    raw = userOrName.trim();
-  } else if (typeof userOrName === "object") {
+  if (typeof target === "string") {
+    raw = target.trim();
+  } else if (typeof target === "object") {
     raw =
-      userOrName.fullName ||
-      userOrName.name ||
-      userOrName.onboarding?.primaryGoal ||
+      target.fullName ||
+      target.name ||
+      target.onboarding?.primaryGoal ||
       "";
 
     // If raw name is missing or is generic "Learner", try deriving from email
     if (!raw || raw.trim().toLowerCase() === "learner") {
-      if (userOrName.email && userOrName.email.includes("@")) {
-        raw = userOrName.email.split("@")[0];
+      if (target.email && target.email.includes("@")) {
+        raw = target.email.split("@")[0];
       }
     }
   }
@@ -45,24 +57,34 @@ export function resolveDisplayName(userOrName: any): string {
 }
 
 export function resolveFirstName(userOrName: any): string {
-  if (!userOrName) return "Learner";
   const full = resolveDisplayName(userOrName);
   if (!full || full === "Learner") return "Learner";
   return full.split(/\s+/)[0] || "Learner";
 }
 
 export function resolveEducationStatus(user: any): string {
-  if (!user) return "Student";
+  let target = user;
+
+  if (!target && typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("lms_user_profile");
+      if (stored) {
+        target = JSON.parse(stored);
+      }
+    } catch {}
+  }
+
+  if (!target) return "Student";
 
   const raw =
-    user.onboarding?.educationStatus ||
-    user.educationStatus ||
-    user.education ||
-    user.roleDescription ||
+    target.onboarding?.educationStatus ||
+    target.educationStatus ||
+    target.education ||
+    target.roleDescription ||
     "";
 
   if (!raw) {
-    return user.role === "INSTRUCTOR" ? "Instructor" : "Student";
+    return target.role === "INSTRUCTOR" ? "Instructor" : "Student";
   }
 
   const normalized = raw.trim().toLowerCase();
