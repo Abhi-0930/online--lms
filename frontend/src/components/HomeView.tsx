@@ -2634,27 +2634,7 @@ function ProgressPage() {
 }
 
 function AnnouncementsPage() {
-  const { problems: liveProblems } = useLiveProblems();
-  const announcements = [
-    {
-      title: "Your next live clinic is this Thursday",
-      category: "Live session",
-      date: "Sep 12, 2025",
-      body: "Bring one problem you got stuck on. We’ll break it down together and leave time for open Q&A.",
-    },
-    {
-      title: "Interactive Practice Arena",
-      category: "Practice",
-      date: "Active now",
-      body: `${liveProblems.length} real coding challenges are currently available in the practice room.`,
-    },
-    {
-      title: "Mock interview week is open",
-      category: "Important",
-      date: "Sep 05, 2025",
-      body: "Book your slot before September 20 and use the prep checklist to make the most of your 45 minutes.",
-    },
-  ];
+  const announcements: any[] = [];
   return (
     <>
       <PageHeader
@@ -2664,49 +2644,61 @@ function AnnouncementsPage() {
       />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-4">
-          {announcements.map((item, index) => (
-            <article key={item.title} className="card-surface p-5 sm:p-6">
-              <div className="flex gap-4">
-                <span
-                  className={cx(
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                    index === 0
-                      ? "bg-[#eaf0ff] text-[#3157e8]"
-                      : index === 1
-                      ? "bg-[#e4f8ee] text-[#23a26d]"
-                      : "bg-[#fff4db] text-[#d68c20]"
-                  )}
-                >
-                  <Bell className="h-[18px] w-[18px]" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-md bg-[#f1f3f8] px-2 py-1 text-[10px] font-bold text-[#7c87a4] dark:bg-white/10">
-                      {item.category}
-                    </span>
-                    <span className="text-[10px] text-[#aab3c5]">{item.date}</span>
-                  </div>
-                  <h2 className="mt-3 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">
-                    {item.title}
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-[#7c87a4]">{item.body}</p>
-                  <button
-                    onClick={() => toast.success("Announcement marked as read")}
-                    className="mt-4 text-xs font-bold text-[#3157e8]"
-                  >
-                    Mark as read
-                  </button>
-                </div>
+          {announcements.length === 0 ? (
+            <div className="card-surface flex flex-col items-center justify-center p-12 text-center">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#eaf0ff] text-[#3157e8] dark:bg-white/10 dark:text-blue-400 mb-3">
+                <Bell className="h-6 w-6" />
               </div>
-            </article>
-          ))}
+              <h3 className="font-display text-base font-bold text-[#17223d] dark:text-white">No announcements yet</h3>
+              <p className="mt-1 text-xs text-[#7c87a4] max-w-sm">
+                Cohort updates, live session reminders, and important notices from your instructors will appear here.
+              </p>
+            </div>
+          ) : (
+            announcements.map((item, index) => (
+              <article key={item.title} className="card-surface p-5 sm:p-6">
+                <div className="flex gap-4">
+                  <span
+                    className={cx(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                      index === 0
+                        ? "bg-[#eaf0ff] text-[#3157e8]"
+                        : index === 1
+                        ? "bg-[#e4f8ee] text-[#23a26d]"
+                        : "bg-[#fff4db] text-[#d68c20]"
+                    )}
+                  >
+                    <Bell className="h-[18px] w-[18px]" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-[#f1f3f8] px-2 py-1 text-[10px] font-bold text-[#7c87a4] dark:bg-white/10">
+                        {item.category}
+                      </span>
+                      <span className="text-[10px] text-[#aab3c5]">{item.date}</span>
+                    </div>
+                    <h2 className="mt-3 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">
+                      {item.title}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-[#7c87a4]">{item.body}</p>
+                    <button
+                      onClick={() => toast.success("Announcement marked as read")}
+                      className="mt-4 text-xs font-bold text-[#3157e8]"
+                    >
+                      Mark as read
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))
+          )}
         </div>
         <aside className="card-surface h-fit p-5">
           <p className="text-xs font-bold text-[#7c87a4]">Upcoming reminders</p>
           <div className="mt-4 space-y-4">
-            <Reminder icon={AlarmClock} title="Arrays checkpoint" meta="Due tomorrow" color="amber" />
-            <Reminder icon={Video} title="Live DSA clinic" meta="Thu, 7:30 PM" color="blue" />
-            <Reminder icon={Target} title="Mock interview" meta="Book by Sep 20" color="violet" />
+            <Reminder icon={AlarmClock} title="Arrays checkpoint" meta="Due soon" color="amber" />
+            <Reminder icon={Video} title="Live DSA clinic" meta="Upcoming session" color="blue" />
+            <Reminder icon={Target} title="Mock interview" meta="Cohort prep" color="violet" />
           </div>
         </aside>
       </div>
