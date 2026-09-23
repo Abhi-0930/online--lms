@@ -496,3 +496,48 @@ model PracticeProblem {
   @@index([difficulty])
   @@index([status])
 }
+
+// ------------------------------------------
+// LIVE SESSIONS & WEBINARS
+// ------------------------------------------
+model LiveSession {
+  id                   String   @id @default(uuid())
+  title                String
+  instructor           String   @default("Platform Admin")
+  sessionType          String   @default("Live Class") // "Live Class" | "Office Hours" | "Doubt Clearing" | "Webinar"
+  description          String?  @db.Text
+  courseId             String?
+  course               String?  // course title or name
+  module               String?
+  topic                String?
+  targetCohort         String?  @default("All Enrolled Students")
+  date                 String   // e.g. "2026-09-24"
+  timezone             String   @default("IST (UTC+5:30) - Asia/Kolkata")
+  startTime            String   // e.g. "18:00"
+  endTime              String   // e.g. "19:30"
+  platform             String   @default("Google Meet") // "Google Meet" | "Zoom" | "Microsoft Teams" | "In-App Live Stream"
+  meetingLink          String?
+  passcode             String?
+  hostNotes            String?  @db.Text
+  resources            Json?    // array of { id, name, size, url }
+  emailReminders       Boolean  @default(true)
+  inAppNotifications   Boolean  @default(true)
+  reminderSchedule     String?  @default("30 minutes before")
+  autoRecord           Boolean  @default(true)
+  uploadRecording      Boolean  @default(true)
+  aiNotes              Boolean  @default(true)
+  autoPublishRecording Boolean  @default(false)
+  trackAttendance      Boolean  @default(true)
+  attendanceMethod     String?  @default("Automatic on join (min 15 mins)")
+  attendanceThreshold  String?  @default("75%")
+  maxAttendees         String?  @default("250")
+  visibility           String?  @default("All enrolled students")
+  status               String   @default("Scheduled") // "Scheduled" | "Live" | "Completed" | "Draft"
+  attendees            Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([status])
+  @@index([course])
+  @@index([date])
+}
