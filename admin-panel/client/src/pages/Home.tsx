@@ -1286,6 +1286,8 @@ function ContentView({
   const [isAddContentOpen, setIsAddContentOpen] = useState(false);
   const [editingContentItem, setEditingContentItem] = useState<ContentItem | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<ContentItem | null>(null);
+  const [isDeletingContent, setIsDeletingContent] = useState(false);
   const [contentDraft, setContentDraft] = useState(() => getDraft("add_content"));
 
   useEffect(() => {
@@ -1337,6 +1339,30 @@ function ContentView({
         (current || []).map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
       );
       onToast(`"${updated.title}" updated!`);
+    }
+  };
+
+  const handleConfirmDeleteContent = async () => {
+    if (!itemToDelete || isDeletingContent) return;
+    setIsDeletingContent(true);
+    const targetId = itemToDelete.id;
+    const targetTitle = itemToDelete.title;
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/content/${targetId}`, {
+        method: "DELETE",
+      });
+      setLocalRows((current) => (current || []).filter((r) => r.id !== targetId));
+      onToast(`"${targetTitle}" deleted from library`);
+      if (onRefresh) onRefresh();
+      setItemToDelete(null);
+    } catch {
+      setLocalRows((current) => (current || []).filter((r) => r.id !== targetId));
+      onToast(`"${targetTitle}" removed from library`);
+      if (onRefresh) onRefresh();
+      setItemToDelete(null);
+    } finally {
+      setIsDeletingContent(false);
     }
   };
 
@@ -1624,7 +1650,7 @@ function ContentView({
                             type="button"
                             onClick={() => {
                               setOpenMenuId(null);
-                              handleDeleteContent(item.id);
+                              setItemToDelete(item);
                             }}
                             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
                           >
@@ -1681,6 +1707,20 @@ function ContentView({
         onDelete={handleDeleteContent}
         courses={liveCourses}
         instructors={liveInstructors}
+      />
+
+      {/* Custom Content Asset Delete Confirmation Dialog */}
+      <CustomConfirmDialog
+        isOpen={Boolean(itemToDelete)}
+        onClose={() => !isDeletingContent && setItemToDelete(null)}
+        onConfirm={handleConfirmDeleteContent}
+        title="Delete Content Asset?"
+        description="Are you sure you want to remove this learning asset from the content library? This action cannot be undone."
+        targetName={itemToDelete?.title}
+        confirmText="Delete asset"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={isDeletingContent}
       />
     </div>
   );
