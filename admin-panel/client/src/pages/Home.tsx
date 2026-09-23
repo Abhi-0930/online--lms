@@ -12,6 +12,7 @@ import PostAnnouncementModal, { AnnouncementItem } from "@/components/PostAnnoun
 import ActiveDraftBanner from "@/components/ActiveDraftBanner";
 import {
   DraftType,
+  saveDraft,
   getDraft,
   clearDraft,
   formatTimeAgo,
@@ -85,6 +86,7 @@ import {
   Video,
   X,
   ExternalLink,
+  Copy,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useRef } from "react";
 
@@ -93,14 +95,7 @@ type DialogState = { title: string; description: string; fields: string[] } | nu
 const courses: Course[] = [];
 const learners: StudentItem[] = [];
 const contentItems: ContentItem[] = [];
-
-
-const sessions = [
-  { id: 1, title: "Graphs: BFS vs DFS", course: "DSA Mastery", time: "Today · 6:30 PM", attendees: 86, type: "Live class", status: "Upcoming" },
-  { id: 2, title: "Mock interview office hours", course: "Placement Prep", time: "Tomorrow · 11:00 AM", attendees: 24, type: "Office hours", status: "Upcoming" },
-  { id: 3, title: "Dynamic programming deep dive", course: "DSA Mastery", time: "Wed · 7:00 PM", attendees: 118, type: "Live class", status: "Upcoming" },
-  { id: 4, title: "Trees: Traversals", course: "DSA Mastery", time: "Sep 11 · 7:00 PM", attendees: 104, type: "Recording", status: "Completed" },
-];
+const sessions: any[] = [];
 
 const payments = [
   { id: "INV-2048", student: "Aarav Sharma", course: "DSA Mastery", amount: "₹18,999", date: "Sep 13, 2026", method: "UPI", status: "Paid" },
@@ -1574,16 +1569,26 @@ function ContentView({
 
 
 function LiveView({
+  sessions = [],
   onAction,
   onToast,
   onScheduleSession,
+  onEditSession,
+  onDeleteSession,
+  onToggleStatus,
 }: {
+  sessions?: LiveSessionData[];
   onAction: (state: DialogState) => void;
   onToast: (message: string) => void;
   onScheduleSession?: () => void;
+  onEditSession?: (session: LiveSessionData) => void;
+  onDeleteSession?: (id: string | number) => void;
+  onToggleStatus?: (id: string | number) => void;
 }) {
   const [filter, setFilter] = useState("All");
-  const [rows, setRows] = useState(sessions);
+  const [query, setQuery] = useState("");
+  const [copiedId, setCopiedId] = useState<string | number | null>(null);
+  const [deleteConfirmSession, setDeleteConfirmSession] = useState<LiveSessionData | null>(null);
   const [liveDraft, setLiveDraft] = useState(() => getDraft("schedule_session"));
 
   useEffect(() => {
@@ -1599,12 +1604,52 @@ function LiveView({
     };
   }, []);
 
-  const filtered = rows.filter((item) => filter === "All" || item.status === filter);
+  const handleCopyMeetingLink = (link: string, id: string | number) => {
+    if (!link) {
+      onToast("No meeting link provided for this session");
+      return;
+    }
+    navigator.clipboard?.writeText(link);
+    setCopiedId(id);
+    onToast("Meeting link copied to clipboard");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleLaunchMeeting = (session: LiveSessionData) => {
+    if (session.meetingLink) {
+      window.open(session.meetingLink, "_blank", "noopener,noreferrer");
+      onToast(`Opening ${session.platform || "Live"} meeting...`);
+    } else {
+      onToast("No meeting link URL configured. Edit session to add link.");
+    }
+  };
+
+  const rows = sessions || [];
+
+  const filtered = rows.filter((item) => {
+    const statusMatch =
+      filter === "All" ||
+      (filter === "Upcoming" && (item.status === "Scheduled" || item.status === "Upcoming" || !item.status)) ||
+      (filter === "Live" && item.status === "Live") ||
+      (filter === "Completed" && item.status === "Completed");
+
+    const searchMatch = `${item.title || ""} ${item.course || ""} ${item.instructor || ""} ${item.platform || ""} ${item.topic || ""}`
+      .toLowerCase()
+      .includes(query.toLowerCase());
+
+    return statusMatch && searchMatch;
+  });
+
+  const upcomingCount = rows.filter((s) => s.status === "Scheduled" || s.status === "Upcoming" || !s.status).length;
+  const liveCount = rows.filter((s) => s.status === "Live").length;
+  const completedCount = rows.filter((s) => s.status === "Completed").length;
+  const totalAttendees = rows.reduce((acc, s) => acc + (Number(s.attendees) || 0), 0);
+
   return (
-    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9 space-y-6">
       {/* Dedicated In-Section Active Draft Banner */}
       {liveDraft && hasDraftContent(liveDraft) && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-200/90 dark:border-indigo-800/40 bg-gradient-to-r from-indigo-50/90 via-violet-50/80 to-purple-50/90 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-[#161329] p-4 sm:p-5 shadow-sm animate-in fade-in-0 slide-in-from-top-2 duration-200">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-200/90 dark:border-indigo-800/40 bg-gradient-to-r from-indigo-50/90 via-violet-50/80 to-purple-50/90 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-[#161329] p-4 sm:p-5 shadow-sm animate-in fade-in-0 slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/25">
               <Video className="h-5 w-5" />
@@ -1638,6 +1683,7 @@ function LiveView({
               onClick={() => {
                 clearDraft("schedule_session");
                 setLiveDraft(null);
+                onToast("Live session draft discarded");
               }}
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50/80 dark:hover:bg-rose-950/30 transition cursor-pointer shadow-xs"
             >
@@ -1671,69 +1717,331 @@ function LiveView({
         }
         onExport={() => onToast("Session calendar exported")}
       />
+
       <MetricStrip
         items={[
-          { label: "Upcoming sessions", value: "18", change: "+5 this week" },
-          { label: "Registered learners", value: "1,248", change: "+18.4%" },
-          { label: "Avg. attendance", value: "86%", change: "+3.2%" },
-          { label: "Recordings pending", value: "4", change: "Upload after class", tone: "text-amber-600" },
+          {
+            label: "Upcoming sessions",
+            value: String(upcomingCount + liveCount),
+            change: liveCount > 0 ? `${liveCount} Live right now` : upcomingCount > 0 ? `${upcomingCount} Scheduled` : "No sessions scheduled",
+            tone: liveCount > 0 ? "text-emerald-600 font-bold" : undefined,
+          },
+          {
+            label: "Total registered",
+            value: totalAttendees > 0 ? totalAttendees.toLocaleString() : "0",
+            change: totalAttendees > 0 ? "Across all cohorts" : "0 learners enrolled",
+          },
+          {
+            label: "Completed classes",
+            value: String(completedCount),
+            change: completedCount > 0 ? `${completedCount} sessions delivered` : "0 completed",
+          },
+          {
+            label: "Total sessions",
+            value: String(rows.length),
+            change: rows.length > 0 ? "In calendar" : "Calendar empty",
+            tone: rows.length > 0 ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400",
+          },
         ]}
       />
+
       <DataCard
         title="Session calendar"
-        subtitle="Live classes, office hours, and recorded sessions"
+        subtitle="Interactive live lectures, workshops, guest webinars, and cohort office hours"
         toolbar={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--muted)]" />
+              <input
+                type="text"
+                placeholder="Search sessions, courses, instructors..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="h-9 w-64 rounded-xl border border-[var(--app-line)] bg-[var(--app-card)] pl-9 pr-3 text-xs text-[var(--foreground)] placeholder:text-[var(--muted)] focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
             <CustomDropdown
               value={filter}
               onChange={setFilter}
-              options={["All", "Upcoming", "Completed"]}
+              options={["All", "Upcoming", "Live", "Completed"]}
               icon={<CalendarDays className="h-4 w-4 text-[var(--muted)]" />}
             />
           </div>
         }
       >
-        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((session) => (
-            <div className="rounded-2xl border border-[var(--app-line)] p-4" key={session.id}>
-              <div className="flex items-start justify-between">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
-                  <Video className="h-4 w-4" />
-                </span>
-                <StatusBadge>{session.status}</StatusBadge>
-              </div>
-              <h3 className="mt-4 text-[13px] font-bold">{session.title}</h3>
-              <p className="mt-1 text-[11px] text-[var(--muted)]">{session.course}</p>
-              <div className="mt-4 flex items-center justify-between text-[10px] font-semibold">
-                <span className="inline-flex items-center gap-1.5 text-[var(--muted)]">
-                  <Clock3 className="h-3.5 w-3.5" />
-                  {session.time}
-                </span>
-                <span>{session.attendees} registered</span>
-              </div>
-              <div className="mt-4 flex gap-2">
-                <button onClick={() => onToast(`${session.title} opened`)} className="secondary-button flex-1 justify-center">
-                  Open
-                </button>
-                <button
-                  onClick={() =>
-                    setRows((current) =>
-                      current.map((row) =>
-                        row.id === session.id
-                          ? { ...row, status: row.status === "Upcoming" ? "Completed" : "Upcoming" }
-                          : row
-                      )
-                    )
-                  }
-                  className="primary-button flex-1 justify-center"
+        {rows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300 mb-4 shadow-sm">
+              <Video className="h-7 w-7" />
+            </div>
+            <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
+              No live sessions scheduled yet
+            </h3>
+            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 max-w-md">
+              Create interactive live classes, guest webinars, or office hours for your cohorts. Meeting links, calendar invites, and attendance tracking will be handled automatically.
+            </p>
+            {onScheduleSession && (
+              <button
+                type="button"
+                onClick={onScheduleSession}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Schedule your first live session</span>
+              </button>
+            )}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-10 text-center">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              No live sessions match your filter criteria "{query || filter}".
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setFilter("All");
+                setQuery("");
+              }}
+              className="mt-3 text-xs font-bold text-indigo-600 hover:underline cursor-pointer"
+            >
+              Reset filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((session) => {
+              const isLive = session.status === "Live";
+              const isCompleted = session.status === "Completed";
+
+              return (
+                <div
+                  key={session.id}
+                  className={cn(
+                    "flex flex-col justify-between rounded-2xl border transition-all duration-200 p-5 bg-[var(--app-card)] shadow-xs hover:shadow-md",
+                    isLive
+                      ? "border-emerald-500/60 ring-1 ring-emerald-500/30"
+                      : "border-[var(--app-line)] hover:border-indigo-300 dark:hover:border-indigo-800"
+                  )}
                 >
-                  {session.status === "Upcoming" ? "Complete" : "Reopen"}
-                </button>
+                  <div>
+                    {/* Header: Platform & Status */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+                          <Video className="h-4 w-4" />
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                          {session.platform || "Live Class"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {isLive ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                            <span className="relative flex h-2 w-2">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                            </span>
+                            LIVE NOW
+                          </span>
+                        ) : isCompleted ? (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-400">
+                            Completed
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300">
+                            {session.sessionType || "Scheduled"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Title & Course */}
+                    <div className="mt-3.5">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
+                        {session.title || "Untitled Session"}
+                      </h3>
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                        {session.course || "General Session"}
+                        {session.module ? ` • ${session.module}` : ""}
+                        {session.topic ? ` (${session.topic})` : ""}
+                      </p>
+                    </div>
+
+                    {/* Timing & Instructor */}
+                    <div className="mt-3.5 space-y-1.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] p-3 text-[11px] border border-slate-100 dark:border-white/5">
+                      <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-medium">
+                        <span className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                          <Clock3 className="h-3.5 w-3.5 text-indigo-500" />
+                          <span>{session.date || "Scheduled date"}</span>
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {session.startTime && session.endTime
+                            ? `${session.startTime} – ${session.endTime}`
+                            : session.startTime || "TBD"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/50 dark:border-white/5">
+                        <span className="inline-flex items-center gap-1 truncate max-w-[150px]">
+                          <User className="h-3 w-3" />
+                          <span>{session.instructor || "Platform Admin"}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400">
+                          <Users className="h-3 w-3" />
+                          <span>{session.attendees || 0} registered</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Meeting Link Box */}
+                    {session.meetingLink && (
+                      <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-indigo-100 dark:border-indigo-950/60 bg-indigo-50/50 dark:bg-indigo-950/20 px-3 py-1.5 text-[11px]">
+                        <span className="truncate font-mono text-[10px] text-indigo-700 dark:text-indigo-300">
+                          {session.meetingLink}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMeetingLink(session.meetingLink, session.id || "")}
+                          className="shrink-0 p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors cursor-pointer"
+                          title="Copy meeting link"
+                        >
+                          {copiedId === session.id ? (
+                            <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="mt-4 pt-3 border-t border-[var(--app-line)] flex items-center gap-2">
+                    {session.meetingLink ? (
+                      <button
+                        type="button"
+                        onClick={() => handleLaunchMeeting(session)}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 text-xs font-bold transition shadow-xs flex-1 cursor-pointer"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        <span>Join</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onEditSession && onEditSession(session)}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 transition flex-1 cursor-pointer"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                        <span>Setup Link</span>
+                      </button>
+                    )}
+
+                    {onToggleStatus && (
+                      <button
+                        type="button"
+                        onClick={() => onToggleStatus(session.id || "")}
+                        className={cn(
+                          "rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer",
+                          isCompleted
+                            ? "bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
+                            : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800/50"
+                        )}
+                      >
+                        {isCompleted ? "Reopen" : "Complete"}
+                      </button>
+                    )}
+
+                    {onEditSession && (
+                      <button
+                        type="button"
+                        onClick={() => onEditSession(session)}
+                        className="grid h-8 w-8 place-items-center rounded-xl border border-slate-200 dark:border-white/10 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-white/5 transition cursor-pointer"
+                        title="Edit session details"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+
+                    {onDeleteSession && (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmSession(session)}
+                        className="grid h-8 w-8 place-items-center rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                        title="Delete live session"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </DataCard>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Delete Live Session
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Are you sure you want to remove this scheduled session?
+                </p>
               </div>
             </div>
-          ))}
+
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 text-xs">
+              <p className="font-bold text-slate-800 dark:text-slate-200">
+                "{deleteConfirmSession.title || "Untitled Session"}"
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                {deleteConfirmSession.course} • {deleteConfirmSession.date} at {deleteConfirmSession.startTime}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmSession(null)}
+                className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteSession && deleteConfirmSession.id) {
+                    onDeleteSession(deleteConfirmSession.id);
+                  }
+                  setDeleteConfirmSession(null);
+                }}
+                className="rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition cursor-pointer"
+              >
+                Delete Session
+              </button>
+            </div>
+          </div>
         </div>
-      </DataCard>
+      )}
     </div>
   );
 }
@@ -3841,6 +4149,7 @@ export default function Home() {
     students: liveStudents,
     content: liveContent,
     practiceProblems: livePracticeProblems,
+    liveSessions: liveSessionsList,
     stats: liveStats,
     isLoading,
     isWsConnected,
@@ -3848,6 +4157,9 @@ export default function Home() {
     upsertPracticeProblem,
     deletePracticeProblem,
     toggleProblemStatus,
+    upsertLiveSession,
+    deleteLiveSession,
+    toggleLiveSessionStatus,
   } = useLiveAdminData();
 
   useEffect(() => {
@@ -3959,10 +4271,16 @@ export default function Home() {
     handleCloseAssignmentBuilder();
   };
 
-  const handleOpenScheduleSession = () => {
-    setEditingSessionData(null);
-    setIsScheduleSessionOpen(true);
-    navigate({ tab: "schedule-session" });
+  const handleOpenScheduleSession = (sessionToEdit?: LiveSessionData) => {
+    if (sessionToEdit) {
+      setEditingSessionData(sessionToEdit);
+      setIsScheduleSessionOpen(true);
+      navigate({ tab: "schedule-session", id: String(sessionToEdit.id) });
+    } else {
+      setEditingSessionData(null);
+      setIsScheduleSessionOpen(true);
+      navigate({ tab: "schedule-session" });
+    }
   };
 
   const handleCloseScheduleSession = () => {
@@ -3972,12 +4290,33 @@ export default function Home() {
   };
 
   const handleSaveSessionDraft = (data: LiveSessionData) => {
-    onToast(`Live session draft "${data.title}" saved successfully!`);
+    saveDraft("schedule_session", data, { title: data.title || "Untitled Live Session" });
+    onToast(`Live session draft "${data.title || "Untitled"}" saved successfully!`);
   };
 
-  const handleScheduleSession = (data: LiveSessionData) => {
-    onToast(`Live session "${data.title}" scheduled successfully!`);
+  const handleScheduleSession = async (data: LiveSessionData) => {
+    const sessionId = data.id || `sess_${Date.now()}`;
+    const newSession: LiveSessionData = {
+      ...data,
+      id: sessionId,
+      status: data.status || "Scheduled",
+      attendees: data.attendees ?? 0,
+    };
+
+    await upsertLiveSession(newSession);
+    clearDraft("schedule_session");
+    onToast(`Live session "${newSession.title}" scheduled and published successfully!`);
     handleCloseScheduleSession();
+  };
+
+  const handleDeleteSession = async (id: string | number) => {
+    await deleteLiveSession(id);
+    onToast("Live session removed");
+  };
+
+  const handleToggleSessionStatus = async (id: string | number) => {
+    await toggleLiveSessionStatus(id);
+    onToast("Session status updated");
   };
 
   const handleOpenUploadRecording = () => {
@@ -4553,7 +4892,15 @@ export default function Home() {
         onToast={onToast}
       />
     ) : section === "live" || section === "live_sessions" ? (
-      <LiveView onAction={onAction} onToast={onToast} onScheduleSession={handleOpenScheduleSession} />
+      <LiveView
+        sessions={liveSessionsList}
+        onAction={onAction}
+        onToast={onToast}
+        onScheduleSession={() => handleOpenScheduleSession()}
+        onEditSession={handleOpenScheduleSession}
+        onDeleteSession={handleDeleteSession}
+        onToggleStatus={handleToggleSessionStatus}
+      />
     ) : section === "recordings" ? (
       <RecordingsView onAction={onAction} onToast={onToast} onUploadRecording={handleOpenUploadRecording} />
     ) : section === "payments" ? (
