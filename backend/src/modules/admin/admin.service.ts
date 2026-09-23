@@ -9,6 +9,34 @@ export class AdminService {
   private static problemsFilePath = path.resolve(process.cwd(), 'data', 'practice_problems.json');
   private static assignmentsFilePath = path.resolve(process.cwd(), 'data', 'assignments.json');
   private static liveSessionsFilePath = path.resolve(process.cwd(), 'data', 'live_sessions.json');
+  private static contentOverridesFilePath = path.resolve(process.cwd(), 'data', 'content_overrides.json');
+
+  private static loadContentOverridesFromFile(): Map<string, any> {
+    try {
+      if (fs.existsSync(AdminService.contentOverridesFilePath)) {
+        const raw = fs.readFileSync(AdminService.contentOverridesFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const map = new Map<string, any>();
+          for (const item of parsed) {
+            if (item && item.id) {
+              map.set(String(item.id), item);
+            }
+          }
+          return map;
+        } else if (parsed && typeof parsed === 'object') {
+          const map = new Map<string, any>();
+          for (const [k, v] of Object.entries(parsed)) {
+            map.set(String(k), v);
+          }
+          return map;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load content overrides from file:', err);
+    }
+    return new Map<string, any>();
+  }
 
   private static loadCoursesMetaFromFile(): Map<string, any> {
     try {
@@ -170,10 +198,24 @@ export class AdminService {
     }
   }
 
+  public static saveContentOverridesToFile() {
+    try {
+      const dir = path.dirname(AdminService.contentOverridesFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = Array.from(AdminService.fallbackContentOverrides.values());
+      fs.writeFileSync(AdminService.contentOverridesFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save content overrides to file:', err);
+    }
+  }
+
   public static fallbackCourses = AdminService.loadCoursesMetaFromFile();
   public static fallbackProblems = AdminService.loadProblemsFromFile();
   public static fallbackAssignments = AdminService.loadAssignmentsFromFile();
   public static fallbackLiveSessions = AdminService.loadLiveSessionsFromFile();
+  public static fallbackContentOverrides = AdminService.loadContentOverridesFromFile();
   public static fallbackSubmissions = new Map<string, any>();
 
   constructor(private prisma: PrismaClient) {}
@@ -1554,7 +1596,92 @@ export class AdminService {
       }
     } catch {}
 
+    // 4. Merge persistent overrides and updates
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const idStr = String(item.id);
+      const override = AdminService.fallbackContentOverrides.get(idStr);
+      if (override) {
+        items[i] = {
+          ...item,
+          ...override,
+          updated: override.updated || this.formatLastActive(override.updatedAt || new Date()).label,
+        };
+      }
+    }
+
     return items;
+  }
+
+  async updateContentItem(id: string | number, updates: any) {
+    const idStr = String(id);
+    const existing = AdminService.fallbackContentOverrides.get(idStr) || {};
+    const updated = {
+      ...existing,
+      ...updates,
+      id,
+      updated: 'Just now',
+      updatedAt: new Date().toISOString(),
+    };
+    AdminService.fallbackContentOverrides.set(idStr, updated);
+    AdminService.saveContentOverridesToFile();
+
+    // 1. Update in Prisma database if matching Resource ID
+    try {
+      await this.prisma.resource.update({
+        where: { id: idStr },
+        data: {
+          title: updates.title,
+          ...(updates.type ? { type: updates.type === 'PDF' ? 'PDF' : 'VIDEO_RECORDING' } : {}),
+        },
+      });
+    } catch {}
+
+    // 2. Update in fallbackCourses if matching topic/subtopic
+    for (const [, course] of AdminService.fallbackCourses.entries()) {
+      let changed = false;
+      if (Array.isArray(course.modules)) {
+        for (const mod of course.modules) {
+          if (Array.isArray(mod.topics)) {
+            for (const top of mod.topics) {
+              if (top.id && String(top.id) === idStr) {
+                if (updates.title) top.title = updates.title;
+                if (updates.type) top.type = updates.type;
+                changed = true;
+              }
+              if (Array.isArray(top.subtopics)) {
+                for (const sub of top.subtopics) {
+                  if ((sub.id && String(sub.id) === idStr) || `sub_${mod.id}_${top.id}_${sub.title}` === idStr) {
+                    if (updates.title) sub.title = updates.title;
+                    if (updates.type) sub.type = updates.type;
+                    changed = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      if (changed) {
+        AdminService.saveMetaToFile();
+      }
+    }
+
+    return updated;
+  }
+
+  async deleteContentItem(id: string | number) {
+    const idStr = String(id);
+    AdminService.fallbackContentOverrides.delete(idStr);
+    AdminService.saveContentOverridesToFile();
+
+    try {
+      await this.prisma.resource.delete({
+        where: { id: idStr },
+      });
+    } catch {}
+
+    return { success: true, id };
   }
 
   async getAllPracticeProblems() {
