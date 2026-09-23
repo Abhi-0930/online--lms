@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { LiveSessionData } from "@/components/ScheduleSessionBuilder";
 
 export interface AdminStats {
   totalStudents: number;
@@ -136,6 +137,7 @@ const CACHE_KEYS = {
   SUBMISSIONS: "lms_admin_cache_submissions",
   CONTENT: "lms_admin_cache_content",
   PRACTICE_PROBLEMS: "lms_admin_cache_practice_problems",
+  LIVE_SESSIONS: "lms_admin_live_sessions",
 };
 
 function readCache<T>(key: string, fallback: T): T {
@@ -183,6 +185,9 @@ export function useLiveAdminData() {
   );
   const [practiceProblemsList, setPracticeProblemsList] = useState<PracticeProblem[]>(() =>
     readCache<PracticeProblem[]>(CACHE_KEYS.PRACTICE_PROBLEMS, [])
+  );
+  const [liveSessionsList, setLiveSessionsList] = useState<LiveSessionData[]>(() =>
+    readCache<LiveSessionData[]>(CACHE_KEYS.LIVE_SESSIONS, [])
   );
   const [isLoading, setIsLoading] = useState(() => {
     const cached = readCache<Course[]>(CACHE_KEYS.COURSES, []);
@@ -384,6 +389,98 @@ export function useLiveAdminData() {
     } catch {}
   };
 
+  const updateLiveSessions = (data: LiveSessionData[]) => {
+    setLiveSessionsList(data);
+    writeCache(CACHE_KEYS.LIVE_SESSIONS, data);
+    try {
+      window.dispatchEvent(new CustomEvent("lms_live_sessions_updated", { detail: data }));
+    } catch {}
+  };
+
+  const upsertLiveSession = async (session: LiveSessionData) => {
+    if (!session) return;
+    const sessionId = session.id ? String(session.id) : `sess_${Date.now()}`;
+    const newSession: LiveSessionData = {
+      ...session,
+      id: sessionId,
+      status: session.status || "Scheduled",
+      attendees: session.attendees ?? 0,
+    };
+
+    setLiveSessionsList((prev) => {
+      const idx = prev.findIndex((s) => String(s.id) === String(sessionId));
+      const updated = idx >= 0
+        ? prev.map((s) => (String(s.id) === String(sessionId) ? newSession : s))
+        : [newSession, ...prev];
+      writeCache(CACHE_KEYS.LIVE_SESSIONS, updated);
+      try {
+        window.dispatchEvent(new CustomEvent("lms_live_sessions_updated", { detail: updated }));
+      } catch {}
+      return updated;
+    });
+
+    try {
+      await fetch("http://localhost:4000/api/v1/admin/live-sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newSession),
+      });
+    } catch {}
+  };
+
+  const deleteLiveSession = async (id: string | number) => {
+    setLiveSessionsList((prev) => {
+      const updated = prev.filter((s) => String(s.id) !== String(id));
+      writeCache(CACHE_KEYS.LIVE_SESSIONS, updated);
+      try {
+        window.dispatchEvent(new CustomEvent("lms_live_sessions_updated", { detail: updated }));
+      } catch {}
+      return updated;
+    });
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/live-sessions/${id}`, {
+        method: "DELETE",
+      });
+    } catch {}
+  };
+
+  const toggleLiveSessionStatus = async (id: string | number) => {
+    let nextStatus: LiveSessionData["status"] = "Completed";
+    setLiveSessionsList((prev) => {
+      const updated = prev.map((s) => {
+        if (String(s.id) === String(id)) {
+          nextStatus = s.status === "Completed" ? "Scheduled" : "Completed";
+          return { ...s, status: nextStatus };
+        }
+        return s;
+      });
+      writeCache(CACHE_KEYS.LIVE_SESSIONS, updated);
+      try {
+        window.dispatchEvent(new CustomEvent("lms_live_sessions_updated", { detail: updated }));
+      } catch {}
+      return updated;
+    });
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/live-sessions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+    } catch {}
+  };
+
+  const fetchLiveSessions = async () => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/live-sessions");
+      if (res.ok) {
+        const data = await res.json();
+        updateLiveSessions(data);
+      }
+    } catch {}
+  };
+
   const fetchPracticeProblems = async () => {
     try {
       const res = await fetch("http://localhost:4000/api/v1/admin/practice-problems");
@@ -422,6 +519,11 @@ export function useLiveAdminData() {
       fetch("http://localhost:4000/api/v1/admin/content")
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && updateContent(d))
+        .catch(() => {});
+
+      fetch("http://localhost:4000/api/v1/admin/live-sessions")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && updateLiveSessions(d))
         .catch(() => {});
     } catch {
       // Backend offline fallback
@@ -480,6 +582,9 @@ export function useLiveAdminData() {
               if (payload.data?.practiceProblems) {
                 updatePracticeProblems(payload.data.practiceProblems);
               }
+              if (payload.data?.liveSessions) {
+                updateLiveSessions(payload.data.liveSessions);
+              }
               setIsLoading(false);
             }
           } catch {
@@ -516,7 +621,7 @@ export function useLiveAdminData() {
   }, []);
 
   const refresh = async () => {
-    await Promise.all([fetchCourses(), fetchPracticeProblems()]);
+    await Promise.all([fetchCourses(), fetchPracticeProblems(), fetchLiveSessions()]);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "REFRESH" }));
     } else {
@@ -532,6 +637,7 @@ export function useLiveAdminData() {
     submissions: submissionsList,
     content: contentList,
     practiceProblems: practiceProblemsList,
+    liveSessions: liveSessionsList,
     isLoading,
     isWsConnected,
     refresh,
@@ -541,6 +647,10 @@ export function useLiveAdminData() {
     deletePracticeProblem,
     toggleProblemStatus,
     setPracticeProblems: updatePracticeProblems,
+    upsertLiveSession,
+    deleteLiveSession,
+    toggleLiveSessionStatus,
+    setLiveSessions: updateLiveSessions,
   };
 }
 
