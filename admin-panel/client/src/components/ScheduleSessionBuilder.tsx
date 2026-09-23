@@ -5,6 +5,8 @@ import {
   Calendar,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Copy,
   ExternalLink,
@@ -236,16 +238,491 @@ function ToggleSwitch({
   );
 }
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+const SHORT_MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
+
+const WEEK_DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+function formatDisplayDate(dateStr?: string) {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      const y = parts[0];
+      const mIdx = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      if (SHORT_MONTH_NAMES[mIdx]) {
+        return `${String(d).padStart(2, "0")} ${SHORT_MONTH_NAMES[mIdx]} ${y}`;
+      }
+    }
+    if (parts[2].length === 4) {
+      const d = parseInt(parts[0], 10);
+      const mIdx = parseInt(parts[1], 10) - 1;
+      const y = parts[2];
+      if (SHORT_MONTH_NAMES[mIdx]) {
+        return `${String(d).padStart(2, "0")} ${SHORT_MONTH_NAMES[mIdx]} ${y}`;
+      }
+    }
+  }
+  return dateStr;
+}
+
+function CustomDatePicker({
+  value,
+  onChange,
+  placeholder = "Select session date",
+  className,
+  disabled = false,
+}: {
+  value?: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"days" | "months" | "years">("days");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const parseDate = (val?: string) => {
+    if (val) {
+      const parts = val.split("-");
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const d = parseInt(parts[2], 10);
+          if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return { y, m, d, normalized: val };
+        } else if (parts[2].length === 4) {
+          const d = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const y = parseInt(parts[2], 10);
+          const normalized = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return { y, m, d, normalized };
+        }
+      }
+    }
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = today.getMonth();
+    const d = today.getDate();
+    return {
+      y,
+      m,
+      d,
+      normalized: `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+    };
+  };
+
+  const parsed = parseDate(value);
+  const [viewYear, setViewYear] = useState<number>(parsed.y);
+  const [viewMonth, setViewMonth] = useState<number>(parsed.m);
+  const [yearPageStart, setYearPageStart] = useState<number>(() => Math.floor(parsed.y / 12) * 12);
+
+  useEffect(() => {
+    if (value) {
+      const p = parseDate(value);
+      setViewYear(p.y);
+      setViewMonth(p.m);
+      setYearPageStart(Math.floor(p.y / 12) * 12);
+    }
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setViewMode("days");
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        setViewMode("days");
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (viewMode === "days") {
+      if (viewMonth === 0) {
+        setViewMonth(11);
+        setViewYear((prev) => {
+          const nextY = prev - 1;
+          setYearPageStart(Math.floor(nextY / 12) * 12);
+          return nextY;
+        });
+      } else {
+        setViewMonth((prev) => prev - 1);
+      }
+    } else if (viewMode === "months") {
+      setViewYear((prev) => {
+        const nextY = prev - 1;
+        setYearPageStart(Math.floor(nextY / 12) * 12);
+        return nextY;
+      });
+    } else if (viewMode === "years") {
+      setYearPageStart((prev) => prev - 12);
+    }
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (viewMode === "days") {
+      if (viewMonth === 11) {
+        setViewMonth(0);
+        setViewYear((prev) => {
+          const nextY = prev + 1;
+          setYearPageStart(Math.floor(nextY / 12) * 12);
+          return nextY;
+        });
+      } else {
+        setViewMonth((prev) => prev + 1);
+      }
+    } else if (viewMode === "months") {
+      setViewYear((prev) => {
+        const nextY = prev + 1;
+        setYearPageStart(Math.floor(nextY / 12) * 12);
+        return nextY;
+      });
+    } else if (viewMode === "years") {
+      setYearPageStart((prev) => prev + 12);
+    }
+  };
+
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(viewYear, viewMonth, 1);
+    const startDayOfWeek = firstDay.getDay();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+    const days: Array<{
+      dateStr: string;
+      dayNum: number;
+      isCurrentMonth: boolean;
+    }> = [];
+
+    // Prev month padding
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
+      const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
+      const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      days.push({
+        dateStr,
+        dayNum: d,
+        isCurrentMonth: false,
+      });
+    }
+
+    // Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      days.push({
+        dateStr,
+        dayNum: d,
+        isCurrentMonth: true,
+      });
+    }
+
+    // Next month padding to fill grid
+    const totalCells = days.length <= 35 ? 35 : 42;
+    const remaining = totalCells - days.length;
+    for (let d = 1; d <= remaining; d++) {
+      const nextMonth = viewMonth === 11 ? 0 : viewMonth + 1;
+      const nextYear = viewMonth === 11 ? viewYear + 1 : viewYear;
+      const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      days.push({
+        dateStr,
+        dayNum: d,
+        isCurrentMonth: false,
+      });
+    }
+
+    return days;
+  }, [viewYear, viewMonth]);
+
+  const todayObj = new Date();
+  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`;
+  const normalizedValue = value ? parseDate(value).normalized : "";
+
+  const handleSelectPreset = (daysFromToday: number) => {
+    const target = new Date();
+    target.setDate(target.getDate() + daysFromToday);
+    const dateStr = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
+    onChange(dateStr);
+    setViewYear(target.getFullYear());
+    setViewMonth(target.getMonth());
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className={cn("relative inline-block w-full", className)}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          setIsOpen((prev) => !prev);
+          setViewMode("days");
+        }}
+        className={cn(
+          "w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] px-4 py-3 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2.5 hover:bg-slate-100/70 dark:hover:bg-white/5 transition-all cursor-pointer shadow-xs select-none",
+          isOpen && "ring-2 ring-indigo-500/20 border-indigo-500 bg-white dark:bg-[#151926] shadow-sm",
+          disabled && "opacity-50 cursor-not-allowed"
+        )}
+      >
+        <span className="flex items-center gap-2.5 truncate">
+          <Calendar className={cn("h-4 w-4 shrink-0 transition-colors", value ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400")} />
+          <span className={cn("truncate", value ? "text-slate-900 dark:text-white font-bold" : "text-slate-400")}>
+            {value ? formatDisplayDate(value) : placeholder}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform duration-200",
+            isOpen && "rotate-180 text-indigo-600 dark:text-indigo-400"
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[310px] rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-4 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 select-none">
+          {/* Calendar Header with Navigation and Clickable Selectors */}
+          <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-white/5">
+            <button
+              type="button"
+              onClick={handlePrev}
+              className="flex h-7 w-7 items-center justify-center rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition cursor-pointer shrink-0"
+              title="Previous"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            {/* Middle Selectors */}
+            <div className="flex items-center gap-1.5">
+              {viewMode === "days" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("months")}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-800 dark:text-white hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition cursor-pointer"
+                  >
+                    <span>{MONTH_NAMES[viewMonth]}</span>
+                    <ChevronDown className="h-3 w-3 text-slate-400" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setYearPageStart(Math.floor(viewYear / 12) * 12);
+                      setViewMode("years");
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-800 dark:text-white hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition cursor-pointer"
+                  >
+                    <span>{viewYear}</span>
+                    <ChevronDown className="h-3 w-3 text-slate-400" />
+                  </button>
+                </>
+              )}
+
+              {viewMode === "months" && (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-bold text-slate-800 dark:text-white">Select Month</span>
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setYearPageStart(Math.floor(viewYear / 12) * 12);
+                      setViewMode("years");
+                    }}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition cursor-pointer"
+                  >
+                    {viewYear}
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+
+              {viewMode === "years" && (
+                <span className="text-xs font-bold text-slate-800 dark:text-white">
+                  {yearPageStart} – {yearPageStart + 11}
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNext}
+              className="flex h-7 w-7 items-center justify-center rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition cursor-pointer shrink-0"
+              title="Next"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* VIEW 1: Days Grid */}
+          {viewMode === "days" && (
+            <>
+              {/* Weekday headers */}
+              <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
+                {WEEK_DAYS.map((wd) => (
+                  <span key={wd} className="text-[10px] font-extrabold text-slate-400 uppercase py-0.5">
+                    {wd}
+                  </span>
+                ))}
+              </div>
+
+              {/* Days Grid */}
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {calendarDays.map((d, i) => {
+                  const isCurrentSelected = d.dateStr === normalizedValue;
+                  const isToday = d.dateStr === todayStr;
+
+                  return (
+                    <button
+                      key={`${d.dateStr}-${i}`}
+                      type="button"
+                      onClick={() => {
+                        onChange(d.dateStr);
+                        setIsOpen(false);
+                      }}
+                      className={cn(
+                        "h-8 w-8 rounded-xl text-xs font-semibold flex items-center justify-center transition-all cursor-pointer select-none",
+                        isCurrentSelected
+                          ? "bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30 ring-2 ring-indigo-500/20"
+                          : d.isCurrentMonth
+                          ? isToday
+                            ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold ring-1 ring-indigo-300 dark:ring-indigo-700"
+                            : "text-slate-700 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-white/5"
+                          : "text-slate-300 dark:text-slate-600 hover:bg-slate-50 dark:hover:bg-white/[0.02]"
+                      )}
+                    >
+                      {d.dayNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Quick Presets */}
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 flex flex-wrap items-center justify-between gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleSelectPreset(0)}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-white/5 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-300 transition cursor-pointer"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectPreset(1)}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-white/5 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-300 transition cursor-pointer"
+                >
+                  Tomorrow
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectPreset(7)}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-white/5 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-300 transition cursor-pointer"
+                >
+                  In 1 Week
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* VIEW 2: Months Grid */}
+          {viewMode === "months" && (
+            <div className="grid grid-cols-3 gap-2 py-1">
+              {MONTH_NAMES.map((mName, mIdx) => {
+                const isSelectedMonth = parsed.m === mIdx && parsed.y === viewYear;
+                return (
+                  <button
+                    key={mName}
+                    type="button"
+                    onClick={() => {
+                      setViewMonth(mIdx);
+                      setViewMode("days");
+                    }}
+                    className={cn(
+                      "py-2 px-1 rounded-xl text-xs font-semibold transition cursor-pointer text-center",
+                      isSelectedMonth
+                        ? "bg-indigo-600 text-white font-bold shadow-sm"
+                        : "text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-300"
+                    )}
+                  >
+                    {mName.slice(0, 3)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* VIEW 3: Years Grid */}
+          {viewMode === "years" && (
+            <div className="grid grid-cols-3 gap-2 py-1">
+              {Array.from({ length: 12 }).map((_, idx) => {
+                const yr = yearPageStart + idx;
+                const isSelectedYr = parsed.y === yr;
+                return (
+                  <button
+                    key={yr}
+                    type="button"
+                    onClick={() => {
+                      setViewYear(yr);
+                      setViewMode("months");
+                    }}
+                    className={cn(
+                      "py-2 px-1 rounded-xl text-xs font-semibold transition cursor-pointer text-center",
+                      isSelectedYr
+                        ? "bg-indigo-600 text-white font-bold shadow-sm"
+                        : "text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-300"
+                    )}
+                  >
+                    {yr}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function formatScheduleDateTime(dateStr: string, timeStr: string) {
   if (!dateStr) return "";
   let formattedDate = dateStr;
   const parts = dateStr.split("-");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   if (parts.length === 3) {
-    if (parts[0].length === 2 && parts[2].length === 4) {
+    if (parts[0].length === 4) {
+      const year = parts[0];
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      if (months[monthIdx]) {
+        formattedDate = `${day} ${months[monthIdx]} ${year}`;
+      }
+    } else if (parts[2].length === 4) {
       const day = parseInt(parts[0], 10);
       const monthIdx = parseInt(parts[1], 10) - 1;
       const year = parts[2];
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec"];
       if (months[monthIdx]) {
         formattedDate = `${day} ${months[monthIdx]} ${year}`;
       }
@@ -978,16 +1455,11 @@ export default function ScheduleSessionBuilder({
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                       Session Date <span className="text-rose-500">*</span>
                     </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        value={data.date}
-                        onChange={(e) => setData({ ...data, date: e.target.value })}
-                        placeholder="24-09-2026"
-                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-11 py-3 text-xs text-slate-900 dark:text-white focus:outline-none font-medium"
-                      />
-                      <Calendar className="pointer-events-none absolute right-4 h-4 w-4 text-slate-400" />
-                    </div>
+                    <CustomDatePicker
+                      value={data.date}
+                      onChange={(val) => setData({ ...data, date: val })}
+                      placeholder="Select Session Date"
+                    />
                   </div>
 
                   <div>
