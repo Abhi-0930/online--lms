@@ -42,7 +42,7 @@ export class AdminWsBroadcaster {
   private static async sendSnapshot(socket: WebSocket, prisma: PrismaClient, type: string) {
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content, practiceProblems] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
@@ -50,13 +50,14 @@ export class AdminWsBroadcaster {
         adminService.getAllSubmissions(),
         adminService.getAllContent(),
         adminService.getAllPracticeProblems(),
+        adminService.getAllLiveSessions(),
       ]);
 
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(
           JSON.stringify({
             type,
-            data: { stats, students, courses, assignments, submissions, content, practiceProblems },
+            data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions },
             timestamp: new Date().toISOString(),
           })
         );
@@ -71,7 +72,7 @@ export class AdminWsBroadcaster {
 
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content, practiceProblems] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
@@ -79,11 +80,12 @@ export class AdminWsBroadcaster {
         adminService.getAllSubmissions(),
         adminService.getAllContent(),
         adminService.getAllPracticeProblems(),
+        adminService.getAllLiveSessions(),
       ]);
 
       const payload = JSON.stringify({
         type: 'DATA_UPDATE',
-        data: { stats, students, courses, assignments, submissions, content, practiceProblems },
+        data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions },
         timestamp: new Date().toISOString(),
       });
 
