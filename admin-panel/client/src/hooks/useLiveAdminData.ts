@@ -129,6 +129,14 @@ export interface PracticeProblem {
   updatedAt?: string;
 }
 
+export interface InstructorUser {
+  id: string | number;
+  fullName: string;
+  email: string;
+  role: string;
+  avatarUrl?: string | null;
+}
+
 const CACHE_KEYS = {
   STATS: "lms_admin_cache_stats",
   STUDENTS: "lms_admin_cache_students",
@@ -138,6 +146,7 @@ const CACHE_KEYS = {
   CONTENT: "lms_admin_cache_content",
   PRACTICE_PROBLEMS: "lms_admin_cache_practice_problems",
   LIVE_SESSIONS: "lms_admin_live_sessions",
+  INSTRUCTORS: "lms_admin_instructors",
 };
 
 function readCache<T>(key: string, fallback: T): T {
@@ -188,6 +197,9 @@ export function useLiveAdminData() {
   );
   const [liveSessionsList, setLiveSessionsList] = useState<LiveSessionData[]>(() =>
     readCache<LiveSessionData[]>(CACHE_KEYS.LIVE_SESSIONS, [])
+  );
+  const [instructorsList, setInstructorsList] = useState<InstructorUser[]>(() =>
+    readCache<InstructorUser[]>(CACHE_KEYS.INSTRUCTORS, [])
   );
   const [isLoading, setIsLoading] = useState(() => {
     const cached = readCache<Course[]>(CACHE_KEYS.COURSES, []);
@@ -491,10 +503,28 @@ export function useLiveAdminData() {
     } catch {}
   };
 
+  const updateInstructors = (data: InstructorUser[]) => {
+    setInstructorsList(data);
+    writeCache(CACHE_KEYS.INSTRUCTORS, data);
+  };
+
+  const fetchInstructors = async () => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/instructors");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          updateInstructors(data);
+        }
+      }
+    } catch {}
+  };
+
   const fetchInitialSnapshot = async () => {
     try {
       fetchCourses();
       fetchPracticeProblems();
+      fetchInstructors();
 
       fetch("http://localhost:4000/api/v1/admin/stats")
         .then((r) => (r.ok ? r.json() : null))
@@ -524,6 +554,11 @@ export function useLiveAdminData() {
       fetch("http://localhost:4000/api/v1/admin/live-sessions")
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && updateLiveSessions(d))
+        .catch(() => {});
+
+      fetch("http://localhost:4000/api/v1/admin/instructors")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && Array.isArray(d) && updateInstructors(d))
         .catch(() => {});
     } catch {
       // Backend offline fallback
@@ -585,6 +620,9 @@ export function useLiveAdminData() {
               if (payload.data?.liveSessions) {
                 updateLiveSessions(payload.data.liveSessions);
               }
+              if (payload.data?.instructors) {
+                updateInstructors(payload.data.instructors);
+              }
               setIsLoading(false);
             }
           } catch {
@@ -621,7 +659,7 @@ export function useLiveAdminData() {
   }, []);
 
   const refresh = async () => {
-    await Promise.all([fetchCourses(), fetchPracticeProblems(), fetchLiveSessions()]);
+    await Promise.all([fetchCourses(), fetchPracticeProblems(), fetchLiveSessions(), fetchInstructors()]);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "REFRESH" }));
     } else {
@@ -638,6 +676,7 @@ export function useLiveAdminData() {
     content: contentList,
     practiceProblems: practiceProblemsList,
     liveSessions: liveSessionsList,
+    instructors: instructorsList,
     isLoading,
     isWsConnected,
     refresh,
@@ -651,6 +690,7 @@ export function useLiveAdminData() {
     deleteLiveSession,
     toggleLiveSessionStatus,
     setLiveSessions: updateLiveSessions,
+    setInstructors: updateInstructors,
   };
 }
 
