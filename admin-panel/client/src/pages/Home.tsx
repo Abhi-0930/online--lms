@@ -1345,19 +1345,19 @@ function ContentView({
   const handleConfirmDeleteContent = async () => {
     if (!itemToDelete || isDeletingContent) return;
     setIsDeletingContent(true);
-    const targetId = itemToDelete.id;
+    const targetId = String(itemToDelete.id);
     const targetTitle = itemToDelete.title;
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/content/${targetId}`, {
+      await fetch(`http://localhost:4000/api/v1/admin/content/${encodeURIComponent(targetId)}`, {
         method: "DELETE",
       });
-      setLocalRows((current) => (current || []).filter((r) => r.id !== targetId));
+      setLocalRows((current) => (current || []).filter((r) => String(r.id) !== targetId));
       onToast(`"${targetTitle}" deleted from library`);
       if (onRefresh) onRefresh();
       setItemToDelete(null);
     } catch {
-      setLocalRows((current) => (current || []).filter((r) => r.id !== targetId));
+      setLocalRows((current) => (current || []).filter((r) => String(r.id) !== targetId));
       onToast(`"${targetTitle}" removed from library`);
       if (onRefresh) onRefresh();
       setItemToDelete(null);
@@ -1367,27 +1367,29 @@ function ContentView({
   };
 
   const handleDeleteContent = async (id: string | number) => {
+    const idStr = String(id);
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/content/${id}`, {
+      await fetch(`http://localhost:4000/api/v1/admin/content/${encodeURIComponent(idStr)}`, {
         method: "DELETE",
       });
-      setLocalRows((current) => (current || []).filter((r) => r.id !== id));
+      setLocalRows((current) => (current || []).filter((r) => String(r.id) !== idStr));
       onToast("Content item removed from library");
       if (onRefresh) onRefresh();
     } catch {
-      setLocalRows((current) => (current || []).filter((r) => r.id !== id));
+      setLocalRows((current) => (current || []).filter((r) => String(r.id) !== idStr));
       onToast("Content item removed");
     }
   };
 
   const handleToggleStatus = async (item: ContentItem) => {
+    const targetId = String(item.id);
     const newStatus = item.status === "Published" ? "Draft" : "Published";
     const updated = { ...item, status: newStatus };
     setLocalRows((current) =>
-      (current || []).map((r) => (r.id === item.id ? updated : r))
+      (current || []).map((r) => (String(r.id) === targetId ? updated : r))
     );
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/content/${item.id}`, {
+      await fetch(`http://localhost:4000/api/v1/admin/content/${encodeURIComponent(targetId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -1571,98 +1573,103 @@ function ContentView({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"
-                >
-                  <td className="px-5 py-4 sm:px-6">
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
-                        {item.type === "Video" ? (
-                          <PlayCircle className="h-4 w-4" />
-                        ) : item.type === "Practice problem" ? (
-                          <Code2 className="h-4 w-4" />
-                        ) : item.type === "Assignment" ? (
-                          <ClipboardCheck className="h-4 w-4 text-sky-600" />
-                        ) : item.type === "PDF" ? (
-                          <FileText className="h-4 w-4 text-rose-500" />
-                        ) : (
-                          <FileText className="h-4 w-4" />
+              {filtered.map((item, index) => {
+                const itemId = String(item.id ?? `content_${index}_${item.title}`);
+                const isMenuOpen = openMenuId === itemId;
+
+                return (
+                  <tr
+                    key={itemId}
+                    className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"
+                  >
+                    <td className="px-5 py-4 sm:px-6">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+                          {item.type === "Video" ? (
+                            <PlayCircle className="h-4 w-4" />
+                          ) : item.type === "Practice problem" ? (
+                            <Code2 className="h-4 w-4" />
+                          ) : item.type === "Assignment" ? (
+                            <ClipboardCheck className="h-4 w-4 text-sky-600" />
+                          ) : item.type === "PDF" ? (
+                            <FileText className="h-4 w-4 text-rose-500" />
+                          ) : (
+                            <FileText className="h-4 w-4" />
+                          )}
+                        </span>
+                        <p className="text-[12px] font-bold">{item.title}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-[11px] font-semibold">{item.type}</td>
+                    <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.parent}</td>
+                    <td className="px-4 py-4 text-[11px] font-semibold">{item.owner}</td>
+                    <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.updated}</td>
+                    <td className="px-4 py-4">
+                      <StatusBadge>{item.status}</StatusBadge>
+                    </td>
+                    <td className="px-4 py-4 relative text-right">
+                      <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId((prev) => (prev === itemId ? null : itemId));
+                          }}
+                          className={cn(
+                            "icon-button transition-colors",
+                            isMenuOpen && "bg-slate-100 text-indigo-600 dark:bg-white/10 dark:text-indigo-400"
+                          )}
+                          title="Content actions"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+
+                        {isMenuOpen && (
+                          <div className="absolute right-0 top-full mt-1.5 z-40 w-48 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingContentItem({ ...item, id: itemId });
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-300 transition cursor-pointer"
+                            >
+                              <Edit3 className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                              <span>Edit Asset</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleToggleStatus({ ...item, id: itemId });
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 transition cursor-pointer"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
+                              <span>{item.status === "Published" ? "Make Draft" : "Publish"}</span>
+                            </button>
+
+                            <div className="my-1 border-t border-slate-100 dark:border-white/5" />
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                setItemToDelete({ ...item, id: itemId });
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Delete Asset</span>
+                            </button>
+                          </div>
                         )}
-                      </span>
-                      <p className="text-[12px] font-bold">{item.title}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-[11px] font-semibold">{item.type}</td>
-                  <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.parent}</td>
-                  <td className="px-4 py-4 text-[11px] font-semibold">{item.owner}</td>
-                  <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.updated}</td>
-                  <td className="px-4 py-4">
-                    <StatusBadge>{item.status}</StatusBadge>
-                  </td>
-                  <td className="px-4 py-4 relative text-right">
-                    <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenMenuId((prev) => (prev === item.id ? null : item.id));
-                        }}
-                        className={cn(
-                          "icon-button transition-colors",
-                          openMenuId === item.id && "bg-slate-100 text-indigo-600 dark:bg-white/10 dark:text-indigo-400"
-                        )}
-                        title="Content actions"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-
-                      {openMenuId === item.id && (
-                        <div className="absolute right-0 top-full mt-1.5 z-40 w-48 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingContentItem(item);
-                              setOpenMenuId(null);
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-300 transition cursor-pointer"
-                          >
-                            <Edit3 className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-                            <span>Edit Asset</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleToggleStatus(item);
-                              setOpenMenuId(null);
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 transition cursor-pointer"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
-                            <span>{item.status === "Published" ? "Make Draft" : "Publish"}</span>
-                          </button>
-
-                          <div className="my-1 border-t border-slate-100 dark:border-white/5" />
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              setItemToDelete(item);
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            <span>Delete Asset</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
