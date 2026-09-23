@@ -362,16 +362,32 @@ export default function ScheduleSessionBuilder({
 
   const instructorOptions = useMemo(() => {
     if (activeInstructorsList && activeInstructorsList.length > 0) {
-      return activeInstructorsList.map((inst: any) => {
-        const name = inst.fullName || inst.name || inst.email || "Platform Admin";
-        const roleLabel = inst.role === "ADMIN" ? "Admin" : inst.role === "INSTRUCTOR" ? "Instructor" : "Staff";
-        return {
-          value: name,
-          label: `${name} (${roleLabel})`,
-        };
-      });
+      const seen = new Set<string>();
+      const opts: Array<{ value: string; label: string }> = [];
+
+      for (const inst of activeInstructorsList) {
+        const rawName = (inst.fullName || inst.name || inst.email || "Abhishek J").trim();
+        // Remove existing "(Admin)" or "(Instructor)" or trailing "Admin" duplicates
+        const cleanName = rawName
+          .replace(/\s*\((Admin|Instructor|Staff)\)\s*/gi, "")
+          .replace(/\s+Admin$/i, "")
+          .trim();
+
+        const roleLabel = inst.role === "INSTRUCTOR" ? "Instructor" : "Admin";
+        const finalName = cleanName || rawName;
+        const displayLabel = `${finalName} (${roleLabel})`;
+
+        if (!seen.has(finalName.toLowerCase())) {
+          seen.add(finalName.toLowerCase());
+          opts.push({
+            value: finalName,
+            label: displayLabel,
+          });
+        }
+      }
+      if (opts.length > 0) return opts;
     }
-    return [{ value: "Abhishek J (Admin)", label: "Abhishek J (Admin)" }];
+    return [{ value: "Abhishek J", label: "Abhishek J (Admin)" }];
   }, [activeInstructorsList]);
 
   // Check if a saved local draft exists (only if not editing an existing session by id)
@@ -492,27 +508,27 @@ export default function ScheduleSessionBuilder({
 
   // Auto-sync valid instructor from real DB list if unset or dummy default
   useEffect(() => {
-    if (activeInstructorsList.length > 0) {
-      const validNames = activeInstructorsList.map((i: any) => i.fullName || i.name || i.email);
+    if (instructorOptions.length > 0) {
+      const validValues = instructorOptions.map((o) => o.value);
       if (
         !data.instructor ||
         data.instructor === "Platform Admin" ||
         data.instructor === "Ankit Sharma" ||
-        !validNames.includes(data.instructor)
+        !validValues.includes(data.instructor)
       ) {
         if (!initialData?.instructor || initialData.instructor === "Platform Admin") {
           setData((prev) => ({
             ...prev,
-            instructor: validNames[0] || prev.instructor,
+            instructor: validValues[0] || prev.instructor,
           }));
         }
       }
     }
-  }, [activeInstructorsList, initialData]);
+  }, [instructorOptions, initialData]);
 
   const handleDiscardDraft = () => {
     clearDraft("schedule_session");
-    const defaultInst = activeInstructorsList[0]?.fullName || "Abhishek J (Admin)";
+    const defaultInst = instructorOptions[0]?.value || "Abhishek J";
     setData({
       title: "",
       instructor: defaultInst,
