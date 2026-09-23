@@ -10,6 +10,22 @@ export class AdminService {
   private static assignmentsFilePath = path.resolve(process.cwd(), 'data', 'assignments.json');
   private static liveSessionsFilePath = path.resolve(process.cwd(), 'data', 'live_sessions.json');
   private static contentOverridesFilePath = path.resolve(process.cwd(), 'data', 'content_overrides.json');
+  private static deletedContentFilePath = path.resolve(process.cwd(), 'data', 'deleted_content.json');
+
+  private static loadDeletedContentFromFile(): Set<string> {
+    try {
+      if (fs.existsSync(AdminService.deletedContentFilePath)) {
+        const raw = fs.readFileSync(AdminService.deletedContentFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return new Set<string>(parsed.map((id) => String(id)));
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load deleted content IDs from file:', err);
+    }
+    return new Set<string>();
+  }
 
   private static loadContentOverridesFromFile(): Map<string, any> {
     try {
@@ -211,11 +227,25 @@ export class AdminService {
     }
   }
 
+  public static saveDeletedContentToFile() {
+    try {
+      const dir = path.dirname(AdminService.deletedContentFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = Array.from(AdminService.deletedContentIds);
+      fs.writeFileSync(AdminService.deletedContentFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save deleted content IDs to file:', err);
+    }
+  }
+
   public static fallbackCourses = AdminService.loadCoursesMetaFromFile();
   public static fallbackProblems = AdminService.loadProblemsFromFile();
   public static fallbackAssignments = AdminService.loadAssignmentsFromFile();
   public static fallbackLiveSessions = AdminService.loadLiveSessionsFromFile();
   public static fallbackContentOverrides = AdminService.loadContentOverridesFromFile();
+  public static deletedContentIds = AdminService.loadDeletedContentFromFile();
   public static fallbackSubmissions = new Map<string, any>();
 
   constructor(private prisma: PrismaClient) {}
@@ -531,6 +561,7 @@ export class AdminService {
   }
 
   async getAllCourses() {
+    AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
     let dbCourses: any[] = [];
     try {
       dbCourses = await this.prisma.course.findMany({
@@ -1521,6 +1552,12 @@ export class AdminService {
   }
 
   async getAllContent() {
+    AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
+    AdminService.fallbackProblems = AdminService.loadProblemsFromFile();
+    AdminService.fallbackAssignments = AdminService.loadAssignmentsFromFile();
+    AdminService.fallbackContentOverrides = AdminService.loadContentOverridesFromFile();
+    AdminService.deletedContentIds = AdminService.loadDeletedContentFromFile();
+
     const items: Array<{
       id: string | number;
       title: string;
@@ -1533,20 +1570,26 @@ export class AdminService {
 
     // 1. Extract lessons/topics from all courses
     const courses = await this.getAllCourses();
-    for (const course of courses) {
+    for (let cIdx = 0; cIdx < courses.length; cIdx++) {
+      const course = courses[cIdx];
       const owner = course.instructorName || course.instructor || 'Platform Admin';
       const status = course.status || 'Published';
       const updated = course.updatedAt ? this.formatLastActive(course.updatedAt).label : 'Recently';
 
       if (Array.isArray(course.modules)) {
-        for (const mod of course.modules) {
+        for (let mIdx = 0; mIdx < course.modules.length; mIdx++) {
+          const mod = course.modules[mIdx];
           if (Array.isArray(mod.topics)) {
-            for (const top of mod.topics) {
+            for (let tIdx = 0; tIdx < mod.topics.length; tIdx++) {
+              const top = mod.topics[tIdx];
               if (Array.isArray(top.subtopics) && top.subtopics.length > 0) {
-                for (const sub of top.subtopics) {
+                for (let sIdx = 0; sIdx < top.subtopics.length; sIdx++) {
+                  const sub = top.subtopics[sIdx];
+                  const uniqueId = String(sub.id || `sub_${course.id || cIdx}_${mod.id || mIdx}_${top.id || tIdx}_${sIdx}`);
+                  if (AdminService.deletedContentIds.has(uniqueId)) continue;
                   items.push({
-                    id: sub.id || `sub_${mod.id}_${top.id}_${sub.title}`,
-                    title: sub.title || top.title,
+                    id: uniqueId,
+                    title: sub.title || top.title || `Lesson ${sIdx + 1}`,
                     type: sub.type || 'Video',
                     parent: `${course.title} · ${mod.title || 'Curriculum'}`,
                     owner,
@@ -1555,10 +1598,12 @@ export class AdminService {
                   });
                 }
               } else {
+                const uniqueId = String(top.id || `top_${course.id || cIdx}_${mod.id || mIdx}_${tIdx}`);
+                if (AdminService.deletedContentIds.has(uniqueId)) continue;
                 items.push({
-                  id: top.id || `top_${mod.id}_${top.title}`,
-                  title: top.title,
-                  type: 'Video',
+                  id: uniqueId,
+                  title: top.title || `Topic ${tIdx + 1}`,
+                  type: top.type || 'Video',
                   parent: `${course.title} · ${mod.title || 'Curriculum'}`,
                   owner,
                   status,
@@ -1571,21 +1616,21 @@ export class AdminService {
       }
     }
 
-
-
-    // 3. Extract database resources
+    // 2. Extract database resources
     try {
       const dbResources = await this.prisma.resource.findMany({
         include: { course: true, lesson: true },
         orderBy: { createdAt: 'desc' },
       });
       for (const res of dbResources) {
+        const uniqueId = String(res.id);
+        if (AdminService.deletedContentIds.has(uniqueId)) continue;
         let typeName = 'Resource';
         if (res.type === 'PDF') typeName = 'PDF';
         else if (res.type === 'VIDEO_RECORDING') typeName = 'Video';
 
         items.push({
-          id: res.id,
+          id: uniqueId,
           title: res.title,
           type: typeName,
           parent: res.course?.title || (res.lesson ? res.lesson.title : 'General Resources'),
@@ -1596,7 +1641,43 @@ export class AdminService {
       }
     } catch {}
 
-    // 4. Merge persistent overrides and updates
+    // 3. Extract real practice problems
+    try {
+      const problems = await this.getAllPracticeProblems();
+      for (const prob of problems) {
+        const uniqueId = String(prob.id);
+        if (AdminService.deletedContentIds.has(uniqueId)) continue;
+        items.push({
+          id: uniqueId,
+          title: prob.title,
+          type: 'Practice problem',
+          parent: `DSA & Practice · ${prob.category || 'Problem Solving'}`,
+          owner: 'Admin',
+          status: prob.status === 'Live' ? 'Published' : 'Draft',
+          updated: prob.updatedAt ? this.formatLastActive(prob.updatedAt).label : 'Recently',
+        });
+      }
+    } catch {}
+
+    // 4. Extract real assignments
+    try {
+      const assignments = await this.getAllAssignments();
+      for (const a of assignments) {
+        const uniqueId = String(a.id);
+        if (AdminService.deletedContentIds.has(uniqueId)) continue;
+        items.push({
+          id: uniqueId,
+          title: a.title,
+          type: 'Assignment',
+          parent: a.courseName || a.course?.title || 'Assignments & Challenges',
+          owner: 'Admin',
+          status: a.status === 'Published' ? 'Published' : 'Draft',
+          updated: a.dueDate || 'Recently',
+        });
+      }
+    } catch {}
+
+    // 5. Merge persistent overrides and updates
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const idStr = String(item.id);
@@ -1605,12 +1686,13 @@ export class AdminService {
         items[i] = {
           ...item,
           ...override,
+          id: item.id,
           updated: override.updated || this.formatLastActive(override.updatedAt || new Date()).label,
         };
       }
     }
 
-    return items;
+    return items.filter((item) => !AdminService.deletedContentIds.has(String(item.id)));
   }
 
   async updateContentItem(id: string | number, updates: any) {
@@ -1672,16 +1754,55 @@ export class AdminService {
 
   async deleteContentItem(id: string | number) {
     const idStr = String(id);
+    AdminService.deletedContentIds.add(idStr);
+    AdminService.saveDeletedContentToFile();
+
     AdminService.fallbackContentOverrides.delete(idStr);
     AdminService.saveContentOverridesToFile();
 
+    // 1. Delete from Prisma Resource if exists
     try {
       await this.prisma.resource.delete({
         where: { id: idStr },
       });
     } catch {}
 
-    return { success: true, id };
+    // 2. Delete from Prisma Lesson if exists
+    try {
+      await this.prisma.lesson.delete({
+        where: { id: idStr },
+      });
+    } catch {}
+
+    // 3. Remove from fallbackCourses if matching topic/subtopic
+    for (const [, course] of AdminService.fallbackCourses.entries()) {
+      let changed = false;
+      if (Array.isArray(course.modules)) {
+        for (const mod of course.modules) {
+          if (Array.isArray(mod.topics)) {
+            mod.topics = mod.topics.filter((top: any) => {
+              if (String(top.id) === idStr) {
+                changed = true;
+                return false;
+              }
+              if (Array.isArray(top.subtopics)) {
+                const prevCount = top.subtopics.length;
+                top.subtopics = top.subtopics.filter(
+                  (sub: any) => String(sub.id) !== idStr && String(sub.title) !== idStr
+                );
+                if (top.subtopics.length !== prevCount) changed = true;
+              }
+              return true;
+            });
+          }
+        }
+      }
+      if (changed) {
+        AdminService.saveMetaToFile();
+      }
+    }
+
+    return { success: true, id: idStr };
   }
 
   async getAllPracticeProblems() {
