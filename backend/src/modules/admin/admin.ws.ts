@@ -42,7 +42,7 @@ export class AdminWsBroadcaster {
   private static async sendSnapshot(socket: WebSocket, prisma: PrismaClient, type: string) {
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, instructors] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
@@ -51,13 +51,14 @@ export class AdminWsBroadcaster {
         adminService.getAllContent(),
         adminService.getAllPracticeProblems(),
         adminService.getAllLiveSessions(),
+        adminService.getInstructors(),
       ]);
 
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(
           JSON.stringify({
             type,
-            data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions },
+            data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, instructors },
             timestamp: new Date().toISOString(),
           })
         );
@@ -72,7 +73,7 @@ export class AdminWsBroadcaster {
 
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, instructors] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
@@ -81,11 +82,12 @@ export class AdminWsBroadcaster {
         adminService.getAllContent(),
         adminService.getAllPracticeProblems(),
         adminService.getAllLiveSessions(),
+        adminService.getInstructors(),
       ]);
 
       const payload = JSON.stringify({
         type: 'DATA_UPDATE',
-        data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions },
+        data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, instructors },
         timestamp: new Date().toISOString(),
       });
 
