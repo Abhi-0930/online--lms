@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { ContentItem } from "@/hooks/useLiveAdminData";
+import CustomConfirmDialog from "@/components/CustomConfirmDialog";
 
 interface CustomDropdownProps {
   value: string;
@@ -133,6 +134,7 @@ export default function EditContentModal({
   const [status, setStatus] = useState("Published");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -143,6 +145,7 @@ export default function EditContentModal({
       setOwner(item.owner || "Admin Team");
       setStatus(item.status || "Published");
       setError("");
+      setShowDeleteConfirm(false);
     }
   }, [item]);
 
@@ -205,18 +208,23 @@ export default function EditContentModal({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!onDelete) return;
-    if (window.confirm(`Are you sure you want to remove "${item.title}" from the content library?`)) {
-      try {
-        setIsDeleting(true);
-        await onDelete(item.id);
-        onClose();
-      } catch (err: any) {
-        setError(err?.message || "Failed to delete item");
-      } finally {
-        setIsDeleting(false);
-      }
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!onDelete || !item) return;
+    try {
+      setIsDeleting(true);
+      await onDelete(item.id);
+      setShowDeleteConfirm(false);
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || "Failed to delete item");
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -347,10 +355,19 @@ export default function EditContentModal({
                 type="button"
                 onClick={handleDelete}
                 disabled={isDeleting || isSubmitting}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 px-3 py-2 rounded-xl transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 px-3 py-2 rounded-xl transition cursor-pointer disabled:opacity-50"
               >
-                <Trash2 className="h-3.5 w-3.5" />
-                <span>Delete Asset</span>
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Delete Asset</span>
+                  </>
+                )}
               </button>
             ) : <div />}
 
@@ -384,6 +401,20 @@ export default function EditContentModal({
           </div>
         </form>
       </div>
+
+      {/* Custom Delete Confirmation Dialog inside EditContentModal */}
+      <CustomConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => !isDeleting && setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Content Asset?"
+        description="Are you sure you want to remove this learning asset from the content library? This action cannot be undone."
+        targetName={item.title}
+        confirmText="Delete asset"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
