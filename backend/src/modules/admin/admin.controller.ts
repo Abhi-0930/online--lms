@@ -145,6 +145,45 @@ export default async function adminController(fastify: FastifyInstance) {
       return reply.code(400).send({ error: err.message || 'Failed to delete practice problem' });
     }
   });
+
+  // Live Sessions & Webinars management
+  fastify.get('/live-sessions', async () => {
+    return adminService.getAllLiveSessions();
+  });
+
+  fastify.post('/live-sessions', async (request, reply) => {
+    const body = request.body as any;
+    try {
+      const session = await adminService.saveLiveSession(body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(session);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to schedule live session' });
+    }
+  });
+
+  fastify.patch('/live-sessions/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    try {
+      const updated = await adminService.updateLiveSession(id, body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(updated);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to update live session' });
+    }
+  });
+
+  fastify.delete('/live-sessions/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await adminService.deleteLiveSession(id);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to delete live session' });
+    }
+  });
 }
 
 
