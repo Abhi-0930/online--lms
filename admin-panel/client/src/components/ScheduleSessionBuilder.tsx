@@ -286,6 +286,7 @@ interface ScheduleSessionBuilderProps {
   availableCourses?: string[];
   courses?: any[];
   contentItems?: ContentLibraryItem[];
+  instructors?: any[];
 }
 
 export default function ScheduleSessionBuilder({
@@ -296,14 +297,22 @@ export default function ScheduleSessionBuilder({
   availableCourses,
   courses,
   contentItems = [],
+  instructors = [],
 }: ScheduleSessionBuilderProps) {
   const [localCourses, setLocalCourses] = useState<any[]>(courses || []);
+  const [localInstructors, setLocalInstructors] = useState<any[]>(instructors || []);
 
   useEffect(() => {
     if (courses && courses.length > 0) {
       setLocalCourses(courses);
     }
   }, [courses]);
+
+  useEffect(() => {
+    if (instructors && instructors.length > 0) {
+      setLocalInstructors(instructors);
+    }
+  }, [instructors]);
 
   useEffect(() => {
     if (!courses || courses.length === 0) {
@@ -318,11 +327,30 @@ export default function ScheduleSessionBuilder({
     }
   }, [courses]);
 
+  useEffect(() => {
+    if (!instructors || instructors.length === 0) {
+      fetch("http://localhost:4000/api/v1/admin/instructors")
+        .then((r) => (r.ok ? r.json() : []))
+        .then((apiData) => {
+          if (Array.isArray(apiData) && apiData.length > 0) {
+            setLocalInstructors(apiData);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [instructors]);
+
   const activeCoursesList = useMemo(() => {
     if (localCourses && localCourses.length > 0) return localCourses;
     if (courses && courses.length > 0) return courses;
     return [];
   }, [localCourses, courses]);
+
+  const activeInstructorsList = useMemo(() => {
+    if (localInstructors && localInstructors.length > 0) return localInstructors;
+    if (instructors && instructors.length > 0) return instructors;
+    return [];
+  }, [localInstructors, instructors]);
 
   const courseNames = useMemo(() => {
     if (activeCoursesList && activeCoursesList.length > 0) {
@@ -331,6 +359,20 @@ export default function ScheduleSessionBuilder({
     if (availableCourses && availableCourses.length > 0) return availableCourses;
     return [];
   }, [activeCoursesList, availableCourses]);
+
+  const instructorOptions = useMemo(() => {
+    if (activeInstructorsList && activeInstructorsList.length > 0) {
+      return activeInstructorsList.map((inst: any) => {
+        const name = inst.fullName || inst.name || inst.email || "Platform Admin";
+        const roleLabel = inst.role === "ADMIN" ? "Admin" : inst.role === "INSTRUCTOR" ? "Instructor" : "Staff";
+        return {
+          value: name,
+          label: `${name} (${roleLabel})`,
+        };
+      });
+    }
+    return [{ value: "Abhishek J (Admin)", label: "Abhishek J (Admin)" }];
+  }, [activeInstructorsList]);
 
   // Check if a saved local draft exists (only if not editing an existing session by id)
   const existingDraft = useMemo(() => {
@@ -448,11 +490,32 @@ export default function ScheduleSessionBuilder({
     return () => clearTimeout(timer);
   }, [data]);
 
+  // Auto-sync valid instructor from real DB list if unset or dummy default
+  useEffect(() => {
+    if (activeInstructorsList.length > 0) {
+      const validNames = activeInstructorsList.map((i: any) => i.fullName || i.name || i.email);
+      if (
+        !data.instructor ||
+        data.instructor === "Platform Admin" ||
+        data.instructor === "Ankit Sharma" ||
+        !validNames.includes(data.instructor)
+      ) {
+        if (!initialData?.instructor || initialData.instructor === "Platform Admin") {
+          setData((prev) => ({
+            ...prev,
+            instructor: validNames[0] || prev.instructor,
+          }));
+        }
+      }
+    }
+  }, [activeInstructorsList, initialData]);
+
   const handleDiscardDraft = () => {
     clearDraft("schedule_session");
+    const defaultInst = activeInstructorsList[0]?.fullName || "Abhishek J (Admin)";
     setData({
       title: "",
-      instructor: "Platform Admin",
+      instructor: defaultInst,
       sessionType: "Live Class",
       description: "",
       course: courseNames[0] || "",
@@ -759,7 +822,8 @@ export default function ScheduleSessionBuilder({
                     <CustomDropdown
                       value={data.instructor}
                       onChange={(val) => setData({ ...data, instructor: val })}
-                      options={["Ankit Sharma", "Abhishek Kumar", "Siddharth Rao", "Guest Industry Speaker"]}
+                      options={instructorOptions}
+                      placeholder={instructorOptions.length > 0 ? "Select Instructor / Host" : "Loading database admins..."}
                     />
                   </div>
 
