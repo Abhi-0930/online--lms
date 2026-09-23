@@ -67,7 +67,8 @@ export interface LiveSessionData {
   attendanceThreshold: string;
   maxAttendees: string;
   visibility: string;
-  status: "Scheduled" | "Draft" | "Live" | "Completed";
+  status: "Scheduled" | "Draft" | "Live" | "Completed" | "Upcoming";
+  attendees?: number;
 }
 
 export interface ContentLibraryItem {
