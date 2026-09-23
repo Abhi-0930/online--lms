@@ -696,8 +696,186 @@ function CourseProgressCard({ course }: { course: LiveCourseItem }) {
 
 function ActivityRow({ item, last }: { item: typeof activity[number]; last: boolean }) { const Icon = item.icon; const colors = { blue: "bg-[#eaf0ff] text-[#3157e8]", emerald: "bg-[#e4f8ee] text-[#23a26d]", violet: "bg-[#f0eaff] text-[#7f5af0]", amber: "bg-[#fff4db] text-[#d68c20]" }; return <div className="flex items-center gap-3 py-4"><span className={cx("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", colors[item.color as keyof typeof colors])}><Icon className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-[#17223d] dark:text-white">{item.title}</p><p className="mt-0.5 truncate text-xs text-[#9aa4bc]">{item.subtitle}</p></div><span className="shrink-0 text-[10px] font-medium text-[#a5aec2]">{item.time}</span>{!last && <span className="sr-only">divider</span>}</div>; }
 
-function UpcomingSessions() { return <section><SectionTitle title="Upcoming sessions" link="Calendar" href={getSecureHref("/announcements")} /><div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10"><SessionRow day="18" month="SEP" title="Live DSA clinic" meta="Thursday · 7:30 PM" tone="blue" /><SessionRow day="21" month="SEP" title="Mock interview #02" meta="Sunday · 11:00 AM" tone="violet" /><SessionRow day="24" month="SEP" title="Guest session: Google" meta="Wednesday · 6:00 PM" tone="amber" /></div></section>; }
-function SessionRow({ day, month, title, meta, tone }: { day: string; month: string; title: string; meta: string; tone: "blue" | "violet" | "amber" }) { const tones = { blue: "bg-[#eaf0ff] text-[#3157e8]", violet: "bg-[#f0eaff] text-[#7f5af0]", amber: "bg-[#fff4db] text-[#d68c20]" }; return <div className="flex items-center gap-3 py-4"><div className={cx("flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl", tones[tone])}><span className="text-[9px] font-bold uppercase">{month}</span><span className="font-display text-lg font-bold leading-4">{day}</span></div><div className="min-w-0"><p className="truncate text-sm font-bold text-[#17223d] dark:text-white">{title}</p><p className="mt-1 text-xs text-[#9aa4bc]">{meta}</p></div><ChevronRight className="ml-auto h-4 w-4 shrink-0 text-[#c4cada]" /></div>; }
+function UpcomingSessions() {
+  const [sessions, setSessions] = useState<any[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("lms_admin_live_sessions");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLiveSessions = async () => {
+      try {
+        const res = await fetch("http://localhost:4000/api/v1/live-sessions");
+        if (res.ok) {
+          const json = await res.json();
+          const items = Array.isArray(json) ? json : json?.data || [];
+          if (Array.isArray(items) && isMounted) {
+            setSessions(items);
+            try {
+              localStorage.setItem("lms_admin_live_sessions", JSON.stringify(items));
+            } catch {}
+            return;
+          }
+        }
+      } catch {
+        // Fallback to local storage if backend is unreachable
+      }
+      if (isMounted) {
+        try {
+          const saved = localStorage.getItem("lms_admin_live_sessions");
+          if (saved) setSessions(JSON.parse(saved));
+        } catch {}
+      }
+    };
+
+    fetchLiveSessions();
+
+    const handleSync = () => {
+      fetchLiveSessions();
+    };
+
+    window.addEventListener("storage", handleSync);
+    window.addEventListener("lms_live_sessions_updated", handleSync);
+    const interval = setInterval(fetchLiveSessions, 10000);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("lms_live_sessions_updated", handleSync);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const upcomingList = sessions.filter(
+    (s) => s.status !== "Completed" && s.status !== "Draft"
+  );
+
+  return (
+    <section>
+      <SectionTitle
+        title="Upcoming sessions"
+        link={upcomingList.length > 0 ? "Calendar" : undefined}
+        href={getSecureHref("/announcements")}
+      />
+      <div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10">
+        {upcomingList.length === 0 ? (
+          <div className="py-7 text-center">
+            <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+              <Video className="h-5 w-5" />
+            </div>
+            <p className="text-xs font-semibold text-[#17223d] dark:text-white">No live sessions scheduled</p>
+            <p className="mt-0.5 text-[11px] text-[#9aa4bc]">New live classes and workshops will appear here.</p>
+          </div>
+        ) : (
+          upcomingList.slice(0, 4).map((session, idx) => {
+            const tones: Array<"blue" | "violet" | "amber"> = ["blue", "violet", "amber"];
+            const tone = tones[idx % tones.length];
+            const dateObj = session.date ? new Date(session.date) : new Date();
+            const dayStr = !isNaN(dateObj.getDate()) ? String(dateObj.getDate()).padStart(2, "0") : "18";
+            const monthStr = !isNaN(dateObj.getMonth())
+              ? dateObj.toLocaleString("en-US", { month: "short" }).toUpperCase()
+              : "SEP";
+            const metaStr = `${session.course || "Live Class"}${session.startTime ? ` · ${session.startTime}` : ""}`;
+            const isLive = session.status === "Live";
+
+            return (
+              <div
+                key={session.id || idx}
+                onClick={() => {
+                  if (session.meetingLink) {
+                    window.open(session.meetingLink, "_blank", "noopener,noreferrer");
+                    toast.info(`Opening ${session.platform || "Live"} meeting...`);
+                  } else {
+                    toast.info("Meeting link will be shared by instructor before start.");
+                  }
+                }}
+                className={cx(
+                  "group cursor-pointer transition-all duration-150 hover:bg-slate-50/70 dark:hover:bg-white/[0.02] -mx-5 px-5 first:rounded-t-2xl last:rounded-b-2xl"
+                )}
+              >
+                <SessionRow
+                  day={dayStr}
+                  month={monthStr}
+                  title={session.title || "Live Lecture"}
+                  meta={metaStr}
+                  tone={tone}
+                  isLive={isLive}
+                  platform={session.platform}
+                  hasLink={Boolean(session.meetingLink)}
+                />
+              </div>
+            );
+          })
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SessionRow({
+  day,
+  month,
+  title,
+  meta,
+  tone,
+  isLive,
+  platform,
+  hasLink,
+}: {
+  day: string;
+  month: string;
+  title: string;
+  meta: string;
+  tone: "blue" | "violet" | "amber";
+  isLive?: boolean;
+  platform?: string;
+  hasLink?: boolean;
+}) {
+  const tones = {
+    blue: "bg-[#eaf0ff] text-[#3157e8] dark:bg-indigo-950/50 dark:text-indigo-300",
+    violet: "bg-[#f0eaff] text-[#7f5af0] dark:bg-purple-950/50 dark:text-purple-300",
+    amber: "bg-[#fff4db] text-[#d68c20] dark:bg-amber-950/50 dark:text-amber-300",
+  };
+  return (
+    <div className="flex items-center gap-3 py-3.5">
+      <div className={cx("flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl transition-transform group-hover:scale-105", tones[tone])}>
+        <span className="text-[9px] font-extrabold uppercase tracking-wider">{month}</span>
+        <span className="font-display text-lg font-bold leading-4">{day}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">{title}</p>
+          {isLive && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[9px] font-extrabold tracking-wide text-emerald-600 dark:text-emerald-400">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              </span>
+              LIVE
+            </span>
+          )}
+        </div>
+        <p className="mt-0.5 truncate text-xs text-[#9aa4bc]">
+          {meta} {platform ? ` · ${platform}` : ""}
+        </p>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {hasLink ? (
+          <span className="rounded-lg bg-indigo-50 dark:bg-indigo-950/50 px-2 py-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
+            Join
+          </span>
+        ) : null}
+        <ChevronRight className="h-4 w-4 shrink-0 text-[#c4cada] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
+      </div>
+    </div>
+  );
+}
 
 function AssignmentsWidget() {
   const { assignments, loading } = useAssignments();
@@ -2634,7 +2812,100 @@ function ProgressPage() {
 }
 
 function AnnouncementsPage() {
-  const announcements: any[] = [];
+  const [announcements, setAnnouncements] = useState<any[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("lms_admin_announcements");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [liveSessions, setLiveSessions] = useState<any[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("lms_admin_live_sessions");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAnnouncements = async () => {
+      try {
+        const res = await fetch("http://localhost:4000/api/v1/admin/announcements");
+        if (res.ok) {
+          const json = await res.json();
+          const items = Array.isArray(json) ? json : json?.data || [];
+          if (Array.isArray(items) && isMounted) {
+            setAnnouncements(items);
+            try {
+              localStorage.setItem("lms_admin_announcements", JSON.stringify(items));
+            } catch {}
+          }
+        }
+      } catch {
+        if (isMounted) {
+          try {
+            const saved = localStorage.getItem("lms_admin_announcements");
+            if (saved) setAnnouncements(JSON.parse(saved));
+          } catch {}
+        }
+      }
+    };
+
+    const fetchLiveSessions = async () => {
+      try {
+        const res = await fetch("http://localhost:4000/api/v1/live-sessions");
+        if (res.ok) {
+          const json = await res.json();
+          const items = Array.isArray(json) ? json : json?.data || [];
+          if (Array.isArray(items) && isMounted) {
+            setLiveSessions(items);
+            try {
+              localStorage.setItem("lms_admin_live_sessions", JSON.stringify(items));
+            } catch {}
+          }
+        }
+      } catch {
+        if (isMounted) {
+          try {
+            const saved = localStorage.getItem("lms_admin_live_sessions");
+            if (saved) setLiveSessions(JSON.parse(saved));
+          } catch {}
+        }
+      }
+    };
+
+    fetchAnnouncements();
+    fetchLiveSessions();
+
+    const handleSync = () => {
+      fetchAnnouncements();
+      fetchLiveSessions();
+    };
+
+    window.addEventListener("storage", handleSync);
+    window.addEventListener("lms_announcements_updated", handleSync);
+    window.addEventListener("lms_live_sessions_updated", handleSync);
+    const interval = setInterval(handleSync, 12000);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("lms_announcements_updated", handleSync);
+      window.removeEventListener("lms_live_sessions_updated", handleSync);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const upcomingSessions = liveSessions.filter(
+    (s) => s.status !== "Completed" && s.status !== "Draft"
+  );
+
   return (
     <>
       <PageHeader
@@ -2642,7 +2913,7 @@ function AnnouncementsPage() {
         title="Announcements"
         description="The latest from your instructors, cohort, and learning community."
       />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
           {announcements.length === 0 ? (
             <div className="card-surface flex flex-col items-center justify-center p-12 text-center">
@@ -2656,7 +2927,7 @@ function AnnouncementsPage() {
             </div>
           ) : (
             announcements.map((item, index) => (
-              <article key={item.title} className="card-surface p-5 sm:p-6">
+              <article key={item.id || item.title || index} className="card-surface p-5 sm:p-6">
                 <div className="flex gap-4">
                   <span
                     className={cx(
@@ -2673,17 +2944,24 @@ function AnnouncementsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-md bg-[#f1f3f8] px-2 py-1 text-[10px] font-bold text-[#7c87a4] dark:bg-white/10">
-                        {item.category}
+                        {item.category || item.targetAudience || "General"}
                       </span>
-                      <span className="text-[10px] text-[#aab3c5]">{item.date}</span>
+                      <span className="text-[10px] text-[#aab3c5]">
+                        {item.publishedAt || item.date || "Just now"}
+                      </span>
+                      {item.isPinned && (
+                        <span className="rounded-md bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
+                          Pinned
+                        </span>
+                      )}
                     </div>
                     <h2 className="mt-3 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">
                       {item.title}
                     </h2>
-                    <p className="mt-2 text-sm leading-6 text-[#7c87a4]">{item.body}</p>
+                    <p className="mt-2 text-sm leading-6 text-[#7c87a4]">{item.content || item.body}</p>
                     <button
                       onClick={() => toast.success("Announcement marked as read")}
-                      className="mt-4 text-xs font-bold text-[#3157e8]"
+                      className="mt-4 text-xs font-bold text-[#3157e8] hover:underline"
                     >
                       Mark as read
                     </button>
@@ -2693,12 +2971,65 @@ function AnnouncementsPage() {
             ))
           )}
         </div>
-        <aside className="card-surface h-fit p-5">
-          <p className="text-xs font-bold text-[#7c87a4]">Upcoming reminders</p>
-          <div className="mt-4 space-y-4">
-            <Reminder icon={AlarmClock} title="Arrays checkpoint" meta="Due soon" color="amber" />
-            <Reminder icon={Video} title="Live DSA clinic" meta="Upcoming session" color="blue" />
-            <Reminder icon={Target} title="Mock interview" meta="Cohort prep" color="violet" />
+        <aside className="card-surface h-fit p-5 space-y-5">
+          <div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-[#7c87a4]">Upcoming live sessions</p>
+              <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                {upcomingSessions.length} Scheduled
+              </span>
+            </div>
+            <div className="mt-4 space-y-3">
+              {upcomingSessions.length === 0 ? (
+                <p className="text-xs text-[#9aa4bc] py-2">No live classes scheduled for today.</p>
+              ) : (
+                upcomingSessions.slice(0, 4).map((session, idx) => {
+                  const isLive = session.status === "Live";
+                  return (
+                    <div
+                      key={session.id || idx}
+                      onClick={() => {
+                        if (session.meetingLink) {
+                          window.open(session.meetingLink, "_blank", "noopener,noreferrer");
+                          toast.info(`Joining ${session.platform || "Live"} class...`);
+                        } else {
+                          toast.info("Meeting link will be active shortly before start.");
+                        }
+                      }}
+                      className="group flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition cursor-pointer border border-slate-100 dark:border-white/5"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+                          <Video className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-[#17223d] dark:text-white truncate">
+                            {session.title}
+                          </p>
+                          <p className="text-[10px] text-[#9aa4bc] truncate">
+                            {session.date} · {session.startTime || "TBD"}
+                          </p>
+                        </div>
+                      </div>
+                      {isLive ? (
+                        <span className="shrink-0 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 animate-pulse">
+                          LIVE
+                        </span>
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#c4cada] group-hover:text-indigo-600" />
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+          <div className="border-t border-slate-100 dark:border-white/10 pt-4">
+            <p className="text-xs font-bold text-[#7c87a4]">Reminders</p>
+            <div className="mt-3 space-y-3">
+              <Reminder icon={AlarmClock} title="Arrays checkpoint" meta="Due soon" color="amber" />
+              <Reminder icon={Target} title="Mock interview" meta="Cohort prep" color="violet" />
+            </div>
           </div>
         </aside>
       </div>
