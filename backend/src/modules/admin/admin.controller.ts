@@ -184,6 +184,11 @@ export default async function adminController(fastify: FastifyInstance) {
       return reply.code(400).send({ error: err.message || 'Failed to delete live session' });
     }
   });
+
+  // Admin and instructor users from DB
+  fastify.get('/instructors', async () => {
+    return adminService.getInstructors();
+  });
 }
 
 
