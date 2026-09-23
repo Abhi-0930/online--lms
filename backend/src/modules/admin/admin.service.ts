@@ -2155,12 +2155,21 @@ export class AdminService {
       console.warn('Failed to query admin/instructor users from DB:', err);
     }
 
+    const cleanNameStr = (name?: string | null) => {
+      if (!name) return '';
+      return name
+        .replace(/\s*\((Admin|Instructor|Staff)\)\s*/gi, '')
+        .replace(/\s+Admin$/i, '')
+        .trim();
+    };
+
     const userMap = new Map<string, any>();
     for (const u of dbUsers) {
       if (u && u.email) {
+        const cleaned = cleanNameStr(u.fullName) || u.email.split('@')[0];
         userMap.set(u.email.toLowerCase(), {
           id: u.id,
-          fullName: u.fullName || u.name || 'Platform Admin',
+          fullName: cleaned,
           email: u.email,
           role: u.role || 'ADMIN',
           avatarUrl: u.avatarUrl || null,
@@ -2175,9 +2184,10 @@ export class AdminService {
         (u.role === 'ADMIN' || u.role === 'INSTRUCTOR' || u.email.toLowerCase() === 'abhishek.j3094@gmail.com')
       ) {
         if (!userMap.has(u.email.toLowerCase())) {
+          const cleaned = cleanNameStr(u.fullName || u.name) || 'Abhishek J';
           userMap.set(u.email.toLowerCase(), {
             id: u.id || `admin_${Date.now()}`,
-            fullName: u.fullName || u.name || 'Platform Admin',
+            fullName: cleaned,
             email: u.email,
             role: u.role || 'ADMIN',
             avatarUrl: u.avatarUrl || null,
@@ -2204,9 +2214,10 @@ export class AdminService {
           },
         });
         if (anyAdmin && anyAdmin.email) {
+          const cleaned = cleanNameStr(anyAdmin.fullName) || 'Abhishek J';
           userMap.set(anyAdmin.email.toLowerCase(), {
             id: anyAdmin.id,
-            fullName: anyAdmin.fullName || 'Abhishek (Admin)',
+            fullName: cleaned,
             email: anyAdmin.email,
             role: anyAdmin.role || 'ADMIN',
             avatarUrl: anyAdmin.avatarUrl || null,
@@ -2220,7 +2231,7 @@ export class AdminService {
       return [
         {
           id: 'admin_primary',
-          fullName: 'Abhishek J (Admin)',
+          fullName: 'Abhishek J',
           email: 'abhishek.j3094@gmail.com',
           role: 'ADMIN',
           avatarUrl: null,
