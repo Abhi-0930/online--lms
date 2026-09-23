@@ -9,6 +9,7 @@ import PracticeProblemModal from "@/components/PracticeProblemModal";
 import PracticeProblemBuilder from "@/components/PracticeProblemBuilder";
 import PracticeProblemDetailView from "@/components/PracticeProblemDetailView";
 import PostAnnouncementModal, { AnnouncementItem } from "@/components/PostAnnouncementModal";
+import EditContentModal from "@/components/EditContentModal";
 import ActiveDraftBanner from "@/components/ActiveDraftBanner";
 import {
   DraftType,
@@ -1276,14 +1277,22 @@ function ContentView({
   content?: ContentItem[];
   onRefresh?: () => void;
 }) {
-  const { content: liveContent, courses: liveCourses, refresh } = useLiveAdminData();
+  const { content: liveContent, courses: liveCourses, instructors: liveInstructors, refresh } = useLiveAdminData();
   const rawContent = propContent !== undefined ? propContent : liveContent;
   const [localRows, setLocalRows] = useState<ContentItem[] | null>(null);
   const rows = localRows || rawContent;
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [isAddContentOpen, setIsAddContentOpen] = useState(false);
+  const [editingContentItem, setEditingContentItem] = useState<ContentItem | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | number | null>(null);
   const [contentDraft, setContentDraft] = useState(() => getDraft("add_content"));
+
+  useEffect(() => {
+    const handleClickOutside = () => setOpenMenuId(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const update = () => {
@@ -1303,6 +1312,63 @@ function ContentView({
       setLocalRows(rawContent);
     }
   }, [rawContent]);
+
+  const handleSaveEditedContent = async (updated: ContentItem) => {
+    try {
+      const res = await fetch(`http://localhost:4000/api/v1/admin/content/${updated.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setLocalRows((current) =>
+          (current || []).map((r) => (r.id === updated.id ? { ...r, ...saved } : r))
+        );
+      } else {
+        setLocalRows((current) =>
+          (current || []).map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
+        );
+      }
+      onToast(`"${updated.title}" updated successfully!`);
+      if (onRefresh) onRefresh();
+    } catch {
+      setLocalRows((current) =>
+        (current || []).map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
+      );
+      onToast(`"${updated.title}" updated!`);
+    }
+  };
+
+  const handleDeleteContent = async (id: string | number) => {
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/content/${id}`, {
+        method: "DELETE",
+      });
+      setLocalRows((current) => (current || []).filter((r) => r.id !== id));
+      onToast("Content item removed from library");
+      if (onRefresh) onRefresh();
+    } catch {
+      setLocalRows((current) => (current || []).filter((r) => r.id !== id));
+      onToast("Content item removed");
+    }
+  };
+
+  const handleToggleStatus = async (item: ContentItem) => {
+    const newStatus = item.status === "Published" ? "Draft" : "Published";
+    const updated = { ...item, status: newStatus };
+    setLocalRows((current) =>
+      (current || []).map((r) => (r.id === item.id ? updated : r))
+    );
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/content/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      onToast(`Status changed to ${newStatus}`);
+    } catch {}
+  };
 
   const filtered = rows.filter(
     (item) =>
@@ -1509,22 +1575,65 @@ function ContentView({
                   <td className="px-4 py-4">
                     <StatusBadge>{item.status}</StatusBadge>
                   </td>
-                  <td className="px-4 py-4">
-                    <button
-                      onClick={() =>
-                        setLocalRows((current) =>
-                          (current || []).map((row) =>
-                            row.id === item.id
-                              ? { ...row, status: row.status === "Published" ? "Draft" : "Published" }
-                              : row
-                          )
-                        )
-                      }
-                      className="icon-button"
-                      title="Toggle status"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
+                  <td className="px-4 py-4 relative text-right">
+                    <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId((prev) => (prev === item.id ? null : item.id));
+                        }}
+                        className={cn(
+                          "icon-button transition-colors",
+                          openMenuId === item.id && "bg-slate-100 text-indigo-600 dark:bg-white/10 dark:text-indigo-400"
+                        )}
+                        title="Content actions"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+
+                      {openMenuId === item.id && (
+                        <div className="absolute right-0 top-full mt-1.5 z-40 w-48 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingContentItem(item);
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-300 transition cursor-pointer"
+                          >
+                            <Edit3 className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                            <span>Edit Asset</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleToggleStatus(item);
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 transition cursor-pointer"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
+                            <span>{item.status === "Published" ? "Make Draft" : "Publish"}</span>
+                          </button>
+
+                          <div className="my-1 border-t border-slate-100 dark:border-white/5" />
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              handleDeleteContent(item.id);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Delete Asset</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1562,6 +1671,16 @@ function ContentView({
           status: r.status,
           updated: r.updated,
         }))}
+      />
+
+      <EditContentModal
+        isOpen={Boolean(editingContentItem)}
+        item={editingContentItem}
+        onClose={() => setEditingContentItem(null)}
+        onSave={handleSaveEditedContent}
+        onDelete={handleDeleteContent}
+        courses={liveCourses}
+        instructors={liveInstructors}
       />
     </div>
   );
