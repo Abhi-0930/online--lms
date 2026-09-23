@@ -8,6 +8,7 @@ export class AdminService {
   private static metaFilePath = path.resolve(process.cwd(), 'data', 'courses_meta.json');
   private static problemsFilePath = path.resolve(process.cwd(), 'data', 'practice_problems.json');
   private static assignmentsFilePath = path.resolve(process.cwd(), 'data', 'assignments.json');
+  private static liveSessionsFilePath = path.resolve(process.cwd(), 'data', 'live_sessions.json');
 
   private static loadCoursesMetaFromFile(): Map<string, any> {
     try {
@@ -90,6 +91,33 @@ export class AdminService {
     return new Map<string, any>();
   }
 
+  public static loadLiveSessionsFromFile(): Map<string, any> {
+    try {
+      if (fs.existsSync(AdminService.liveSessionsFilePath)) {
+        const raw = fs.readFileSync(AdminService.liveSessionsFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const map = new Map<string, any>();
+          for (const item of parsed) {
+            if (item && item.id) {
+              map.set(String(item.id), item);
+            }
+          }
+          return map;
+        } else if (parsed && typeof parsed === 'object') {
+          const map = new Map<string, any>();
+          for (const [k, v] of Object.entries(parsed)) {
+            map.set(String(k), v);
+          }
+          return map;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load live sessions from file:', err);
+    }
+    return new Map<string, any>();
+  }
+
   public static saveMetaToFile() {
     try {
       const dir = path.dirname(AdminService.metaFilePath);
@@ -129,9 +157,23 @@ export class AdminService {
     }
   }
 
+  public static saveLiveSessionsToFile() {
+    try {
+      const dir = path.dirname(AdminService.liveSessionsFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = Array.from(AdminService.fallbackLiveSessions.values());
+      fs.writeFileSync(AdminService.liveSessionsFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save live sessions to file:', err);
+    }
+  }
+
   public static fallbackCourses = AdminService.loadCoursesMetaFromFile();
   public static fallbackProblems = AdminService.loadProblemsFromFile();
   public static fallbackAssignments = AdminService.loadAssignmentsFromFile();
+  public static fallbackLiveSessions = AdminService.loadLiveSessionsFromFile();
   public static fallbackSubmissions = new Map<string, any>();
 
   constructor(private prisma: PrismaClient) {}
@@ -1952,6 +1994,144 @@ export class AdminService {
 
     AdminService.fallbackProblems.delete(String(id));
     AdminService.saveProblemsToFile();
+    return { success: true, id };
+  }
+
+  // ==========================================
+  // LIVE SESSIONS CRUD OPERATIONS
+  // ==========================================
+  async getAllLiveSessions() {
+    let dbSessions: any[] = [];
+    try {
+      if ((this.prisma as any).liveSession) {
+        dbSessions = await (this.prisma as any).liveSession.findMany({
+          orderBy: { createdAt: 'desc' },
+        });
+      }
+    } catch (err) {
+      console.warn('Live sessions DB fetch fallback:', err);
+    }
+
+    const merged = new Map<string, any>();
+    for (const [id, s] of AdminService.fallbackLiveSessions.entries()) {
+      merged.set(String(id), s);
+    }
+    for (const s of dbSessions) {
+      if (s && s.id) {
+        const existing = merged.get(String(s.id)) || {};
+        merged.set(String(s.id), { ...existing, ...s });
+      }
+    }
+
+    return Array.from(merged.values()).sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+  }
+
+  async saveLiveSession(data: any) {
+    const id = data.id ? String(data.id) : `sess_${Date.now()}`;
+    const sessionObj = {
+      id,
+      title: data.title || 'Untitled Live Session',
+      instructor: data.instructor || 'Platform Admin',
+      sessionType: data.sessionType || 'Live Class',
+      description: data.description || '',
+      courseId: data.courseId || null,
+      course: data.course || '',
+      module: data.module || '',
+      topic: data.topic || '',
+      targetCohort: data.targetCohort || 'All Enrolled Students',
+      date: data.date || new Date().toISOString().split('T')[0],
+      timezone: data.timezone || 'IST (UTC+5:30) - Asia/Kolkata',
+      startTime: data.startTime || '18:00',
+      endTime: data.endTime || '19:30',
+      platform: data.platform || 'Google Meet',
+      meetingLink: data.meetingLink || '',
+      passcode: data.passcode || '',
+      hostNotes: data.hostNotes || '',
+      resources: data.resources || [],
+      emailReminders: data.emailReminders ?? true,
+      inAppNotifications: data.inAppNotifications ?? true,
+      reminderSchedule: data.reminderSchedule || '30 minutes before',
+      autoRecord: data.autoRecord ?? true,
+      uploadRecording: data.uploadRecording ?? true,
+      aiNotes: data.aiNotes ?? true,
+      autoPublishRecording: data.autoPublishRecording ?? false,
+      trackAttendance: data.trackAttendance ?? true,
+      attendanceMethod: data.attendanceMethod || 'Automatic on join (min 15 mins)',
+      attendanceThreshold: data.attendanceThreshold || '75%',
+      maxAttendees: data.maxAttendees || '250',
+      visibility: data.visibility || 'All enrolled students',
+      status: data.status || 'Scheduled',
+      attendees: data.attendees !== undefined ? Number(data.attendees) : 0,
+      createdAt: data.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    let dbSaved: any = null;
+    try {
+      if ((this.prisma as any).liveSession) {
+        dbSaved = await (this.prisma as any).liveSession.upsert({
+          where: { id },
+          create: sessionObj,
+          update: sessionObj,
+        });
+      }
+    } catch (dbErr) {
+      console.warn('Live session DB upsert fallback:', dbErr);
+    }
+
+    const finalSession = { ...sessionObj, ...(dbSaved || {}) };
+    AdminService.fallbackLiveSessions.set(id, finalSession);
+    AdminService.saveLiveSessionsToFile();
+    return finalSession;
+  }
+
+  async updateLiveSession(id: string, data: any) {
+    let dbUpdated: any = null;
+    try {
+      if ((this.prisma as any).liveSession) {
+        dbUpdated = await (this.prisma as any).liveSession.update({
+          where: { id },
+          data: {
+            ...data,
+            updatedAt: new Date(),
+          },
+        });
+      }
+    } catch (dbErr) {
+      console.warn('Live session DB update fallback:', dbErr);
+    }
+
+    const existing = AdminService.fallbackLiveSessions.get(String(id)) || {};
+    const updated = {
+      ...existing,
+      ...data,
+      ...(dbUpdated || {}),
+      id,
+      updatedAt: new Date().toISOString(),
+    };
+
+    AdminService.fallbackLiveSessions.set(String(id), updated);
+    AdminService.saveLiveSessionsToFile();
+    return updated;
+  }
+
+  async deleteLiveSession(id: string) {
+    try {
+      if ((this.prisma as any).liveSession) {
+        await (this.prisma as any).liveSession.delete({
+          where: { id },
+        });
+      }
+    } catch (dbErr) {
+      console.warn('Live session DB delete fallback:', dbErr);
+    }
+
+    AdminService.fallbackLiveSessions.delete(String(id));
+    AdminService.saveLiveSessionsToFile();
     return { success: true, id };
   }
 }
