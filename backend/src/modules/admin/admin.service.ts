@@ -2134,5 +2134,101 @@ export class AdminService {
     AdminService.saveLiveSessionsToFile();
     return { success: true, id };
   }
+
+  async getInstructors() {
+    let dbUsers: any[] = [];
+    try {
+      dbUsers = await this.prisma.user.findMany({
+        where: {
+          role: { in: ['ADMIN', 'INSTRUCTOR'] },
+        },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          avatarUrl: true,
+        },
+        orderBy: { fullName: 'asc' },
+      });
+    } catch (err) {
+      console.warn('Failed to query admin/instructor users from DB:', err);
+    }
+
+    const userMap = new Map<string, any>();
+    for (const u of dbUsers) {
+      if (u && u.email) {
+        userMap.set(u.email.toLowerCase(), {
+          id: u.id,
+          fullName: u.fullName || u.name || 'Platform Admin',
+          email: u.email,
+          role: u.role || 'ADMIN',
+          avatarUrl: u.avatarUrl || null,
+        });
+      }
+    }
+
+    for (const u of AuthService.fallbackUsers.values()) {
+      if (
+        u &&
+        u.email &&
+        (u.role === 'ADMIN' || u.role === 'INSTRUCTOR' || u.email.toLowerCase() === 'abhishek.j3094@gmail.com')
+      ) {
+        if (!userMap.has(u.email.toLowerCase())) {
+          userMap.set(u.email.toLowerCase(), {
+            id: u.id || `admin_${Date.now()}`,
+            fullName: u.fullName || u.name || 'Platform Admin',
+            email: u.email,
+            role: u.role || 'ADMIN',
+            avatarUrl: u.avatarUrl || null,
+          });
+        }
+      }
+    }
+
+    if (userMap.size === 0) {
+      try {
+        const anyAdmin = await this.prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: 'abhishek.j3094@gmail.com' },
+              { role: { in: ['ADMIN', 'INSTRUCTOR'] } },
+            ],
+          },
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+            avatarUrl: true,
+          },
+        });
+        if (anyAdmin && anyAdmin.email) {
+          userMap.set(anyAdmin.email.toLowerCase(), {
+            id: anyAdmin.id,
+            fullName: anyAdmin.fullName || 'Abhishek (Admin)',
+            email: anyAdmin.email,
+            role: anyAdmin.role || 'ADMIN',
+            avatarUrl: anyAdmin.avatarUrl || null,
+          });
+        }
+      } catch {}
+    }
+
+    const list = Array.from(userMap.values());
+    if (list.length === 0) {
+      return [
+        {
+          id: 'admin_primary',
+          fullName: 'Abhishek J (Admin)',
+          email: 'abhishek.j3094@gmail.com',
+          role: 'ADMIN',
+          avatarUrl: null,
+        },
+      ];
+    }
+    return list;
+  }
 }
+
 
