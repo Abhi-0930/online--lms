@@ -107,6 +107,29 @@ export default async function adminController(fastify: FastifyInstance) {
     return adminService.getAllContent();
   });
 
+  fastify.patch('/content/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    try {
+      const updated = await adminService.updateContentItem(id, body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(updated);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to update content item' });
+    }
+  });
+
+  fastify.delete('/content/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await adminService.deleteContentItem(id);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to delete content item' });
+    }
+  });
+
   // Practice Problems management
   fastify.get('/practice-problems', async () => {
     return adminService.getAllPracticeProblems();
