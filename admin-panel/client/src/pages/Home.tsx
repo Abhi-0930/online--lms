@@ -4279,7 +4279,21 @@ export default function Home() {
     }
   });
 
-  const handleSaveAnnouncement = (ann: AnnouncementItem) => {
+  useEffect(() => {
+    fetch("http://localhost:4000/api/v1/admin/announcements")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setAnnouncementsList(data);
+          try {
+            localStorage.setItem("lms_admin_announcements", JSON.stringify(data));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveAnnouncement = async (ann: AnnouncementItem) => {
     setAnnouncementsList((prev) => {
       const exists = prev.some((item) => String(item.id) === String(ann.id));
       const next = exists
@@ -4291,9 +4305,17 @@ export default function Home() {
       } catch {}
       return next;
     });
+
+    try {
+      await fetch("http://localhost:4000/api/v1/admin/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ann),
+      });
+    } catch {}
   };
 
-  const handleDeleteAnnouncement = (id: string | number) => {
+  const handleDeleteAnnouncement = async (id: string | number) => {
     setAnnouncementsList((prev) => {
       const next = prev.filter((item) => String(item.id) !== String(id));
       try {
@@ -4303,6 +4325,12 @@ export default function Home() {
       return next;
     });
     onToast("Announcement deleted");
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/announcements/${id}`, {
+        method: "DELETE",
+      });
+    } catch {}
   };
 
   const [dialog, setDialog] = useState<DialogState>(null);

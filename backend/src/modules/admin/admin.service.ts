@@ -9,6 +9,7 @@ export class AdminService {
   private static problemsFilePath = path.resolve(process.cwd(), 'data', 'practice_problems.json');
   private static assignmentsFilePath = path.resolve(process.cwd(), 'data', 'assignments.json');
   private static liveSessionsFilePath = path.resolve(process.cwd(), 'data', 'live_sessions.json');
+  private static announcementsFilePath = path.resolve(process.cwd(), 'data', 'announcements.json');
   private static contentOverridesFilePath = path.resolve(process.cwd(), 'data', 'content_overrides.json');
   private static deletedContentFilePath = path.resolve(process.cwd(), 'data', 'deleted_content.json');
 
@@ -214,6 +215,46 @@ export class AdminService {
     }
   }
 
+  private static loadAnnouncementsFromFile(): Map<string, any> {
+    try {
+      if (fs.existsSync(AdminService.announcementsFilePath)) {
+        const raw = fs.readFileSync(AdminService.announcementsFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const map = new Map<string, any>();
+          for (const item of parsed) {
+            if (item && item.id) {
+              map.set(String(item.id), item);
+            }
+          }
+          return map;
+        } else if (parsed && typeof parsed === 'object') {
+          const map = new Map<string, any>();
+          for (const [k, v] of Object.entries(parsed)) {
+            map.set(String(k), v);
+          }
+          return map;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load announcements from file:', err);
+    }
+    return new Map<string, any>();
+  }
+
+  public static saveAnnouncementsToFile() {
+    try {
+      const dir = path.dirname(AdminService.announcementsFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = Array.from(AdminService.fallbackAnnouncements.values());
+      fs.writeFileSync(AdminService.announcementsFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save announcements to file:', err);
+    }
+  }
+
   public static saveContentOverridesToFile() {
     try {
       const dir = path.dirname(AdminService.contentOverridesFilePath);
@@ -244,6 +285,7 @@ export class AdminService {
   public static fallbackProblems = AdminService.loadProblemsFromFile();
   public static fallbackAssignments = AdminService.loadAssignmentsFromFile();
   public static fallbackLiveSessions = AdminService.loadLiveSessionsFromFile();
+  public static fallbackAnnouncements = AdminService.loadAnnouncementsFromFile();
   public static fallbackContentOverrides = AdminService.loadContentOverridesFromFile();
   public static deletedContentIds = AdminService.loadDeletedContentFromFile();
   public static fallbackSubmissions = new Map<string, any>();
@@ -1669,9 +1711,9 @@ export class AdminService {
           id: uniqueId,
           title: a.title,
           type: 'Assignment',
-          parent: a.courseName || a.course?.title || 'Assignments & Challenges',
+          parent: (a as any).courseName || (a as any).course?.title || (a as any).course || 'Assignments & Challenges',
           owner: 'Admin',
-          status: a.status === 'Published' ? 'Published' : 'Draft',
+          status: a.status === 'Published' || a.status === 'PUBLISHED' ? 'Published' : 'Draft',
           updated: a.dueDate || 'Recently',
         });
       }
@@ -2278,43 +2320,99 @@ export class AdminService {
     });
   }
 
+  public static syncLiveSessionAnnouncement(session: any) {
+    if (!session || !session.id) return;
+    const rawId = String(session.id);
+    const cleanId = rawId.replace(/^sess_/, '');
+    const annId = `ann_sess_${cleanId}`;
+
+    // If session is Draft, remove the announcement
+    if (session.status === 'Draft') {
+      AdminService.fallbackAnnouncements.delete(annId);
+      AdminService.fallbackAnnouncements.delete(`ann_sess_${rawId}`);
+      AdminService.fallbackAnnouncements.delete(`ann_sess_sess_${cleanId}`);
+      AdminService.saveAnnouncementsToFile();
+      return;
+    }
+
+    const annObj = {
+      id: annId,
+      title: session.title ? `Live Class: ${session.title}` : 'Live Class',
+      content: session.description || `Scheduled on ${session.date || ''} from ${session.startTime || ''} to ${session.endTime || ''} (${session.timezone || 'IST'}). Platform: ${session.platform || 'Google Meet'}.`,
+      category: 'Live Class',
+      targetAudience: session.targetCohort || 'All Enrolled Students',
+      publishedAt: session.createdAt || new Date().toISOString(),
+      date: session.date || new Date().toISOString().split('T')[0],
+      isPinned: true,
+      status: session.status === 'Completed' ? 'Archived' : 'Published',
+      meetingLink: session.meetingLink || '',
+      platform: session.platform || 'Google Meet',
+      instructor: session.instructor || 'Platform Admin',
+      sessionId: session.id,
+      sessionData: session,
+      course: session.course || '',
+      module: session.module || '',
+      topic: session.topic || '',
+      startTime: session.startTime || '',
+      endTime: session.endTime || '',
+      timezone: session.timezone || '',
+      hostNotes: session.hostNotes || '',
+      passcode: session.passcode || '',
+      resources: session.resources || [],
+      sessionType: session.sessionType || 'Live Class',
+      description: session.description || '',
+    };
+
+    // Clean up any double-prefixed keys like ann_sess_sess_...
+    AdminService.fallbackAnnouncements.delete(`ann_sess_${rawId}`);
+    AdminService.fallbackAnnouncements.delete(`ann_sess_sess_${cleanId}`);
+
+    AdminService.fallbackAnnouncements.set(annId, annObj);
+    AdminService.saveAnnouncementsToFile();
+  }
+
   async saveLiveSession(data: any) {
+    AdminService.fallbackLiveSessions = AdminService.loadLiveSessionsFromFile();
+    AdminService.fallbackAnnouncements = AdminService.loadAnnouncementsFromFile();
     const id = data.id ? String(data.id) : `sess_${Date.now()}`;
+    const existing = AdminService.fallbackLiveSessions.get(id) || {};
     const sessionObj = {
+      ...existing,
+      ...data,
       id,
-      title: data.title || 'Untitled Live Session',
-      instructor: data.instructor || 'Platform Admin',
-      sessionType: data.sessionType || 'Live Class',
-      description: data.description || '',
-      courseId: data.courseId || null,
-      course: data.course || '',
-      module: data.module || '',
-      topic: data.topic || '',
-      targetCohort: data.targetCohort || 'All Enrolled Students',
-      date: data.date || new Date().toISOString().split('T')[0],
-      timezone: data.timezone || 'IST (UTC+5:30) - Asia/Kolkata',
-      startTime: data.startTime || '18:00',
-      endTime: data.endTime || '19:30',
-      platform: data.platform || 'Google Meet',
-      meetingLink: data.meetingLink || '',
-      passcode: data.passcode || '',
-      hostNotes: data.hostNotes || '',
-      resources: data.resources || [],
-      emailReminders: data.emailReminders ?? true,
-      inAppNotifications: data.inAppNotifications ?? true,
-      reminderSchedule: data.reminderSchedule || '30 minutes before',
-      autoRecord: data.autoRecord ?? true,
-      uploadRecording: data.uploadRecording ?? true,
-      aiNotes: data.aiNotes ?? true,
-      autoPublishRecording: data.autoPublishRecording ?? false,
-      trackAttendance: data.trackAttendance ?? true,
-      attendanceMethod: data.attendanceMethod || 'Automatic on join (min 15 mins)',
-      attendanceThreshold: data.attendanceThreshold || '75%',
-      maxAttendees: data.maxAttendees || '250',
-      visibility: data.visibility || 'All enrolled students',
-      status: data.status || 'Scheduled',
-      attendees: data.attendees !== undefined ? Number(data.attendees) : 0,
-      createdAt: data.createdAt || new Date().toISOString(),
+      title: data.title !== undefined ? data.title : (existing.title || 'Untitled Live Session'),
+      instructor: data.instructor || existing.instructor || 'Platform Admin',
+      sessionType: data.sessionType || existing.sessionType || 'Live Class',
+      description: data.description !== undefined ? data.description : (existing.description || ''),
+      courseId: data.courseId || existing.courseId || null,
+      course: data.course !== undefined ? data.course : (existing.course || ''),
+      module: data.module !== undefined ? data.module : (existing.module || ''),
+      topic: data.topic !== undefined ? data.topic : (existing.topic || ''),
+      targetCohort: data.targetCohort || existing.targetCohort || 'All Enrolled Students',
+      date: data.date || existing.date || new Date().toISOString().split('T')[0],
+      timezone: data.timezone || existing.timezone || 'IST (UTC+5:30) - Asia/Kolkata',
+      startTime: data.startTime || existing.startTime || '18:00',
+      endTime: data.endTime || existing.endTime || '19:30',
+      platform: data.platform || existing.platform || 'Google Meet',
+      meetingLink: data.meetingLink !== undefined ? data.meetingLink : (existing.meetingLink || ''),
+      passcode: data.passcode !== undefined ? data.passcode : (existing.passcode || ''),
+      hostNotes: data.hostNotes !== undefined ? data.hostNotes : (existing.hostNotes || ''),
+      resources: data.resources || existing.resources || [],
+      emailReminders: data.emailReminders !== undefined ? data.emailReminders : (existing.emailReminders ?? true),
+      inAppNotifications: data.inAppNotifications !== undefined ? data.inAppNotifications : (existing.inAppNotifications ?? true),
+      reminderSchedule: data.reminderSchedule || existing.reminderSchedule || '30 minutes before',
+      autoRecord: data.autoRecord !== undefined ? data.autoRecord : (existing.autoRecord ?? true),
+      uploadRecording: data.uploadRecording !== undefined ? data.uploadRecording : (existing.uploadRecording ?? true),
+      aiNotes: data.aiNotes !== undefined ? data.aiNotes : (existing.aiNotes ?? true),
+      autoPublishRecording: data.autoPublishRecording !== undefined ? data.autoPublishRecording : (existing.autoPublishRecording ?? false),
+      trackAttendance: data.trackAttendance !== undefined ? data.trackAttendance : (existing.trackAttendance ?? true),
+      attendanceMethod: data.attendanceMethod || existing.attendanceMethod || 'Automatic on join (min 15 mins)',
+      attendanceThreshold: data.attendanceThreshold || existing.attendanceThreshold || '75%',
+      maxAttendees: data.maxAttendees || existing.maxAttendees || '250',
+      visibility: data.visibility || existing.visibility || 'All enrolled students',
+      status: data.status || existing.status || 'Scheduled',
+      attendees: data.attendees !== undefined ? Number(data.attendees) : (existing.attendees ? Number(existing.attendees) : 0),
+      createdAt: existing.createdAt || data.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
@@ -2334,10 +2432,16 @@ export class AdminService {
     const finalSession = { ...sessionObj, ...(dbSaved || {}) };
     AdminService.fallbackLiveSessions.set(id, finalSession);
     AdminService.saveLiveSessionsToFile();
+
+    // Auto-create/sync announcement for learner announcements page
+    AdminService.syncLiveSessionAnnouncement(finalSession);
+
     return finalSession;
   }
 
   async updateLiveSession(id: string, data: any) {
+    AdminService.fallbackLiveSessions = AdminService.loadLiveSessionsFromFile();
+    AdminService.fallbackAnnouncements = AdminService.loadAnnouncementsFromFile();
     let dbUpdated: any = null;
     try {
       if ((this.prisma as any).liveSession) {
@@ -2358,16 +2462,22 @@ export class AdminService {
       ...existing,
       ...data,
       ...(dbUpdated || {}),
-      id,
+      id: String(id),
       updatedAt: new Date().toISOString(),
     };
 
     AdminService.fallbackLiveSessions.set(String(id), updated);
     AdminService.saveLiveSessionsToFile();
+
+    // Auto-create/sync announcement for learner announcements page
+    AdminService.syncLiveSessionAnnouncement(updated);
+
     return updated;
   }
 
   async deleteLiveSession(id: string) {
+    AdminService.fallbackLiveSessions = AdminService.loadLiveSessionsFromFile();
+    AdminService.fallbackAnnouncements = AdminService.loadAnnouncementsFromFile();
     try {
       if ((this.prisma as any).liveSession) {
         await (this.prisma as any).liveSession.delete({
@@ -2380,6 +2490,60 @@ export class AdminService {
 
     AdminService.fallbackLiveSessions.delete(String(id));
     AdminService.saveLiveSessionsToFile();
+
+    const cleanId = String(id).replace(/^sess_/, '');
+    AdminService.fallbackAnnouncements.delete(`ann_sess_${cleanId}`);
+    AdminService.fallbackAnnouncements.delete(`ann_sess_${id}`);
+    AdminService.fallbackAnnouncements.delete(`ann_sess_sess_${cleanId}`);
+    AdminService.saveAnnouncementsToFile();
+
+    return { success: true, id };
+  }
+
+  // ==========================================
+  // ANNOUNCEMENTS CRUD OPERATIONS
+  // ==========================================
+  async getAllAnnouncements() {
+    AdminService.fallbackAnnouncements = AdminService.loadAnnouncementsFromFile();
+    AdminService.fallbackLiveSessions = AdminService.loadLiveSessionsFromFile();
+
+    // Auto-sync announcements from all active scheduled live sessions
+    for (const s of AdminService.fallbackLiveSessions.values()) {
+      if (s) {
+        AdminService.syncLiveSessionAnnouncement(s);
+      }
+    }
+
+    return Array.from(AdminService.fallbackAnnouncements.values()).sort((a, b) => {
+      const timeA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const timeB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return timeB - timeA;
+    });
+  }
+
+  async saveAnnouncement(data: any) {
+    const id = data.id ? String(data.id) : `ann_${Date.now()}`;
+    const annObj = {
+      id,
+      title: data.title || 'Platform Announcement',
+      content: data.content || data.body || '',
+      category: data.category || 'General',
+      targetAudience: data.targetAudience || 'All Students',
+      publishedAt: data.publishedAt || new Date().toISOString(),
+      date: data.date || new Date().toISOString().split('T')[0],
+      isPinned: Boolean(data.isPinned),
+      status: data.status || 'Published',
+      ctaLabel: data.ctaLabel || '',
+      ctaUrl: data.ctaUrl || '',
+    };
+    AdminService.fallbackAnnouncements.set(id, annObj);
+    AdminService.saveAnnouncementsToFile();
+    return annObj;
+  }
+
+  async deleteAnnouncement(id: string) {
+    AdminService.fallbackAnnouncements.delete(String(id));
+    AdminService.saveAnnouncementsToFile();
     return { success: true, id };
   }
 

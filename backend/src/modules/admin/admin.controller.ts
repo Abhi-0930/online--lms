@@ -212,6 +212,33 @@ export default async function adminController(fastify: FastifyInstance) {
   fastify.get('/instructors', async () => {
     return adminService.getInstructors();
   });
+
+  // Announcements management
+  fastify.get('/announcements', async () => {
+    return adminService.getAllAnnouncements();
+  });
+
+  fastify.post('/announcements', async (request, reply) => {
+    const body = request.body as any;
+    try {
+      const ann = await adminService.saveAnnouncement(body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(ann);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to save announcement' });
+    }
+  });
+
+  fastify.delete('/announcements/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await adminService.deleteAnnouncement(id);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to delete announcement' });
+    }
+  });
 }
 
 

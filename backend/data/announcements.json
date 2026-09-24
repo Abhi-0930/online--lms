@@ -1,0 +1,99 @@
+[
+  {
+    "id": "ann_sess_1790185853779",
+    "title": "Live Class: Python Fundamentals Live Session",
+    "content": "In this session we will be covering python basics",
+    "category": "Live Class",
+    "targetAudience": "All Enrolled Students",
+    "publishedAt": "2026-09-24T05:06:39.989Z",
+    "date": "2026-09-24",
+    "isPinned": true,
+    "status": "Published",
+    "meetingLink": "https://meet.google.com/ion-cych-xxv",
+    "platform": "Google Meet",
+    "instructor": "Abhishek J",
+    "sessionId": "sess_1790185853779",
+    "sessionData": {
+      "id": "sess_1790185853779",
+      "title": "Python Fundamentals Live Session",
+      "instructor": "Abhishek J",
+      "sessionType": "Live Class",
+      "description": "In this session we will be covering python basics",
+      "courseId": null,
+      "course": "Python Fundamentals",
+      "module": "",
+      "topic": "Arrays",
+      "targetCohort": "All Enrolled Students",
+      "date": "2026-09-24",
+      "timezone": "IST (UTC+5:30) - Asia/Kolkata",
+      "startTime": "18:00",
+      "endTime": "19:30",
+      "platform": "Google Meet",
+      "meetingLink": "https://meet.google.com/ion-cych-xxv",
+      "passcode": "",
+      "hostNotes": "Join in your laptops",
+      "resources": [
+        {
+          "id": "bfa66c93-dac4-42c9-96ba-73e44c95ce36",
+          "name": "Two Sum",
+          "size": "DSA & Practice · Hash Table",
+          "type": "Practice problem",
+          "category": "file",
+          "parent": "DSA & Practice · Hash Table"
+        },
+        {
+          "id": "file_1790185846199_0_ts5g",
+          "name": "Offer_Letter_Boddu Kaveri .pdf",
+          "size": "433.7 KB",
+          "type": "PDF",
+          "url": "blob:http://localhost:3001/e9c0de88-8333-4f57-88cc-efd763d760b6",
+          "category": "file"
+        }
+      ],
+      "emailReminders": true,
+      "inAppNotifications": true,
+      "reminderSchedule": "30 minutes before",
+      "autoRecord": true,
+      "uploadRecording": true,
+      "aiNotes": true,
+      "autoPublishRecording": false,
+      "trackAttendance": true,
+      "attendanceMethod": "Automatic on join (min 15 mins)",
+      "attendanceThreshold": "75%",
+      "maxAttendees": "250",
+      "visibility": "All enrolled students",
+      "status": "Scheduled",
+      "attendees": 0,
+      "createdAt": "2026-09-24T05:06:39.989Z",
+      "updatedAt": "2026-09-24T05:06:39.989Z"
+    },
+    "course": "Python Fundamentals",
+    "module": "",
+    "topic": "Arrays",
+    "startTime": "18:00",
+    "endTime": "19:30",
+    "timezone": "IST (UTC+5:30) - Asia/Kolkata",
+    "hostNotes": "Join in your laptops",
+    "passcode": "",
+    "resources": [
+      {
+        "id": "bfa66c93-dac4-42c9-96ba-73e44c95ce36",
+        "name": "Two Sum",
+        "size": "DSA & Practice · Hash Table",
+        "type": "Practice problem",
+        "category": "file",
+        "parent": "DSA & Practice · Hash Table"
+      },
+      {
+        "id": "file_1790185846199_0_ts5g",
+        "name": "Offer_Letter_Boddu Kaveri .pdf",
+        "size": "433.7 KB",
+        "type": "PDF",
+        "url": "blob:http://localhost:3001/e9c0de88-8333-4f57-88cc-efd763d760b6",
+        "category": "file"
+      }
+    ],
+    "sessionType": "Live Class",
+    "description": "In this session we will be covering python basics"
+  }
+]

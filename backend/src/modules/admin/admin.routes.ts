@@ -11,4 +11,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const all = await adminService.getAllLiveSessions();
     return all.filter((s: any) => s.status !== 'Draft');
   });
+
+  // Public announcements route for learner frontend
+  fastify.get('/api/v1/announcements', async () => {
+    const adminService = new AdminService(fastify.prisma);
+    const all = await adminService.getAllAnnouncements();
+    return all.filter((a: any) => a.status !== 'Draft');
+  });
 }

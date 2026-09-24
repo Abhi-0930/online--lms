@@ -696,6 +696,37 @@ function CourseProgressCard({ course }: { course: LiveCourseItem }) {
 
 function ActivityRow({ item, last }: { item: typeof activity[number]; last: boolean }) { const Icon = item.icon; const colors = { blue: "bg-[#eaf0ff] text-[#3157e8]", emerald: "bg-[#e4f8ee] text-[#23a26d]", violet: "bg-[#f0eaff] text-[#7f5af0]", amber: "bg-[#fff4db] text-[#d68c20]" }; return <div className="flex items-center gap-3 py-4"><span className={cx("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", colors[item.color as keyof typeof colors])}><Icon className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-[#17223d] dark:text-white">{item.title}</p><p className="mt-0.5 truncate text-xs text-[#9aa4bc]">{item.subtitle}</p></div><span className="shrink-0 text-[10px] font-medium text-[#a5aec2]">{item.time}</span>{!last && <span className="sr-only">divider</span>}</div>; }
 
+function parseSessionDate(dStr?: string) {
+  if (!dStr) return { dayStr: "24", monthStr: "SEP" };
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const parts = dStr.split("-");
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      const day = parseInt(parts[2], 10);
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      return {
+        dayStr: !isNaN(day) ? String(day).padStart(2, "0") : "24",
+        monthStr: months[monthIdx] || "SEP",
+      };
+    } else if (parts[2].length === 4) {
+      const day = parseInt(parts[0], 10);
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      return {
+        dayStr: !isNaN(day) ? String(day).padStart(2, "0") : "24",
+        monthStr: months[monthIdx] || "SEP",
+      };
+    }
+  }
+  const dateObj = new Date(dStr);
+  if (!isNaN(dateObj.getTime())) {
+    return {
+      dayStr: String(dateObj.getDate()).padStart(2, "0"),
+      monthStr: months[dateObj.getMonth()] || "SEP",
+    };
+  }
+  return { dayStr: "24", monthStr: "SEP" };
+}
+
 function UpcomingSessions() {
   const [sessions, setSessions] = useState<any[]>(() => {
     if (typeof window === "undefined") return [];
@@ -707,11 +738,16 @@ function UpcomingSessions() {
     }
   });
 
+  const [selectedSession, setSelectedSession] = useState<any | null>(null);
+
   useEffect(() => {
     let isMounted = true;
     const fetchLiveSessions = async () => {
       try {
-        const res = await fetch("http://localhost:4000/api/v1/live-sessions");
+        const res = await fetch(`http://localhost:4000/api/v1/live-sessions?_t=${Date.now()}`, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
+        });
         if (res.ok) {
           const json = await res.json();
           const items = Array.isArray(json) ? json : json?.data || [];
@@ -723,9 +759,7 @@ function UpcomingSessions() {
             return;
           }
         }
-      } catch {
-        // Fallback to local storage if backend is unreachable
-      }
+      } catch {}
       if (isMounted) {
         try {
           const saved = localStorage.getItem("lms_admin_live_sessions");
@@ -742,7 +776,7 @@ function UpcomingSessions() {
 
     window.addEventListener("storage", handleSync);
     window.addEventListener("lms_live_sessions_updated", handleSync);
-    const interval = setInterval(fetchLiveSessions, 10000);
+    const interval = setInterval(fetchLiveSessions, 5000);
 
     return () => {
       isMounted = false;
@@ -776,25 +810,14 @@ function UpcomingSessions() {
           upcomingList.slice(0, 4).map((session, idx) => {
             const tones: Array<"blue" | "violet" | "amber"> = ["blue", "violet", "amber"];
             const tone = tones[idx % tones.length];
-            const dateObj = session.date ? new Date(session.date) : new Date();
-            const dayStr = !isNaN(dateObj.getDate()) ? String(dateObj.getDate()).padStart(2, "0") : "18";
-            const monthStr = !isNaN(dateObj.getMonth())
-              ? dateObj.toLocaleString("en-US", { month: "short" }).toUpperCase()
-              : "SEP";
+            const { dayStr, monthStr } = parseSessionDate(session.date);
             const metaStr = `${session.course || "Live Class"}${session.startTime ? ` · ${session.startTime}` : ""}`;
             const isLive = session.status === "Live";
 
             return (
               <div
                 key={session.id || idx}
-                onClick={() => {
-                  if (session.meetingLink) {
-                    window.open(session.meetingLink, "_blank", "noopener,noreferrer");
-                    toast.info(`Opening ${session.platform || "Live"} meeting...`);
-                  } else {
-                    toast.info("Meeting link will be shared by instructor before start.");
-                  }
-                }}
+                onClick={() => setSelectedSession(session)}
                 className={cx(
                   "group cursor-pointer transition-all duration-150 hover:bg-slate-50/70 dark:hover:bg-white/[0.02] -mx-5 px-5 first:rounded-t-2xl last:rounded-b-2xl"
                 )}
@@ -814,6 +837,14 @@ function UpcomingSessions() {
           })
         )}
       </div>
+
+      {/* Full Live Session Details & Materials Modal */}
+      {selectedSession && (
+        <LiveSessionDetailsModal
+          session={selectedSession}
+          onClose={() => setSelectedSession(null)}
+        />
+      )}
     </section>
   );
 }
@@ -872,6 +903,313 @@ function SessionRow({
           </span>
         ) : null}
         <ChevronRight className="h-4 w-4 shrink-0 text-[#c4cada] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
+      </div>
+    </div>
+  );
+}
+
+interface LiveSessionDetailsModalProps {
+  session: any | null;
+  onClose: () => void;
+}
+
+function LiveSessionDetailsModal({ session, onClose }: LiveSessionDetailsModalProps) {
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedPasscode, setCopiedPasscode] = useState(false);
+
+  if (!session) return null;
+
+  const title = session.title || "Live Session";
+  const instructor = session.instructor || "Platform Instructor";
+  const date = session.date || "";
+  const startTime = session.startTime || "";
+  const endTime = session.endTime || "";
+  const timezone = session.timezone || "IST (UTC+5:30)";
+  const platform = session.platform || "Google Meet";
+  const meetingLink = session.meetingLink || "";
+  const passcode = session.passcode || "";
+  const hostNotes = session.hostNotes || "";
+  const description = session.description || session.content || "";
+  const course = session.course || "";
+  const module = session.module || "";
+  const topic = session.topic || "";
+  const sessionType = session.sessionType || session.category || "Live Class";
+  const resources: any[] = Array.isArray(session.resources) ? session.resources : [];
+  const isLive = session.status === "Live";
+  const isCompleted = session.status === "Completed";
+  const targetCohort = session.targetCohort || session.targetAudience || "All Enrolled Students";
+
+  const handleCopyLink = () => {
+    if (!meetingLink) return;
+    navigator.clipboard?.writeText(meetingLink);
+    setCopiedLink(true);
+    toast.success("Meeting link copied to clipboard!");
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleCopyPasscode = () => {
+    if (!passcode) return;
+    navigator.clipboard?.writeText(passcode);
+    setCopiedPasscode(true);
+    toast.success("Passcode copied!");
+    setTimeout(() => setCopiedPasscode(false), 2500);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-950/60 backdrop-blur-sm animate-in fade-in-0 duration-200">
+      <div
+        className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#12192e] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header bar */}
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 px-6 py-4 bg-slate-50/50 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+              <Video className="h-3.5 w-3.5" />
+              {sessionType}
+            </span>
+            {isLive ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 animate-pulse">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                LIVE NOW
+              </span>
+            ) : isCompleted ? (
+              <span className="rounded-full bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                Completed
+              </span>
+            ) : (
+              <span className="rounded-full bg-blue-50 dark:bg-blue-950/40 px-2.5 py-0.5 text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                Upcoming
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white transition cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          {/* Title & Instructor */}
+          <div>
+            <h2 className="font-display text-xl font-bold tracking-tight text-[#17223d] dark:text-white sm:text-2xl">
+              {title}
+            </h2>
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[#7c87a4]">
+              <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-200">
+                <div className="grid h-6 w-6 place-items-center rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-[10px] font-bold text-indigo-600 dark:text-indigo-300">
+                  {instructor.charAt(0)}
+                </div>
+                <span>{instructor}</span>
+              </div>
+              {course && (
+                <>
+                  <span>•</span>
+                  <span className="font-semibold text-indigo-600 dark:text-indigo-400">{course}</span>
+                </>
+              )}
+              {topic && (
+                <>
+                  <span>•</span>
+                  <span className="text-slate-500 dark:text-slate-400">Topic: {topic}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Timing & Platform Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 dark:border-white/5 dark:bg-white/[0.03]">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#7c87a4]">
+                <Clock3 className="h-4 w-4 text-indigo-500" />
+                <span>Date & Time</span>
+              </div>
+              <p className="mt-1.5 text-sm font-bold text-[#17223d] dark:text-white">
+                {date || "Scheduled Date"}
+              </p>
+              <p className="mt-0.5 text-xs text-[#7c87a4]">
+                {startTime && endTime ? `${startTime} – ${endTime}` : startTime || "Time TBD"} ({timezone})
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 dark:border-white/5 dark:bg-white/[0.03]">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#7c87a4]">
+                <Video className="h-4 w-4 text-emerald-500" />
+                <span>Platform & Meeting</span>
+              </div>
+              <p className="mt-1.5 text-sm font-bold text-[#17223d] dark:text-white">
+                {platform}
+              </p>
+              <p className="mt-0.5 text-xs text-[#7c87a4] truncate">
+                {meetingLink ? "Link configured" : "Link will be shared before start"}
+              </p>
+            </div>
+          </div>
+
+          {/* Description / Agenda */}
+          {description && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-[#7c87a4] mb-2">
+                Session Overview & Agenda
+              </p>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-white/5 dark:bg-white/[0.02] text-sm leading-relaxed text-[#5f6c8c] dark:text-slate-300">
+                {description}
+              </div>
+            </div>
+          )}
+
+          {/* Host Notes / Instructions */}
+          {hostNotes && (
+            <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+              <div className="flex items-start gap-3">
+                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-amber-500 text-white shadow-xs">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                    Host Instructions & Notes
+                  </h4>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-300/90 font-medium">
+                    {hostNotes}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Passcode (if any) */}
+          {passcode && (
+            <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-white/5 dark:bg-white/[0.03]">
+              <div className="text-xs">
+                <span className="font-medium text-[#7c87a4]">Meeting Passcode: </span>
+                <span className="font-mono font-bold text-[#17223d] dark:text-white ml-1">{passcode}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyPasscode}
+                className="flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+              >
+                {copiedPasscode ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                <span>{copiedPasscode ? "Copied" : "Copy"}</span>
+              </button>
+            </div>
+          )}
+
+          {/* Attached Platform Resources & Study Materials */}
+          {resources.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#7c87a4]">
+                  Attached Materials & Practice ({resources.length})
+                </p>
+              </div>
+              <div className="space-y-2">
+                {resources.map((res: any, idx: number) => {
+                  const isProblem = res.type?.toLowerCase().includes("problem") || res.category === "problem";
+                  const isPdf = res.type?.toLowerCase().includes("pdf") || res.name?.toLowerCase().endsWith(".pdf");
+                  return (
+                    <div
+                      key={res.id || idx}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-xs hover:border-indigo-200 dark:border-white/5 dark:bg-white/[0.02] dark:hover:border-indigo-800/40 transition"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+                          {isProblem ? <Code2 className="h-4 w-4" /> : isPdf ? <FileText className="h-4 w-4" /> : <BookOpen className="h-4 w-4" />}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-[#17223d] dark:text-white truncate">
+                            {res.name}
+                          </p>
+                          <p className="text-[11px] text-[#7c87a4] truncate">
+                            {res.type || "Resource"} {res.size ? `· ${res.size}` : ""} {res.parent ? `· ${res.parent}` : ""}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0">
+                        {res.url ? (
+                          <a
+                            href={res.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white transition"
+                          >
+                            <span>Open</span>
+                            <ArrowUpRight className="h-3 w-3" />
+                          </a>
+                        ) : isProblem ? (
+                          <Link
+                            href={getSecureHref("/practice")}
+                            onClick={onClose}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 dark:text-indigo-300 transition"
+                          >
+                            <span>Solve Problem</span>
+                            <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        ) : (
+                          <span className="rounded-lg bg-slate-50 dark:bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-slate-400">
+                            Available in class
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Action Footer */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-4 dark:border-white/10 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-2">
+            {meetingLink && (
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2.5 text-xs font-bold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:text-white transition cursor-pointer"
+              >
+                {copiedLink ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                <span>{copiedLink ? "Link Copied" : "Copy Link"}</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5 transition cursor-pointer"
+            >
+              Close
+            </button>
+            {meetingLink ? (
+              <a
+                href={meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/25 transition cursor-pointer"
+              >
+                <Video className="h-4 w-4" />
+                <span>Join {platform} Meeting</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={() => toast.info("Meeting link will be activated before start time.")}
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-300 dark:bg-white/10 px-5 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed"
+              >
+                <span>Link Pending</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -2832,11 +3170,17 @@ function AnnouncementsPage() {
     }
   });
 
+  const [selectedLiveSession, setSelectedLiveSession] = useState<any | null>(null);
+  const [activeFilter, setActiveFilter] = useState<"all" | "live" | "general">("all");
+
   useEffect(() => {
     let isMounted = true;
     const fetchAnnouncements = async () => {
       try {
-        const res = await fetch("http://localhost:4000/api/v1/admin/announcements");
+        const res = await fetch(`http://localhost:4000/api/v1/announcements?_t=${Date.now()}`, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
+        });
         if (res.ok) {
           const json = await res.json();
           const items = Array.isArray(json) ? json : json?.data || [];
@@ -2859,7 +3203,10 @@ function AnnouncementsPage() {
 
     const fetchLiveSessions = async () => {
       try {
-        const res = await fetch("http://localhost:4000/api/v1/live-sessions");
+        const res = await fetch(`http://localhost:4000/api/v1/live-sessions?_t=${Date.now()}`, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
+        });
         if (res.ok) {
           const json = await res.json();
           const items = Array.isArray(json) ? json : json?.data || [];
@@ -2891,7 +3238,7 @@ function AnnouncementsPage() {
     window.addEventListener("storage", handleSync);
     window.addEventListener("lms_announcements_updated", handleSync);
     window.addEventListener("lms_live_sessions_updated", handleSync);
-    const interval = setInterval(handleSync, 12000);
+    const interval = setInterval(handleSync, 5000);
 
     return () => {
       isMounted = false;
@@ -2906,71 +3253,255 @@ function AnnouncementsPage() {
     (s) => s.status !== "Completed" && s.status !== "Draft"
   );
 
+  const filteredAnnouncements = announcements.filter((item) => {
+    const isLive = item.category === "Live Class" || Boolean(item.meetingLink) || Boolean(item.sessionId);
+    if (activeFilter === "live") return isLive;
+    if (activeFilter === "general") return !isLive;
+    return true;
+  });
+
+  const liveAnnouncementsCount = announcements.filter(
+    (item) => item.category === "Live Class" || Boolean(item.meetingLink) || Boolean(item.sessionId)
+  ).length;
+
   return (
     <>
       <PageHeader
         eyebrow="Stay in the loop"
         title="Announcements"
-        description="The latest from your instructors, cohort, and learning community."
+        description="The latest live sessions, cohort updates, assignments, and learning resources from your instructors."
       />
+
+      {/* Filter Tabs */}
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveFilter("all")}
+          className={cx(
+            "rounded-xl px-4 py-2 text-xs font-bold transition cursor-pointer",
+            activeFilter === "all"
+              ? "bg-[#3157e8] text-white shadow-md shadow-indigo-500/20"
+              : "card-surface text-[#7c87a4] hover:text-[#17223d] dark:hover:text-white"
+          )}
+        >
+          All Announcements ({announcements.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveFilter("live")}
+          className={cx(
+            "inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition cursor-pointer",
+            activeFilter === "live"
+              ? "bg-[#3157e8] text-white shadow-md shadow-indigo-500/20"
+              : "card-surface text-[#7c87a4] hover:text-[#17223d] dark:hover:text-white"
+          )}
+        >
+          <Video className="h-3.5 w-3.5" />
+          <span>Live Sessions & Classes</span>
+          <span className={cx("ml-1 rounded-md px-1.5 py-0.5 text-[10px]", activeFilter === "live" ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400")}>
+            {liveAnnouncementsCount}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveFilter("general")}
+          className={cx(
+            "rounded-xl px-4 py-2 text-xs font-bold transition cursor-pointer",
+            activeFilter === "general"
+              ? "bg-[#3157e8] text-white shadow-md shadow-indigo-500/20"
+              : "card-surface text-[#7c87a4] hover:text-[#17223d] dark:hover:text-white"
+          )}
+        >
+          Platform Updates
+        </button>
+      </div>
+
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
-          {announcements.length === 0 ? (
+          {filteredAnnouncements.length === 0 ? (
             <div className="card-surface flex flex-col items-center justify-center p-12 text-center">
               <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#eaf0ff] text-[#3157e8] dark:bg-white/10 dark:text-blue-400 mb-3">
                 <Bell className="h-6 w-6" />
               </div>
-              <h3 className="font-display text-base font-bold text-[#17223d] dark:text-white">No announcements yet</h3>
+              <h3 className="font-display text-base font-bold text-[#17223d] dark:text-white">
+                {activeFilter === "live" ? "No live class announcements" : "No announcements yet"}
+              </h3>
               <p className="mt-1 text-xs text-[#7c87a4] max-w-sm">
-                Cohort updates, live session reminders, and important notices from your instructors will appear here.
+                {activeFilter === "live"
+                  ? "Scheduled live lectures, doubt clearing, and guest webinars will appear here."
+                  : "Cohort updates, live session reminders, and important notices will appear here."}
               </p>
             </div>
           ) : (
-            announcements.map((item, index) => (
-              <article key={item.id || item.title || index} className="card-surface p-5 sm:p-6">
-                <div className="flex gap-4">
-                  <span
-                    className={cx(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                      index === 0
-                        ? "bg-[#eaf0ff] text-[#3157e8]"
-                        : index === 1
-                        ? "bg-[#e4f8ee] text-[#23a26d]"
-                        : "bg-[#fff4db] text-[#d68c20]"
-                    )}
-                  >
-                    <Bell className="h-[18px] w-[18px]" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-[#f1f3f8] px-2 py-1 text-[10px] font-bold text-[#7c87a4] dark:bg-white/10">
-                        {item.category || item.targetAudience || "General"}
-                      </span>
-                      <span className="text-[10px] text-[#aab3c5]">
-                        {item.publishedAt || item.date || "Just now"}
-                      </span>
-                      {item.isPinned && (
-                        <span className="rounded-md bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
-                          Pinned
-                        </span>
+            filteredAnnouncements.map((item, index) => {
+              const isLiveClass = item.category === "Live Class" || Boolean(item.meetingLink) || Boolean(item.sessionId);
+              const sessionDetails = item.sessionData || (item.sessionId ? liveSessions.find((s) => s.id === item.sessionId) : item);
+              const hostNotes = item.hostNotes || sessionDetails?.hostNotes;
+              const resources: any[] = item.resources || sessionDetails?.resources || [];
+              const instructor = item.instructor || sessionDetails?.instructor || "Platform Instructor";
+              const course = item.course || sessionDetails?.course;
+              const topic = item.topic || sessionDetails?.topic;
+
+              return (
+                <article key={item.id || item.title || index} className="card-surface p-5 sm:p-6 transition-all hover:shadow-md">
+                  <div className="flex gap-4">
+                    <span
+                      className={cx(
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+                        isLiveClass
+                          ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400"
+                          : index === 0
+                          ? "bg-[#eaf0ff] text-[#3157e8]"
+                          : index === 1
+                          ? "bg-[#e4f8ee] text-[#23a26d]"
+                          : "bg-[#fff4db] text-[#d68c20]"
                       )}
-                    </div>
-                    <h2 className="mt-3 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">
-                      {item.title}
-                    </h2>
-                    <p className="mt-2 text-sm leading-6 text-[#7c87a4]">{item.content || item.body}</p>
-                    <button
-                      onClick={() => toast.success("Announcement marked as read")}
-                      className="mt-4 text-xs font-bold text-[#3157e8] hover:underline"
                     >
-                      Mark as read
-                    </button>
+                      {isLiveClass ? <Video className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      {/* Metadata Badges */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-md bg-[#f1f3f8] px-2 py-1 text-[10px] font-bold text-[#7c87a4] dark:bg-white/10">
+                          {item.category || item.targetAudience || "General"}
+                        </span>
+                        {item.platform && (
+                          <span className="rounded-md bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                            {item.platform}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-[#aab3c5]">
+                          {item.publishedAt || item.date || "Just now"}
+                        </span>
+                        {item.isPinned && (
+                          <span className="rounded-md bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
+                            Pinned
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title */}
+                      <h2 className="mt-3 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">
+                        {item.title}
+                      </h2>
+
+                      {/* Instructor & Course Info */}
+                      {(instructor || course) && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#7c87a4]">
+                          {instructor && (
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                              By {instructor}
+                            </span>
+                          )}
+                          {course && (
+                            <>
+                              <span>•</span>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                                {course}
+                              </span>
+                            </>
+                          )}
+                          {topic && (
+                            <>
+                              <span>•</span>
+                              <span className="text-slate-500 dark:text-slate-400">
+                                Topic: {topic}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Description */}
+                      <p className="mt-2 text-sm leading-6 text-[#7c87a4]">
+                        {item.content || item.body || item.description}
+                      </p>
+
+                      {/* Host Notes Callout (if scheduled) */}
+                      {hostNotes && (
+                        <div className="mt-3.5 flex items-start gap-2.5 rounded-xl border border-amber-200/80 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300 font-medium">
+                          <Sparkles className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                          <div>
+                            <span className="font-bold">Host Note: </span>
+                            <span>{hostNotes}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Attached Platform Resources Chips */}
+                      {resources && resources.length > 0 && (
+                        <div className="mt-3.5 space-y-2">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#7c87a4]">
+                            <BookOpen className="h-3.5 w-3.5 text-indigo-500" />
+                            <span>Attached Session Resources ({resources.length}):</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {resources.map((res: any, rIdx: number) => {
+                              const isProblem = res.type?.toLowerCase().includes("problem") || res.category === "problem";
+                              const isPdf = res.type?.toLowerCase().includes("pdf") || res.name?.toLowerCase().endsWith(".pdf");
+                              return (
+                                <div
+                                  key={res.id || rIdx}
+                                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                                >
+                                  {isProblem ? (
+                                    <Code2 className="h-3 w-3 text-indigo-500" />
+                                  ) : isPdf ? (
+                                    <FileText className="h-3 w-3 text-rose-500" />
+                                  ) : (
+                                    <BookOpen className="h-3 w-3 text-blue-500" />
+                                  )}
+                                  <span className="max-w-[200px] truncate">{res.name}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="mt-4 flex flex-wrap items-center gap-3 pt-2">
+                        {isLiveClass && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedLiveSession(sessionDetails || item)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-white transition shadow-xs cursor-pointer"
+                          >
+                            <BookOpen className="h-3.5 w-3.5 text-indigo-500" />
+                            <span>View Full Details & Resources</span>
+                          </button>
+                        )}
+
+                        {item.meetingLink && (
+                          <a
+                            href={item.meetingLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 rounded-xl bg-[#3157e8] hover:bg-[#2545c2] px-4 py-2 text-xs font-bold text-white shadow-sm transition cursor-pointer"
+                          >
+                            <Video className="h-3.5 w-3.5" />
+                            Join {item.platform || "Live Class"}
+                            <ArrowUpRight className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => toast.success("Announcement marked as read")}
+                          className="text-xs font-bold text-[#7c87a4] hover:text-[#3157e8] hover:underline cursor-pointer ml-auto"
+                        >
+                          Mark as read
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))
+                </article>
+              );
+            })
           )}
         </div>
+
+        {/* Right Sidebar */}
         <aside className="card-surface h-fit p-5 space-y-5">
           <div>
             <div className="flex items-center justify-between">
@@ -2988,14 +3519,7 @@ function AnnouncementsPage() {
                   return (
                     <div
                       key={session.id || idx}
-                      onClick={() => {
-                        if (session.meetingLink) {
-                          window.open(session.meetingLink, "_blank", "noopener,noreferrer");
-                          toast.info(`Joining ${session.platform || "Live"} class...`);
-                        } else {
-                          toast.info("Meeting link will be active shortly before start.");
-                        }
-                      }}
+                      onClick={() => setSelectedLiveSession(session)}
                       className="group flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition cursor-pointer border border-slate-100 dark:border-white/5"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -3033,9 +3557,18 @@ function AnnouncementsPage() {
           </div>
         </aside>
       </div>
+
+      {/* Full Live Session Details & Materials Modal */}
+      {selectedLiveSession && (
+        <LiveSessionDetailsModal
+          session={selectedLiveSession}
+          onClose={() => setSelectedLiveSession(null)}
+        />
+      )}
     </>
   );
 }
+
 function Reminder({ icon: Icon, title, meta, color }: { icon: LucideIcon; title: string; meta: string; color: "amber" | "blue" | "violet" }) { const colors = { amber: "bg-[#fff4db] text-[#d68c20]", blue: "bg-[#eaf0ff] text-[#3157e8]", violet: "bg-[#f0eaff] text-[#7f5af0]" }; return <div className="flex items-center gap-3"><span className={cx("flex h-8 w-8 items-center justify-center rounded-lg", colors[color])}><Icon className="h-4 w-4" /></span><div><p className="text-xs font-bold text-[#17223d] dark:text-white">{title}</p><p className="mt-1 text-[10px] text-[#9aa4bc]">{meta}</p></div></div>; }
 
 function CommunityPage() {

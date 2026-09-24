@@ -18,12 +18,23 @@ import {
   Radio,
   Save,
   Send,
+  Loader2,
   Sparkles,
   Trash2,
   Upload,
   Users,
   Video,
   X,
+  BookOpen,
+  Code,
+  FileCode,
+  FolderArchive,
+  Globe,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  Layers,
+  FileCheck,
 } from "lucide-react";
 import {
   saveDraft,
@@ -33,10 +44,95 @@ import {
 } from "@/lib/draftManager";
 
 export interface SessionResourceItem {
-  id: number;
+  id: number | string;
   name: string;
-  size: string;
+  size?: string;
+  type?: string;
+  url?: string;
+  category?: string;
+  parent?: string;
 }
+
+const formatRealFileSize = (bytes: number): string => {
+  if (bytes === 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+};
+
+const getFileTypeFromFileName = (fileName: string): string => {
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+  if (ext === "pdf") return "PDF";
+  if (["doc", "docx", "txt", "rtf", "md"].includes(ext)) return "Document";
+  if (["ppt", "pptx"].includes(ext)) return "Presentation";
+  if (["xls", "xlsx", "csv"].includes(ext)) return "Spreadsheet";
+  if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "Archive";
+  if (["js", "ts", "jsx", "tsx", "py", "java", "cpp", "c", "html", "css", "json", "sql"].includes(ext)) return "Source Code";
+  if (["mp4", "mov", "webm", "mkv", "avi"].includes(ext)) return "Video";
+  if (["png", "jpg", "jpeg", "svg", "webp"].includes(ext)) return "Image";
+  return "File";
+};
+
+const getResourceIconInfo = (type?: string, name?: string) => {
+  const t = (type || "").toLowerCase();
+  const n = (name || "").toLowerCase();
+
+  if (t.includes("assignment") || t.includes("homework")) {
+    return {
+      icon: BookOpen,
+      bgColor: "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-100/80 dark:border-emerald-900/50",
+      badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/40",
+      label: "Assignment",
+    };
+  }
+  if (t.includes("problem") || t.includes("dsa") || t.includes("code") || n.endsWith(".js") || n.endsWith(".py") || n.endsWith(".cpp")) {
+    return {
+      icon: Code,
+      bgColor: "bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 border-violet-100/80 dark:border-violet-900/50",
+      badgeColor: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-900/40",
+      label: "Problem / Code",
+    };
+  }
+  if (t.includes("pdf") || n.endsWith(".pdf")) {
+    return {
+      icon: FileText,
+      bgColor: "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-100/80 dark:border-rose-900/50",
+      badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/40",
+      label: "PDF Document",
+    };
+  }
+  if (t.includes("video") || t.includes("recording") || t.includes("lecture") || n.endsWith(".mp4")) {
+    return {
+      icon: Video,
+      bgColor: "bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border-sky-100/80 dark:border-sky-900/50",
+      badgeColor: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-400 dark:border-sky-900/40",
+      label: "Video Lesson",
+    };
+  }
+  if (t.includes("link") || t.includes("url") || t.includes("github") || t.includes("drive") || t.includes("figma") || t.includes("notion")) {
+    return {
+      icon: Globe,
+      bgColor: "bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 border-cyan-100/80 dark:border-cyan-900/50",
+      badgeColor: "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-400 dark:border-cyan-900/40",
+      label: "External Link",
+    };
+  }
+  if (t.includes("archive") || t.includes("zip") || n.endsWith(".zip") || n.endsWith(".rar")) {
+    return {
+      icon: FolderArchive,
+      bgColor: "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-100/80 dark:border-amber-900/50",
+      badgeColor: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/40",
+      label: "Archive / Files",
+    };
+  }
+  return {
+    icon: FileText,
+    bgColor: "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-100/80 dark:border-indigo-900/50",
+    badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/40",
+    label: type || "Resource",
+  };
+};
 
 export interface LiveSessionData {
   id?: string | number;
@@ -758,8 +854,8 @@ function calculateDurationHours(startStr: string, endStr: string): string {
 interface ScheduleSessionBuilderProps {
   initialData?: Partial<LiveSessionData>;
   onClose: () => void;
-  onSaveDraft: (data: LiveSessionData) => void;
-  onSchedule: (data: LiveSessionData) => void;
+  onSaveDraft: (data: LiveSessionData) => Promise<void> | void;
+  onSchedule: (data: LiveSessionData) => Promise<void> | void;
   availableCourses?: string[];
   courses?: any[];
   contentItems?: ContentLibraryItem[];
@@ -778,6 +874,11 @@ export default function ScheduleSessionBuilder({
 }: ScheduleSessionBuilderProps) {
   const [localCourses, setLocalCourses] = useState<any[]>(courses || []);
   const [localInstructors, setLocalInstructors] = useState<any[]>(instructors || []);
+  const [localContent, setLocalContent] = useState<ContentLibraryItem[]>(contentItems || []);
+  const [localAssignments, setLocalAssignments] = useState<any[]>([]);
+  const [localProblems, setLocalProblems] = useState<any[]>([]);
+  const [localLiveSessions, setLocalLiveSessions] = useState<any[]>([]);
+  const [isLoadingPlatformResources, setIsLoadingPlatformResources] = useState<boolean>(false);
 
   useEffect(() => {
     if (courses && courses.length > 0) {
@@ -790,6 +891,12 @@ export default function ScheduleSessionBuilder({
       setLocalInstructors(instructors);
     }
   }, [instructors]);
+
+  useEffect(() => {
+    if (contentItems && contentItems.length > 0) {
+      setLocalContent(contentItems);
+    }
+  }, [contentItems]);
 
   useEffect(() => {
     if (!courses || courses.length === 0) {
@@ -817,6 +924,38 @@ export default function ScheduleSessionBuilder({
     }
   }, [instructors]);
 
+  const fetchRealPlatformResources = () => {
+    setIsLoadingPlatformResources(true);
+    Promise.allSettled([
+      fetch("http://localhost:4000/api/v1/admin/content").then((r) => (r.ok ? r.json() : [])),
+      fetch("http://localhost:4000/api/v1/admin/assignments").then((r) => (r.ok ? r.json() : [])),
+      fetch("http://localhost:4000/api/v1/admin/practice-problems").then((r) => (r.ok ? r.json() : [])),
+      fetch("http://localhost:4000/api/v1/live-sessions").then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([contentRes, assignRes, probRes, sessionsRes]) => {
+        if (contentRes.status === "fulfilled" && Array.isArray(contentRes.value) && contentRes.value.length > 0) {
+          setLocalContent(contentRes.value);
+        }
+        if (assignRes.status === "fulfilled" && Array.isArray(assignRes.value)) {
+          setLocalAssignments(assignRes.value);
+        }
+        if (probRes.status === "fulfilled" && Array.isArray(probRes.value)) {
+          setLocalProblems(probRes.value);
+        }
+        if (sessionsRes.status === "fulfilled" && Array.isArray(sessionsRes.value)) {
+          setLocalLiveSessions(sessionsRes.value);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        setIsLoadingPlatformResources(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchRealPlatformResources();
+  }, []);
+
   const activeCoursesList = useMemo(() => {
     if (localCourses && localCourses.length > 0) return localCourses;
     if (courses && courses.length > 0) return courses;
@@ -828,6 +967,158 @@ export default function ScheduleSessionBuilder({
     if (instructors && instructors.length > 0) return instructors;
     return [];
   }, [localInstructors, instructors]);
+
+  const availablePlatformResources = useMemo(() => {
+    const list: Array<{
+      id: string | number;
+      name: string;
+      category: "lesson" | "assignment" | "problem" | "file";
+      type: string;
+      size: string;
+      course?: string;
+      parent?: string;
+      raw?: any;
+    }> = [];
+
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+
+    const addUniqueItem = (item: {
+      id: string | number;
+      name: string;
+      category: "lesson" | "assignment" | "problem" | "file";
+      type: string;
+      size: string;
+      course?: string;
+      parent?: string;
+      raw?: any;
+    }) => {
+      const cleanName = item.name?.trim();
+      if (!cleanName) return;
+
+      const normName = cleanName.toLowerCase();
+      const idStr = String(item.id);
+      const catKey = `${item.category}:::${normName}`;
+
+      // Prevent duplicate by exact ID, or duplicate name within category, or duplicate globally if same name
+      if (seenIds.has(idStr) || seenNames.has(catKey) || seenNames.has(normName)) {
+        return;
+      }
+
+      seenIds.add(idStr);
+      seenNames.add(catKey);
+      seenNames.add(normName);
+      list.push({ ...item, name: cleanName });
+    };
+
+    // 1. Lessons & Modules from active courses
+    for (const course of activeCoursesList) {
+      const courseTitle = (course.title || course.name || "Course").trim();
+      if (Array.isArray(course.modules)) {
+        for (const mod of course.modules) {
+          const modTitle = typeof mod === "string" ? mod.trim() : (mod.title || mod.name || "Module").trim();
+          if (mod && typeof mod === "object" && Array.isArray(mod.topics)) {
+            for (const top of mod.topics) {
+              const topTitle = (top.title || "Lesson").trim();
+              if (Array.isArray(top.subtopics) && top.subtopics.length > 0) {
+                for (const sub of top.subtopics) {
+                  const subTitle = (sub.title || topTitle).trim();
+                  addUniqueItem({
+                    id: sub.id ? `sub_${sub.id}` : `sub_${courseTitle}_${modTitle}_${subTitle}`,
+                    name: subTitle,
+                    category: "lesson",
+                    type: sub.type || "Video Lesson",
+                    size: `${courseTitle} · ${modTitle}`,
+                    course: courseTitle,
+                    parent: modTitle,
+                  });
+                }
+              } else {
+                addUniqueItem({
+                  id: top.id ? `top_${top.id}` : `top_${courseTitle}_${modTitle}_${topTitle}`,
+                  name: topTitle,
+                  category: "lesson",
+                  type: top.type || "Course Lesson",
+                  size: `${courseTitle} · ${modTitle}`,
+                  course: courseTitle,
+                  parent: modTitle,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Real Content Library items from DB
+    if (localContent && localContent.length > 0) {
+      for (const item of localContent) {
+        const isPdf = item.type?.toUpperCase().includes("PDF");
+        const isVideo = item.type?.toUpperCase().includes("VIDEO");
+        const isAssign = item.type?.toUpperCase().includes("ASSIGNMENT");
+        const isProb = item.type?.toUpperCase().includes("PROBLEM");
+        const cat = isAssign ? "assignment" : isProb ? "problem" : isPdf ? "file" : isVideo ? "lesson" : "file";
+        addUniqueItem({
+          id: item.id || `content_${item.title}`,
+          name: item.title,
+          category: cat,
+          type: item.type || "Content Resource",
+          size: item.parent ? `${item.parent}` : "Platform Library",
+          course: item.parent?.split(" · ")[0] || "",
+          parent: item.parent || "Content Library",
+        });
+      }
+    }
+
+    // 3. Real Assignments from DB
+    if (localAssignments && localAssignments.length > 0) {
+      for (const assign of localAssignments) {
+        addUniqueItem({
+          id: assign.id ? `assign_${assign.id}` : `assign_${assign.title}`,
+          name: assign.title,
+          category: "assignment",
+          type: "Assignment",
+          size: `${assign.totalPoints || 100} Marks · ${assign.dueDate ? `Due ${assign.dueDate}` : "Course Task"}`,
+          course: assign.course || "",
+          parent: assign.course || "Platform Assignment",
+          raw: assign,
+        });
+      }
+    }
+
+    // 4. Real Practice Problems from DB
+    if (localProblems && localProblems.length > 0) {
+      for (const prob of localProblems) {
+        addUniqueItem({
+          id: prob.id ? `prob_${prob.id}` : `prob_${prob.title}`,
+          name: prob.title,
+          category: "problem",
+          type: `Problem (${prob.difficulty || "Medium"})`,
+          size: `${prob.category || "DSA"} · ${prob.acceptance || "75%"} Acceptance`,
+          parent: prob.category || "Practice Problem",
+          raw: prob,
+        });
+      }
+    }
+
+    // 5. Existing Live Sessions & Recordings
+    if (localLiveSessions && localLiveSessions.length > 0) {
+      for (const sess of localLiveSessions) {
+        addUniqueItem({
+          id: sess.id ? `sess_${sess.id}` : `sess_${sess.title}`,
+          name: sess.title,
+          category: "lesson",
+          type: `Live Class (${sess.platform || "Online"})`,
+          size: `${sess.course || "General"} · ${sess.date || "Scheduled"}`,
+          course: sess.course || "",
+          parent: sess.course || "Live Sessions",
+          raw: sess,
+        });
+      }
+    }
+
+    return list;
+  }, [activeCoursesList, localContent, localAssignments, localProblems, localLiveSessions]);
 
   const courseNames = useMemo(() => {
     if (activeCoursesList && activeCoursesList.length > 0) {
@@ -963,6 +1254,45 @@ export default function ScheduleSessionBuilder({
     };
   });
 
+  // Re-sync form state when editing a different or existing session
+  useEffect(() => {
+    if (initialData) {
+      setData({
+        id: initialData.id,
+        title: initialData.title || "",
+        instructor: initialData.instructor || "Platform Admin",
+        sessionType: initialData.sessionType || "Live Class",
+        description: initialData.description || "",
+        course: initialData.course || "",
+        module: initialData.module || "",
+        topic: initialData.topic || "",
+        targetCohort: initialData.targetCohort || "All Enrolled Students",
+        date: initialData.date || new Date().toISOString().split("T")[0],
+        timezone: initialData.timezone || "IST (UTC+5:30) - Asia/Kolkata",
+        startTime: initialData.startTime || "18:00",
+        endTime: initialData.endTime || "19:30",
+        platform: initialData.platform || "Google Meet",
+        meetingLink: initialData.meetingLink || "",
+        passcode: initialData.passcode || "",
+        hostNotes: initialData.hostNotes || "",
+        resources: initialData.resources || [],
+        emailReminders: initialData.emailReminders ?? true,
+        inAppNotifications: initialData.inAppNotifications ?? true,
+        reminderSchedule: initialData.reminderSchedule || "30 minutes before",
+        autoRecord: initialData.autoRecord ?? true,
+        uploadRecording: initialData.uploadRecording ?? true,
+        aiNotes: initialData.aiNotes ?? true,
+        autoPublishRecording: initialData.autoPublishRecording ?? false,
+        trackAttendance: initialData.trackAttendance ?? true,
+        attendanceMethod: initialData.attendanceMethod || "Automatic on join (min 15 mins)",
+        attendanceThreshold: initialData.attendanceThreshold || "75%",
+        maxAttendees: initialData.maxAttendees || "250",
+        visibility: initialData.visibility || "All enrolled students",
+        status: initialData.status || "Scheduled",
+      });
+    }
+  }, [initialData]);
+
   // Auto-save form state to local draft when creating a new session
   useEffect(() => {
     if (data.id) return; // Do not overwrite drafts when editing an established session
@@ -1043,9 +1373,10 @@ export default function ScheduleSessionBuilder({
   };
 
   const [copiedLink, setCopiedLink] = useState(false);
-  const [newResourceName, setNewResourceName] = useState("");
   const [showAttachModal, setShowAttachModal] = useState(false);
   const [attachSearch, setAttachSearch] = useState("");
+  const [attachCategoryFilter, setAttachCategoryFilter] = useState<"all" | "lesson" | "assignment" | "problem" | "file">("all");
+  const [attachCourseFilter, setAttachCourseFilter] = useState<string>("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedCourseObj = useMemo(() => {
@@ -1110,54 +1441,82 @@ export default function ScheduleSessionBuilder({
     }
   };
 
-  const handleAddResource = () => {
-    if (newResourceName.trim()) {
-      setData((prev) => ({
-        ...prev,
-        resources: [
-          ...prev.resources,
-          { id: Date.now(), name: newResourceName.trim(), size: "1.2 MB" },
-        ],
-      }));
-      setNewResourceName("");
+  const [isScheduling, setIsScheduling] = useState(false);
+
+  const handleScheduleClick = async () => {
+    if (isScheduling) return;
+    try {
+      setIsScheduling(true);
+      clearDraft("schedule_session");
+      await onSchedule({ ...data, status: "Scheduled" });
+    } catch (err) {
+      console.error("Failed to schedule session:", err);
+      setIsScheduling(false);
     }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const file = files[0];
-      const sizeStr =
-        file.size > 1024 * 1024
-          ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-          : `${Math.round(file.size / 1024)} KB`;
+      const newItems: SessionResourceItem[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const sizeStr = formatRealFileSize(file.size);
+        const fileType = getFileTypeFromFileName(file.name);
+        const objectUrl = URL.createObjectURL(file);
+
+        newItems.push({
+          id: `file_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+          name: file.name,
+          size: sizeStr,
+          type: fileType,
+          url: objectUrl,
+          category: "file",
+        });
+      }
 
       setData((prev) => ({
         ...prev,
-        resources: [
-          ...prev.resources,
-          { id: Date.now(), name: file.name, size: sizeStr },
-        ],
+        resources: [...prev.resources, ...newItems],
       }));
-      // Reset input value so same file can be uploaded again if needed
       e.target.value = "";
     }
   };
 
-  const handleAttachExisting = (item: { name: string; size: string }) => {
-    if (!data.resources.some((r) => r.name.toLowerCase() === item.name.toLowerCase())) {
+  const handleAttachExisting = (item: {
+    id?: string | number;
+    name: string;
+    size?: string;
+    type?: string;
+    url?: string;
+    category?: string;
+    parent?: string;
+  }) => {
+    const normName = item.name.trim().toLowerCase();
+    const isAlreadyAttached = data.resources.some(
+      (r) => r.name.trim().toLowerCase() === normName || String(r.id) === String(item.id)
+    );
+    if (!isAlreadyAttached) {
       setData((prev) => ({
         ...prev,
         resources: [
           ...prev.resources,
-          { id: Date.now(), name: item.name, size: item.size },
+          {
+            id: item.id || `res_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            name: item.name.trim(),
+            size: item.size || "Platform Resource",
+            type: item.type || "Resource",
+            url: item.url,
+            category: item.category,
+            parent: item.parent,
+          },
         ],
       }));
     }
-    setShowAttachModal(false);
   };
 
-  const handleRemoveResource = (id: number) => {
+
+  const handleRemoveResource = (id: number | string) => {
     setData((prev) => ({
       ...prev,
       resources: prev.resources.filter((r) => r.id !== id),
@@ -1192,14 +1551,24 @@ export default function ScheduleSessionBuilder({
           </button>
           <button
             type="button"
-            onClick={() => {
-              clearDraft("schedule_session");
-              onSchedule({ ...data, status: "Scheduled" });
-            }}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
+            disabled={isScheduling}
+            onClick={handleScheduleClick}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95",
+              isScheduling && "opacity-80 cursor-not-allowed pointer-events-none"
+            )}
           >
-            <Send className="h-3.5 w-3.5" />
-            <span>Schedule session</span>
+            {isScheduling ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Scheduling session...</span>
+              </>
+            ) : (
+              <>
+                <Send className="h-3.5 w-3.5" />
+                <span>Schedule session</span>
+              </>
+            )}
           </button>
           <button
             onClick={onClose}
@@ -1630,18 +1999,25 @@ export default function ScheduleSessionBuilder({
 
             {/* Section 5: Session Resources */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
-              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3">
-                <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
-                  05
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
+                    05
+                  </div>
+                  <div>
+                    <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                      Session Resources
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Attach real database learning materials, assignments, problems, or files before students join.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                    Session Resources
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Attach learning material before students join.
-                  </p>
-                </div>
+                {data.resources.length > 0 && (
+                  <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-900/50 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
+                    {data.resources.length} {data.resources.length === 1 ? "Resource" : "Resources"} Attached
+                  </span>
+                )}
               </div>
 
               {/* Hidden File Input for Real Upload */}
@@ -1651,80 +2027,127 @@ export default function ScheduleSessionBuilder({
                 multiple
                 className="hidden"
                 onChange={handleFileUpload}
-                accept=".pdf,.docx,.doc,.pptx,.zip,.rar,.txt,.md"
+                accept=".pdf,.docx,.doc,.pptx,.ppt,.zip,.rar,.txt,.md,.py,.cpp,.java,.js,.ts,.json,.png,.jpg"
               />
 
-              <div className="space-y-4">
                 {/* 2-Column Action Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Card 1: Attach existing resource */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {/* Card 1: Attach existing platform resource */}
                   <button
                     type="button"
                     onClick={() => setShowAttachModal(true)}
-                    className="group text-left rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-5 hover:border-indigo-500 hover:shadow-xs transition-all cursor-pointer"
+                    className="group text-left rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-4 hover:border-indigo-500 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between"
                   >
-                    <div className="text-indigo-600 dark:text-indigo-400 mb-3.5">
-                      <Link2 className="h-5 w-5" />
+                    <div>
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-2.5 border border-indigo-100/80 dark:border-indigo-900/50">
+                        <BookOpen className="h-4 w-4" />
+                      </div>
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                        Attach Platform Resource
+                      </h3>
+                      <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+                        Lessons, assignments, practice problems & library PDFs.
+                      </p>
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
-                      Attach existing resource
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      PDFs, assignments, problems, and recordings.
-                    </p>
+                    <span className="mt-3 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1 group-hover:underline">
+                      Browse library ({availablePlatformResources.length}) →
+                    </span>
                   </button>
 
-                  {/* Card 2: Upload new resource */}
+                  {/* Card 2: Upload real local files */}
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="group text-left rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/20 dark:bg-indigo-950/20 p-5 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all cursor-pointer"
+                    className="group text-left rounded-2xl border-2 border-dashed border-indigo-200/80 dark:border-indigo-800/60 bg-indigo-50/20 dark:bg-indigo-950/20 p-4 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all cursor-pointer flex flex-col justify-between"
                   >
-                    <div className="text-indigo-600 dark:text-indigo-400 mb-3.5">
-                      <Upload className="h-5 w-5" />
+                    <div>
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-2.5 border border-indigo-100/80 dark:border-indigo-900/50">
+                        <Upload className="h-4 w-4" />
+                      </div>
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                        Upload Local Files
+                      </h3>
+                      <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+                        PDFs, slides, code zip, notes (auto-computes real file size).
+                      </p>
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
-                      Upload new resource
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Add notes, slides, or external links.
-                    </p>
+                    <span className="mt-3 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1 group-hover:underline">
+                      Select files →
+                    </span>
                   </button>
                 </div>
 
                 {/* Attached Resources List */}
-                <div className="space-y-3 pt-1">
+                <div className="space-y-2.5 pt-1">
                   {data.resources.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-slate-400 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
-                      No session resources attached yet. Click above to attach or upload materials.
+                    <div className="text-center py-7 px-4 text-xs text-slate-400 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50/30 dark:bg-white/[0.01]">
+                      <div className="w-10 h-10 mx-auto rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-400 flex items-center justify-center mb-2">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <p className="font-bold text-slate-700 dark:text-slate-300">No session resources attached yet</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5 max-w-sm mx-auto">
+                        Attach real course lessons, platform assignments, practice problems, or upload local files.
+                      </p>
                     </div>
                   ) : (
-                    data.resources.map((res) => (
-                      <div
-                        key={res.id}
-                        className="flex items-center justify-between px-5 py-4 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] shadow-2xs hover:border-slate-300 dark:hover:border-white/20 transition-all"
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0 pr-4">
-                          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
-                            <Calendar className="h-4 w-4" />
-                          </div>
-                          <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                            {res.name}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveResource(res.id)}
-                          className="text-sm font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline transition cursor-pointer shrink-0"
+                    data.resources.map((res) => {
+                      const iconInfo = getResourceIconInfo(res.type, res.name);
+                      const IconComponent = iconInfo.icon;
+                      return (
+                        <div
+                          key={res.id}
+                          className="flex items-center justify-between px-4 py-3.5 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] shadow-2xs hover:border-slate-300 dark:hover:border-white/20 transition-all group"
                         >
-                          Remove
-                        </button>
-                      </div>
-                    ))
+                          <div className="flex items-center gap-3 min-w-0 pr-3">
+                            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border", iconInfo.bgColor)}>
+                              <IconComponent className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                {res.name}
+                              </p>
+                              <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 flex-wrap">
+                                <span className={cn("rounded-md border px-1.5 py-0.2 text-[9px] font-bold", iconInfo.badgeColor)}>
+                                  {res.type || iconInfo.label}
+                                </span>
+                                {res.size && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="truncate max-w-[280px]">{res.size}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {res.url && (
+                              <a
+                                href={res.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition cursor-pointer"
+                                title="Open / Preview Resource"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveResource(res.id)}
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 px-2.5 py-1.5 rounded-xl transition cursor-pointer"
+                              title="Remove resource"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Remove</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
-            </div>
 
             {/* Section 6: Notifications & Reminders */}
             <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-sm space-y-5">
@@ -1987,11 +2410,24 @@ export default function ScheduleSessionBuilder({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onSchedule({ ...data, status: "Scheduled" })}
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95"
+                  disabled={isScheduling}
+                  onClick={handleScheduleClick}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition cursor-pointer active:scale-95",
+                    isScheduling && "opacity-80 cursor-not-allowed pointer-events-none"
+                  )}
                 >
-                  <Send className="h-3.5 w-3.5" />
-                  <span>Schedule session</span>
+                  {isScheduling ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Scheduling session...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-3.5 w-3.5" />
+                      <span>Schedule session</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -2053,6 +2489,15 @@ export default function ScheduleSessionBuilder({
                 </div>
 
                 <div>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Resources</p>
+                  <p className="mt-0.5 font-bold text-slate-900 dark:text-white">
+                    {data.resources.length > 0
+                      ? `${data.resources.length} attached`
+                      : "None attached"}
+                  </p>
+                </div>
+
+                <div>
                   <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">Reminders</p>
                   <p className="mt-0.5 font-bold text-slate-900 dark:text-white">
                     {data.emailReminders ? "Email + In-App" : "In-App only"} ({data.reminderSchedule})
@@ -2098,6 +2543,19 @@ export default function ScheduleSessionBuilder({
                     <Check className="h-3.5 w-3.5 stroke-[3]" />
                     <span className="font-semibold text-slate-700 dark:text-slate-300">Video platform link ready</span>
                   </div>
+                  <div
+                    className={cn(
+                      "flex items-center gap-2",
+                      data.resources.length > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500"
+                    )}
+                  >
+                    <Check className="h-3.5 w-3.5 stroke-[3]" />
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">
+                      {data.resources.length > 0
+                        ? `Session resources (${data.resources.length} active)`
+                        : "Session resources (optional)"}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                     <Check className="h-3.5 w-3.5 stroke-[3]" />
                     <span className="font-semibold text-slate-700 dark:text-slate-300">Attendance policy active</span>
@@ -2109,21 +2567,22 @@ export default function ScheduleSessionBuilder({
         </div>
       </main>
 
-      {/* Attach Existing Resource Modal */}
+      {/* Attach Platform Resource Modal */}
       {showAttachModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-xl rounded-3xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-2xl rounded-3xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50">
-                  <Link2 className="h-4 w-4" />
+                  <BookOpen className="h-4 w-4" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Attach Existing Resource
+                    Attach Platform Resource
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Select from library materials, assignments, or previous class notes.
+                    Select real database lessons, platform assignments, problems, or library PDFs.
                   </p>
                 </div>
               </div>
@@ -2136,98 +2595,193 @@ export default function ScheduleSessionBuilder({
               </button>
             </div>
 
-            <div className="relative">
-              <input
-                type="text"
-                value={attachSearch}
-                onChange={(e) => setAttachSearch(e.target.value)}
-                placeholder="Search notes, assignments, problems..."
-                className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-4 pr-10 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-indigo-500"
-              />
-              {attachSearch && (
-                <button
-                  type="button"
-                  onClick={() => setAttachSearch("")}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-
-            <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-              {(contentItems && contentItems.length > 0
-                ? contentItems.map((c) => ({
-                    id: Number(c.id) || Date.now(),
-                    name: c.title,
-                    type: c.type || "Learning Resource",
-                    size: c.parent ? `${c.parent}` : "Content Library",
-                  }))
-                : []
-              )
-                .filter((item) =>
-                  item.name.toLowerCase().includes(attachSearch.toLowerCase()) ||
-                  item.type.toLowerCase().includes(attachSearch.toLowerCase())
-                )
-                .map((item) => {
-                  const isAttached = data.resources.some(
-                    (r) => r.name.toLowerCase() === item.name.toLowerCase()
-                  );
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] hover:border-indigo-300 dark:hover:border-indigo-800 transition"
-                    >
-                      <div className="flex items-center gap-3 min-w-0 pr-2">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100/80 dark:border-indigo-900/50 shrink-0">
-                          <FileText className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                            {item.name}
-                          </p>
-                          <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
-                            <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                              {item.type}
-                            </span>
-                            <span>•</span>
-                            <span>{item.size}</span>
-                          </div>
-                        </div>
-                      </div>
-
+            {/* Platform Library Content */}
+            <div className="space-y-3 flex-1 overflow-hidden flex flex-col min-h-0">
+                {/* Search Bar & Course Filter */}
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={attachSearch}
+                      onChange={(e) => setAttachSearch(e.target.value)}
+                      placeholder="Search lessons, assignments, problems, PDFs..."
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02] pl-9 pr-8 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 font-medium"
+                    />
+                    <Search className="pointer-events-none absolute left-3 top-3 h-3.5 w-3.5 text-slate-400" />
+                    {attachSearch && (
                       <button
                         type="button"
-                        disabled={isAttached}
-                        onClick={() => handleAttachExisting(item)}
-                        className={cn(
-                          "rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer shrink-0",
-                          isAttached
-                            ? "bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500 cursor-not-allowed"
-                            : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs"
-                        )}
+                        onClick={() => setAttachSearch("")}
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
                       >
-                        {isAttached ? "Attached ✓" : "Attach"}
+                        <X className="h-3.5 w-3.5" />
                       </button>
+                    )}
+                  </div>
+
+                  {courseNames.length > 0 && (
+                    <div className="w-full sm:w-48 shrink-0">
+                      <CustomDropdown
+                        value={attachCourseFilter}
+                        onChange={(val) => setAttachCourseFilter(val)}
+                        options={[
+                          { value: "all", label: "All Courses" },
+                          ...courseNames.map((c) => ({ value: c, label: c })),
+                        ]}
+                      />
                     </div>
-                  );
-                })}
-
-              {(!contentItems || contentItems.length === 0) && (
-                <div className="py-8 text-center text-xs text-slate-400">
-                  No resources found in Content Library. Add lessons, notes, or assignments to the library first.
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-white/5">
-              <button
-                type="button"
-                onClick={() => setShowAttachModal(false)}
-                className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer"
-              >
-                Close
-              </button>
+                {/* Category Filter Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                  {[
+                    { key: "all", label: "All", count: availablePlatformResources.length },
+                    { key: "lesson", label: "Lessons", count: availablePlatformResources.filter((r) => r.category === "lesson").length },
+                    { key: "assignment", label: "Assignments", count: availablePlatformResources.filter((r) => r.category === "assignment").length },
+                    { key: "problem", label: "Problems", count: availablePlatformResources.filter((r) => r.category === "problem").length },
+                    { key: "file", label: "PDFs & Files", count: availablePlatformResources.filter((r) => r.category === "file").length },
+                  ].map((cat) => (
+                    <button
+                      key={cat.key}
+                      type="button"
+                      onClick={() => setAttachCategoryFilter(cat.key as any)}
+                      className={cn(
+                        "px-3 py-1 rounded-xl font-semibold transition cursor-pointer shrink-0 text-xs flex items-center gap-1.5",
+                        attachCategoryFilter === cat.key
+                          ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10"
+                      )}
+                    >
+                      <span>{cat.label}</span>
+                      <span className={cn(
+                        "rounded-full px-1.5 py-0.2 text-[10px]",
+                        attachCategoryFilter === cat.key
+                          ? "bg-white/20 dark:bg-black/20"
+                          : "bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-slate-400"
+                      )}>
+                        {cat.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Items List */}
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px] max-h-[340px]">
+                  {availablePlatformResources
+                    .filter((item) => {
+                      if (attachCategoryFilter !== "all" && item.category !== attachCategoryFilter) {
+                        return false;
+                      }
+                      if (attachCourseFilter !== "all" && item.course && item.course !== attachCourseFilter) {
+                        return false;
+                      }
+                      if (attachSearch.trim()) {
+                        const q = attachSearch.toLowerCase();
+                        const matchName = item.name.toLowerCase().includes(q);
+                        const matchType = (item.type || "").toLowerCase().includes(q);
+                        const matchParent = (item.parent || "").toLowerCase().includes(q);
+                        const matchCourse = (item.course || "").toLowerCase().includes(q);
+                        return matchName || matchType || matchParent || matchCourse;
+                      }
+                      return true;
+                    })
+                    .map((item) => {
+                      const isAttached = data.resources.some(
+                        (r) => r.name.trim().toLowerCase() === item.name.trim().toLowerCase() || String(r.id) === String(item.id)
+                      );
+                      const iconInfo = getResourceIconInfo(item.type, item.name);
+                      const IconComponent = iconInfo.icon;
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] hover:border-indigo-300 dark:hover:border-indigo-800 transition"
+                        >
+                          <div className="flex items-center gap-3 min-w-0 pr-2">
+                            <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border", iconInfo.bgColor)}>
+                              <IconComponent className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                {item.name}
+                              </p>
+                              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5 flex-wrap">
+                                <span className={cn("rounded px-1.5 py-0.2 font-bold", iconInfo.badgeColor)}>
+                                  {item.type}
+                                </span>
+                                {item.size && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="truncate max-w-[260px]">{item.size}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={isAttached}
+                            onClick={() => handleAttachExisting(item)}
+                            className={cn(
+                              "rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer shrink-0",
+                              isAttached
+                                ? "bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500 cursor-not-allowed"
+                                : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs active:scale-95"
+                            )}
+                          >
+                            {isAttached ? "Attached ✓" : "+ Attach"}
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                  {availablePlatformResources.length === 0 && (
+                    <div className="py-12 text-center text-xs text-slate-400">
+                      <FileText className="h-6 w-6 mx-auto mb-2 opacity-40" />
+                      {isLoadingPlatformResources
+                        ? "Loading platform resources from database..."
+                        : "No resources found in Content Library. Add lessons, notes, or assignments to the library first."}
+                    </div>
+                  )}
+
+                  {availablePlatformResources.length > 0 &&
+                    availablePlatformResources.filter((item) => {
+                      if (attachCategoryFilter !== "all" && item.category !== attachCategoryFilter) return false;
+                      if (attachCourseFilter !== "all" && item.course && item.course !== attachCourseFilter) return false;
+                      if (attachSearch.trim()) {
+                        const q = attachSearch.toLowerCase();
+                        return (
+                          item.name.toLowerCase().includes(q) ||
+                          (item.type || "").toLowerCase().includes(q) ||
+                          (item.parent || "").toLowerCase().includes(q)
+                        );
+                      }
+                      return true;
+                    }).length === 0 && (
+                      <div className="py-8 text-center text-xs text-slate-400">
+                        No resources match your search criteria.
+                      </div>
+                    )}
+                </div>
+              </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/5">
+              <span className="text-xs text-slate-400 font-medium">
+                {data.resources.length} {data.resources.length === 1 ? "resource" : "resources"} currently attached
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAttachModal(false)}
+                  className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
