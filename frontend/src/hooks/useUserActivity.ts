@@ -6,9 +6,11 @@ import { useAuth } from "./useAuth";
 export interface DailyActivityRecord {
   date: string; // "YYYY-MM-DD"
   activeMinutes: number;
+  activeSeconds?: number;
   problemsSolved: number;
   lessonsCompleted: number;
   assignmentsSubmitted: number;
+  lastActiveTimestamp?: number;
 }
 
 export interface ActivityBarItem {
@@ -17,6 +19,7 @@ export interface ActivityBarItem {
   shortLabel: string;
   fullDate: string;
   minutes: number;
+  seconds: number;
   formattedTime: string;
   heightPercent: number;
   isToday: boolean;
@@ -35,79 +38,89 @@ export interface WeekDayStatus {
   minutes: number;
 }
 
-const STORAGE_KEY = "lms_user_activity_history";
-const SOLVED_KEY = "lms_user_solved_problems";
+export const REAL_ACTIVITY_STORAGE_KEY = "lms_user_real_activity_v2";
+export const TODAY_SECONDS_KEY = "lms_user_today_active_seconds_v2";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-function getLocalDateString(d = new Date()): string {
+export function getLocalDateString(d = new Date()): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
-export function formatMinutes(mins: number): string {
-  if (mins <= 0) return "0m";
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
+export function formatMinutes(mins: number, secs = 0): string {
+  const totalSeconds = Math.max(0, mins * 60 + secs);
+  if (totalSeconds <= 0) return "0m";
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+
+  const totalMins = Math.floor(totalSeconds / 60);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+
   if (h === 0) return `${m}m`;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
 }
 
-function initializeDefaultActivity(): Record<string, DailyActivityRecord> {
+function loadStoredActivity(): Record<string, DailyActivityRecord> {
   if (typeof window === "undefined") return {};
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    // Purge obsolete mock storage key if present from previous test builds
+    localStorage.removeItem("lms_user_activity_history");
+
+    const raw = localStorage.getItem(REAL_ACTIVITY_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object") return parsed;
     }
   } catch {}
-
-  // Generate realistic initial baseline based on existing solved problems or standard onboarding
-  const baseline: Record<string, DailyActivityRecord> = {};
-  const today = new Date();
-  
-  // Read existing solved problems count if available
-  let solvedCount = 0;
-  try {
-    const solvedRaw = localStorage.getItem(SOLVED_KEY);
-    if (solvedRaw) {
-      const solvedArr = JSON.parse(solvedRaw);
-      if (Array.isArray(solvedArr)) solvedCount = solvedArr.length;
-    }
-  } catch {}
-
-  // Seed standard active days over the last 14 days so user starts with a healthy baseline
-  const seededMinutes = [35, 50, 45, 60, 40, 55, 70, 45, 65, 50, 80, 55, 65, 45];
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = getLocalDateString(d);
-    const mins = seededMinutes[13 - i] || 45;
-    baseline[dateStr] = {
-      date: dateStr,
-      activeMinutes: mins,
-      problemsSolved: i === 0 ? Math.min(solvedCount, 2) : i % 3 === 0 ? 1 : 0,
-      lessonsCompleted: i % 2 === 0 ? 1 : 0,
-      assignmentsSubmitted: i % 5 === 0 ? 1 : 0,
-    };
-  }
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(baseline));
-  } catch {}
-
-  return baseline;
+  return {};
 }
 
 export function useUserActivity() {
   const { isAuthenticated } = useAuth();
-  const [activityMap, setActivityMap] = useState<Record<string, DailyActivityRecord>>(() => initializeDefaultActivity());
+  const [activityMap, setActivityMap] = useState<Record<string, DailyActivityRecord>>(() => loadStoredActivity());
+  const [liveSecondsToday, setLiveSecondsToday] = useState<number>(0);
   const isMountedRef = useRef(true);
+  const lastInteractionRef = useRef<number>(Date.now());
 
-  // Fetch from backend API if authenticated
+  // Load today's real seconds on mount & purge any stale mock history
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const todayStr = getLocalDateString();
+    try {
+      localStorage.removeItem("lms_user_activity_history");
+
+      const savedSecs = localStorage.getItem(`${TODAY_SECONDS_KEY}_${todayStr}`);
+      if (savedSecs) {
+        const parsed = parseInt(savedSecs, 10);
+        if (!isNaN(parsed) && parsed > 0) {
+          setLiveSecondsToday(parsed);
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Sync state when localStorage changes across windows/tabs
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const updated = loadStoredActivity();
+        setActivityMap(updated);
+      } catch {}
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("lms:activity-updated", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("lms:activity-updated", handleStorageChange);
+    };
+  }, []);
+
+  // Fetch real backend activity logs if authenticated
   const fetchBackendActivity = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
@@ -124,13 +137,14 @@ export function useUserActivity() {
               merged[dateKey] = {
                 date: dateKey,
                 activeMinutes: Math.max(merged[dateKey]?.activeMinutes || 0, val.minutes || 0),
+                activeSeconds: Math.max(merged[dateKey]?.activeSeconds || 0, (val.minutes || 0) * 60),
                 problemsSolved: Math.max(merged[dateKey]?.problemsSolved || 0, val.problems || 0),
                 lessonsCompleted: Math.max(merged[dateKey]?.lessonsCompleted || 0, val.lessons || 0),
                 assignmentsSubmitted: Math.max(merged[dateKey]?.assignmentsSubmitted || 0, val.submissions || 0),
               };
             }
             try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+              localStorage.setItem(REAL_ACTIVITY_STORAGE_KEY, JSON.stringify(merged));
             } catch {}
             return merged;
           });
@@ -147,134 +161,262 @@ export function useUserActivity() {
     };
   }, [fetchBackendActivity]);
 
-  // Log active study time
-  const logStudyTime = useCallback((minutes: number, reason = "STUDY_SESSION") => {
-    const todayStr = getLocalDateString();
-    setActivityMap((prev) => {
-      const existing = prev[todayStr] || {
-        date: todayStr,
-        activeMinutes: 0,
-        problemsSolved: 0,
-        lessonsCompleted: 0,
-        assignmentsSubmitted: 0,
-      };
+  // Track real user presence and activity (mouse, key, scroll, touch)
+  useEffect(() => {
+    const onUserInteraction = () => {
+      lastInteractionRef.current = Date.now();
+    };
 
-      const updated: DailyActivityRecord = {
-        ...existing,
-        activeMinutes: existing.activeMinutes + minutes,
-      };
+    window.addEventListener("mousemove", onUserInteraction, { passive: true });
+    window.addEventListener("keydown", onUserInteraction, { passive: true });
+    window.addEventListener("scroll", onUserInteraction, { passive: true });
+    window.addEventListener("click", onUserInteraction, { passive: true });
+    window.addEventListener("touchstart", onUserInteraction, { passive: true });
 
-      const nextMap = { ...prev, [todayStr]: updated };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextMap));
-      } catch {}
-      return nextMap;
-    });
+    return () => {
+      window.removeEventListener("mousemove", onUserInteraction);
+      window.removeEventListener("keydown", onUserInteraction);
+      window.removeEventListener("scroll", onUserInteraction);
+      window.removeEventListener("click", onUserInteraction);
+      window.removeEventListener("touchstart", onUserInteraction);
+    };
+  }, []);
 
-    // Post to backend if online
-    if (isAuthenticated) {
-      fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          action: reason,
-          metadata: { durationMinutes: minutes },
-        }),
-      }).catch(() => {});
-    }
-  }, [isAuthenticated]);
-
-  // Record problem solved
-  const recordProblemSolved = useCallback((problemId?: string, difficulty?: string) => {
-    const todayStr = getLocalDateString();
-    setActivityMap((prev) => {
-      const existing = prev[todayStr] || {
-        date: todayStr,
-        activeMinutes: 0,
-        problemsSolved: 0,
-        lessonsCompleted: 0,
-        assignmentsSubmitted: 0,
-      };
-
-      const updated: DailyActivityRecord = {
-        ...existing,
-        activeMinutes: existing.activeMinutes + 15,
-        problemsSolved: existing.problemsSolved + 1,
-      };
-
-      const nextMap = { ...prev, [todayStr]: updated };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextMap));
-      } catch {}
-      return nextMap;
-    });
-
-    if (isAuthenticated) {
-      fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          action: "PROBLEM_SOLVED",
-          metadata: { problemId, difficulty, durationMinutes: 15 },
-        }),
-      }).catch(() => {});
-    }
-  }, [isAuthenticated]);
-
-  // Record lesson completed
-  const recordLessonCompleted = useCallback((lessonId?: string) => {
-    const todayStr = getLocalDateString();
-    setActivityMap((prev) => {
-      const existing = prev[todayStr] || {
-        date: todayStr,
-        activeMinutes: 0,
-        problemsSolved: 0,
-        lessonsCompleted: 0,
-        assignmentsSubmitted: 0,
-      };
-
-      const updated: DailyActivityRecord = {
-        ...existing,
-        activeMinutes: existing.activeMinutes + 20,
-        lessonsCompleted: existing.lessonsCompleted + 1,
-      };
-
-      const nextMap = { ...prev, [todayStr]: updated };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextMap));
-      } catch {}
-      return nextMap;
-    });
-
-    if (isAuthenticated) {
-      fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          action: "LESSON_COMPLETE",
-          metadata: { lessonId, durationMinutes: 20 },
-        }),
-      }).catch(() => {});
-    }
-  }, [isAuthenticated]);
-
-  // Real-time live presence ticker (adds 1 minute of active study time every 60 seconds when user is on the tab)
+  // 1-second real-time precision heartbeat ticker
   useEffect(() => {
     const interval = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        logStudyTime(1, "ACTIVE_SESSION_HEARTBEAT");
+      if (typeof document === "undefined") return;
+
+      const isVisible = document.visibilityState === "visible";
+      const isFocused = document.hasFocus ? document.hasFocus() : true;
+      const isIdle = Date.now() - lastInteractionRef.current > 180000; // 3 minutes idle pause
+
+      if (isVisible && isFocused && !isIdle) {
+        const todayStr = getLocalDateString();
+
+        setLiveSecondsToday((prevSec) => {
+          const nextSec = prevSec + 1;
+          const nextMin = Math.floor(nextSec / 60);
+
+          // Save exact seconds to localStorage every 5 seconds
+          if (nextSec % 5 === 0) {
+            try {
+              localStorage.setItem(`${TODAY_SECONDS_KEY}_${todayStr}`, nextSec.toString());
+
+              setActivityMap((prevMap) => {
+                const existing = prevMap[todayStr] || {
+                  date: todayStr,
+                  activeMinutes: 0,
+                  activeSeconds: 0,
+                  problemsSolved: 0,
+                  lessonsCompleted: 0,
+                  assignmentsSubmitted: 0,
+                };
+
+                const updated: DailyActivityRecord = {
+                  ...existing,
+                  activeMinutes: Math.max(existing.activeMinutes, nextMin),
+                  activeSeconds: nextSec,
+                  lastActiveTimestamp: Date.now(),
+                };
+
+                const nextMap = { ...prevMap, [todayStr]: updated };
+                localStorage.setItem(REAL_ACTIVITY_STORAGE_KEY, JSON.stringify(nextMap));
+                return nextMap;
+              });
+            } catch {}
+          }
+
+          // Sync with backend every 60 seconds of continuous active presence
+          if (nextSec % 60 === 0 && isAuthenticated) {
+            fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                action: "ACTIVE_SESSION_PRESENCE",
+                metadata: { durationMinutes: 1 },
+              }),
+            }).catch(() => {});
+          }
+
+          return nextSec;
+        });
       }
-    }, 60000);
+    }, 1000);
 
     return () => clearInterval(interval);
-  }, [logStudyTime]);
+  }, [isAuthenticated]);
 
-  // Calculate Activity Bars for any given timeframe
+  // Log active study time directly
+  const logStudyTime = useCallback(
+    (minutes: number, reason = "STUDY_SESSION") => {
+      const todayStr = getLocalDateString();
+      const addedSeconds = minutes * 60;
+
+      setLiveSecondsToday((prev) => {
+        const nextSec = prev + addedSeconds;
+        try {
+          localStorage.setItem(`${TODAY_SECONDS_KEY}_${todayStr}`, nextSec.toString());
+        } catch {}
+        return nextSec;
+      });
+
+      setActivityMap((prev) => {
+        const existing = prev[todayStr] || {
+          date: todayStr,
+          activeMinutes: 0,
+          activeSeconds: 0,
+          problemsSolved: 0,
+          lessonsCompleted: 0,
+          assignmentsSubmitted: 0,
+        };
+
+        const updated: DailyActivityRecord = {
+          ...existing,
+          activeMinutes: existing.activeMinutes + minutes,
+          activeSeconds: (existing.activeSeconds || 0) + addedSeconds,
+          lastActiveTimestamp: Date.now(),
+        };
+
+        const nextMap = { ...prev, [todayStr]: updated };
+        try {
+          localStorage.setItem(REAL_ACTIVITY_STORAGE_KEY, JSON.stringify(nextMap));
+          window.dispatchEvent(new CustomEvent("lms:activity-updated"));
+        } catch {}
+        return nextMap;
+      });
+
+      if (isAuthenticated) {
+        fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            action: reason,
+            metadata: { durationMinutes: minutes },
+          }),
+        }).catch(() => {});
+      }
+    },
+    [isAuthenticated]
+  );
+
+  // Record problem solved
+  const recordProblemSolved = useCallback(
+    (problemId?: string, difficulty?: string) => {
+      const todayStr = getLocalDateString();
+      const addedMinutes = 15;
+      const addedSeconds = addedMinutes * 60;
+
+      setLiveSecondsToday((prev) => {
+        const next = prev + addedSeconds;
+        try {
+          localStorage.setItem(`${TODAY_SECONDS_KEY}_${todayStr}`, next.toString());
+        } catch {}
+        return next;
+      });
+
+      setActivityMap((prev) => {
+        const existing = prev[todayStr] || {
+          date: todayStr,
+          activeMinutes: 0,
+          activeSeconds: 0,
+          problemsSolved: 0,
+          lessonsCompleted: 0,
+          assignmentsSubmitted: 0,
+        };
+
+        const updated: DailyActivityRecord = {
+          ...existing,
+          activeMinutes: existing.activeMinutes + addedMinutes,
+          activeSeconds: (existing.activeSeconds || 0) + addedSeconds,
+          problemsSolved: existing.problemsSolved + 1,
+          lastActiveTimestamp: Date.now(),
+        };
+
+        const nextMap = { ...prev, [todayStr]: updated };
+        try {
+          localStorage.setItem(REAL_ACTIVITY_STORAGE_KEY, JSON.stringify(nextMap));
+          window.dispatchEvent(new CustomEvent("lms:activity-updated"));
+        } catch {}
+        return nextMap;
+      });
+
+      if (isAuthenticated) {
+        fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            action: "PROBLEM_SOLVED",
+            metadata: { problemId, difficulty, durationMinutes: addedMinutes },
+          }),
+        }).catch(() => {});
+      }
+    },
+    [isAuthenticated]
+  );
+
+  // Record lesson completed
+  const recordLessonCompleted = useCallback(
+    (lessonId?: string, durationSeconds?: number) => {
+      const todayStr = getLocalDateString();
+      const addedMinutes = durationSeconds ? Math.ceil(durationSeconds / 60) : 20;
+      const addedSeconds = durationSeconds || addedMinutes * 60;
+
+      setLiveSecondsToday((prev) => {
+        const next = prev + addedSeconds;
+        try {
+          localStorage.setItem(`${TODAY_SECONDS_KEY}_${todayStr}`, next.toString());
+        } catch {}
+        return next;
+      });
+
+      setActivityMap((prev) => {
+        const existing = prev[todayStr] || {
+          date: todayStr,
+          activeMinutes: 0,
+          activeSeconds: 0,
+          problemsSolved: 0,
+          lessonsCompleted: 0,
+          assignmentsSubmitted: 0,
+        };
+
+        const updated: DailyActivityRecord = {
+          ...existing,
+          activeMinutes: existing.activeMinutes + addedMinutes,
+          activeSeconds: (existing.activeSeconds || 0) + addedSeconds,
+          lessonsCompleted: existing.lessonsCompleted + 1,
+          lastActiveTimestamp: Date.now(),
+        };
+
+        const nextMap = { ...prev, [todayStr]: updated };
+        try {
+          localStorage.setItem(REAL_ACTIVITY_STORAGE_KEY, JSON.stringify(nextMap));
+          window.dispatchEvent(new CustomEvent("lms:activity-updated"));
+        } catch {}
+        return nextMap;
+      });
+
+      if (isAuthenticated) {
+        fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            action: "LESSON_COMPLETE",
+            metadata: { lessonId, durationMinutes: addedMinutes },
+          }),
+        }).catch(() => {});
+      }
+    },
+    [isAuthenticated]
+  );
+
+  // Calculate completely real Activity Bars for any given timeframe
   const getActivityBars = useCallback(
-    (timeframe: string): { bars: ActivityBarItem[]; totalMinutes: number; growthPct: string } => {
+    (timeframe: string): { bars: ActivityBarItem[]; totalMinutes: number; totalSeconds: number; growthPct: string } => {
       const today = new Date();
       const todayStr = getLocalDateString(today);
       let daysCount = 14;
@@ -290,13 +432,24 @@ export function useUserActivity() {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
         const dateStr = getLocalDateString(d);
-        const record = activityMap[dateStr] || {
-          date: dateStr,
-          activeMinutes: 0,
-          problemsSolved: 0,
-          lessonsCompleted: 0,
-          assignmentsSubmitted: 0,
-        };
+        const isToday = dateStr === todayStr;
+
+        const storedRec = activityMap[dateStr];
+        const record: DailyActivityRecord = storedRec
+          ? {
+              ...storedRec,
+              activeMinutes: isToday ? Math.max(storedRec.activeMinutes, Math.floor(liveSecondsToday / 60)) : storedRec.activeMinutes,
+              activeSeconds: isToday ? Math.max(storedRec.activeSeconds || 0, liveSecondsToday) : storedRec.activeSeconds || storedRec.activeMinutes * 60,
+            }
+          : {
+              date: dateStr,
+              activeMinutes: isToday ? Math.floor(liveSecondsToday / 60) : 0,
+              activeSeconds: isToday ? liveSecondsToday : 0,
+              problemsSolved: 0,
+              lessonsCompleted: 0,
+              assignmentsSubmitted: 0,
+            };
+
         rawDays.push({ dateStr, dateObj: d, record });
       }
 
@@ -306,6 +459,7 @@ export function useUserActivity() {
         shortLabel: string;
         fullDate: string;
         minutes: number;
+        seconds: number;
         isToday: boolean;
         problemsSolved: number;
         lessonsCompleted: number;
@@ -318,6 +472,7 @@ export function useUserActivity() {
         for (let w = 0; w < weeksCount; w++) {
           const chunk = rawDays.slice(w * daysPerWeek, (w + 1) * daysPerWeek);
           const totalMins = chunk.reduce((acc, c) => acc + c.record.activeMinutes, 0);
+          const totalSecs = chunk.reduce((acc, c) => acc + (c.record.activeSeconds || c.record.activeMinutes * 60), 0);
           const totalProblems = chunk.reduce((acc, c) => acc + c.record.problemsSolved, 0);
           const totalLessons = chunk.reduce((acc, c) => acc + c.record.lessonsCompleted, 0);
           const totalAssignments = chunk.reduce((acc, c) => acc + c.record.assignmentsSubmitted, 0);
@@ -329,6 +484,7 @@ export function useUserActivity() {
             shortLabel: `W${w + 1}`,
             fullDate: chunk[0] ? `Week of ${chunk[0].dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : `Week ${w + 1}`,
             minutes: totalMins,
+            seconds: totalSecs,
             isToday: containsToday,
             problemsSolved: totalProblems,
             lessonsCompleted: totalLessons,
@@ -367,6 +523,7 @@ export function useUserActivity() {
               day: "numeric",
             }),
             minutes: item.record.activeMinutes,
+            seconds: item.record.activeSeconds || item.record.activeMinutes * 60,
             isToday,
             problemsSolved: item.record.problemsSolved,
             lessonsCompleted: item.record.lessonsCompleted,
@@ -376,59 +533,60 @@ export function useUserActivity() {
       }
 
       const totalMinutes = items.reduce((acc, item) => acc + item.minutes, 0);
-      const maxMinutes = Math.max(...items.map((i) => i.minutes), 30);
+      const totalSeconds = items.reduce((acc, item) => acc + item.seconds, 0);
+      const maxSeconds = Math.max(...items.map((i) => i.seconds), 60);
 
       const bars: ActivityBarItem[] = items.map((item) => {
         let heightPercent = 0;
-        if (item.minutes > 0) {
-          heightPercent = Math.round(18 + (item.minutes / maxMinutes) * 82);
+        if (item.seconds > 0) {
+          heightPercent = Math.min(100, Math.max(14, Math.round((item.seconds / maxSeconds) * 92 + 8)));
         } else {
-          heightPercent = 6;
+          heightPercent = 5;
         }
 
         return {
           ...item,
-          formattedTime: formatMinutes(item.minutes),
+          formattedTime: formatMinutes(item.minutes, item.seconds % 60),
           heightPercent,
         };
       });
 
-      // Growth vs preceding period
-      let prevTotal = 0;
+      // Growth vs preceding calendar period
+      let prevTotalMins = 0;
       for (let i = daysCount * 2 - 1; i >= daysCount; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
         const dateStr = getLocalDateString(d);
         const rec = activityMap[dateStr];
-        if (rec) prevTotal += rec.activeMinutes;
+        if (rec) prevTotalMins += rec.activeMinutes;
       }
 
-      let growthPct = "+18%";
-      if (prevTotal > 0) {
-        const diff = Math.round(((totalMinutes - prevTotal) / prevTotal) * 100);
+      let growthPct = "0%";
+      if (prevTotalMins > 0) {
+        const diff = Math.round(((totalMinutes - prevTotalMins) / prevTotalMins) * 100);
         growthPct = diff >= 0 ? `+${diff}%` : `${diff}%`;
-      } else if (totalMinutes > 0) {
+      } else if (totalMinutes > 0 || totalSeconds > 0) {
         growthPct = "+100%";
       } else {
         growthPct = "0%";
       }
 
-      return { bars, totalMinutes, growthPct };
+      return { bars, totalMinutes, totalSeconds, growthPct };
     },
-    [activityMap]
+    [activityMap, liveSecondsToday]
   );
 
   // Calculate real active streak and week breakdown
   const getStreakData = useCallback(() => {
     const today = new Date();
     const todayStr = getLocalDateString(today);
+
+    // Only active today if actual tracked seconds > 0 or recorded minutes > 0
+    const todayActive = liveSecondsToday > 0 || (activityMap[todayStr]?.activeMinutes || 0) > 0;
     
-    // Count consecutive active days backwards
     let streak = 0;
     let checkDate = new Date(today);
-    
-    // Check if active today
-    const todayActive = (activityMap[todayStr]?.activeMinutes || 0) > 0;
+
     if (todayActive) {
       streak = 1;
       checkDate.setDate(checkDate.getDate() - 1);
@@ -473,8 +631,8 @@ export function useUserActivity() {
       const isToday = dateStr === todayStr;
       const isFuture = dayDate > today && !isToday;
       const rec = activityMap[dateStr];
-      const mins = rec?.activeMinutes || 0;
-      const isActive = mins > 0;
+      const mins = isToday ? Math.max(rec?.activeMinutes || 0, Math.floor(liveSecondsToday / 60)) : rec?.activeMinutes || 0;
+      const isActive = mins > 0 || (isToday && liveSecondsToday > 0);
 
       weekDaysStatus.push({
         dayLetter: weekDaysLetters[i],
@@ -488,14 +646,16 @@ export function useUserActivity() {
     }
 
     return {
-      streak: Math.max(streak, 1),
+      streak: todayActive ? streak : (streak > 0 ? streak : 0),
       weekDaysStatus,
       isTodayActive: todayActive,
+      liveSecondsToday,
     };
-  }, [activityMap]);
+  }, [activityMap, liveSecondsToday]);
 
   return {
     activityMap,
+    liveSecondsToday,
     logStudyTime,
     recordProblemSolved,
     recordLessonCompleted,
