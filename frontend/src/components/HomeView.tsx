@@ -34,6 +34,7 @@ import {
   Bookmark,
   BookOpen,
   Building2,
+  Calendar,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -45,12 +46,16 @@ import {
   Code2,
   Copy,
   CreditCard,
+  Download,
+  ExternalLink,
   FileText,
   Flame,
   FolderOpen,
   Github,
   GraduationCap,
   Headphones,
+  Info,
+  Laptop,
   LayoutDashboard,
   Library,
   LineChart,
@@ -63,9 +68,11 @@ import {
   Play,
   PlaySquare,
   Plus,
+  Radio,
   Search,
   Send,
   Settings2,
+  Share2,
   Shield,
   ShieldCheck,
   Sparkles,
@@ -100,6 +107,7 @@ const navItems: NavItem[] = [
 ];
 
 const utilityItems: NavItem[] = [
+  { label: "Live Sessions", href: "/live-session", icon: Video },
   { label: "Announcements", href: "/announcements", icon: Bell },
   { label: "Progress", href: "/progress", icon: LineChart },
   { label: "Community", href: "/community", icon: Users },
@@ -738,8 +746,6 @@ function UpcomingSessions() {
     }
   });
 
-  const [selectedSession, setSelectedSession] = useState<any | null>(null);
-
   useEffect(() => {
     let isMounted = true;
     const fetchLiveSessions = async () => {
@@ -794,8 +800,8 @@ function UpcomingSessions() {
     <section>
       <SectionTitle
         title="Upcoming sessions"
-        link={upcomingList.length > 0 ? "Calendar" : undefined}
-        href={getSecureHref("/announcements")}
+        link={upcomingList.length > 0 ? "View all" : undefined}
+        href={getSecureHref("/live-session")}
       />
       <div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10">
         {upcomingList.length === 0 ? (
@@ -815,11 +821,11 @@ function UpcomingSessions() {
             const isLive = session.status === "Live";
 
             return (
-              <div
+              <Link
                 key={session.id || idx}
-                onClick={() => setSelectedSession(session)}
+                href={getSecureHref("/live-session", { id: session.id })}
                 className={cx(
-                  "group cursor-pointer transition-all duration-150 hover:bg-slate-50/70 dark:hover:bg-white/[0.02] -mx-5 px-5 first:rounded-t-2xl last:rounded-b-2xl"
+                  "group block cursor-pointer transition-all duration-150 hover:bg-slate-50/70 dark:hover:bg-white/[0.02] -mx-5 px-5 first:rounded-t-2xl last:rounded-b-2xl"
                 )}
               >
                 <SessionRow
@@ -832,19 +838,11 @@ function UpcomingSessions() {
                   platform={session.platform}
                   hasLink={Boolean(session.meetingLink)}
                 />
-              </div>
+              </Link>
             );
           })
         )}
       </div>
-
-      {/* Full Live Session Details & Materials Modal */}
-      {selectedSession && (
-        <LiveSessionDetailsModal
-          session={selectedSession}
-          onClose={() => setSelectedSession(null)}
-        />
-      )}
     </section>
   );
 }
@@ -908,251 +906,526 @@ function SessionRow({
   );
 }
 
-interface LiveSessionDetailsModalProps {
-  session: any | null;
-  onClose: () => void;
-}
+function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
+  const [sessions, setSessions] = useState<any[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("lms_admin_live_sessions");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
-function LiveSessionDetailsModal({ session, onClose }: LiveSessionDetailsModalProps) {
+  const [selectedId, setSelectedId] = useState<string>(initialSessionId || "");
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPasscode, setCopiedPasscode] = useState(false);
+  const { problems: liveProblems } = useLiveProblems();
 
-  if (!session) return null;
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLiveSessions = async () => {
+      try {
+        const res = await fetch(`http://localhost:4000/api/v1/live-sessions?_t=${Date.now()}`, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const items = Array.isArray(json) ? json : json?.data || [];
+          if (Array.isArray(items) && isMounted) {
+            setSessions(items);
+            try {
+              localStorage.setItem("lms_admin_live_sessions", JSON.stringify(items));
+            } catch {}
+          }
+        }
+      } catch {
+        if (isMounted) {
+          try {
+            const saved = localStorage.getItem("lms_admin_live_sessions");
+            if (saved) setSessions(JSON.parse(saved));
+          } catch {}
+        }
+      }
+    };
 
-  const title = session.title || "Live Session";
-  const instructor = session.instructor || "Platform Instructor";
-  const date = session.date || "";
-  const startTime = session.startTime || "";
-  const endTime = session.endTime || "";
-  const timezone = session.timezone || "IST (UTC+5:30)";
-  const platform = session.platform || "Google Meet";
-  const meetingLink = session.meetingLink || "";
-  const passcode = session.passcode || "";
-  const hostNotes = session.hostNotes || "";
-  const description = session.description || session.content || "";
-  const course = session.course || "";
-  const module = session.module || "";
-  const topic = session.topic || "";
-  const sessionType = session.sessionType || session.category || "Live Class";
-  const resources: any[] = Array.isArray(session.resources) ? session.resources : [];
-  const isLive = session.status === "Live";
-  const isCompleted = session.status === "Completed";
-  const targetCohort = session.targetCohort || session.targetAudience || "All Enrolled Students";
+    fetchLiveSessions();
 
-  const handleCopyLink = () => {
-    if (!meetingLink) return;
-    navigator.clipboard?.writeText(meetingLink);
+    const handleSync = () => {
+      fetchLiveSessions();
+    };
+
+    window.addEventListener("storage", handleSync);
+    window.addEventListener("lms_live_sessions_updated", handleSync);
+    const interval = setInterval(fetchLiveSessions, 5000);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("lms_live_sessions_updated", handleSync);
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (initialSessionId) {
+      setSelectedId(initialSessionId);
+    }
+  }, [initialSessionId]);
+
+  const currentSession = useMemo(() => {
+    if (sessions.length === 0) return null;
+    if (selectedId) {
+      const found = sessions.find((s) => s.id === selectedId);
+      if (found) return found;
+    }
+    const live = sessions.find((s) => s.status === "Live");
+    if (live) return live;
+    const upcoming = sessions.find((s) => s.status !== "Completed" && s.status !== "Draft");
+    if (upcoming) return upcoming;
+    return sessions[0];
+  }, [sessions, selectedId]);
+
+  const handleSelectSession = (sess: any) => {
+    setSelectedId(sess.id);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", createSecureUrl("/live-session", { id: sess.id }));
+    }
+  };
+
+  const handleCopyLink = (link?: string) => {
+    const targetLink = link || currentSession?.meetingLink;
+    if (!targetLink) return;
+    navigator.clipboard?.writeText(targetLink);
     setCopiedLink(true);
     toast.success("Meeting link copied to clipboard!");
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
-  const handleCopyPasscode = () => {
-    if (!passcode) return;
-    navigator.clipboard?.writeText(passcode);
+  const handleCopyPasscode = (code?: string) => {
+    const targetCode = code || currentSession?.passcode;
+    if (!targetCode) return;
+    navigator.clipboard?.writeText(targetCode);
     setCopiedPasscode(true);
     toast.success("Passcode copied!");
     setTimeout(() => setCopiedPasscode(false), 2500);
   };
 
+  if (!currentSession) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Interactive Learning"
+          title="Live Sessions & Workshops"
+          description="Join interactive live lectures, system design deep dives, and live doubt resolution sessions with industry mentors."
+        />
+        <div className="card-surface flex flex-col items-center justify-center p-12 text-center">
+          <div className="grid h-16 w-16 place-items-center rounded-3xl bg-indigo-50 dark:bg-indigo-950/50 text-[#3157e8] dark:text-indigo-400 mb-4 shadow-sm">
+            <Video className="h-8 w-8" />
+          </div>
+          <h2 className="font-display text-xl font-bold text-[#17223d] dark:text-white">
+            No live sessions scheduled
+          </h2>
+          <p className="mt-2 text-sm text-[#7c87a4] max-w-md">
+            There are currently no live sessions scheduled for your cohort. New lectures, webinars, and doubt clearing sessions will be announced here.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Link href={getSecureHref("/announcements")} className="button-primary">
+              <Bell className="h-4 w-4" /> Check announcements
+            </Link>
+            <Link href={getSecureHref("/courses")} className="button-ghost">
+              Browse courses <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const title = currentSession.title || "Live Session";
+  const instructor = currentSession.instructor || "Platform Instructor";
+  const date = currentSession.date || "";
+  const startTime = currentSession.startTime || "";
+  const endTime = currentSession.endTime || "";
+  const timezone = currentSession.timezone || "IST (UTC+5:30)";
+  const platform = currentSession.platform || "Google Meet";
+  const meetingLink = currentSession.meetingLink || "";
+  const passcode = currentSession.passcode || "";
+  const hostNotes = currentSession.hostNotes || "";
+  const description = currentSession.description || currentSession.content || "";
+  const course = currentSession.course || "";
+  const module = currentSession.module || "";
+  const topic = currentSession.topic || "";
+  const sessionType = currentSession.sessionType || currentSession.category || "Live Class";
+  const resources: any[] = Array.isArray(currentSession.resources) ? currentSession.resources : [];
+  const isLive = currentSession.status === "Live";
+  const isCompleted = currentSession.status === "Completed";
+  const targetCohort = currentSession.targetCohort || currentSession.targetAudience || "All Enrolled Students";
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-950/60 backdrop-blur-sm animate-in fade-in-0 duration-200">
-      <div
-        className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#12192e] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header bar */}
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 px-6 py-4 bg-slate-50/50 dark:bg-white/[0.02]">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400">
-              <Video className="h-3.5 w-3.5" />
-              {sessionType}
-            </span>
+    <div className="space-y-6">
+      {/* Top Breadcrumbs */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs font-medium text-[#7c87a4]">
+          <Link href={getSecureHref("/dashboard")} className="hover:text-[#3157e8] transition">
+            Dashboard
+          </Link>
+          <span>/</span>
+          <Link href={getSecureHref("/announcements")} className="hover:text-[#3157e8] transition">
+            Announcements
+          </Link>
+          <span>/</span>
+          <span className="text-[#17223d] dark:text-white font-semibold truncate max-w-[260px]">
+            {title}
+          </span>
+        </div>
+        <Link
+          href={getSecureHref("/dashboard")}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7c87a4] hover:text-[#3157e8] transition"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Back to dashboard</span>
+        </Link>
+      </div>
+
+      {/* Hero Spotlight Card */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#17223d] via-[#1c294a] to-[#12192e] p-6 sm:p-8 text-white shadow-xl border border-white/10">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#3157e8]/30 blur-3xl" />
+        <div className="pointer-events-none absolute right-1/3 -bottom-20 h-56 w-56 rounded-full bg-[#7f5af0]/20 blur-3xl" />
+
+        <div className="relative z-10">
+          <div className="flex flex-wrap items-center gap-2.5 mb-4">
             {isLive ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 animate-pulse">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 border border-emerald-400/40 px-3 py-1 text-xs font-extrabold text-emerald-300">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                </span>
                 LIVE NOW
               </span>
             ) : isCompleted ? (
-              <span className="rounded-full bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                Completed
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-500/20 border border-slate-400/30 px-3 py-1 text-xs font-semibold text-slate-300">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Completed Session
               </span>
             ) : (
-              <span className="rounded-full bg-blue-50 dark:bg-blue-950/40 px-2.5 py-0.5 text-[10px] font-bold text-blue-600 dark:text-blue-400">
-                Upcoming
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/25 border border-indigo-400/30 px-3 py-1 text-xs font-bold text-indigo-200">
+                <Clock3 className="h-3.5 w-3.5 text-indigo-300" />
+                Upcoming Live Class
               </span>
+            )}
+
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 border border-white/15 px-3 py-1 text-xs font-bold text-white">
+              <Video className="h-3.5 w-3.5 text-blue-400" />
+              {platform}
+            </span>
+
+            <span className="rounded-xl bg-white/10 px-3 py-1 text-xs font-semibold text-white/80">
+              {sessionType}
+            </span>
+
+            <span className="rounded-xl bg-white/10 px-3 py-1 text-xs font-semibold text-white/70">
+              {targetCohort}
+            </span>
+          </div>
+
+          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
+            {title}
+          </h1>
+
+          <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-white/80 border-t border-white/10 pt-4">
+            <div className="flex items-center gap-2.5">
+              <div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-white shadow-sm">
+                {instructor.charAt(0)}
+              </div>
+              <div>
+                <p className="font-bold text-white">{instructor}</p>
+                <p className="text-[10px] text-white/60">Session Host & Instructor</p>
+              </div>
+            </div>
+
+            {course && <div className="hidden sm:block h-6 w-px bg-white/15" />}
+
+            {course && (
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-indigo-400" />
+                <span className="font-semibold text-white">{course}</span>
+                {topic && <span className="text-white/60">· Topic: {topic}</span>}
+                {module && <span className="text-white/60">· {module}</span>}
+              </div>
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white transition cursor-pointer"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {/* CTAs */}
+          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-white/10 pt-5">
+            {meetingLink ? (
+              <a
+                href={meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 rounded-2xl bg-[#3157e8] hover:bg-[#2545c2] px-6 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-indigo-600/30 transition transform hover:-translate-y-0.5 cursor-pointer"
+              >
+                <Video className="h-4 w-4" />
+                <span>Join {platform} Meeting</span>
+                <ArrowUpRight className="h-4 w-4" />
+              </a>
+            ) : (
+              <div className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3 text-xs font-semibold text-white/80">
+                <Clock3 className="h-4 w-4 text-amber-400" />
+                <span>Meeting link will be activated before session starts</span>
+              </div>
+            )}
+
+            {meetingLink && (
+              <button
+                type="button"
+                onClick={() => handleCopyLink()}
+                className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 px-4 py-3 text-xs font-bold text-white transition cursor-pointer"
+              >
+                {copiedLink ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                <span>{copiedLink ? "Link Copied!" : "Copy Meeting Link"}</span>
+              </button>
+            )}
+
+            {passcode && (
+              <button
+                type="button"
+                onClick={() => handleCopyPasscode()}
+                className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 px-4 py-3 text-xs font-bold text-white transition cursor-pointer"
+              >
+                <LockKeyhole className="h-4 w-4 text-amber-400" />
+                <span>
+                  Passcode: <span className="font-mono text-amber-300 ml-1">{passcode}</span>
+                </span>
+                {copiedPasscode ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 opacity-60" />}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Key Quick Info 4-Card Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="card-surface p-4 flex items-center gap-3.5">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#eaf0ff] text-[#3157e8] dark:bg-indigo-950/50 dark:text-indigo-300">
+            <Calendar className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#9aa4bc]">Date</p>
+            <p className="text-sm font-bold text-[#17223d] dark:text-white truncate">
+              {date || "Scheduled Date"}
+            </p>
+          </div>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          {/* Title & Instructor */}
-          <div>
-            <h2 className="font-display text-xl font-bold tracking-tight text-[#17223d] dark:text-white sm:text-2xl">
-              {title}
-            </h2>
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[#7c87a4]">
-              <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-200">
-                <div className="grid h-6 w-6 place-items-center rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-[10px] font-bold text-indigo-600 dark:text-indigo-300">
-                  {instructor.charAt(0)}
-                </div>
-                <span>{instructor}</span>
-              </div>
-              {course && (
-                <>
-                  <span>•</span>
-                  <span className="font-semibold text-indigo-600 dark:text-indigo-400">{course}</span>
-                </>
-              )}
-              {topic && (
-                <>
-                  <span>•</span>
-                  <span className="text-slate-500 dark:text-slate-400">Topic: {topic}</span>
-                </>
-              )}
-            </div>
+        <div className="card-surface p-4 flex items-center gap-3.5">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#f0eaff] text-[#7f5af0] dark:bg-purple-950/50 dark:text-purple-300">
+            <Clock3 className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#9aa4bc]">Time & Timezone</p>
+            <p className="text-sm font-bold text-[#17223d] dark:text-white truncate">
+              {startTime && endTime ? `${startTime} – ${endTime}` : startTime || "Time TBD"}
+            </p>
+            <p className="text-[10px] text-[#9aa4bc] truncate">{timezone}</p>
           </div>
+        </div>
 
-          {/* Timing & Platform Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 dark:border-white/5 dark:bg-white/[0.03]">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#7c87a4]">
-                <Clock3 className="h-4 w-4 text-indigo-500" />
-                <span>Date & Time</span>
-              </div>
-              <p className="mt-1.5 text-sm font-bold text-[#17223d] dark:text-white">
-                {date || "Scheduled Date"}
-              </p>
-              <p className="mt-0.5 text-xs text-[#7c87a4]">
-                {startTime && endTime ? `${startTime} – ${endTime}` : startTime || "Time TBD"} ({timezone})
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 dark:border-white/5 dark:bg-white/[0.03]">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#7c87a4]">
-                <Video className="h-4 w-4 text-emerald-500" />
-                <span>Platform & Meeting</span>
-              </div>
-              <p className="mt-1.5 text-sm font-bold text-[#17223d] dark:text-white">
-                {platform}
-              </p>
-              <p className="mt-0.5 text-xs text-[#7c87a4] truncate">
-                {meetingLink ? "Link configured" : "Link will be shared before start"}
-              </p>
-            </div>
+        <div className="card-surface p-4 flex items-center gap-3.5">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#e4f8ee] text-[#23a26d] dark:bg-emerald-950/50 dark:text-emerald-300">
+            <Video className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#9aa4bc]">Platform</p>
+            <p className="text-sm font-bold text-[#17223d] dark:text-white truncate">{platform}</p>
+            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Recording Enabled</p>
           </div>
+        </div>
 
-          {/* Description / Agenda */}
-          {description && (
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#7c87a4] mb-2">
-                Session Overview & Agenda
-              </p>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-white/5 dark:bg-white/[0.02] text-sm leading-relaxed text-[#5f6c8c] dark:text-slate-300">
-                {description}
-              </div>
-            </div>
-          )}
+        <div className="card-surface p-4 flex items-center gap-3.5">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#fff4db] text-[#d68c20] dark:bg-amber-950/50 dark:text-amber-300">
+            <Sparkles className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#9aa4bc]">Session Materials</p>
+            <p className="text-sm font-bold text-[#17223d] dark:text-white truncate">
+              {resources.length} {resources.length === 1 ? "Resource" : "Resources"}
+            </p>
+            <p className="text-[10px] text-[#9aa4bc]">Arena & Notes Attached</p>
+          </div>
+        </div>
+      </div>
 
-          {/* Host Notes / Instructions */}
+      {/* Main Grid: Left Details vs Right Sidebar */}
+      <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* Left column */}
+        <div className="space-y-6">
+          {/* Host Instructions & Notes */}
           {hostNotes && (
-            <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
-              <div className="flex items-start gap-3">
-                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-amber-500 text-white shadow-xs">
-                  <Sparkles className="h-3.5 w-3.5" />
+            <section className="rounded-3xl border border-amber-200/90 bg-gradient-to-r from-amber-50/90 to-amber-100/40 p-5 sm:p-6 dark:border-amber-900/40 dark:bg-gradient-to-r dark:from-amber-950/30 dark:to-amber-900/10 shadow-xs">
+              <div className="flex items-start gap-3.5">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-500 text-white shadow-sm">
+                  <Sparkles className="h-5 w-5" />
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                    Host Instructions & Notes
-                  </h4>
-                  <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-300/90 font-medium">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-display text-base font-bold text-amber-950 dark:text-amber-200">
+                    Host Notes & Session Instructions
+                  </h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-amber-900/90 dark:text-amber-300 font-medium">
                     {hostNotes}
                   </p>
                 </div>
               </div>
-            </div>
+            </section>
           )}
 
-          {/* Passcode (if any) */}
-          {passcode && (
-            <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-white/5 dark:bg-white/[0.03]">
-              <div className="text-xs">
-                <span className="font-medium text-[#7c87a4]">Meeting Passcode: </span>
-                <span className="font-mono font-bold text-[#17223d] dark:text-white ml-1">{passcode}</span>
+          {/* Session Overview & Curriculum Agenda */}
+          <section className="card-surface p-6 sm:p-7">
+            <div className="flex items-center justify-between border-b border-[#edf0f6] pb-4 dark:border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-[#3157e8] dark:text-indigo-300">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                  Session Overview & Agenda
+                </h2>
               </div>
-              <button
-                type="button"
-                onClick={handleCopyPasscode}
-                className="flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-              >
-                {copiedPasscode ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                <span>{copiedPasscode ? "Copied" : "Copy"}</span>
-              </button>
+              <span className="text-xs font-semibold text-[#9aa4bc]">{sessionType}</span>
             </div>
-          )}
 
-          {/* Attached Platform Resources & Study Materials */}
-          {resources.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-2.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#7c87a4]">
-                  Attached Materials & Practice ({resources.length})
-                </p>
+            <div className="mt-5 space-y-4 text-sm leading-relaxed text-[#5f6c8c] dark:text-slate-300">
+              {description ? (
+                <p className="whitespace-pre-line">{description}</p>
+              ) : (
+                <p className="text-[#9aa4bc] italic">No detailed description provided for this session.</p>
+              )}
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-[#edf0f6] pt-4 dark:border-white/10">
+              {course && (
+                <span className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <GraduationCap className="h-3.5 w-3.5 text-indigo-500" />
+                  Course: {course}
+                </span>
+              )}
+              {topic && (
+                <span className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <Tag className="h-3.5 w-3.5 text-purple-500" />
+                  Topic: {topic}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <Users className="h-3.5 w-3.5 text-blue-500" />
+                Audience: {targetCohort}
+              </span>
+            </div>
+          </section>
+
+          {/* Attached Platform Resources & Practice Arena */}
+          <section className="card-surface p-6 sm:p-7">
+            <div className="flex items-center justify-between border-b border-[#edf0f6] pb-4 dark:border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#eaf0ff] text-[#3157e8] dark:bg-indigo-950/50 dark:text-indigo-300">
+                  <Code2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                    Attached Practice & Study Materials
+                  </h2>
+                  <p className="text-xs text-[#9aa4bc]">Hands-on problems and reference documents configured for this class</p>
+                </div>
               </div>
-              <div className="space-y-2">
+              <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                {resources.length} Items
+              </span>
+            </div>
+
+            {resources.length === 0 ? (
+              <div className="py-8 text-center">
+                <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-white/5">
+                  <FolderOpen className="h-5 w-5" />
+                </div>
+                <p className="text-xs font-semibold text-[#17223d] dark:text-white">No resources attached yet</p>
+                <p className="mt-0.5 text-[11px] text-[#9aa4bc]">The instructor will attach code problems or PDFs during or after class.</p>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-3">
                 {resources.map((res: any, idx: number) => {
                   const isProblem = res.type?.toLowerCase().includes("problem") || res.category === "problem";
                   const isPdf = res.type?.toLowerCase().includes("pdf") || res.name?.toLowerCase().endsWith(".pdf");
+                  const matchedProblem = liveProblems.find(
+                    (p) =>
+                      p.title.toLowerCase() === res.name?.toLowerCase() ||
+                      p.id === res.id ||
+                      p.slug === res.id
+                  );
+                  const problemSlug = matchedProblem?.slug || res.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
                   return (
                     <div
                       key={res.id || idx}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-xs hover:border-indigo-200 dark:border-white/5 dark:bg-white/[0.02] dark:hover:border-indigo-800/40 transition"
+                      className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-xs transition hover:border-indigo-200 dark:border-white/5 dark:bg-white/[0.02] dark:hover:border-indigo-800/40"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
-                          {isProblem ? <Code2 className="h-4 w-4" /> : isPdf ? <FileText className="h-4 w-4" /> : <BookOpen className="h-4 w-4" />}
+                      <div className="flex items-start gap-3.5 min-w-0">
+                        <span
+                          className={cx(
+                            "grid h-11 w-11 shrink-0 place-items-center rounded-2xl transition-transform group-hover:scale-105",
+                            isProblem
+                              ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300"
+                              : isPdf
+                              ? "bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300"
+                              : "bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300"
+                          )}
+                        >
+                          {isProblem ? <Code2 className="h-5 w-5" /> : isPdf ? <FileText className="h-5 w-5" /> : <BookOpen className="h-5 w-5" />}
                         </span>
+
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#17223d] dark:text-white truncate">
-                            {res.name}
-                          </p>
-                          <p className="text-[11px] text-[#7c87a4] truncate">
-                            {res.type || "Resource"} {res.size ? `· ${res.size}` : ""} {res.parent ? `· ${res.parent}` : ""}
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-[#17223d] dark:text-white truncate">
+                              {res.name}
+                            </p>
+                            {isProblem && (
+                              <span className="rounded-md bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                                Problem
+                              </span>
+                            )}
+                            {isPdf && (
+                              <span className="rounded-md bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                                PDF
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-xs text-[#9aa4bc] truncate">
+                            {res.type || "Attached Resource"} {res.size ? `· ${res.size}` : ""} {res.parent ? `· ${res.parent}` : ""}
                           </p>
                         </div>
                       </div>
 
-                      <div className="shrink-0">
-                        {res.url ? (
+                      <div className="shrink-0 flex items-center gap-2">
+                        {isProblem ? (
+                          <Link
+                            href={getSecureHref("/practice", { slug: problemSlug })}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-[#3157e8] hover:bg-[#2545c2] px-4 py-2 text-xs font-bold text-white shadow-sm transition cursor-pointer"
+                          >
+                            <Code2 className="h-3.5 w-3.5" />
+                            <span>Solve in Arena</span>
+                            <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        ) : res.url ? (
                           <a
                             href={res.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white transition"
+                            download={res.name}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white transition"
                           >
-                            <span>Open</span>
-                            <ArrowUpRight className="h-3 w-3" />
+                            <Download className="h-3.5 w-3.5" />
+                            <span>Download / View</span>
                           </a>
-                        ) : isProblem ? (
-                          <Link
-                            href={getSecureHref("/practice")}
-                            onClick={onClose}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 text-xs font-bold text-indigo-600 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 dark:text-indigo-300 transition"
-                          >
-                            <span>Solve Problem</span>
-                            <ArrowRight className="h-3 w-3" />
-                          </Link>
                         ) : (
-                          <span className="rounded-lg bg-slate-50 dark:bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-slate-400">
+                          <span className="rounded-lg bg-slate-50 dark:bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-400">
                             Available in class
                           </span>
                         )}
@@ -1161,55 +1434,109 @@ function LiveSessionDetailsModal({ session, onClose }: LiveSessionDetailsModalPr
                   );
                 })}
               </div>
+            )}
+          </section>
+        </div>
+
+        {/* Right sidebar */}
+        <aside className="space-y-6">
+          {/* Other Scheduled Sessions */}
+          <div className="card-surface p-5">
+            <div className="flex items-center justify-between border-b border-[#edf0f6] pb-3 dark:border-white/10">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#7c87a4]">
+                All Scheduled Sessions
+              </h3>
+              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                {sessions.length} Total
+              </span>
             </div>
-          )}
-        </div>
 
-        {/* Action Footer */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-4 dark:border-white/10 dark:bg-white/[0.02]">
-          <div className="flex items-center gap-2">
-            {meetingLink && (
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2.5 text-xs font-bold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:text-white transition cursor-pointer"
-              >
-                {copiedLink ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                <span>{copiedLink ? "Link Copied" : "Copy Link"}</span>
-              </button>
-            )}
+            <div className="mt-4 space-y-2.5">
+              {sessions.map((sess, idx) => {
+                const isSelected = sess.id === currentSession.id;
+                const isSessLive = sess.status === "Live";
+                const { dayStr: dDay, monthStr: dMon } = parseSessionDate(sess.date);
+
+                return (
+                  <div
+                    key={sess.id || idx}
+                    onClick={() => handleSelectSession(sess)}
+                    className={cx(
+                      "group flex items-center justify-between gap-3 p-3 rounded-2xl transition cursor-pointer border",
+                      isSelected
+                        ? "border-[#3157e8] bg-[#eaf0ff]/60 dark:bg-indigo-950/40 dark:border-indigo-500/50 shadow-xs"
+                        : "border-slate-100 hover:border-slate-200 bg-white dark:border-white/5 dark:bg-white/[0.02] dark:hover:bg-white/5"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={cx(
+                          "flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl text-center",
+                          isSelected
+                            ? "bg-[#3157e8] text-white"
+                            : "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300"
+                        )}
+                      >
+                        <span className="text-[8px] font-extrabold uppercase leading-none">{dMon}</span>
+                        <span className="font-display text-xs font-bold leading-tight mt-0.5">{dDay}</span>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={cx(
+                            "text-xs font-bold truncate",
+                            isSelected ? "text-[#3157e8] dark:text-indigo-300" : "text-[#17223d] dark:text-white"
+                          )}
+                        >
+                          {sess.title}
+                        </p>
+                        <p className="text-[10px] text-[#9aa4bc] truncate">
+                          {sess.startTime || "TBD"} · {sess.platform || "Google Meet"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {isSessLive ? (
+                      <span className="shrink-0 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 animate-pulse">
+                        LIVE
+                      </span>
+                    ) : isSelected ? (
+                      <Check className="h-4 w-4 shrink-0 text-[#3157e8]" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#c4cada] group-hover:text-indigo-600 transition" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5 transition cursor-pointer"
-            >
-              Close
-            </button>
-            {meetingLink ? (
-              <a
-                href={meetingLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/25 transition cursor-pointer"
-              >
-                <Video className="h-4 w-4" />
-                <span>Join {platform} Meeting</span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </a>
-            ) : (
-              <button
-                type="button"
-                onClick={() => toast.info("Meeting link will be activated before start time.")}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-300 dark:bg-white/10 px-5 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed"
-              >
-                <span>Link Pending</span>
-              </button>
-            )}
+          {/* Guidelines */}
+          <div className="card-surface p-5">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#7c87a4] mb-3">
+              <ShieldCheck className="h-4 w-4 text-indigo-500" />
+              <span>Classroom Guidelines</span>
+            </div>
+            <div className="space-y-3 text-xs text-[#7c87a4]">
+              <div className="flex items-start gap-2.5">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                <span>Join from a computer or laptop for optimal interactive coding experience.</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                <span>Keep your microphone muted during the lecture; use live chat for queries.</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                <span>Open attached problem sets to solve along with the instructor in CodePath Arena.</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                <span>Recordings and AI lecture summary notes will be accessible after class.</span>
+              </div>
+            </div>
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );
@@ -3170,7 +3497,6 @@ function AnnouncementsPage() {
     }
   });
 
-  const [selectedLiveSession, setSelectedLiveSession] = useState<any | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "live" | "general">("all");
 
   useEffect(() => {
@@ -3462,14 +3788,13 @@ function AnnouncementsPage() {
                       {/* Action Buttons */}
                       <div className="mt-4 flex flex-wrap items-center gap-3 pt-2">
                         {isLiveClass && (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedLiveSession(sessionDetails || item)}
+                          <Link
+                            href={getSecureHref("/live-session", { id: sessionDetails?.id || item.sessionId || item.id })}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-white transition shadow-xs cursor-pointer"
                           >
                             <BookOpen className="h-3.5 w-3.5 text-indigo-500" />
                             <span>View Full Details & Resources</span>
-                          </button>
+                          </Link>
                         )}
 
                         {item.meetingLink && (
@@ -3517,9 +3842,9 @@ function AnnouncementsPage() {
                 upcomingSessions.slice(0, 4).map((session, idx) => {
                   const isLive = session.status === "Live";
                   return (
-                    <div
+                    <Link
                       key={session.id || idx}
-                      onClick={() => setSelectedLiveSession(session)}
+                      href={getSecureHref("/live-session", { id: session.id })}
                       className="group flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition cursor-pointer border border-slate-100 dark:border-white/5"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -3542,7 +3867,7 @@ function AnnouncementsPage() {
                       ) : (
                         <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#c4cada] group-hover:text-indigo-600" />
                       )}
-                    </div>
+                    </Link>
                   );
                 })
               )}
@@ -3557,14 +3882,6 @@ function AnnouncementsPage() {
           </div>
         </aside>
       </div>
-
-      {/* Full Live Session Details & Materials Modal */}
-      {selectedLiveSession && (
-        <LiveSessionDetailsModal
-          session={selectedLiveSession}
-          onClose={() => setSelectedLiveSession(null)}
-        />
-      )}
     </>
   );
 }
@@ -4729,10 +5046,12 @@ export default function Home({
   page = "dashboard",
   courseId = "",
   problemSlug = "",
+  sessionId = "",
 }: {
   page?: string;
   courseId?: string;
   problemSlug?: string;
+  sessionId?: string;
 }) {
   useAuth();
   const { problems: liveProblems } = useLiveProblems();
@@ -4763,6 +5082,7 @@ export default function Home({
       case "checkout": return <EnrollmentCheckoutPage courseId={courseId} />;
       case "my-courses": return <MyCoursesPage />;
       case "learn": return <PlayerPage />;
+      case "live-session": return <LiveSessionPage initialSessionId={sessionId} />;
       case "practice": return (
         <PracticePage
           onSelectProblem={(slug) => {
@@ -4783,7 +5103,7 @@ export default function Home({
       case "notes": return <NotesPage />;
       default: return <Dashboard />;
     }
-  }, [courseId, page]);
+  }, [courseId, page, sessionId]);
 
   // Full-page LeetCode-style problem arena view (outside AppShell, exactly like admin panel)
   if (page === "practice" && activeProblem) {
