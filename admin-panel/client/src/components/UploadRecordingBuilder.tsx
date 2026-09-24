@@ -1160,7 +1160,6 @@ export default function UploadRecordingBuilder({
                 {[
                   { key: "allowDownload", label: "Allow video download", desc: "Permit offline MP4 saving" },
                   { key: "showInCurriculum", label: "Show in curriculum", desc: "List inside course module lessons" },
-                  { key: "generateAiNotes", label: "Generate AI notes", desc: "Create transcript & takeaways" },
                   { key: "enableComments", label: "Enable comments & Q&A", desc: "Allow learners to ask questions" },
                 ].map((item) => {
                   const val = (data as any)[item.key] as boolean;

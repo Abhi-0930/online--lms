@@ -1,0 +1,52 @@
+[
+  {
+    "course": "DSA Mastery",
+    "chapters": [
+      {
+        "title": "Recap & Problem Formulation",
+        "timestamp": "00:05",
+        "id": 1
+      },
+      {
+        "title": "Subtree DP State Transitions",
+        "timestamp": "00:25",
+        "id": 2
+      },
+      {
+        "title": "Live Problem Solving in CodePath Arena",
+        "timestamp": "01:10",
+        "id": 3
+      }
+    ],
+    "description": "Deep dive into Tree DP, Knapsack variants, and Bitmask DP with live code examples.",
+    "instructor": "Arjun Mehta",
+    "date": "2026-09-25",
+    "resources": [
+      {
+        "name": "Tree_DP_Cheatsheet.pdf",
+        "id": 1,
+        "size": "2.4 MB"
+      }
+    ],
+    "status": "Published",
+    "duration": "1h 45m",
+    "title": "Advanced Dynamic Programming & Tree DP Masterclass",
+    "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "recordingType": "Live Class",
+    "id": "rec_1790278429652",
+    "courseId": null,
+    "module": "",
+    "topic": "",
+    "targetCohort": "All Enrolled Students",
+    "sessionTime": "18:00 – 19:30",
+    "visibility": "All Enrolled",
+    "accessType": "Standard",
+    "allowDownload": true,
+    "showInCurriculum": true,
+    "generateAiNotes": true,
+    "enableComments": true,
+    "views": 0,
+    "createdAt": "2026-09-24T19:33:49.652Z",
+    "updatedAt": "2026-09-24T19:33:49.652Z"
+  }
+]

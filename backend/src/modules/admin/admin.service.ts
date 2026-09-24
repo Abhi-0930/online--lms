@@ -10,6 +10,7 @@ export class AdminService {
   private static assignmentsFilePath = path.resolve(process.cwd(), 'data', 'assignments.json');
   private static liveSessionsFilePath = path.resolve(process.cwd(), 'data', 'live_sessions.json');
   private static announcementsFilePath = path.resolve(process.cwd(), 'data', 'announcements.json');
+  private static recordingsFilePath = path.resolve(process.cwd(), 'data', 'recordings.json');
   private static contentOverridesFilePath = path.resolve(process.cwd(), 'data', 'content_overrides.json');
   private static deletedContentFilePath = path.resolve(process.cwd(), 'data', 'deleted_content.json');
 
@@ -2680,6 +2681,196 @@ export class AdminService {
       ];
     }
     return list;
+  }
+
+  // ==================== RECORDINGS MANAGEMENT ====================
+
+  private static fallbackRecordings = AdminService.loadRecordingsFromFile();
+
+  private static loadRecordingsFromFile(): Map<string, any> {
+    try {
+      if (fs.existsSync(AdminService.recordingsFilePath)) {
+        const raw = fs.readFileSync(AdminService.recordingsFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const map = new Map<string, any>();
+          for (const item of parsed) {
+            if (item && item.id) {
+              map.set(String(item.id), item);
+            }
+          }
+          return map;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load recordings from file:', err);
+    }
+    return new Map<string, any>();
+  }
+
+  private static saveRecordingsToFile(): void {
+    try {
+      const dir = path.dirname(AdminService.recordingsFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const arr = Array.from(AdminService.fallbackRecordings.values());
+      fs.writeFileSync(AdminService.recordingsFilePath, JSON.stringify(arr, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save recordings to file:', err);
+    }
+  }
+
+  async getAllRecordings() {
+    AdminService.fallbackRecordings = AdminService.loadRecordingsFromFile();
+    const list = Array.from(AdminService.fallbackRecordings.values());
+    return list.sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.date || 0).getTime();
+      const timeB = new Date(b.createdAt || b.date || 0).getTime();
+      return timeB - timeA;
+    });
+  }
+
+  async saveRecording(data: any) {
+    AdminService.fallbackRecordings = AdminService.loadRecordingsFromFile();
+    const id = data.id ? String(data.id) : `rec_${Date.now()}`;
+    const existing = AdminService.fallbackRecordings.get(id) || {};
+
+    const recordingObj = {
+      ...existing,
+      ...data,
+      id,
+      title: data.title !== undefined ? data.title : (existing.title || 'Untitled Lecture Recording'),
+      instructor: data.instructor || existing.instructor || 'Platform Instructor',
+      recordingType: data.recordingType || existing.recordingType || 'Live Class',
+      description: data.description !== undefined ? data.description : (existing.description || ''),
+      course: data.course !== undefined ? data.course : (existing.course || ''),
+      courseId: data.courseId || existing.courseId || null,
+      module: data.module !== undefined ? data.module : (existing.module || ''),
+      topic: data.topic !== undefined ? data.topic : (existing.topic || ''),
+      targetCohort: data.targetCohort || existing.targetCohort || 'All Enrolled Students',
+      videoFileName: data.videoFileName !== undefined ? data.videoFileName : existing.videoFileName,
+      videoFileSize: data.videoFileSize !== undefined ? data.videoFileSize : existing.videoFileSize,
+      videoUrl: data.videoUrl !== undefined ? data.videoUrl : (existing.videoUrl || ''),
+      date: data.date || existing.date || new Date().toISOString().split('T')[0],
+      duration: data.duration || existing.duration || '1h 30m',
+      sessionTime: data.sessionTime || existing.sessionTime || '18:00 – 19:30',
+      resources: data.resources || existing.resources || [],
+      chapters: data.chapters || existing.chapters || [],
+      visibility: data.visibility || existing.visibility || 'All Enrolled',
+      accessType: data.accessType || existing.accessType || 'Standard',
+      allowDownload: data.allowDownload !== undefined ? data.allowDownload : (existing.allowDownload ?? true),
+      showInCurriculum: data.showInCurriculum !== undefined ? data.showInCurriculum : (existing.showInCurriculum ?? true),
+      generateAiNotes: data.generateAiNotes !== undefined ? data.generateAiNotes : (existing.generateAiNotes ?? true),
+      enableComments: data.enableComments !== undefined ? data.enableComments : (existing.enableComments ?? true),
+      status: data.status || existing.status || 'Published',
+      views: data.views !== undefined ? Number(data.views) : (existing.views ? Number(existing.views) : 0),
+      createdAt: existing.createdAt || data.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    AdminService.fallbackRecordings.set(id, recordingObj);
+    AdminService.saveRecordingsToFile();
+    return recordingObj;
+  }
+
+  async updateRecording(id: string, data: any) {
+    AdminService.fallbackRecordings = AdminService.loadRecordingsFromFile();
+    const existing = AdminService.fallbackRecordings.get(String(id)) || {};
+    const updated = {
+      ...existing,
+      ...data,
+      id: String(id),
+      updatedAt: new Date().toISOString(),
+    };
+
+    AdminService.fallbackRecordings.set(String(id), updated);
+    AdminService.saveRecordingsToFile();
+    return updated;
+  }
+
+  async deleteRecording(id: string) {
+    AdminService.fallbackRecordings = AdminService.loadRecordingsFromFile();
+    const deleted = AdminService.fallbackRecordings.delete(String(id));
+    AdminService.saveRecordingsToFile();
+    return { success: deleted, id: String(id) };
+  }
+
+  async getAllPayments() {
+    try {
+      const payments = await this.prisma.payment.findMany({
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              fullName: true,
+              email: true,
+              avatarUrl: true,
+            },
+          },
+          course: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              price: true,
+            },
+          },
+          cohort: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return payments.map((p) => {
+        const studentName = p.user?.fullName || p.user?.name || (p.user?.email ? p.user.email.split('@')[0] : 'Learner');
+        const courseName = p.course?.title || p.cohort?.name || 'Platform Course';
+        const numAmount = Number(p.amount) || 0;
+        const formattedAmount = `₹${numAmount.toLocaleString('en-IN')}`;
+        const meta = p.metadata as any;
+        const method = meta?.method || meta?.paymentDetails?.method || (p.razorpayPaymentId ? 'UPI / Card' : 'Online');
+        
+        let status = 'Paid';
+        if (p.status === 'PENDING') status = 'Pending';
+        else if (p.status === 'FAILED') status = 'Failed';
+        else if (p.status === 'REFUNDED') status = 'Refund requested';
+        else if (p.status === 'COMPLETED' || (p.status as any) === 'SUCCESS') status = 'Paid';
+
+        const invId = p.razorpayOrderId 
+          ? `INV-${p.razorpayOrderId.replace(/^order_/, '').slice(0, 8).toUpperCase()}`
+          : `INV-${p.id.slice(0, 8).toUpperCase()}`;
+
+        const dateStr = p.createdAt
+          ? new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          : 'Recent';
+
+        return {
+          id: invId,
+          paymentId: p.id,
+          razorpayOrderId: p.razorpayOrderId,
+          razorpayPaymentId: p.razorpayPaymentId,
+          student: studentName,
+          email: p.user?.email || '',
+          course: courseName,
+          courseId: p.courseId,
+          amount: formattedAmount,
+          rawAmount: numAmount,
+          currency: p.currency || 'INR',
+          date: dateStr,
+          method,
+          status,
+          createdAt: p.createdAt,
+        };
+      });
+    } catch (err) {
+      console.warn('Failed to query payments from database:', err);
+      return [];
+    }
   }
 }
 

@@ -23,7 +23,7 @@ import CustomConfirmDialog from "@/components/CustomConfirmDialog";
 import CustomAlertDialog from "@/components/CustomAlertDialog";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useAdminRoute, navigateAdmin } from "@/lib/navigation";
-import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus, ContentItem, PracticeProblem } from "@/hooks/useLiveAdminData";
+import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus, ContentItem, PracticeProblem, PaymentItem } from "@/hooks/useLiveAdminData";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -98,12 +98,8 @@ const learners: StudentItem[] = [];
 const contentItems: ContentItem[] = [];
 const sessions: any[] = [];
 
-const payments = [
-  { id: "INV-2048", student: "Aarav Sharma", course: "DSA Mastery", amount: "₹18,999", date: "Sep 13, 2026", method: "UPI", status: "Paid" },
-  { id: "INV-2047", student: "Ishita Kapoor", course: "System Design", amount: "₹12,499", date: "Sep 13, 2026", method: "Card", status: "Paid" },
-  { id: "INV-2046", student: "Rohan Verma", course: "Python for Problem Solving", amount: "₹9,999", date: "Sep 12, 2026", method: "Card", status: "Refund requested" },
-  { id: "INV-2045", student: "Meera Nair", course: "DSA Mastery", amount: "₹18,999", date: "Sep 12, 2026", method: "Net banking", status: "Paid" },
-];
+const payments: PaymentItem[] = [];
+
 
 const feedback = [
   { id: 1, student: "Meera Nair", course: "DSA Mastery", rating: 5, category: "Course quality", text: "The graph visualizations made the topic click for me.", date: "Today", status: "New" },
@@ -171,12 +167,7 @@ const submissionsData: any[] = [];
 
 const announcementsData: any[] = [];
 
-const recordingsData = [
-  { id: 1, title: "Graphs: BFS, DFS & Cycle Detection in Directed Graphs", instructor: "Arjun Mehta", course: "DSA Mastery", date: "Sep 15, 2026", duration: "1h 45m", views: 248, status: "Ready" },
-  { id: 2, title: "Microservices Architecture: Event-Driven Systems & Kafka", instructor: "Maya Rao", course: "System Design", date: "Sep 14, 2026", duration: "2h 10m", views: 195, status: "Ready" },
-  { id: 3, title: "Binary Trees & Lowest Common Ancestor Masterclass", instructor: "Arjun Mehta", course: "DSA Placement Program", date: "Sep 12, 2026", duration: "1h 30m", views: 312, status: "Ready" },
-  { id: 4, title: "Mock Technical Screening: Arrays, DP & Dynamic Memory", instructor: "Kavya Iyer", course: "Placement Prep", date: "Sep 10, 2026", duration: "1h 55m", views: 180, status: "Ready" },
-];
+const recordingsData: any[] = [];
 
 const sectionDescriptions: Record<string, string> = {
   overview: "Real-time summary of cohort engagement, catalog metrics, and student growth.",
@@ -2212,9 +2203,386 @@ function LiveView({
   );
 }
 
-function PaymentsView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
-  const [query, setQuery] = useState(""); const [filter, setFilter] = useState("All"); const [rows, setRows] = useState(payments); const filtered = rows.filter((item) => (filter === "All" || item.status === filter) && `${item.id} ${item.student} ${item.course}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="payments" description={sectionDescriptions.payments} actionLabel="Generate invoice" onAction={() => onAction({ title: "Generate an invoice", description: "Create and send a new invoice to a learner.", fields: ["Student", "Course", "Amount"] })} onExport={() => onToast("Transactions exported") } /><MetricStrip items={[{ label: "This month", value: "₹0", change: "₹0 this month" }, { label: "Total revenue", value: "₹0", change: "₹0 earned" }, { label: "Pending payouts", value: "₹0", change: "0 pending", tone: "text-slate-500" }, { label: "Refund requests", value: "0", change: "0 requests", tone: "text-slate-500" }]} /><DataCard title="Transactions" subtitle="Invoices, payment methods, and refund workflow" toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "Paid", "Refund requested"]} />}><div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left"><thead><tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]"><th className="px-5 py-3 sm:px-6">Invoice</th><th className="px-4 py-3">Student</th><th className="px-4 py-3">Course</th><th className="px-4 py-3">Amount</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Method</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead><tbody>{filtered.map((item) => <tr key={item.id} className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"><td className="px-5 py-4 text-[11px] font-bold sm:px-6">{item.id}</td><td className="px-4 py-4 text-[11px] font-semibold">{item.student}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.course}</td><td className="px-4 py-4 text-[12px] font-bold">{item.amount}</td><td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.date}</td><td className="px-4 py-4 text-[11px]">{item.method}</td><td className="px-4 py-4"><StatusBadge>{item.status}</StatusBadge></td><td className="px-4 py-4"><button onClick={() => setRows((current) => current.map((row) => row.id === item.id ? { ...row, status: row.status === "Paid" ? "Refund requested" : "Paid" } : row))} className="text-[10px] font-bold text-[var(--brand)]">{item.status === "Paid" ? "Refund" : "Approve"}</button></td></tr>)}</tbody></table></div></DataCard></div>;
+function PaymentsView({
+  onAction,
+  onToast,
+  payments = [],
+}: {
+  onAction: (state: DialogState) => void;
+  onToast: (message: string) => void;
+  payments?: PaymentItem[];
+}) {
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("All");
+  const [selectedTx, setSelectedTx] = useState<PaymentItem | null>(null);
+
+  const rows = payments || [];
+
+  const metrics = useMemo(() => {
+    let totalRev = 0;
+    let thisMonthRev = 0;
+    let paidCount = 0;
+    let refundCount = 0;
+    let pendingCount = 0;
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    rows.forEach((p) => {
+      const isPaid = p.status?.toLowerCase() === "paid" || p.status?.toLowerCase() === "completed";
+      const isRefund = p.status?.toLowerCase().includes("refund");
+      const isPending = p.status?.toLowerCase() === "pending";
+
+      const numAmount =
+        typeof p.rawAmount === "number"
+          ? p.rawAmount
+          : parseFloat(String(p.amount || "").replace(/[^0-9.]/g, "")) || 0;
+
+      if (isPaid) {
+        totalRev += numAmount;
+        paidCount++;
+
+        if (p.createdAt) {
+          const d = new Date(p.createdAt);
+          if (!isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+            thisMonthRev += numAmount;
+          }
+        } else {
+          thisMonthRev += numAmount;
+        }
+      } else if (isRefund) {
+        refundCount++;
+      } else if (isPending) {
+        pendingCount++;
+      }
+    });
+
+    return {
+      totalRev,
+      thisMonthRev,
+      paidCount,
+      refundCount,
+      pendingCount,
+    };
+  }, [rows]);
+
+  const filtered = useMemo(() => {
+    return rows.filter((item) => {
+      const isPaid = item.status?.toLowerCase() === "paid" || item.status?.toLowerCase() === "completed";
+      const isPending = item.status?.toLowerCase() === "pending";
+      const isRefund = item.status?.toLowerCase().includes("refund") || item.status === "Refund requested";
+      const isFailed = item.status?.toLowerCase() === "failed";
+
+      let matchesFilter = true;
+      if (filter === "Paid") matchesFilter = isPaid;
+      else if (filter === "Pending") matchesFilter = isPending;
+      else if (filter === "Refund requested") matchesFilter = isRefund;
+      else if (filter === "Failed") matchesFilter = isFailed;
+
+      const q = query.toLowerCase().trim();
+      if (!q) return matchesFilter;
+
+      const searchableText = `${item.id || ""} ${item.paymentId || ""} ${item.student || ""} ${item.email || ""} ${item.course || ""} ${item.method || ""} ${item.razorpayOrderId || ""} ${item.razorpayPaymentId || ""}`.toLowerCase();
+      return matchesFilter && searchableText.includes(q);
+    });
+  }, [rows, filter, query]);
+
+  const handleExportCSV = () => {
+    if (rows.length === 0) {
+      onToast("No transactions to export");
+      return;
+    }
+    const headers = ["Invoice / ID", "Student Name", "Email", "Course", "Amount", "Currency", "Payment Method", "Status", "Date", "Razorpay Order ID", "Razorpay Payment ID"];
+    const csvRows = rows.map((r) => [
+      `"${r.id || ""}"`,
+      `"${r.student || ""}"`,
+      `"${r.email || ""}"`,
+      `"${r.course || ""}"`,
+      `"${r.amount || ""}"`,
+      `"${r.currency || "INR"}"`,
+      `"${r.method || ""}"`,
+      `"${r.status || ""}"`,
+      `"${r.date || ""}"`,
+      `"${r.razorpayOrderId || ""}"`,
+      `"${r.razorpayPaymentId || ""}"`,
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...csvRows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Transactions_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    onToast("Transactions exported successfully");
+  };
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="payments"
+        description={sectionDescriptions.payments}
+        actionLabel="Generate invoice"
+        onAction={() =>
+          onAction({
+            title: "Generate an invoice",
+            description: "Create and send a manual invoice to a learner.",
+            fields: ["Student Email", "Course Title", "Amount (INR)"],
+          })
+        }
+        onExport={handleExportCSV}
+      />
+
+      <MetricStrip
+        items={[
+          {
+            label: "This month",
+            value: `₹${metrics.thisMonthRev.toLocaleString("en-IN")}`,
+            change: metrics.thisMonthRev > 0 ? `↗ ₹${metrics.thisMonthRev.toLocaleString("en-IN")} earned` : "₹0 this month",
+          },
+          {
+            label: "Total revenue",
+            value: `₹${metrics.totalRev.toLocaleString("en-IN")}`,
+            change: metrics.paidCount > 0 ? `↗ ${metrics.paidCount} paid transactions` : "₹0 lifetime",
+          },
+          {
+            label: "Paid transactions",
+            value: `${metrics.paidCount}`,
+            change: rows.length > 0 ? `${((metrics.paidCount / rows.length) * 100).toFixed(0)}% completion rate` : "0 transactions",
+            tone: "text-emerald-600",
+          },
+          {
+            label: "Refunds / Pending",
+            value: `${metrics.refundCount + metrics.pendingCount}`,
+            change: `${metrics.refundCount} refunds · ${metrics.pendingCount} pending`,
+            tone: metrics.refundCount > 0 ? "text-amber-600" : "text-slate-500",
+          },
+        ]}
+      />
+
+      <DataCard
+        title="Transactions"
+        subtitle="Real payment captures, invoices, and checkout receipts"
+        toolbar={
+          <SearchToolbar
+            query={query}
+            setQuery={setQuery}
+            filter={filter}
+            setFilter={setFilter}
+            filters={["All", "Paid", "Pending", "Refund requested", "Failed"]}
+          />
+        }
+      >
+        <div className="overflow-x-auto">
+          {rows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 mb-3 shadow-inner">
+                <CreditCard className="h-7 w-7" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">No transactions recorded yet</h3>
+              <p className="mt-1 max-w-sm text-xs text-[var(--muted)] leading-relaxed">
+                Real checkout and payment transactions will appear here automatically when learners purchase courses and tracks from the student platform.
+              </p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+              <Search className="h-6 w-6 text-[var(--muted)] mb-2 opacity-50" />
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">No transactions match your search</p>
+              <p className="mt-1 text-[11px] text-[var(--muted)]">Try adjusting your keyword or filter criteria.</p>
+              <button
+                onClick={() => {
+                  setQuery("");
+                  setFilter("All");
+                }}
+                className="mt-3 text-xs font-semibold text-indigo-600 hover:underline"
+              >
+                Reset filters
+              </button>
+            </div>
+          ) : (
+            <table className="w-full min-w-[900px] text-left">
+              <thead>
+                <tr className="border-b border-[var(--app-line)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  <th className="px-5 py-3 sm:px-6">Invoice / ID</th>
+                  <th className="px-4 py-3">Student</th>
+                  <th className="px-4 py-3">Course / Item</th>
+                  <th className="px-4 py-3">Amount</th>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Method</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((item) => {
+                  const isPaid = item.status?.toLowerCase() === "paid" || item.status?.toLowerCase() === "completed";
+                  const isRefund = item.status?.toLowerCase().includes("refund");
+                  const isFailed = item.status?.toLowerCase() === "failed";
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)] transition-colors"
+                    >
+                      <td className="px-5 py-4 text-[11px] font-bold sm:px-6 font-mono">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-800 dark:text-slate-200">{item.id}</span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(item.id);
+                              onToast("Transaction ID copied to clipboard");
+                            }}
+                            title="Copy ID"
+                            className="p-1 hover:text-indigo-600 text-slate-400 transition"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-[11px] font-bold text-slate-900 dark:text-slate-100">{item.student}</p>
+                        {item.email && <p className="text-[10px] text-[var(--muted)]">{item.email}</p>}
+                      </td>
+                      <td className="px-4 py-4 text-[11px] font-medium text-[var(--muted)]">
+                        {item.course}
+                      </td>
+                      <td className="px-4 py-4 text-[12px] font-bold text-slate-900 dark:text-slate-100 font-mono">
+                        {item.amount}
+                      </td>
+                      <td className="px-4 py-4 text-[11px] text-[var(--muted)]">{item.date}</td>
+                      <td className="px-4 py-4 text-[11px]">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 font-medium text-[10px]">
+                          {item.method}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold",
+                            isPaid
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              : isRefund
+                              ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                              : isFailed
+                              ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                              : "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300"
+                          )}
+                        >
+                          {isPaid && <CheckCircle2 className="h-3 w-3" />}
+                          {isRefund && <AlertTriangle className="h-3 w-3" />}
+                          {isFailed && <AlertCircle className="h-3 w-3" />}
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <button
+                          onClick={() => {
+                            setSelectedTx(item);
+                          }}
+                          className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 hover:underline"
+                        >
+                          View details
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </DataCard>
+
+      {/* Details Modal */}
+      {selectedTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+                  <CreditCard className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-display text-sm font-bold">Transaction Receipt</h3>
+                  <p className="text-[10px] text-slate-500 font-mono">{selectedTx.id}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedTx(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-3.5 text-xs">
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500">Learner Name</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{selectedTx.student}</span>
+              </div>
+              {selectedTx.email && (
+                <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-500">Email Address</span>
+                  <span className="font-medium text-slate-900 dark:text-slate-100">{selectedTx.email}</span>
+                </div>
+              )}
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500">Course / Item</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100 text-right max-w-[200px] truncate">{selectedTx.course}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500">Amount Paid</span>
+                <span className="font-bold text-emerald-600 font-mono text-sm">{selectedTx.amount}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500">Payment Method</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">{selectedTx.method}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500">Status</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{selectedTx.status}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500">Date</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">{selectedTx.date}</span>
+              </div>
+              {selectedTx.razorpayOrderId && (
+                <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-500">Razorpay Order</span>
+                  <span className="font-mono text-[10px] text-slate-700 dark:text-slate-300">{selectedTx.razorpayOrderId}</span>
+                </div>
+              )}
+              {selectedTx.razorpayPaymentId && (
+                <div className="flex justify-between py-1.5">
+                  <span className="text-slate-500">Razorpay Payment</span>
+                  <span className="font-mono text-[10px] text-slate-700 dark:text-slate-300">{selectedTx.razorpayPaymentId}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(JSON.stringify(selectedTx, null, 2));
+                  onToast("Transaction details copied as JSON");
+                }}
+                className="secondary-button text-xs"
+              >
+                Copy JSON
+              </button>
+              <button
+                onClick={() => setSelectedTx(null)}
+                className="primary-button text-xs"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function FeedbackView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
@@ -3222,14 +3590,21 @@ function RecordingsView({
   onAction,
   onToast,
   onUploadRecording,
+  recordings = [],
+  onEditRecording,
+  onDeleteRecording,
 }: {
   onAction: (state: DialogState) => void;
   onToast: (message: string) => void;
   onUploadRecording?: () => void;
+  recordings?: RecordingData[];
+  onEditRecording?: (rec: RecordingData) => void;
+  onDeleteRecording?: (id: string | number) => void;
 }) {
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
-  const [rows] = useState(recordingsData);
+  const [previewRecording, setPreviewRecording] = useState<RecordingData | null>(null);
+  const rows = recordings;
   const [recordingDraft, setRecordingDraft] = useState(() => getDraft("upload_recording"));
 
   useEffect(() => {
@@ -3245,11 +3620,21 @@ function RecordingsView({
     };
   }, []);
 
+  const dynamicFilters = ["All", ...Array.from(new Set(rows.map((item) => item.course).filter(Boolean)))];
+
   const filtered = rows.filter(
     (item) =>
       (filter === "All" || item.course === filter) &&
-      `${item.title} ${item.instructor} ${item.course}`.toLowerCase().includes(query.toLowerCase())
+      `${item.title || ""} ${item.instructor || ""} ${item.course || ""} ${item.topic || ""} ${item.module || ""}`.toLowerCase().includes(query.toLowerCase())
   );
+
+  const totalHours = rows.length > 0 
+    ? (rows.reduce((acc, r) => acc + (parseFloat(r.duration || "1.5") || 1.5), 0)).toFixed(1)
+    : "0";
+  const totalViews = rows.length > 0 
+    ? rows.reduce((acc, r) => acc + (r.views || 0), 0) 
+    : 0;
+  const uniqueCoursesCount = new Set(rows.map((r) => r.course).filter(Boolean)).size;
 
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
@@ -3325,10 +3710,10 @@ function RecordingsView({
 
       <MetricStrip
         items={[
-          { label: "Recorded lectures", value: "84", change: "+12 this month" },
-          { label: "Total watch hours", value: "1,420 hrs", change: "+18.6%" },
-          { label: "Avg. views / class", value: "112", change: "86% completion" },
-          { label: "Cloud storage used", value: "420 GB", change: "1.2 TB free" },
+          { label: "Recorded lectures", value: String(rows.length), change: rows.length > 0 ? `${rows.length} published` : "0 published" },
+          { label: "Total watch duration", value: `${totalHours} hrs`, change: "Real-time sync" },
+          { label: "Covered courses", value: String(uniqueCoursesCount), change: "Curriculum aligned" },
+          { label: "Total learner views", value: String(totalViews), change: "Live engagement" },
         ]}
       />
 
@@ -3341,46 +3726,248 @@ function RecordingsView({
             setQuery={setQuery}
             filter={filter}
             setFilter={setFilter}
-            filters={["All", "DSA Mastery", "System Design", "Placement Prep"]}
+            filters={dynamicFilters}
           />
         }
       >
-        <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
-          {filtered.map((item) => (
-            <div
-              key={item.id}
-              className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-card)] p-4 transition-all hover:border-indigo-300 dark:hover:border-white/20 hover:shadow-md"
+        {rows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 mb-4 border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
+              <Video className="h-7 w-7" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">No class recordings uploaded yet</h3>
+            <p className="mt-1.5 max-w-md text-xs leading-5 text-slate-500 dark:text-slate-400">
+              Upload video recordings of completed live sessions, code walkthroughs, and workshops to make them accessible to your enrolled learners.
+            </p>
+            {onUploadRecording && (
+              <button
+                type="button"
+                onClick={onUploadRecording}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-500/25 transition cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Upload your first recording</span>
+              </button>
+            )}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-400 mb-3">
+              <Search className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">No recordings match your filter</h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Try changing your search keywords or course category.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setFilter("All");
+              }}
+              className="mt-4 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
             >
-              <div>
-                <div className="relative mb-3 flex h-32 w-full items-center justify-center rounded-xl bg-slate-900 text-white overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                  <span className="grid h-10 w-10 place-items-center rounded-full bg-white/20 backdrop-blur-md text-white transition-transform group-hover:scale-110">
-                    <PlayCircle className="h-6 w-6" />
-                  </span>
-                  <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                    {item.duration}
-                  </span>
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+            {filtered.map((item) => (
+              <div
+                key={item.id}
+                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-card)] p-4 transition-all hover:border-indigo-300 dark:hover:border-white/20 hover:shadow-md"
+              >
+                <div>
+                  <div 
+                    onClick={() => setPreviewRecording(item)}
+                    className="relative mb-3 flex h-32 w-full items-center justify-center rounded-xl bg-slate-900 text-white overflow-hidden cursor-pointer"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-white/20 backdrop-blur-md text-white transition-transform group-hover:scale-110">
+                      <PlayCircle className="h-6 w-6" />
+                    </span>
+                    <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {item.duration || "1h 30m"}
+                    </span>
+                    {item.status && (
+                      <span className="absolute top-2 left-2 rounded-md bg-indigo-600/90 backdrop-blur-xs px-2 py-0.5 text-[9px] font-extrabold text-white uppercase tracking-wider">
+                        {item.status}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 
+                      onClick={() => setPreviewRecording(item)}
+                      className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 flex-1 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                    >
+                      {item.title}
+                    </h3>
+                    {onEditRecording && (
+                      <button
+                        type="button"
+                        onClick={() => onEditRecording(item as any)}
+                        className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[11px] text-[var(--muted)] truncate">{item.course || "General Class"}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-400">By {item.instructor || "Instructor"} · {item.date || "Recent"}</p>
                 </div>
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2">
-                  {item.title}
-                </h3>
-                <p className="mt-1 text-[11px] text-[var(--muted)]">{item.course}</p>
-                <p className="mt-0.5 text-[10px] text-slate-400">By {item.instructor} · {item.date}</p>
+
+                <div className="mt-4 flex items-center justify-between border-t border-[var(--app-line)] pt-3">
+                  <span className="text-[10px] font-semibold text-[var(--muted)]">{item.views || 0} views</span>
+                  <div className="flex items-center gap-2">
+                    {onDeleteRecording && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteRecording(item.id!)}
+                        className="text-[10px] font-semibold text-rose-500 hover:underline cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setPreviewRecording(item)}
+                      className="text-[11px] font-bold text-[var(--brand)] hover:underline cursor-pointer"
+                    >
+                      Watch recording
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </DataCard>
+
+      {/* Recording Playback Preview Modal */}
+      {previewRecording && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in-0 duration-200">
+          <div className="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-white/10 bg-slate-950 text-white shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 bg-slate-900/50">
+              <div className="min-w-0 flex-1 pr-4">
+                <span className="inline-block rounded-md bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400 mb-1">
+                  {previewRecording.course || "Class Recording"}
+                </span>
+                <h3 className="text-base font-bold text-white truncate">{previewRecording.title}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewRecording(null)}
+                className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Video Player */}
+            <div className="relative aspect-video w-full bg-black">
+              {previewRecording.videoUrl && (previewRecording.videoUrl.includes("youtube.com") || previewRecording.videoUrl.includes("youtu.be")) ? (
+                <iframe
+                  src={
+                    previewRecording.videoUrl.includes("watch?v=")
+                      ? previewRecording.videoUrl.replace("watch?v=", "embed/")
+                      : previewRecording.videoUrl.replace("youtu.be/", "www.youtube.com/embed/")
+                  }
+                  title={previewRecording.title}
+                  className="h-full w-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : previewRecording.videoUrl && previewRecording.videoUrl.startsWith("http") ? (
+                <video
+                  src={previewRecording.videoUrl}
+                  controls
+                  autoPlay
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center">
+                  <PlayCircle className="h-16 w-16 text-indigo-400/80 mb-3" />
+                  <p className="text-sm font-bold text-white">Direct Video Streaming Preview</p>
+                  <p className="mt-1 text-xs text-slate-400 max-w-md">
+                    {previewRecording.videoFileName || previewRecording.videoUrl || "Video stream processed and ready for live playback."}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Details & Resources */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4 text-xs text-slate-400">
+                <div className="flex items-center gap-4">
+                  <span>Instructor: <strong className="text-white">{previewRecording.instructor}</strong></span>
+                  <span>Duration: <strong className="text-white">{previewRecording.duration}</strong></span>
+                  <span>Date: <strong className="text-white">{previewRecording.date}</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-indigo-400">{previewRecording.views || 0} views</span>
+                </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-between border-t border-[var(--app-line)] pt-3">
-                <span className="text-[10px] font-semibold text-[var(--muted)]">{item.views} views</span>
-                <button
-                  onClick={() => onToast(`Playing ${item.title}`)}
-                  className="text-[11px] font-bold text-[var(--brand)] hover:underline"
-                >
-                  Watch recording
-                </button>
-              </div>
+              {previewRecording.description && (
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Description</h4>
+                  <p className="text-xs leading-relaxed text-slate-300">{previewRecording.description}</p>
+                </div>
+              )}
+
+              {/* Chapters */}
+              {previewRecording.chapters && previewRecording.chapters.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Chapter Markers ({previewRecording.chapters.length})
+                  </h4>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {previewRecording.chapters.map((ch, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-slate-900/50 p-2.5 text-xs text-slate-300"
+                      >
+                        <span className="font-mono text-[11px] font-bold text-indigo-400 bg-indigo-950/60 border border-indigo-500/30 px-2 py-0.5 rounded-md">
+                          {ch.timestamp}
+                        </span>
+                        <span className="font-medium truncate">{ch.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Attached Resources */}
+              {previewRecording.resources && previewRecording.resources.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Attached Resources ({previewRecording.resources.length})
+                  </h4>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {previewRecording.resources.map((res, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-900/50 p-2.5 text-xs text-slate-300"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="h-4 w-4 text-indigo-400 shrink-0" />
+                          <span className="truncate">{res.name}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onToast(`Downloading ${res.name}`)}
+                          className="grid h-6 w-6 place-items-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition shrink-0 cursor-pointer"
+                        >
+                          <Download className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          ))}
+          </div>
         </div>
-      </DataCard>
+      )}
     </div>
   );
 }
@@ -4344,6 +4931,8 @@ export default function Home() {
     content: liveContent,
     practiceProblems: livePracticeProblems,
     liveSessions: liveSessionsList,
+    recordings: liveRecordingsList,
+    payments: livePaymentsList,
     instructors: liveInstructors,
     stats: liveStats,
     isLoading,
@@ -4355,6 +4944,8 @@ export default function Home() {
     upsertLiveSession,
     deleteLiveSession,
     toggleLiveSessionStatus,
+    upsertRecording,
+    deleteRecording,
   } = useLiveAdminData();
 
   useEffect(() => {
@@ -4514,10 +5105,14 @@ export default function Home() {
     onToast("Session status updated");
   };
 
-  const handleOpenUploadRecording = () => {
-    setEditingRecordingData(null);
+  const handleOpenUploadRecording = (rec?: Partial<RecordingData>) => {
+    setEditingRecordingData(rec || null);
     setIsUploadRecordingOpen(true);
-    navigate({ tab: "upload-recording" });
+    if (rec?.id) {
+      navigate({ tab: "upload-recording", id: String(rec.id) });
+    } else {
+      navigate({ tab: "upload-recording" });
+    }
   };
 
   const handleCloseUploadRecording = () => {
@@ -4526,13 +5121,33 @@ export default function Home() {
     navigate({ tab: "recordings" });
   };
 
-  const handleSaveRecordingDraft = (data: RecordingData) => {
-    onToast(`Recording draft "${data.title}" saved successfully!`);
+  const handleSaveRecordingDraft = async (data: RecordingData) => {
+    try {
+      await upsertRecording({ ...data, status: "Draft" });
+      onToast(`Recording draft "${data.title}" saved successfully!`);
+    } catch {
+      onToast(`Failed to save recording draft`);
+    }
   };
 
-  const handlePublishRecording = (data: RecordingData) => {
-    onToast(`Recording "${data.title}" published successfully!`);
-    handleCloseUploadRecording();
+  const handlePublishRecording = async (data: RecordingData) => {
+    try {
+      await upsertRecording({ ...data, status: "Published" });
+      onToast(`Recording "${data.title}" published successfully!`);
+      clearDraft("upload_recording");
+      handleCloseUploadRecording();
+    } catch {
+      onToast(`Failed to publish recording`);
+    }
+  };
+
+  const handleDeleteRecording = async (id: string | number) => {
+    try {
+      await deleteRecording(id);
+      onToast(`Recording deleted successfully!`);
+    } catch {
+      onToast(`Failed to delete recording`);
+    }
   };
 
   const handleOpenPracticeProblemBuilder = (prob?: PracticeProblem) => {
@@ -5098,9 +5713,16 @@ export default function Home() {
         onToggleStatus={handleToggleSessionStatus}
       />
     ) : section === "recordings" ? (
-      <RecordingsView onAction={onAction} onToast={onToast} onUploadRecording={handleOpenUploadRecording} />
+      <RecordingsView
+        onAction={onAction}
+        onToast={onToast}
+        onUploadRecording={handleOpenUploadRecording}
+        recordings={liveRecordingsList}
+        onEditRecording={(rec) => handleOpenUploadRecording(rec)}
+        onDeleteRecording={handleDeleteRecording}
+      />
     ) : section === "payments" ? (
-      <PaymentsView onAction={onAction} onToast={onToast} />
+      <PaymentsView onAction={onAction} onToast={onToast} payments={livePaymentsList} />
     ) : section === "feedback" ? (
       <FeedbackView onAction={onAction} onToast={onToast} />
     ) : section === "reports" ? (

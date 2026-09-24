@@ -202,8 +202,11 @@ export function useAnnouncements() {
     };
   }, [fetchAnnouncements]);
 
+  const unreadCount = announcements.length;
+
   return {
     announcements,
+    unreadCount,
     loading,
     error,
     refreshAnnouncements: fetchAnnouncements,

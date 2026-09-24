@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { LiveSessionData } from "@/components/ScheduleSessionBuilder";
+import { RecordingData } from "@/components/UploadRecordingBuilder";
 
 export interface AdminStats {
   totalStudents: number;
@@ -137,6 +138,24 @@ export interface InstructorUser {
   avatarUrl?: string | null;
 }
 
+export interface PaymentItem {
+  id: string;
+  paymentId?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  student: string;
+  email?: string;
+  course: string;
+  courseId?: string | null;
+  amount: string;
+  rawAmount?: number;
+  currency?: string;
+  date: string;
+  method: string;
+  status: string;
+  createdAt?: string;
+}
+
 const CACHE_KEYS = {
   STATS: "lms_admin_cache_stats",
   STUDENTS: "lms_admin_cache_students",
@@ -146,7 +165,9 @@ const CACHE_KEYS = {
   CONTENT: "lms_admin_cache_content",
   PRACTICE_PROBLEMS: "lms_admin_cache_practice_problems",
   LIVE_SESSIONS: "lms_admin_live_sessions",
+  RECORDINGS: "lms_admin_cache_recordings",
   INSTRUCTORS: "lms_admin_instructors",
+  PAYMENTS: "lms_admin_cache_payments",
 };
 
 function readCache<T>(key: string, fallback: T): T {
@@ -197,6 +218,12 @@ export function useLiveAdminData() {
   );
   const [liveSessionsList, setLiveSessionsList] = useState<LiveSessionData[]>(() =>
     readCache<LiveSessionData[]>(CACHE_KEYS.LIVE_SESSIONS, [])
+  );
+  const [recordingsList, setRecordingsList] = useState<RecordingData[]>(() =>
+    readCache<RecordingData[]>(CACHE_KEYS.RECORDINGS, [])
+  );
+  const [paymentsList, setPaymentsList] = useState<PaymentItem[]>(() =>
+    readCache<PaymentItem[]>(CACHE_KEYS.PAYMENTS, [])
   );
   const [instructorsList, setInstructorsList] = useState<InstructorUser[]>(() =>
     readCache<InstructorUser[]>(CACHE_KEYS.INSTRUCTORS, [])
@@ -503,6 +530,90 @@ export function useLiveAdminData() {
     } catch {}
   };
 
+  const updateRecordings = (data: RecordingData[]) => {
+    setRecordingsList(data);
+    writeCache(CACHE_KEYS.RECORDINGS, data);
+    try {
+      window.dispatchEvent(new CustomEvent("lms_recordings_updated", { detail: data }));
+    } catch {}
+  };
+
+  const upsertRecording = async (rec: RecordingData) => {
+    if (!rec) return;
+    const recId = rec.id ? String(rec.id) : `rec_${Date.now()}`;
+    const newRec: RecordingData = {
+      ...rec,
+      id: recId,
+      status: rec.status || "Published",
+    };
+
+    setRecordingsList((prev) => {
+      const idx = prev.findIndex((r) => String(r.id) === String(recId));
+      const updated = idx >= 0
+        ? prev.map((r) => (String(r.id) === String(recId) ? newRec : r))
+        : [newRec, ...prev];
+      writeCache(CACHE_KEYS.RECORDINGS, updated);
+      try {
+        window.dispatchEvent(new CustomEvent("lms_recordings_updated", { detail: updated }));
+      } catch {}
+      return updated;
+    });
+
+    try {
+      await fetch("http://localhost:4000/api/v1/admin/recordings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newRec),
+      });
+    } catch {}
+  };
+
+  const deleteRecording = async (id: string | number) => {
+    setRecordingsList((prev) => {
+      const updated = prev.filter((r) => String(r.id) !== String(id));
+      writeCache(CACHE_KEYS.RECORDINGS, updated);
+      try {
+        window.dispatchEvent(new CustomEvent("lms_recordings_updated", { detail: updated }));
+      } catch {}
+      return updated;
+    });
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/recordings/${id}`, {
+        method: "DELETE",
+      });
+    } catch {}
+  };
+
+  const fetchRecordings = async () => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/recordings");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          updateRecordings(data);
+        }
+      }
+    } catch {}
+  };
+
+  const updatePayments = (data: PaymentItem[]) => {
+    setPaymentsList(data);
+    writeCache(CACHE_KEYS.PAYMENTS, data);
+  };
+
+  const fetchPayments = async () => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/payments");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          updatePayments(data);
+        }
+      }
+    } catch {}
+  };
+
   const updateInstructors = (data: InstructorUser[]) => {
     setInstructorsList(data);
     writeCache(CACHE_KEYS.INSTRUCTORS, data);
@@ -556,9 +667,19 @@ export function useLiveAdminData() {
         .then((d) => d && updateLiveSessions(d))
         .catch(() => {});
 
+      fetch("http://localhost:4000/api/v1/admin/recordings")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && Array.isArray(d) && updateRecordings(d))
+        .catch(() => {});
+
       fetch("http://localhost:4000/api/v1/admin/instructors")
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && Array.isArray(d) && updateInstructors(d))
+        .catch(() => {});
+
+      fetch("http://localhost:4000/api/v1/admin/payments")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && Array.isArray(d) && updatePayments(d))
         .catch(() => {});
     } catch {
       // Backend offline fallback
@@ -620,6 +741,12 @@ export function useLiveAdminData() {
               if (payload.data?.liveSessions) {
                 updateLiveSessions(payload.data.liveSessions);
               }
+              if (payload.data?.recordings && Array.isArray(payload.data.recordings)) {
+                updateRecordings(payload.data.recordings);
+              }
+              if (payload.data?.payments && Array.isArray(payload.data.payments)) {
+                updatePayments(payload.data.payments);
+              }
               if (payload.data?.instructors) {
                 updateInstructors(payload.data.instructors);
               }
@@ -659,7 +786,7 @@ export function useLiveAdminData() {
   }, []);
 
   const refresh = async () => {
-    await Promise.all([fetchCourses(), fetchPracticeProblems(), fetchLiveSessions(), fetchInstructors()]);
+    await Promise.all([fetchCourses(), fetchPracticeProblems(), fetchLiveSessions(), fetchRecordings(), fetchPayments(), fetchInstructors()]);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "REFRESH" }));
     } else {
@@ -676,6 +803,8 @@ export function useLiveAdminData() {
     content: contentList,
     practiceProblems: practiceProblemsList,
     liveSessions: liveSessionsList,
+    recordings: recordingsList,
+    payments: paymentsList,
     instructors: instructorsList,
     isLoading,
     isWsConnected,
@@ -690,6 +819,10 @@ export function useLiveAdminData() {
     deleteLiveSession,
     toggleLiveSessionStatus,
     setLiveSessions: updateLiveSessions,
+    upsertRecording,
+    deleteRecording,
+    setRecordings: updateRecordings,
+    setPayments: updatePayments,
     setInstructors: updateInstructors,
   };
 }

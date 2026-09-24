@@ -212,7 +212,7 @@ export function useLiveProblems() {
       const month = String(today.getMonth() + 1).padStart(2, "0");
       const day = String(today.getDate()).padStart(2, "0");
       const todayStr = `${year}-${month}-${day}`;
-      const rawActivity = localStorage.getItem("lms_user_activity_history");
+      const rawActivity = localStorage.getItem("lms_user_real_activity_v2");
       const actMap = rawActivity ? JSON.parse(rawActivity) : {};
       const existing = actMap[todayStr] || {
         date: todayStr,
@@ -226,7 +226,8 @@ export function useLiveProblems() {
         activeMinutes: existing.activeMinutes + 15,
         problemsSolved: existing.problemsSolved + 1,
       };
-      localStorage.setItem("lms_user_activity_history", JSON.stringify(actMap));
+      localStorage.setItem("lms_user_real_activity_v2", JSON.stringify(actMap));
+      window.dispatchEvent(new CustomEvent("lms:activity-updated"));
     } catch {}
 
     setProblems((prev) =>

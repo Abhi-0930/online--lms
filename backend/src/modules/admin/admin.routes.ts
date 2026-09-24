@@ -37,5 +37,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     return all.filter((a: any) => a.status !== 'Draft');
   });
 
+  // Public recordings route for learner frontend
+  fastify.get('/api/v1/recordings', async (_request, reply) => {
+    reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    reply.header('Pragma', 'no-cache');
+    reply.header('Expires', '0');
+    const adminService = new AdminService(fastify.prisma);
+    const all = await adminService.getAllRecordings();
+    return all.filter((r: any) => r.status !== 'Draft');
+  });
 }
 

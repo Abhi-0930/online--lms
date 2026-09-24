@@ -239,6 +239,54 @@ export default async function adminController(fastify: FastifyInstance) {
       return reply.code(400).send({ error: err.message || 'Failed to delete announcement' });
     }
   });
+
+  // Lecture & Class Recordings management
+  fastify.get('/recordings', async () => {
+    return adminService.getAllRecordings();
+  });
+
+  fastify.post('/recordings', async (request, reply) => {
+    const body = request.body as any;
+    try {
+      const recording = await adminService.saveRecording(body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(recording);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to upload/save recording' });
+    }
+  });
+
+  fastify.patch('/recordings/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    try {
+      const updated = await adminService.updateRecording(id, body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(updated);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to update recording' });
+    }
+  });
+
+  fastify.delete('/recordings/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await adminService.deleteRecording(id);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to delete recording' });
+    }
+  });
+
+  // Learner Transactions & Payments
+  fastify.get('/payments', async () => {
+    return adminService.getAllPayments();
+  });
+
+  fastify.get('/transactions', async () => {
+    return adminService.getAllPayments();
+  });
 }
 
 

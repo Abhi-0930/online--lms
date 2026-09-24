@@ -13,6 +13,7 @@ import { useLiveCourses, LiveCourseItem } from "@/hooks/useLiveCourses";
 import { useAssignments, LiveAssignmentItem } from "@/hooks/useAssignments";
 import { useLiveProblems, PublicProblem } from "@/hooks/useLiveProblems";
 import { useLiveSessions, LiveSessionItem } from "@/hooks/useLiveSessions";
+import { useLiveRecordings, LiveRecordingItem } from "@/hooks/useLiveRecordings";
 import { useAnnouncements, AnnouncementItem } from "@/hooks/useAnnouncements";
 import { useUserActivity, getLocalDateString } from "@/hooks/useUserActivity";
 import StudentProblemArena from "@/components/StudentProblemArena";
@@ -53,6 +54,7 @@ import {
   Download,
   ExternalLink,
   FileText,
+  Film,
   Flame,
   FolderOpen,
   Github,
@@ -112,6 +114,7 @@ const navItems: NavItem[] = [
 
 const utilityItems: NavItem[] = [
   { label: "Live Sessions", href: "/live-session", icon: Video },
+  { label: "Class Recordings", href: "/recordings", icon: Film },
   { label: "Announcements", href: "/announcements", icon: Bell },
   { label: "Progress", href: "/progress", icon: LineChart },
 ];
@@ -169,6 +172,9 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
   const { courses } = useLiveCourses();
   const { enrollments } = useEnrollments();
   const { assignments } = useAssignments();
+  const { recordings } = useLiveRecordings();
+  const { sessions: liveSessions } = useLiveSessions();
+  const { unreadCount: unreadAnnouncements } = useAnnouncements();
   const isActive = (href: string) => href === "/" ? location === "/" : location.startsWith(href);
 
   const dynamicNavItems: NavItem[] = [
@@ -177,6 +183,13 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
     { label: "My learning", href: "/my-courses", icon: BookOpen, badge: enrollments.length > 0 ? String(enrollments.length) : undefined },
     { label: "Practice problems", href: "/practice", icon: Code2, badge: liveProblems.length > 0 ? String(liveProblems.length) : undefined },
     { label: "Assignments", href: "/assignments", icon: ClipboardCheck, badge: assignments.length > 0 ? String(assignments.length) : undefined },
+  ];
+
+  const dynamicUtilityItems: NavItem[] = [
+    { label: "Live Sessions", href: "/live-session", icon: Video, badge: liveSessions.length > 0 ? String(liveSessions.length) : undefined },
+    { label: "Class Recordings", href: "/recordings", icon: Film, badge: recordings.length > 0 ? String(recordings.length) : undefined },
+    { label: "Announcements", href: "/announcements", icon: Bell, badge: unreadAnnouncements > 0 ? String(unreadAnnouncements) : undefined },
+    { label: "Progress", href: "/progress", icon: LineChart },
   ];
 
   return (
@@ -191,7 +204,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
         </nav>
         {!collapsed && <p className="mb-3 mt-8 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Keep going</p>}
         <nav className="space-y-1">
-          {utilityItems.map((item) => <SidebarLink key={item.href} item={item} active={isActive(item.href)} collapsed={collapsed} />)}
+          {dynamicUtilityItems.map((item) => <SidebarLink key={item.href} item={item} active={isActive(item.href)} collapsed={collapsed} />)}
         </nav>
         {!collapsed && (
           <div className="mt-auto pt-8">
@@ -1321,6 +1334,15 @@ function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
                 {copiedPasscode ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 opacity-60" />}
               </button>
             )}
+
+            <Link
+              href={getSecureHref("/recordings")}
+              className="inline-flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 px-4 py-3 text-xs font-bold text-white transition cursor-pointer"
+            >
+              <Film className="h-4 w-4 text-purple-300" />
+              <span>Watch Recordings</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </div>
       </div>
@@ -1657,12 +1679,490 @@ function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
               </div>
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
-                <span>Recordings and AI lecture summary notes will be accessible after class.</span>
+                <span>Recordings and lecture resources will be accessible in Class Recordings after class.</span>
               </div>
             </div>
           </div>
         </aside>
       </div>
+    </div>
+  );
+}
+
+function RecordingsPage({ initialRecordingId }: { initialRecordingId?: string }) {
+  const { recordings, loading } = useLiveRecordings();
+  const [selectedId, setSelectedId] = useState<string>(initialRecordingId || "");
+  const [selectedCourse, setSelectedCourse] = useState("All");
+  const [selectedType, setSelectedType] = useState("All");
+  const [query, setQuery] = useState("");
+  const [activeChapterIndex, setActiveChapterIndex] = useState(0);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  useEffect(() => {
+    if (initialRecordingId) {
+      setSelectedId(initialRecordingId);
+    }
+  }, [initialRecordingId]);
+
+  const activeRecording = useMemo(() => {
+    if (!selectedId) return null;
+    return recordings.find((r) => r.id === selectedId || String(r.id) === selectedId) || null;
+  }, [recordings, selectedId]);
+
+  const coursesList = useMemo(() => {
+    const set = new Set<string>();
+    recordings.forEach((r) => {
+      if (r.course) set.add(r.course);
+    });
+    return ["All", ...Array.from(set)];
+  }, [recordings]);
+
+  const filteredRecordings = useMemo(() => {
+    return recordings.filter((r) => {
+      const matchCourse = selectedCourse === "All" || r.course === selectedCourse;
+      const matchType = selectedType === "All" || r.recordingType === selectedType;
+      const searchTarget = `${r.title} ${r.instructor} ${r.course} ${r.description} ${r.topic || ""}`.toLowerCase();
+      const matchQuery = !query || searchTarget.includes(query.toLowerCase());
+      return matchCourse && matchType && matchQuery;
+    });
+  }, [recordings, selectedCourse, selectedType, query]);
+
+  const handleOpenRecording = (rec: LiveRecordingItem) => {
+    setSelectedId(rec.id);
+    setActiveChapterIndex(0);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", createSecureUrl("/recordings", { id: rec.id }));
+    }
+  };
+
+  const handleClosePlayer = () => {
+    setSelectedId("");
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", createSecureUrl("/recordings", { v: "recordings" }));
+    }
+  };
+
+  const handleCopyRecordingLink = (recId: string) => {
+    const url = typeof window !== "undefined" ? `${window.location.origin}${createSecureUrl("/recordings", { id: recId })}` : "";
+    if (url) {
+      navigator.clipboard?.writeText(url);
+      setCopiedLink(true);
+      toast.success("Recording link copied to clipboard!");
+      setTimeout(() => setCopiedLink(false), 2000);
+    }
+  };
+
+  if (activeRecording) {
+    const otherRecordingsInCourse = recordings.filter(
+      (r) => r.id !== activeRecording.id && r.course === activeRecording.course
+    );
+
+    return (
+      <div className="space-y-6 animate-in fade-in-0 duration-200">
+        {/* Navigation & Actions Topbar */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={handleClosePlayer}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition cursor-pointer shadow-xs"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Class Recordings</span>
+            </button>
+            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
+              <span>/</span>
+              <span className="font-semibold text-slate-600 dark:text-slate-300 truncate max-w-xs">{activeRecording.course}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => handleCopyRecordingLink(activeRecording.id)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 transition cursor-pointer shadow-xs"
+            >
+              {copiedLink ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Share2 className="h-3.5 w-3.5" />}
+              <span>{copiedLink ? "Link Copied" : "Share Recording"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Video Theater Box */}
+        <div className="card-surface overflow-hidden p-0 bg-slate-950 text-white border-slate-800 shadow-2xl">
+          <div className="relative aspect-video w-full overflow-hidden bg-black flex items-center justify-center">
+            {activeRecording.videoUrl && (activeRecording.videoUrl.includes("youtube.com") || activeRecording.videoUrl.includes("youtu.be")) ? (
+              <iframe
+                src={
+                  activeRecording.videoUrl.includes("watch?v=")
+                    ? activeRecording.videoUrl.replace("watch?v=", "embed/")
+                    : activeRecording.videoUrl.replace("youtu.be/", "www.youtube.com/embed/")
+                }
+                title={activeRecording.title}
+                className="h-full w-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : activeRecording.videoUrl && (activeRecording.videoUrl.endsWith(".mp4") || activeRecording.videoUrl.includes(".mp4?")) ? (
+              <video
+                src={activeRecording.videoUrl}
+                controls
+                autoPlay
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <div className="relative flex flex-col items-center justify-center p-8 text-center h-full w-full bg-gradient-to-br from-slate-900 via-[#17223d] to-slate-950">
+                <div className="mb-4 grid h-16 w-16 place-items-center rounded-full bg-[#3157e8] text-white shadow-xl shadow-indigo-600/40">
+                  <Play className="h-8 w-8 fill-current ml-1" />
+                </div>
+                <h3 className="font-display text-lg font-bold text-white">
+                  {activeRecording.title}
+                </h3>
+                <p className="mt-1 text-xs text-slate-400 max-w-md">
+                  HD Lecture Stream · Instructor: {activeRecording.instructor} · Duration: {activeRecording.duration || "1h 30m"}
+                </p>
+                {activeRecording.videoUrl && (
+                  <a
+                    href={activeRecording.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 px-4 py-2 text-xs font-bold text-white transition border border-white/20"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> Open Video Stream Source
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 2-Column Split Details Workspace */}
+        <div className="grid gap-6 lg:grid-cols-[1.8fr_1fr]">
+          {/* Main Content: Overview & Chapters */}
+          <div className="space-y-6">
+            <div className="card-surface p-6 sm:p-7">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#3157e8] dark:text-indigo-400 mb-2">
+                <span>{activeRecording.course || "Platform Course"}</span>
+                <span>·</span>
+                <span>{activeRecording.recordingType || "Live Class"}</span>
+              </div>
+              <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                {activeRecording.title}
+              </h1>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                {activeRecording.description || "Comprehensive session covering foundational concepts, real-world architecture examples, and hands-on coding demonstrations."}
+              </p>
+            </div>
+
+            {/* Chapters & Timestamps */}
+            {activeRecording.chapters && activeRecording.chapters.length > 0 && (
+              <div className="card-surface p-6 sm:p-7">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center justify-between">
+                  <span>Chapter Timestamps</span>
+                  <span className="text-xs font-semibold text-slate-400">{activeRecording.chapters.length} topics</span>
+                </h2>
+                <div className="divide-y divide-slate-100 dark:divide-white/10 rounded-2xl border border-slate-100 dark:border-white/10 overflow-hidden">
+                  {activeRecording.chapters.map((ch, idx) => (
+                    <div
+                      key={ch.id || idx}
+                      onClick={() => setActiveChapterIndex(idx)}
+                      className={cx(
+                        "flex items-center justify-between gap-3 p-3.5 transition cursor-pointer select-none",
+                        activeChapterIndex === idx
+                          ? "bg-indigo-50/90 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-semibold"
+                          : "hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-500/30 px-2.5 py-0.5 rounded-lg shrink-0">
+                          {ch.timestamp}
+                        </span>
+                        <span className="text-xs truncate">{ch.title}</span>
+                      </div>
+                      <Play className="h-3 w-3 opacity-60 shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar Column: Metadata & Attached Resources */}
+          <div className="space-y-6">
+            {/* Class Details Card */}
+            <div className="card-surface p-5 space-y-3.5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Class Details</h3>
+              <div className="space-y-2.5 text-xs">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-2">
+                  <span className="text-slate-500 dark:text-slate-400">Instructor</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{activeRecording.instructor}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-2">
+                  <span className="text-slate-500 dark:text-slate-400">Course</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{activeRecording.course}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-2">
+                  <span className="text-slate-500 dark:text-slate-400">Duration</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{activeRecording.duration || "1h 30m"}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-2">
+                  <span className="text-slate-500 dark:text-slate-400">Recorded Date</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{activeRecording.date}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Views</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{activeRecording.views || 0} views</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Attached Resources */}
+            {activeRecording.resources && activeRecording.resources.length > 0 && (
+              <div className="card-surface p-5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                  Attached Study Materials ({activeRecording.resources.length})
+                </h3>
+                <div className="space-y-2">
+                  {activeRecording.resources.map((res, idx) => (
+                    <div
+                      key={res.id || idx}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 p-3"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{res.name}</p>
+                          {res.size && <p className="text-[10px] text-slate-400">{res.size}</p>}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toast.success(`Downloading ${res.name}`)}
+                        className="grid h-7 w-7 place-items-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white transition shrink-0 cursor-pointer"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Other Sessions in this Course */}
+            {otherRecordingsInCourse.length > 0 && (
+              <div className="card-surface p-5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                  More in this Course ({otherRecordingsInCourse.length})
+                </h3>
+                <div className="space-y-2.5">
+                  {otherRecordingsInCourse.map((rec) => (
+                    <div
+                      key={rec.id}
+                      onClick={() => handleOpenRecording(rec)}
+                      className="group flex items-center justify-between gap-2.5 p-2.5 rounded-xl border border-slate-100 dark:border-white/5 hover:border-indigo-200 dark:hover:border-white/20 hover:bg-slate-50 dark:hover:bg-white/5 transition cursor-pointer"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {rec.title}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{rec.duration || "1h 30m"} · {rec.date}</p>
+                      </div>
+                      <Play className="h-3.5 w-3.5 text-slate-400 group-hover:text-indigo-600 shrink-0 transition-colors" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="On-Demand Archive"
+        title="Class Recordings & Workshops"
+        description="Review recorded lectures, workshops, system design clinics, and code walkthroughs with chapter timestamps and downloadable study notes."
+      />
+
+      {/* Metric Strip */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <StatCard
+          icon={Film}
+          value={String(recordings.length).padStart(2, "0")}
+          label="Available recordings"
+          trend={recordings.length > 0 ? `${recordings.length} published` : "0 published"}
+          color="blue"
+        />
+        <StatCard
+          icon={Clock3}
+          value={recordings.length > 0 ? `${Math.round(recordings.length * 1.5)}h+` : "0h"}
+          label="Total duration"
+          trend="HD Streaming"
+          color="emerald"
+        />
+        <StatCard
+          icon={BookOpen}
+          value={String(coursesList.length > 1 ? coursesList.length - 1 : 0).padStart(2, "0")}
+          label="Covered courses"
+          trend="Curriculum aligned"
+          color="violet"
+        />
+        <StatCard
+          icon={FileText}
+          value="Curated"
+          label="Study resources"
+          trend="Included with classes"
+          color="amber"
+        />
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="card-surface p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {["All", "Live Class", "Workshop", "Doubt Clearing", "Mentor Session"].map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setSelectedType(type)}
+              className={cx(
+                "rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer",
+                selectedType === type
+                  ? "bg-[#3157e8] text-white shadow-md shadow-indigo-500/20"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-300"
+              )}
+            >
+              {type === "All" ? "All Types" : type}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3">
+          {coursesList.length > 2 && (
+            <CustomDropdown
+              value={selectedCourse}
+              onChange={setSelectedCourse}
+              options={coursesList.map((c) => ({ label: c === "All" ? "All Courses" : c, value: c }))}
+              placeholder="Filter Course"
+              icon={<BookOpen className="h-3.5 w-3.5 text-[#3157e8]" />}
+            />
+          )}
+
+          <div className="relative flex-1 md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9aa4bc]" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search recordings, topics..."
+              className="h-10 w-full rounded-xl border border-[#e5e8f0] bg-white pl-9 pr-3 text-xs font-semibold text-[#17223d] outline-none focus:border-[#3157e8] focus:ring-2 focus:ring-[#3157e8]/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Grid of Recordings */}
+      {loading ? (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <div key={n} className="card-surface h-72 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5" />
+          ))}
+        </div>
+      ) : filteredRecordings.length === 0 ? (
+        <div className="card-surface p-12 text-center">
+          <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-3xl bg-indigo-50 dark:bg-indigo-950/50 text-[#3157e8] dark:text-indigo-400">
+            <Film className="h-8 w-8" />
+          </div>
+          <h3 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+            {recordings.length === 0 ? "No class recordings uploaded yet" : "No recordings match your filter"}
+          </h3>
+          <p className="mt-1 text-xs text-[#7c87a4] max-w-md mx-auto">
+            {recordings.length === 0
+              ? "When instructors upload lecture recordings, doubt clearing clinics, and workshops via the admin panel, they will appear here automatically."
+              : "Try adjusting your search keywords or switching course/type filters."}
+          </p>
+          {recordings.length === 0 ? (
+            <div className="mt-6 flex justify-center gap-3">
+              <Link href={getSecureHref("/live-session")} className="button-primary">
+                <Video className="h-4 w-4" /> Check live schedule
+              </Link>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCourse("All");
+                setSelectedType("All");
+                setQuery("");
+              }}
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 px-4 py-2 text-xs font-bold text-[#3157e8] dark:text-indigo-300 transition"
+            >
+              Reset filters
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredRecordings.map((rec) => (
+            <div
+              key={rec.id}
+              onClick={() => handleOpenRecording(rec)}
+              className="card-surface group flex flex-col justify-between overflow-hidden transition-all hover:border-indigo-300 dark:hover:border-indigo-500/40 hover:shadow-lg cursor-pointer"
+            >
+              <div>
+                <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/20 backdrop-blur-md text-white shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:bg-[#3157e8]">
+                      <Play className="h-6 w-6 fill-current ml-0.5" />
+                    </span>
+                  </div>
+                  <span className="absolute top-3 left-3 rounded-lg bg-black/60 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-md">
+                    {rec.recordingType || "Live Lecture"}
+                  </span>
+                  <span className="absolute bottom-3 right-3 rounded-md bg-black/75 px-2 py-0.5 text-[11px] font-bold text-white">
+                    {rec.duration || "1h 30m"}
+                  </span>
+                </div>
+
+                <div className="p-5">
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#3157e8] dark:text-indigo-400">
+                    <span>{rec.course || "Platform Course"}</span>
+                    {rec.topic && <span>· {rec.topic}</span>}
+                  </div>
+                  <h3 className="mt-1.5 font-display text-base font-bold text-[#17223d] dark:text-white line-clamp-2 group-hover:text-[#3157e8] transition-colors">
+                    {rec.title}
+                  </h3>
+                  <p className="mt-2 text-xs text-[#7c87a4] line-clamp-2">
+                    {rec.description || "Interactive session recording with full explanations, code snippets, and review."}
+                  </p>
+
+                  <div className="mt-4 flex items-center justify-between border-t border-[#edf0f6] pt-3 text-[11px] text-[#9aa4bc] dark:border-white/10">
+                    <span>By {rec.instructor}</span>
+                    <span>{rec.date}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-5 pb-5 pt-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenRecording(rec);
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#eaf0ff] hover:bg-[#dfe8ff] dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 py-2.5 text-xs font-bold text-[#3157e8] dark:text-indigo-300 transition"
+                >
+                  <Play className="h-3.5 w-3.5 fill-current" /> Watch recording
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
     </div>
   );
 }
@@ -5031,11 +5531,13 @@ export default function Home({
   courseId = "",
   problemSlug = "",
   sessionId = "",
+  recordingId = "",
 }: {
   page?: string;
   courseId?: string;
   problemSlug?: string;
   sessionId?: string;
+  recordingId?: string;
 }) {
   useAuth();
   const { problems: liveProblems } = useLiveProblems();
@@ -5067,6 +5569,7 @@ export default function Home({
       case "my-courses": return <MyCoursesPage />;
       case "learn": return <PlayerPage />;
       case "live-session": return <LiveSessionPage initialSessionId={sessionId} />;
+      case "recordings": return <RecordingsPage initialRecordingId={recordingId} />;
       case "practice": return (
         <PracticePage
           onSelectProblem={(slug) => {
@@ -5086,7 +5589,7 @@ export default function Home({
       case "notes": return <NotesPage />;
       default: return <Dashboard />;
     }
-  }, [courseId, page, sessionId]);
+  }, [courseId, page, sessionId, recordingId]);
 
   // Full-page LeetCode-style problem arena view (outside AppShell, exactly like admin panel)
   if (page === "practice" && activeProblem) {
