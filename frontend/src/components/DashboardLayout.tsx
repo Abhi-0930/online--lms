@@ -46,7 +46,6 @@ const menuItems = [
   { icon: GraduationCap, label: "My Learning", path: "/my-courses" },
   { icon: Code2, label: "Coding Practice", path: "/practice" },
   { icon: LineChart, label: "Performance", path: "/progress" },
-  { icon: Users, label: "Community", path: "/community" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
