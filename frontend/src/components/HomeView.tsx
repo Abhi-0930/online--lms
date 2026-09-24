@@ -114,7 +114,6 @@ const utilityItems: NavItem[] = [
   { label: "Live Sessions", href: "/live-session", icon: Video },
   { label: "Announcements", href: "/announcements", icon: Bell },
   { label: "Progress", href: "/progress", icon: LineChart },
-  { label: "Community", href: "/community", icon: Users },
 ];
 
 
@@ -3235,11 +3234,11 @@ function ProgressPage() {
   const hardSolved = liveProblems.filter((p) => p.solved && p.difficulty?.toLowerCase() === "hard").length;
   const totalSolved = easySolved + mediumSolved + hardSolved;
 
-  const { bars, totalMinutes, growthPct } = useMemo(
+  const { bars, totalMinutes, totalSeconds, growthPct } = useMemo(
     () => getActivityBars(timeframe),
     [getActivityBars, timeframe]
   );
-  const totalTimeFormatted = formatMinutes(totalMinutes);
+  const totalTimeFormatted = formatMinutes(totalMinutes, totalSeconds % 60);
 
   const { streak, weekDaysStatus, isTodayActive } = useMemo(
     () => getStreakData(),
@@ -3398,9 +3397,11 @@ Keep up the consistent momentum!
             </p>
             <p className="mt-1 text-sm font-semibold">day learning streak</p>
             <p className="mt-3 max-w-[210px] text-xs leading-5 text-white/60">
-              {isTodayActive
-                ? "You've studied today! Your learning streak is active."
-                : "Complete a lesson or solve a problem today to extend your streak."}
+              {streak === 0
+                ? "Start your daily learning streak by exploring a course or solving a problem today!"
+                : streak === 1
+                ? "You're on Day 1 of your streak! Return tomorrow to keep the momentum going."
+                : `You've built a ${streak}-day active learning streak! Keep up the momentum.`}
             </p>
           </div>
 
@@ -3862,178 +3863,7 @@ function AnnouncementsPage() {
 
 function Reminder({ icon: Icon, title, meta, color }: { icon: LucideIcon; title: string; meta: string; color: "amber" | "blue" | "violet" }) { const colors = { amber: "bg-[#fff4db] text-[#d68c20]", blue: "bg-[#eaf0ff] text-[#3157e8]", violet: "bg-[#f0eaff] text-[#7f5af0]" }; return <div className="flex items-center gap-3"><span className={cx("flex h-8 w-8 items-center justify-center rounded-lg", colors[color])}><Icon className="h-4 w-4" /></span><div><p className="text-xs font-bold text-[#17223d] dark:text-white">{title}</p><p className="mt-1 text-[10px] text-[#9aa4bc]">{meta}</p></div></div>; }
 
-function CommunityPage() {
-  const [topicFilter, setTopicFilter] = useState("All topics");
-  const [query, setQuery] = useState("");
-  const [liked, setLiked] = useState<string[]>([]);
-  const submissions = [
-    {
-      name: "Nisha Verma",
-      initials: "NV",
-      problem: "Merge Intervals",
-      topic: "Arrays & Intervals",
-      language: "Python",
-      time: "18 min ago",
-      likes: 24,
-      code: "intervals.sort(key=lambda x: x[0])",
-    },
-    {
-      name: "Kabir Rao",
-      initials: "KR",
-      problem: "Valid Parentheses",
-      topic: "Stack & Queue",
-      language: "JavaScript",
-      time: "2 hours ago",
-      likes: 18,
-      code: "const stack = []; for (const char of s)",
-    },
-    {
-      name: "Ishita Sen",
-      initials: "IS",
-      problem: "Two Sum",
-      topic: "Arrays & Hashing",
-      language: "Java",
-      time: "Yesterday",
-      likes: 31,
-      code: "Map<Integer, Integer> seen = new HashMap<>();",
-    },
-    {
-      name: "Rohan V.",
-      initials: "RV",
-      problem: "Binary Tree Right Side View",
-      topic: "Trees & Graphs",
-      language: "C++",
-      time: "3 days ago",
-      likes: 42,
-      code: "vector<int> rightSideView(TreeNode* root) { ... }",
-    },
-  ];
 
-  const filteredSubmissions = submissions.filter((item) => {
-    const matchesTopic =
-      topicFilter === "All topics" ||
-      item.topic.toLowerCase().includes(topicFilter.toLowerCase()) ||
-      topicFilter.toLowerCase().includes(item.topic.toLowerCase());
-    const matchesQuery =
-      !query ||
-      item.problem.toLowerCase().includes(query.toLowerCase()) ||
-      item.name.toLowerCase().includes(query.toLowerCase());
-    return matchesTopic && matchesQuery;
-  });
-
-  return (
-    <>
-      <PageHeader
-        eyebrow="Learn together"
-        title="Community solutions"
-        description="See how other learners think, explain, and improve their approach."
-        action={
-          <button onClick={() => toast.info("Use Practice to publish a solution")} className="button-primary">
-            <Plus className="h-4 w-4" /> Share solution
-          </button>
-        }
-      />
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa4bc]" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search problem or learner"
-            className="h-11 w-full rounded-xl border border-[#e5e8f0] bg-white pl-9 pr-3 text-sm outline-none focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
-          />
-        </div>
-        <CustomDropdown
-          value={topicFilter}
-          onChange={setTopicFilter}
-          options={[
-            "All topics",
-            "Arrays & Intervals",
-            "Stack & Queue",
-            "Arrays & Hashing",
-            "Trees & Graphs",
-            "Dynamic Programming",
-          ]}
-          icon={<Code2 className="h-4 w-4 text-[#9aa4bc]" />}
-        />
-      </div>
-      <div className="space-y-4">
-        {filteredSubmissions.map((item) => (
-          <article key={item.name} className="card-surface p-5 sm:p-6">
-            <div className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eaf0ff] text-xs font-bold text-[#3157e8]">
-                {item.initials}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-bold text-[#17223d] dark:text-white">{item.name}</span>
-                  <span className="text-xs text-[#9aa4bc]">shared a solution</span>
-                  <span className="text-[10px] text-[#b0b8c8]">· {item.time}</span>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <h2 className="font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">
-                    {item.problem}
-                  </h2>
-                  <span className="rounded-md bg-[#f0eaff] px-2 py-1 text-[10px] font-bold text-[#7f5af0]">
-                    {item.language}
-                  </span>
-                </div>
-                <div className="mt-4 rounded-xl bg-[#17223d] p-4 font-mono text-xs leading-6 text-white/75">
-                  <p>
-                    <span className="text-[#ffca63]">// clean approach</span>
-                  </p>
-                  <p>{item.code}</p>
-                  <p>
-                    <span className="text-[#7ed8ac]">return</span> result
-                  </p>
-                </div>
-                <div className="mt-4 flex items-center gap-5">
-                  <button
-                    onClick={() =>
-                      setLiked(
-                        liked.includes(item.name)
-                          ? liked.filter((n) => n !== item.name)
-                          : [...liked, item.name]
-                      )
-                    }
-                    className={cx(
-                      "flex items-center gap-1.5 text-xs font-bold",
-                      liked.includes(item.name) ? "text-[#3157e8]" : "text-[#9aa4bc]"
-                    )}
-                  >
-                    <ThumbsUp
-                      className={cx("h-4 w-4", liked.includes(item.name) && "fill-current")}
-                    />{" "}
-                    {item.likes + (liked.includes(item.name) ? 1 : 0)}
-                  </button>
-                  <button
-                    onClick={() => toast.info("Comment thread opened")}
-                    className="flex items-center gap-1.5 text-xs font-bold text-[#9aa4bc]"
-                  >
-                    <MessageCircle className="h-4 w-4" /> Discuss
-                  </button>
-                  <button
-                    onClick={() => toast.success("Code copied")}
-                    className="ml-auto flex items-center gap-1.5 text-xs font-bold text-[#9aa4bc]"
-                  >
-                    <Copy className="h-4 w-4" /> Copy code
-                  </button>
-                </div>
-              </div>
-            </div>
-          </article>
-        ))}
-        {filteredSubmissions.length === 0 && (
-          <div className="card-surface p-10 text-center">
-            <Search className="mx-auto h-8 w-8 text-[#c4cada]" />
-            <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No solutions found</p>
-            <p className="mt-1 text-xs text-[#9aa4bc]">Try another filter or search term.</p>
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
 
 function NotificationsPage() {
   const [read, setRead] = useState<string[]>([]);
@@ -4630,13 +4460,13 @@ function AssignmentsPage() {
                 <Headphones className="h-5 w-5 text-[#3157e8]" />
                 <p className="mt-4 text-sm font-bold text-[#17223d] dark:text-white">Have questions or stuck?</p>
                 <p className="mt-1.5 text-xs leading-relaxed text-[#5f6c8c] dark:text-white/70">
-                  Ask your peers and instructors in the Community channels or attend live clinics.
+                  Ask your instructors in live doubt clearing sessions or check announcements.
                 </p>
                 <Link
-                  href={getSecureHref("/community")}
+                  href={getSecureHref("/live-session")}
                   className="mt-3.5 inline-flex items-center gap-1 text-xs font-bold text-[#3157e8]"
                 >
-                  Open community discussion <ArrowRight className="h-3.5 w-3.5" />
+                  Join Live Sessions <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
             </aside>
@@ -4991,9 +4821,9 @@ function ProfilePage() {
                 }
               />
               <PreferenceRow
-                icon={MessageCircle}
-                title="Community updates"
-                description="Replies, likes, and cohort conversations"
+                icon={Video}
+                title="Live session alerts"
+                description="Session start reminders and schedule updates"
                 control={
                   <span className="h-5 w-9 rounded-full bg-[#3157e8] p-1">
                     <span className="ml-4 block h-3 w-3 rounded-full bg-white" />
@@ -5069,7 +4899,6 @@ export default function Home({
       );
       case "progress": return <ProgressPage />;
       case "announcements": return <AnnouncementsPage />;
-      case "community": return <CommunityPage />;
       case "notifications": return <NotificationsPage />;
       case "assignments": return <AssignmentsPage />;
       case "profile": return <ProfilePage />;
