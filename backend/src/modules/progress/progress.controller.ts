@@ -45,4 +45,26 @@ export default async function progressController(fastify: FastifyInstance) {
     const user = request.user as any;
     return progressService.getUserEnrollments(user.id);
   });
+
+  // Get user activity summary
+  fastify.get('/progress/activity', {
+    onRequest: [fastify.authenticate],
+  }, async (request) => {
+    const user = request.user as any;
+    return progressService.getActivitySummary(user.id);
+  });
+
+  // Log user activity
+  fastify.post('/progress/activity', {
+    onRequest: [fastify.authenticate],
+  }, async (request, reply) => {
+    const user = request.user as any;
+    const body = request.body as any;
+    const log = await progressService.logUserActivity(
+      user.id,
+      body.action || 'STUDY_SESSION',
+      body.metadata
+    );
+    return reply.status(201).send(log);
+  });
 }
