@@ -206,6 +206,29 @@ export function useLiveProblems() {
       return updated;
     });
 
+    try {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
+      const todayStr = `${year}-${month}-${day}`;
+      const rawActivity = localStorage.getItem("lms_user_activity_history");
+      const actMap = rawActivity ? JSON.parse(rawActivity) : {};
+      const existing = actMap[todayStr] || {
+        date: todayStr,
+        activeMinutes: 0,
+        problemsSolved: 0,
+        lessonsCompleted: 0,
+        assignmentsSubmitted: 0,
+      };
+      actMap[todayStr] = {
+        ...existing,
+        activeMinutes: existing.activeMinutes + 15,
+        problemsSolved: existing.problemsSolved + 1,
+      };
+      localStorage.setItem("lms_user_activity_history", JSON.stringify(actMap));
+    } catch {}
+
     setProblems((prev) =>
       prev.map((p) =>
         String(p.id) === idOrSlug || p.slug === idOrSlug
