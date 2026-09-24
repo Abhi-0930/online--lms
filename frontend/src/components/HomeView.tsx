@@ -12,8 +12,12 @@ import { useEnrollments } from "@/hooks/useEnrollments";
 import { useLiveCourses, LiveCourseItem } from "@/hooks/useLiveCourses";
 import { useAssignments, LiveAssignmentItem } from "@/hooks/useAssignments";
 import { useLiveProblems, PublicProblem } from "@/hooks/useLiveProblems";
+import { useLiveSessions, LiveSessionItem } from "@/hooks/useLiveSessions";
+import { useAnnouncements, AnnouncementItem } from "@/hooks/useAnnouncements";
+import { useUserActivity } from "@/hooks/useUserActivity";
 import StudentProblemArena from "@/components/StudentProblemArena";
 import { CompanyLogo } from "@/components/CompanyLogo";
+
 
 function getSecureHref(path: string, params?: Record<string, any>) {
   if (!path || path === "#" || path.startsWith("http")) return path;
@@ -447,6 +451,8 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
   const { courses } = useLiveCourses();
   const { enrollments } = useEnrollments();
   const { assignments } = useAssignments();
+  const { getStreakData } = useUserActivity();
+  const { streak } = getStreakData();
   const displayName = resolveDisplayName(user);
   if (!open) return null;
 
@@ -458,7 +464,40 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
     { label: "Assignments", href: "/assignments", icon: ClipboardCheck, badge: assignments.length > 0 ? String(assignments.length) : undefined },
   ];
 
-  return <div className="fixed inset-0 z-[60] lg:hidden"><button aria-label="Close menu" onClick={onClose} className="absolute inset-0 bg-[#17223d]/40 backdrop-blur-sm" /><aside className="relative flex h-full w-[82%] max-w-[310px] flex-col bg-[#fbfcff] shadow-2xl dark:bg-[#10172b]"><div className="flex h-[78px] items-center justify-between border-b border-[#e5e8f0] px-6 dark:border-white/10"><Logo /><button onClick={onClose} className="rounded-lg p-2 text-[#7c87a4] hover:bg-[#eef2ff]"><X className="h-5 w-5" /></button></div><div className="flex-1 px-4 py-6"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>{[...dynamicNavItems, ...utilityItems].map((item) => <div key={item.href} onClick={onClose}><SidebarLink item={item} active={item.href === "/" ? location === "/" : location.startsWith(item.href)} collapsed={false} /></div>)}</div><div className="border-t border-[#e5e8f0] p-5 dark:border-white/10"><div className="flex items-center gap-3"><Avatar name={displayName} /><div><p suppressHydrationWarning className="text-sm font-bold text-[#17223d] dark:text-white truncate max-w-[180px]">{displayName}</p><p className="text-xs text-[#9aa4bc]">7 day learning streak</p></div></div></div></aside></div>;
+  return (
+    <div className="fixed inset-0 z-[60] lg:hidden">
+      <button aria-label="Close menu" onClick={onClose} className="absolute inset-0 bg-[#17223d]/40 backdrop-blur-sm" />
+      <aside className="relative flex h-full w-[82%] max-w-[310px] flex-col bg-[#fbfcff] shadow-2xl dark:bg-[#10172b]">
+        <div className="flex h-[78px] items-center justify-between border-b border-[#e5e8f0] px-6 dark:border-white/10">
+          <Logo />
+          <button onClick={onClose} className="rounded-lg p-2 text-[#7c87a4] hover:bg-[#eef2ff]">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex-1 px-4 py-6">
+          <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>
+          {[...dynamicNavItems, ...utilityItems].map((item) => (
+            <div key={item.href} onClick={onClose}>
+              <SidebarLink item={item} active={item.href === "/" ? location === "/" : location.startsWith(item.href)} collapsed={false} />
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-[#e5e8f0] p-5 dark:border-white/10">
+          <div className="flex items-center gap-3">
+            <Avatar name={displayName} />
+            <div>
+              <p suppressHydrationWarning className="text-sm font-bold text-[#17223d] dark:text-white truncate max-w-[180px]">
+                {displayName}
+              </p>
+              <p className="text-xs text-[#9aa4bc]" suppressHydrationWarning>
+                {streak} day learning streak
+              </p>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
@@ -736,75 +775,17 @@ function parseSessionDate(dStr?: string) {
 }
 
 function UpcomingSessions() {
-  const [sessions, setSessions] = useState<any[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = localStorage.getItem("lms_admin_live_sessions");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchLiveSessions = async () => {
-      try {
-        const res = await fetch(`http://localhost:4000/api/v1/live-sessions?_t=${Date.now()}`, {
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          const items = Array.isArray(json) ? json : json?.data || [];
-          if (Array.isArray(items) && isMounted) {
-            setSessions(items);
-            try {
-              localStorage.setItem("lms_admin_live_sessions", JSON.stringify(items));
-            } catch {}
-            return;
-          }
-        }
-      } catch {}
-      if (isMounted) {
-        try {
-          const saved = localStorage.getItem("lms_admin_live_sessions");
-          if (saved) setSessions(JSON.parse(saved));
-        } catch {}
-      }
-    };
-
-    fetchLiveSessions();
-
-    const handleSync = () => {
-      fetchLiveSessions();
-    };
-
-    window.addEventListener("storage", handleSync);
-    window.addEventListener("lms_live_sessions_updated", handleSync);
-    const interval = setInterval(fetchLiveSessions, 5000);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener("storage", handleSync);
-      window.removeEventListener("lms_live_sessions_updated", handleSync);
-      clearInterval(interval);
-    };
-  }, []);
-
-  const upcomingList = sessions.filter(
-    (s) => s.status !== "Completed" && s.status !== "Draft"
-  );
+  const { upcomingSessions } = useLiveSessions();
 
   return (
     <section>
       <SectionTitle
         title="Upcoming sessions"
-        link={upcomingList.length > 0 ? "View all" : undefined}
+        link={upcomingSessions.length > 0 ? "View all" : undefined}
         href={getSecureHref("/live-session")}
       />
       <div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10">
-        {upcomingList.length === 0 ? (
+        {upcomingSessions.length === 0 ? (
           <div className="py-7 text-center">
             <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
               <Video className="h-5 w-5" />
@@ -813,7 +794,7 @@ function UpcomingSessions() {
             <p className="mt-0.5 text-[11px] text-[#9aa4bc]">New live classes and workshops will appear here.</p>
           </div>
         ) : (
-          upcomingList.slice(0, 4).map((session, idx) => {
+          upcomingSessions.slice(0, 4).map((session, idx) => {
             const tones: Array<"blue" | "violet" | "amber"> = ["blue", "violet", "amber"];
             const tone = tones[idx % tones.length];
             const { dayStr, monthStr } = parseSessionDate(session.date);
@@ -846,6 +827,7 @@ function UpcomingSessions() {
     </section>
   );
 }
+
 
 function SessionRow({
   day,
@@ -907,66 +889,11 @@ function SessionRow({
 }
 
 function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
-  const [sessions, setSessions] = useState<any[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = localStorage.getItem("lms_admin_live_sessions");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
+  const { sessions, refreshSessions } = useLiveSessions();
   const [selectedId, setSelectedId] = useState<string>(initialSessionId || "");
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPasscode, setCopiedPasscode] = useState(false);
   const { problems: liveProblems } = useLiveProblems();
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchLiveSessions = async () => {
-      try {
-        const res = await fetch(`http://localhost:4000/api/v1/live-sessions?_t=${Date.now()}`, {
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          const items = Array.isArray(json) ? json : json?.data || [];
-          if (Array.isArray(items) && isMounted) {
-            setSessions(items);
-            try {
-              localStorage.setItem("lms_admin_live_sessions", JSON.stringify(items));
-            } catch {}
-          }
-        }
-      } catch {
-        if (isMounted) {
-          try {
-            const saved = localStorage.getItem("lms_admin_live_sessions");
-            if (saved) setSessions(JSON.parse(saved));
-          } catch {}
-        }
-      }
-    };
-
-    fetchLiveSessions();
-
-    const handleSync = () => {
-      fetchLiveSessions();
-    };
-
-    window.addEventListener("storage", handleSync);
-    window.addEventListener("lms_live_sessions_updated", handleSync);
-    const interval = setInterval(fetchLiveSessions, 5000);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener("storage", handleSync);
-      window.removeEventListener("lms_live_sessions_updated", handleSync);
-      clearInterval(interval);
-    };
-  }, []);
 
   useEffect(() => {
     if (initialSessionId) {
@@ -987,12 +914,26 @@ function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
     return sessions[0];
   }, [sessions, selectedId]);
 
+  // If selectedId was deleted or no longer exists in sessions, auto-update selectedId to currentSession
+  useEffect(() => {
+    if (sessions.length > 0 && selectedId) {
+      const exists = sessions.some((s) => s.id === selectedId);
+      if (!exists && currentSession?.id) {
+        setSelectedId(currentSession.id);
+        if (typeof window !== "undefined") {
+          window.history.replaceState(null, "", createSecureUrl("/live-session", { id: currentSession.id }));
+        }
+      }
+    }
+  }, [sessions, selectedId, currentSession?.id]);
+
   const handleSelectSession = (sess: any) => {
     setSelectedId(sess.id);
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", createSecureUrl("/live-session", { id: sess.id }));
     }
   };
+
 
   const handleCopyLink = (link?: string) => {
     const targetLink = link || currentSession?.meetingLink;
@@ -1243,18 +1184,31 @@ function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
           </div>
         </div>
 
-        <div className="card-surface p-4 flex items-center gap-3.5">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#fff4db] text-[#d68c20] dark:bg-amber-950/50 dark:text-amber-300">
-            <Sparkles className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#9aa4bc]">Session Materials</p>
-            <p className="text-sm font-bold text-[#17223d] dark:text-white truncate">
-              {resources.length} {resources.length === 1 ? "Resource" : "Resources"}
-            </p>
-            <p className="text-[10px] text-[#9aa4bc]">Arena & Notes Attached</p>
+        {resources.length > 0 ? (
+          <div className="card-surface p-4 flex items-center gap-3.5">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#fff4db] text-[#d68c20] dark:bg-amber-950/50 dark:text-amber-300">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#9aa4bc]">Session Materials</p>
+              <p className="text-sm font-bold text-[#17223d] dark:text-white truncate">
+                {resources.length} {resources.length === 1 ? "Resource" : "Resources"}
+              </p>
+              <p className="text-[10px] text-[#9aa4bc]">Arena & Notes Attached</p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="card-surface p-4 flex items-center gap-3.5">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#fff4db] text-[#d68c20] dark:bg-amber-950/50 dark:text-amber-300">
+              <Users className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#9aa4bc]">Target Audience</p>
+              <p className="text-sm font-bold text-[#17223d] dark:text-white truncate">{targetCohort}</p>
+              <p className="text-[10px] text-[#9aa4bc]">Enrolled Cohort</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Grid: Left Details vs Right Sidebar */}
@@ -1323,33 +1277,25 @@ function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
           </section>
 
           {/* Attached Platform Resources & Practice Arena */}
-          <section className="card-surface p-6 sm:p-7">
-            <div className="flex items-center justify-between border-b border-[#edf0f6] pb-4 dark:border-white/10">
-              <div className="flex items-center gap-2.5">
-                <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#eaf0ff] text-[#3157e8] dark:bg-indigo-950/50 dark:text-indigo-300">
-                  <Code2 className="h-5 w-5" />
+          {resources.length > 0 && (
+            <section className="card-surface p-6 sm:p-7">
+              <div className="flex items-center justify-between border-b border-[#edf0f6] pb-4 dark:border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#eaf0ff] text-[#3157e8] dark:bg-indigo-950/50 dark:text-indigo-300">
+                    <Code2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                      Attached Practice & Study Materials
+                    </h2>
+                    <p className="text-xs text-[#9aa4bc]">Hands-on problems and reference documents configured for this class</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
-                    Attached Practice & Study Materials
-                  </h2>
-                  <p className="text-xs text-[#9aa4bc]">Hands-on problems and reference documents configured for this class</p>
-                </div>
+                <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                  {resources.length} {resources.length === 1 ? "Item" : "Items"}
+                </span>
               </div>
-              <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                {resources.length} Items
-              </span>
-            </div>
 
-            {resources.length === 0 ? (
-              <div className="py-8 text-center">
-                <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-white/5">
-                  <FolderOpen className="h-5 w-5" />
-                </div>
-                <p className="text-xs font-semibold text-[#17223d] dark:text-white">No resources attached yet</p>
-                <p className="mt-0.5 text-[11px] text-[#9aa4bc]">The instructor will attach code problems or PDFs during or after class.</p>
-              </div>
-            ) : (
               <div className="mt-5 space-y-3">
                 {resources.map((res: any, idx: number) => {
                   const isProblem = res.type?.toLowerCase().includes("problem") || res.category === "problem";
@@ -1434,8 +1380,8 @@ function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
                   );
                 })}
               </div>
-            )}
-          </section>
+            </section>
+          )}
         </div>
 
         {/* Right sidebar */}
@@ -3275,6 +3221,9 @@ function ProgressPage() {
   const { courses } = useLiveCourses();
   const { enrollments } = useEnrollments();
   const { problems: liveProblems } = useLiveProblems();
+  const { assignments, submissions } = useAssignments();
+  const { getActivityBars, getStreakData, formatMinutes } = useUserActivity();
+  const { user } = useAuth();
 
   const enrolledCourses = courses.filter((c) =>
     enrollments.some((e) => e.courseId === c.id || e.course?.id === c.id || e.course?.slug === c.slug)
@@ -3284,13 +3233,82 @@ function ProgressPage() {
   const easySolved = liveProblems.filter((p) => p.solved && p.difficulty?.toLowerCase() === "easy").length;
   const mediumSolved = liveProblems.filter((p) => p.solved && p.difficulty?.toLowerCase() === "medium").length;
   const hardSolved = liveProblems.filter((p) => p.solved && p.difficulty?.toLowerCase() === "hard").length;
+  const totalSolved = easySolved + mediumSolved + hardSolved;
 
-  const bars =
-    timeframe === "Last 7 days"
-      ? [52, 84, 72, 92, 60, 76, 96]
-      : timeframe === "Last 30 days"
-      ? [35, 44, 56, 68, 52, 65, 84, 72, 92, 60, 76, 48, 82, 70, 88, 62, 96]
-      : [44, 68, 52, 84, 72, 92, 60, 76, 48, 82, 70, 88, 62, 96];
+  const { bars, totalMinutes, growthPct } = useMemo(
+    () => getActivityBars(timeframe),
+    [getActivityBars, timeframe]
+  );
+  const totalTimeFormatted = formatMinutes(totalMinutes);
+
+  const { streak, weekDaysStatus, isTodayActive } = useMemo(
+    () => getStreakData(),
+    [getStreakData]
+  );
+
+  // Real Assignment health calculations
+  const totalAssignments = assignments.length;
+  const submittedCount = submissions.length;
+  const reviewedCount = submissions.filter((s) => s.status === "GRADED" || (typeof s.score === "number" && s.score !== null)).length;
+  const pendingCount = Math.max(0, totalAssignments - submittedCount);
+
+  const submittedPct = totalAssignments > 0 ? Math.min(100, Math.round((submittedCount / totalAssignments) * 100)) : 0;
+  const pendingPct = totalAssignments > 0 ? Math.min(100 - submittedPct, Math.round((pendingCount / totalAssignments) * 100)) : 0;
+  const reviewedPct = totalAssignments > 0 ? Math.min(100, Math.round((reviewedCount / totalAssignments) * 100)) : 0;
+
+  // Real Export Report function
+  const handleExportReport = () => {
+    const studentName = user?.fullName || user?.name || "Student";
+    const reportDate = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const content = `=====================================================
+STUDENT LEARNING PROGRESS REPORT
+Generated on: ${reportDate}
+Student Name: ${studentName}
+Email: ${user?.email || "student@lms.local"}
+=====================================================
+
+1. TIME & MOMENTUM (${timeframe.toUpperCase()})
+- Total Active Study Time: ${totalTimeFormatted} (${growthPct} vs prior period)
+- Current Daily Streak: ${streak} day(s)
+- Today Active: ${isTodayActive ? "Yes" : "No"}
+
+2. PRACTICE ARENA CODING STATS
+- Easy Problems Solved: ${easySolved}
+- Medium Problems Solved: ${mediumSolved}
+- Hard Problems Solved: ${hardSolved}
+- Total Solved: ${totalSolved}
+
+3. COURSE CURRICULUM PROGRESS
+${targetCourses.length > 0
+  ? targetCourses.map((c) => `- ${c.title}: ${c.progress || 0}% Complete`).join("\n")
+  : "- No active courses enrolled"}
+
+4. ASSIGNMENT & ASSESSMENT HEALTH
+- Total Assignments: ${totalAssignments}
+- Submitted: ${submittedCount}
+- Pending: ${pendingCount}
+- Reviewed & Graded: ${reviewedCount}
+
+=====================================================
+Keep up the consistent momentum!
+=====================================================`;
+
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Progress_Report_${studentName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Progress report exported and downloaded!");
+  };
 
   return (
     <>
@@ -3299,18 +3317,22 @@ function ProgressPage() {
         title="Progress overview"
         description="See the habits behind your progress and the next small move to make."
         action={
-          <button onClick={() => toast.success("Progress report downloaded")} className="button-secondary">
+          <button onClick={handleExportReport} className="button-secondary cursor-pointer">
             <FileText className="h-4 w-4" /> Export report
           </button>
         }
       />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.65fr)]">
+        {/* Weekly Activity Live Card */}
         <section className="card-surface p-5 sm:p-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold text-[#9aa4bc]">Weekly activity</p>
               <p className="mt-1 font-display text-2xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white">
-                4h 20m <span className="text-xs font-semibold text-[#23a26d]">+18%</span>
+                {totalTimeFormatted}{" "}
+                <span className={cx("text-xs font-semibold", growthPct.startsWith("-") ? "text-rose-500" : "text-[#23a26d]")}>
+                  {growthPct}
+                </span>
               </p>
             </div>
             <CustomDropdown
@@ -3319,58 +3341,98 @@ function ProgressPage() {
               options={["Last 7 days", "Last 14 days", "Last 30 days", "This quarter"]}
             />
           </div>
-          <div className="mt-9 flex h-[180px] items-end gap-2 sm:gap-3">
-            {bars.map((height, index) => (
-              <div key={index} className="group flex flex-1 flex-col items-center gap-2">
+
+          <div className="mt-9 flex h-[185px] items-end gap-1.5 sm:gap-2.5">
+            {bars.map((bar, index) => (
+              <div key={bar.key || index} className="group relative flex flex-1 flex-col items-center gap-2 h-full justify-end">
+                {/* Floating tooltip */}
+                <div className="pointer-events-none absolute -top-14 left-1/2 -translate-x-1/2 z-20 hidden group-hover:flex flex-col items-center rounded-xl bg-[#17223d] px-2.5 py-1.5 text-center shadow-xl border border-white/10 whitespace-nowrap">
+                  <span className="text-[10px] font-bold text-white">{bar.formattedTime}</span>
+                  <span className="text-[8px] text-[#9aa4bc]">{bar.label}</span>
+                  {(bar.problemsSolved > 0 || bar.lessonsCompleted > 0) && (
+                    <span className="text-[8px] text-emerald-400 font-semibold">
+                      {bar.problemsSolved > 0 ? `${bar.problemsSolved} prob ` : ""}{bar.lessonsCompleted > 0 ? `${bar.lessonsCompleted} les` : ""}
+                    </span>
+                  )}
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#17223d]" />
+                </div>
+
                 <div className="relative flex h-full w-full items-end">
                   <span
                     className={cx(
-                      "block w-full rounded-t-lg transition hover:opacity-80",
-                      index === bars.length - 1
-                        ? "bg-[#3157e8]"
-                        : "bg-[#dce6ff] dark:bg-[#3157e8]/30"
+                      "block w-full rounded-t-lg transition-all duration-300 hover:opacity-90",
+                      bar.isToday
+                        ? "bg-[#3157e8] shadow-sm shadow-indigo-500/30"
+                        : bar.minutes > 0
+                        ? "bg-[#6384ff] dark:bg-[#3157e8]/60 hover:bg-[#3157e8]"
+                        : "bg-[#eaf0ff] dark:bg-white/5"
                     )}
-                    style={{ height: `${height}%` }}
+                    style={{ height: `${bar.heightPercent}%` }}
                   />
-                  <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 rounded bg-[#17223d] px-1.5 py-1 text-[9px] font-bold text-white opacity-0 transition group-hover:opacity-100">
-                    {Math.round(height / 9)}m
-                  </span>
                 </div>
-                <span className="text-[9px] text-[#aab3c5]">
-                  {index % 2 === 0 ? `S${index / 2 + 1}` : ""}
+                <span className={cx(
+                  "text-[9px] truncate max-w-full transition-colors",
+                  bar.isToday ? "font-bold text-[#3157e8] dark:text-indigo-400" : "text-[#aab3c5]"
+                )}>
+                  {bar.shortLabel}
                 </span>
               </div>
             ))}
           </div>
         </section>
-        <section className="relative overflow-hidden rounded-[22px] bg-[#17223d] p-6 text-white">
+
+        {/* Live Learning Streak Card */}
+        <section className="relative overflow-hidden rounded-[22px] bg-[#17223d] p-6 text-white flex flex-col justify-between">
           <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full border-[18px] border-[#3157e8]/30" />
-          <Flame className="relative h-6 w-6 text-[#ffca63]" />
-          <p className="relative mt-6 font-display text-4xl font-bold tracking-[-0.07em]">07</p>
-          <p className="relative mt-1 text-sm font-semibold">day learning streak</p>
-          <p className="relative mt-4 max-w-[190px] text-xs leading-5 text-white/55">
-            You’re two days away from your longest streak this month.
-          </p>
-          <div className="relative mt-6 flex gap-1.5">
-            {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => (
-              <div key={`${day}-${index}`} className="flex flex-1 flex-col items-center gap-2">
-                <span
-                  className={cx(
-                    "flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold",
-                    index < 6
-                      ? "bg-[#ffca63] text-[#17223d]"
-                      : "bg-white/15 text-white/50"
-                  )}
-                >
-                  {index < 6 ? <Check className="h-3.5 w-3.5" /> : "·"}
+          <div>
+            <div className="flex items-center gap-2">
+              <Flame className="h-6 w-6 text-[#ffca63]" />
+              {isTodayActive && (
+                <span className="rounded-full bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                  Active Today
                 </span>
-                <span className="text-[9px] text-white/40">{day}</span>
-              </div>
-            ))}
+              )}
+            </div>
+            <p className="mt-5 font-display text-4xl font-bold tracking-[-0.07em]">
+              {String(streak).padStart(2, "0")}
+            </p>
+            <p className="mt-1 text-sm font-semibold">day learning streak</p>
+            <p className="mt-3 max-w-[210px] text-xs leading-5 text-white/60">
+              {isTodayActive
+                ? "You've studied today! Your learning streak is active."
+                : "Complete a lesson or solve a problem today to extend your streak."}
+            </p>
+          </div>
+
+          <div className="mt-6">
+            <p className="text-[10px] uppercase font-bold tracking-wider text-white/40 mb-2">This Week</p>
+            <div className="flex gap-1.5">
+              {weekDaysStatus.map((day) => (
+                <div key={day.date} className="flex flex-1 flex-col items-center gap-1.5" title={`${day.dayName}: ${day.minutes}m active`}>
+                  <span
+                    className={cx(
+                      "flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold transition-transform hover:scale-110",
+                      day.isActive
+                        ? "bg-[#ffca63] text-[#17223d] shadow-sm shadow-amber-400/20"
+                        : day.isToday
+                        ? "bg-white/20 border border-[#ffca63] text-amber-300"
+                        : "bg-white/10 text-white/40"
+                    )}
+                  >
+                    {day.isActive ? <Check className="h-3.5 w-3.5 stroke-[3]" /> : "·"}
+                  </span>
+                  <span className={cx("text-[9px]", day.isToday ? "font-bold text-[#ffca63]" : "text-white/40")}>
+                    {day.dayLetter}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       </div>
+
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
+        {/* Course Progress Section */}
         <section>
           <SectionTitle title="Course progress" link="My courses" href="/my-courses" />
           <div className="card-surface px-5">
@@ -3413,6 +3475,8 @@ function ProgressPage() {
             )}
           </div>
         </section>
+
+        {/* Practice Statistics & Assignment Health Section */}
         <section>
           <SectionTitle title="Practice statistics" link="Practice" href="/practice" />
           <div className="card-surface grid grid-cols-3 divide-x divide-[#edf0f6] p-5 dark:divide-white/10">
@@ -3435,37 +3499,44 @@ function ProgressPage() {
               <p className="mt-2 text-[10px] font-bold text-[#9aa4bc]">Hard solved</p>
             </div>
           </div>
+
           <div className="mt-4 card-surface p-5">
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold text-[#7c87a4]">Assignment health</p>
-              <span className="text-xs font-bold text-[#23a26d]">On track</span>
+              <span className={cx(
+                "text-xs font-bold",
+                pendingCount === 0 && totalAssignments > 0 ? "text-[#23a26d]" : submittedCount > 0 ? "text-[#23a26d]" : "text-[#d68c20]"
+              )}>
+                {pendingCount === 0 && totalAssignments > 0 ? "All caught up" : submittedCount > 0 ? "On track" : "Pending start"}
+              </span>
             </div>
             <div className="mt-5 flex items-center gap-4">
               <div
-                className="relative h-20 w-20 rounded-full"
+                className="relative h-20 w-20 rounded-full shrink-0"
                 style={{
-                  background:
-                    "conic-gradient(#23a26d 0 62%, #ffca63 62% 80%, #eef1f6 80% 100%)",
+                  background: totalAssignments > 0
+                    ? `conic-gradient(#23a26d 0 ${submittedPct}%, #ffca63 ${submittedPct}% ${submittedPct + pendingPct}%, #eef1f6 ${submittedPct + pendingPct}% 100%)`
+                    : "conic-gradient(#23a26d 0 100%, #eef1f6 100% 100%)",
                 }}
               >
                 <div className="absolute inset-[8px] flex items-center justify-center rounded-full bg-white dark:bg-[#182036]">
-                  <span className="font-display text-lg font-bold text-[#17223d] dark:text-white">
-                    18
+                  <span className="font-display text-lg font-bold text-[#17223d] dark:text-white" suppressHydrationWarning>
+                    {submittedCount}
                   </span>
                 </div>
               </div>
               <div className="space-y-2 text-[10px] font-semibold text-[#7c87a4]">
                 <p>
                   <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#23a26d]" />
-                  Submitted <b className="text-[#17223d] dark:text-white">18</b>
+                  Submitted <b className="text-[#17223d] dark:text-white">{String(submittedCount).padStart(2, "0")}</b>
                 </p>
                 <p>
                   <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#ffca63]" />
-                  Pending <b className="text-[#17223d] dark:text-white">05</b>
+                  Pending <b className="text-[#17223d] dark:text-white">{String(pendingCount).padStart(2, "0")}</b>
                 </p>
                 <p>
                   <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#e1e5ed]" />
-                  Reviewed <b className="text-[#17223d] dark:text-white">11</b>
+                  Reviewed <b className="text-[#17223d] dark:text-white">{String(reviewedCount).padStart(2, "0")}</b>
                 </p>
               </div>
             </div>
@@ -3477,107 +3548,10 @@ function ProgressPage() {
 }
 
 function AnnouncementsPage() {
-  const [announcements, setAnnouncements] = useState<any[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = localStorage.getItem("lms_admin_announcements");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [liveSessions, setLiveSessions] = useState<any[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = localStorage.getItem("lms_admin_live_sessions");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
+  const { announcements } = useAnnouncements();
+  const { sessions: liveSessions, upcomingSessions } = useLiveSessions();
   const [activeFilter, setActiveFilter] = useState<"all" | "live" | "general">("all");
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchAnnouncements = async () => {
-      try {
-        const res = await fetch(`http://localhost:4000/api/v1/announcements?_t=${Date.now()}`, {
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          const items = Array.isArray(json) ? json : json?.data || [];
-          if (Array.isArray(items) && isMounted) {
-            setAnnouncements(items);
-            try {
-              localStorage.setItem("lms_admin_announcements", JSON.stringify(items));
-            } catch {}
-          }
-        }
-      } catch {
-        if (isMounted) {
-          try {
-            const saved = localStorage.getItem("lms_admin_announcements");
-            if (saved) setAnnouncements(JSON.parse(saved));
-          } catch {}
-        }
-      }
-    };
-
-    const fetchLiveSessions = async () => {
-      try {
-        const res = await fetch(`http://localhost:4000/api/v1/live-sessions?_t=${Date.now()}`, {
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          const items = Array.isArray(json) ? json : json?.data || [];
-          if (Array.isArray(items) && isMounted) {
-            setLiveSessions(items);
-            try {
-              localStorage.setItem("lms_admin_live_sessions", JSON.stringify(items));
-            } catch {}
-          }
-        }
-      } catch {
-        if (isMounted) {
-          try {
-            const saved = localStorage.getItem("lms_admin_live_sessions");
-            if (saved) setLiveSessions(JSON.parse(saved));
-          } catch {}
-        }
-      }
-    };
-
-    fetchAnnouncements();
-    fetchLiveSessions();
-
-    const handleSync = () => {
-      fetchAnnouncements();
-      fetchLiveSessions();
-    };
-
-    window.addEventListener("storage", handleSync);
-    window.addEventListener("lms_announcements_updated", handleSync);
-    window.addEventListener("lms_live_sessions_updated", handleSync);
-    const interval = setInterval(handleSync, 5000);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener("storage", handleSync);
-      window.removeEventListener("lms_announcements_updated", handleSync);
-      window.removeEventListener("lms_live_sessions_updated", handleSync);
-      clearInterval(interval);
-    };
-  }, []);
-
-  const upcomingSessions = liveSessions.filter(
-    (s) => s.status !== "Completed" && s.status !== "Draft"
-  );
 
   const filteredAnnouncements = announcements.filter((item) => {
     const isLive = item.category === "Live Class" || Boolean(item.meetingLink) || Boolean(item.sessionId);
