@@ -2291,25 +2291,39 @@ export class AdminService {
   // LIVE SESSIONS CRUD OPERATIONS
   // ==========================================
   async getAllLiveSessions() {
-    let dbSessions: any[] = [];
-    try {
-      if ((this.prisma as any).liveSession) {
-        dbSessions = await (this.prisma as any).liveSession.findMany({
-          orderBy: { createdAt: 'desc' },
-        });
-      }
-    } catch (err) {
-      console.warn('Live sessions DB fetch fallback:', err);
-    }
+    AdminService.fallbackLiveSessions = AdminService.loadLiveSessionsFromFile();
+    AdminService.fallbackAnnouncements = AdminService.loadAnnouncementsFromFile();
 
     const merged = new Map<string, any>();
+    // Primary source of truth is fallbackLiveSessions loaded directly from live_sessions.json
     for (const [id, s] of AdminService.fallbackLiveSessions.entries()) {
-      merged.set(String(id), s);
+      if (s && (s.id || id)) {
+        merged.set(String(s.id || id), s);
+      }
     }
-    for (const s of dbSessions) {
-      if (s && s.id) {
-        const existing = merged.get(String(s.id)) || {};
-        merged.set(String(s.id), { ...existing, ...s });
+
+    // Only fallback to DB if file had no sessions
+    if (merged.size === 0) {
+      try {
+        if ((this.prisma as any).liveSession) {
+          const dbSessions = await (this.prisma as any).liveSession.findMany({
+            orderBy: { createdAt: 'desc' },
+          });
+          for (const s of dbSessions) {
+            if (s && s.id) {
+              merged.set(String(s.id), s);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Live sessions DB fetch fallback:', err);
+      }
+    }
+
+    // Auto-sync announcements from all active scheduled live sessions
+    for (const s of merged.values()) {
+      if (s) {
+        AdminService.syncLiveSessionAnnouncement(s);
       }
     }
 
@@ -2319,6 +2333,7 @@ export class AdminService {
       return timeB - timeA;
     });
   }
+
 
   public static syncLiveSessionAnnouncement(session: any) {
     if (!session || !session.id) return;
@@ -2331,6 +2346,7 @@ export class AdminService {
       AdminService.fallbackAnnouncements.delete(annId);
       AdminService.fallbackAnnouncements.delete(`ann_sess_${rawId}`);
       AdminService.fallbackAnnouncements.delete(`ann_sess_sess_${cleanId}`);
+      AdminService.fallbackAnnouncements.delete(`ann_${cleanId}`);
       AdminService.saveAnnouncementsToFile();
       return;
     }
@@ -2478,27 +2494,40 @@ export class AdminService {
   async deleteLiveSession(id: string) {
     AdminService.fallbackLiveSessions = AdminService.loadLiveSessionsFromFile();
     AdminService.fallbackAnnouncements = AdminService.loadAnnouncementsFromFile();
+
+    const rawId = String(id);
+    const cleanId = rawId.replace(/^sess_/, '');
+
     try {
       if ((this.prisma as any).liveSession) {
-        await (this.prisma as any).liveSession.delete({
-          where: { id },
+        await (this.prisma as any).liveSession.deleteMany({
+          where: {
+            OR: [
+              { id: rawId },
+              { id: cleanId },
+              { id: `sess_${cleanId}` },
+            ],
+          },
         });
       }
     } catch (dbErr) {
       console.warn('Live session DB delete fallback:', dbErr);
     }
 
-    AdminService.fallbackLiveSessions.delete(String(id));
+    AdminService.fallbackLiveSessions.delete(rawId);
+    AdminService.fallbackLiveSessions.delete(`sess_${cleanId}`);
+    AdminService.fallbackLiveSessions.delete(cleanId);
     AdminService.saveLiveSessionsToFile();
 
-    const cleanId = String(id).replace(/^sess_/, '');
     AdminService.fallbackAnnouncements.delete(`ann_sess_${cleanId}`);
-    AdminService.fallbackAnnouncements.delete(`ann_sess_${id}`);
+    AdminService.fallbackAnnouncements.delete(`ann_sess_${rawId}`);
     AdminService.fallbackAnnouncements.delete(`ann_sess_sess_${cleanId}`);
+    AdminService.fallbackAnnouncements.delete(`ann_${cleanId}`);
     AdminService.saveAnnouncementsToFile();
 
     return { success: true, id };
   }
+
 
   // ==========================================
   // ANNOUNCEMENTS CRUD OPERATIONS
