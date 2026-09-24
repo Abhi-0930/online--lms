@@ -177,4 +177,65 @@ export class ProgressService {
 
     return enrollments;
   }
+
+  async logUserActivity(userId: string, action: string, metadata?: any) {
+    const log = await this.prisma.activityLog.create({
+      data: {
+        userId,
+        action,
+        metadata: metadata || {},
+      },
+    });
+    return log;
+  }
+
+  async getActivitySummary(userId: string) {
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    const [logs, lessonProgresses, enrollments, submissions] = await Promise.all([
+      this.prisma.activityLog.findMany({
+        where: {
+          userId,
+          createdAt: { gte: ninetyDaysAgo },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.lessonProgress.findMany({
+        where: { userId },
+        include: { lesson: { select: { title: true, durationSeconds: true } } },
+      }),
+      this.prisma.enrollment.findMany({
+        where: { userId },
+        include: { course: { select: { id: true, title: true, slug: true } } },
+      }),
+      this.prisma.assignmentSubmission.findMany({
+        where: { userId },
+      }),
+    ]);
+
+    const dailyMap: Record<string, { minutes: number; problems: number; lessons: number; submissions: number }> = {};
+
+    for (const log of logs) {
+      const dateKey = log.createdAt.toISOString().slice(0, 10);
+      if (!dailyMap[dateKey]) {
+        dailyMap[dateKey] = { minutes: 0, problems: 0, lessons: 0, submissions: 0 };
+      }
+      
+      const meta = (log.metadata as any) || {};
+      const addedMinutes = typeof meta.durationMinutes === 'number' ? meta.durationMinutes : 15;
+      dailyMap[dateKey].minutes += addedMinutes;
+
+      if (log.action === 'PROBLEM_SOLVED') dailyMap[dateKey].problems += 1;
+      if (log.action === 'LESSON_COMPLETE' || log.action === 'LESSON_COMPLETED') dailyMap[dateKey].lessons += 1;
+      if (log.action === 'ASSIGNMENT_SUBMISSION' || log.action === 'ASSIGNMENT_SUBMIT') dailyMap[dateKey].submissions += 1;
+    }
+
+    return {
+      dailyMap,
+      totalCompletedLessons: lessonProgresses.filter((lp) => lp.isCompleted).length,
+      totalSubmissions: submissions.length,
+      enrollmentsCount: enrollments.length,
+    };
+  }
 }
