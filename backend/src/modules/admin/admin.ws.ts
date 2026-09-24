@@ -42,7 +42,7 @@ export class AdminWsBroadcaster {
   private static async sendSnapshot(socket: WebSocket, prisma: PrismaClient, type: string) {
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, instructors] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
@@ -51,6 +51,7 @@ export class AdminWsBroadcaster {
         adminService.getAllContent(),
         adminService.getAllPracticeProblems(),
         adminService.getAllLiveSessions(),
+        adminService.getAllAnnouncements(),
         adminService.getInstructors(),
       ]);
 
@@ -58,7 +59,7 @@ export class AdminWsBroadcaster {
         socket.send(
           JSON.stringify({
             type,
-            data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, instructors },
+            data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors },
             timestamp: new Date().toISOString(),
           })
         );
@@ -73,7 +74,7 @@ export class AdminWsBroadcaster {
 
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, instructors] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
@@ -82,12 +83,13 @@ export class AdminWsBroadcaster {
         adminService.getAllContent(),
         adminService.getAllPracticeProblems(),
         adminService.getAllLiveSessions(),
+        adminService.getAllAnnouncements(),
         adminService.getInstructors(),
       ]);
 
       const payload = JSON.stringify({
         type: 'DATA_UPDATE',
-        data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, instructors },
+        data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors },
         timestamp: new Date().toISOString(),
       });
 
@@ -99,7 +101,7 @@ export class AdminWsBroadcaster {
         }
       }
 
-      logger.info({ clientCount: this.clients.size }, 'Broadcasted real-time WebSocket update to admins');
+      logger.info({ clientCount: this.clients.size }, 'Broadcasted real-time WebSocket update to clients');
     } catch (err: any) {
       logger.error({ err: err.message }, 'Failed to broadcast admin WebSocket update');
     }
@@ -109,3 +111,4 @@ export class AdminWsBroadcaster {
     return this.clients.size;
   }
 }
+
