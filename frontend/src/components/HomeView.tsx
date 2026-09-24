@@ -14,7 +14,7 @@ import { useAssignments, LiveAssignmentItem } from "@/hooks/useAssignments";
 import { useLiveProblems, PublicProblem } from "@/hooks/useLiveProblems";
 import { useLiveSessions, LiveSessionItem } from "@/hooks/useLiveSessions";
 import { useAnnouncements, AnnouncementItem } from "@/hooks/useAnnouncements";
-import { useUserActivity } from "@/hooks/useUserActivity";
+import { useUserActivity, getLocalDateString } from "@/hooks/useUserActivity";
 import StudentProblemArena from "@/components/StudentProblemArena";
 import { CompanyLogo } from "@/components/CompanyLogo";
 
@@ -530,6 +530,8 @@ function Dashboard() {
   const { enrollments, isEnrolled } = useEnrollments();
   const { submissions: mySubmissions } = useAssignments();
   const { problems: liveProblems } = useLiveProblems();
+  const { getActivityBars, getStreakData, formatMinutes, liveSecondsToday, activityMap } = useUserActivity();
+
   const displayName = resolveDisplayName(user);
   const firstName = resolveFirstName(user);
   const solvedCount = liveProblems.filter((p) => p.solved).length;
@@ -551,6 +553,110 @@ function Dashboard() {
 
   const activeDisplayCourses = enrolledCourses.length > 0 ? enrolledCourses : courses;
   const currentFocusCourse = activeDisplayCourses[0];
+
+  // 100% Real Weekly Focus Data from useUserActivity
+  const { bars: weeklyBars, totalMinutes: weeklyTotalMins, totalSeconds: weeklyTotalSecs } = useMemo(() => {
+    return getActivityBars("Last 7 days");
+  }, [getActivityBars]);
+
+  const formattedWeeklyFocus = useMemo(() => {
+    return formatMinutes(weeklyTotalMins, weeklyTotalSecs % 60);
+  }, [weeklyTotalMins, weeklyTotalSecs, formatMinutes]);
+
+  // 100% Real Total Active Study Time
+  const allTimeTotalSeconds = useMemo(() => {
+    const storedTotal = Object.values(activityMap).reduce((acc, rec) => {
+      return acc + (rec.activeSeconds || (rec.activeMinutes || 0) * 60);
+    }, 0);
+    const todayStr = getLocalDateString();
+    const todayInMap = activityMap[todayStr]?.activeSeconds || (activityMap[todayStr]?.activeMinutes || 0) * 60;
+    if (liveSecondsToday > todayInMap) {
+      return storedTotal - todayInMap + liveSecondsToday;
+    }
+    return storedTotal;
+  }, [activityMap, liveSecondsToday]);
+
+  const formattedActiveTime = useMemo(() => {
+    const totalMins = Math.floor(allTimeTotalSeconds / 60);
+    const remainingSecs = allTimeTotalSeconds % 60;
+    return formatMinutes(totalMins, remainingSecs);
+  }, [allTimeTotalSeconds, formatMinutes]);
+
+  const todayActiveTrend = useMemo(() => {
+    if (liveSecondsToday > 0) {
+      const mins = Math.floor(liveSecondsToday / 60);
+      const secs = liveSecondsToday % 60;
+      return `+${formatMinutes(mins, secs)} today`;
+    }
+    return "0m today";
+  }, [liveSecondsToday, formatMinutes]);
+
+  // Dynamic Real Activity Feed
+  const dynamicActivities = useMemo(() => {
+    const items: Array<{
+      id: string;
+      icon: LucideIcon;
+      title: string;
+      subtitle: string;
+      time: string;
+      color: "blue" | "emerald" | "violet" | "amber";
+      timestamp: number;
+    }> = [];
+
+    if (liveSecondsToday > 0) {
+      const mins = Math.floor(liveSecondsToday / 60);
+      const secs = liveSecondsToday % 60;
+      items.push({
+        id: "live-session-today",
+        icon: Clock3,
+        title: "Active study session",
+        subtitle: `${formatMinutes(mins, secs)} focused learning time`,
+        time: "Today",
+        color: "emerald",
+        timestamp: Date.now(),
+      });
+    }
+
+    mySubmissions.forEach((sub, idx) => {
+      items.push({
+        id: `sub-${sub.id || idx}`,
+        icon: ClipboardCheck,
+        title: "Submitted assignment",
+        subtitle: sub.assignment?.title || sub.assignmentId || "Assignment submission",
+        time: sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Recently",
+        color: "violet",
+        timestamp: sub.submittedAt ? new Date(sub.submittedAt).getTime() : Date.now() - (idx + 1) * 3600000,
+      });
+    });
+
+    liveProblems
+      .filter((p) => p.solved)
+      .forEach((prob, idx) => {
+        items.push({
+          id: `prob-${prob.id || idx}`,
+          icon: Code2,
+          title: "Solved problem",
+          subtitle: `${prob.title} (${prob.difficulty || "Medium"})`,
+          time: "Completed",
+          color: "amber",
+          timestamp: Date.now() - (idx + 2) * 7200000,
+        });
+      });
+
+    enrolledCourses.forEach((c, idx) => {
+      items.push({
+        id: `enroll-${c.id || idx}`,
+        icon: BookOpen,
+        title: "Enrolled in course",
+        subtitle: c.title,
+        time: "Active course",
+        color: "blue",
+        timestamp: Date.now() - (idx + 3) * 86400000,
+      });
+    });
+
+    return items.sort((a, b) => b.timestamp - a.timestamp);
+  }, [liveSecondsToday, mySubmissions, liveProblems, enrolledCourses, formatMinutes]);
 
   return (
     <>
@@ -580,25 +686,38 @@ function Dashboard() {
               </Link>
             </div>
           </div>
-          <div className="absolute bottom-7 right-8 hidden w-40 md:block">
+          <div className="absolute bottom-7 right-8 hidden w-44 md:block">
             <div className="mb-2 flex items-end justify-between">
               <span className="text-xs font-semibold text-white/50">Weekly focus</span>
-              <span className="font-display text-2xl font-bold">4.2h</span>
+              <span className="font-display text-2xl font-bold">{formattedWeeklyFocus}</span>
             </div>
             <div className="flex h-10 items-end gap-1.5">
-              {[45, 65, 32, 85, 58, 76, 25].map((h, i) => (
-                <span
-                  key={i}
-                  className={cx("flex-1 rounded-t-md", i === 6 ? "bg-[#ffca63]" : "bg-white/20")}
-                  style={{ height: `${h}%` }}
-                />
+              {weeklyBars.map((bar, i) => (
+                <div
+                  key={bar.key || i}
+                  title={`${bar.label}: ${bar.formattedTime}`}
+                  className="group relative flex flex-1 flex-col items-center h-full justify-end cursor-pointer"
+                >
+                  <span
+                    className={cx(
+                      "w-full rounded-t-md transition-all duration-300",
+                      bar.isToday
+                        ? "bg-[#ffca63] shadow-[0_0_10px_rgba(255,202,99,0.4)]"
+                        : bar.seconds > 0
+                        ? "bg-white/60"
+                        : "bg-white/20"
+                    )}
+                    style={{ height: `${bar.heightPercent}%` }}
+                  />
+                </div>
               ))}
             </div>
-            <div className="mt-2 flex justify-between text-[9px] text-white/35">
-              <span>M</span>
-              <span>W</span>
-              <span>F</span>
-              <span>S</span>
+            <div className="mt-2 flex justify-between text-[9px] font-medium text-white/40">
+              {weeklyBars.map((bar, i) => (
+                <span key={bar.key || i} className={cx(bar.isToday && "text-[#ffca63] font-bold")}>
+                  {bar.shortLabel.charAt(0)}
+                </span>
+              ))}
             </div>
           </div>
         </section>
@@ -664,7 +783,13 @@ function Dashboard() {
           trend={liveProblems.length > 0 ? `${solvedCount} of ${liveProblems.length} solved` : "0 available"}
           color="amber"
         />
-        <StatCard icon={Clock3} value="26h 40m" label="Total watch time" trend="+3h 20m" color="emerald" />
+        <StatCard
+          icon={Clock3}
+          value={formattedActiveTime}
+          label="Active study time"
+          trend={todayActiveTrend}
+          color="emerald"
+        />
       </div>
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)]">
         <section>
@@ -691,18 +816,40 @@ function Dashboard() {
             )}
           </div>
           <div className="mt-8">
-            <SectionTitle title="Activity timeline" link={showAll ? "Show less" : "View all activity"} href="#" />
+            <SectionTitle
+              title="Activity timeline"
+              link={dynamicActivities.length > 3 ? (showAll ? "Show less" : "View all activity") : undefined}
+              href="#"
+            />
             <div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10">
-              {activity.slice(0, showAll ? 4 : 3).map((item, i) => (
-                <ActivityRow key={item.title} item={item} last={i === (showAll ? 3 : 2)} />
-              ))}
-              <button
-                onClick={() => setShowAll(!showAll)}
-                className="flex w-full items-center justify-center gap-2 py-4 text-xs font-bold text-[#3157e8]"
-              >
-                {showAll ? "Show less" : "Load older activity"}
-                <ChevronDown className={cx("h-3.5 w-3.5 transition-transform", showAll && "rotate-180")} />
-              </button>
+              {dynamicActivities.length === 0 ? (
+                <div className="py-7 text-center">
+                  <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-xl bg-slate-100 dark:bg-white/5 text-[#9aa4bc]">
+                    <Clock3 className="h-5 w-5" />
+                  </div>
+                  <p className="text-xs font-semibold text-[#17223d] dark:text-white">No activity recorded yet</p>
+                  <p className="mt-0.5 text-[11px] text-[#9aa4bc]">Start studying, solving problems, or submitting assignments to track your progress live.</p>
+                </div>
+              ) : (
+                dynamicActivities
+                  .slice(0, showAll ? 8 : 3)
+                  .map((item, i) => (
+                    <ActivityRow
+                      key={item.id || item.title}
+                      item={item}
+                      last={i === (showAll ? Math.min(7, dynamicActivities.length - 1) : Math.min(2, dynamicActivities.length - 1))}
+                    />
+                  ))
+              )}
+              {dynamicActivities.length > 3 && (
+                <button
+                  onClick={() => setShowAll(!showAll)}
+                  className="flex w-full items-center justify-center gap-2 py-4 text-xs font-bold text-[#3157e8]"
+                >
+                  {showAll ? "Show less" : `Show ${dynamicActivities.length - 3} more activities`}
+                  <ChevronDown className={cx("h-3.5 w-3.5 transition-transform", showAll && "rotate-180")} />
+                </button>
+              )}
             </div>
           </div>
         </section>
@@ -740,7 +887,40 @@ function CourseProgressCard({ course }: { course: LiveCourseItem }) {
   );
 }
 
-function ActivityRow({ item, last }: { item: typeof activity[number]; last: boolean }) { const Icon = item.icon; const colors = { blue: "bg-[#eaf0ff] text-[#3157e8]", emerald: "bg-[#e4f8ee] text-[#23a26d]", violet: "bg-[#f0eaff] text-[#7f5af0]", amber: "bg-[#fff4db] text-[#d68c20]" }; return <div className="flex items-center gap-3 py-4"><span className={cx("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", colors[item.color as keyof typeof colors])}><Icon className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-[#17223d] dark:text-white">{item.title}</p><p className="mt-0.5 truncate text-xs text-[#9aa4bc]">{item.subtitle}</p></div><span className="shrink-0 text-[10px] font-medium text-[#a5aec2]">{item.time}</span>{!last && <span className="sr-only">divider</span>}</div>; }
+function ActivityRow({
+  item,
+  last,
+}: {
+  item: {
+    icon: LucideIcon;
+    title: string;
+    subtitle: string;
+    time: string;
+    color: "blue" | "emerald" | "violet" | "amber" | string;
+  };
+  last: boolean;
+}) {
+  const Icon = item.icon;
+  const colors: Record<string, string> = {
+    blue: "bg-[#eaf0ff] text-[#3157e8] dark:bg-blue-950/40 dark:text-blue-400",
+    emerald: "bg-[#e4f8ee] text-[#23a26d] dark:bg-emerald-950/40 dark:text-emerald-400",
+    violet: "bg-[#f0eaff] text-[#7f5af0] dark:bg-purple-950/40 dark:text-purple-400",
+    amber: "bg-[#fff4db] text-[#d68c20] dark:bg-amber-950/40 dark:text-amber-400",
+  };
+  return (
+    <div className="flex items-center gap-3 py-4">
+      <span className={cx("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", colors[item.color] || colors.blue)}>
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-[#17223d] dark:text-white">{item.title}</p>
+        <p className="mt-0.5 truncate text-xs text-[#9aa4bc]">{item.subtitle}</p>
+      </div>
+      <span className="shrink-0 text-[10px] font-medium text-[#a5aec2]">{item.time}</span>
+      {!last && <span className="sr-only">divider</span>}
+    </div>
+  );
+}
 
 function parseSessionDate(dStr?: string) {
   if (!dStr) return { dayStr: "24", monthStr: "SEP" };
