@@ -2872,6 +2872,245 @@ export class AdminService {
       return [];
     }
   }
+
+  private static auditLogsFilePath = path.resolve(process.cwd(), 'data', 'audit_logs.json');
+
+  public static logAuditEvent(event: {
+    action: string;
+    entity: string;
+    actor: string;
+    details: string;
+    badgeType?: 'emerald' | 'blue' | 'purple' | 'amber' | 'rose';
+    timestamp?: string;
+  }) {
+    try {
+      let logs: any[] = [];
+      if (fs.existsSync(AdminService.auditLogsFilePath)) {
+        const raw = fs.readFileSync(AdminService.auditLogsFilePath, 'utf-8');
+        logs = JSON.parse(raw);
+        if (!Array.isArray(logs)) logs = [];
+      }
+      const newEntry = {
+        id: `aud_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        action: event.action,
+        entity: event.entity,
+        actor: event.actor || 'Admin',
+        subtitle: `${event.entity} · by ${event.actor || 'Admin'}`,
+        time: 'Just now',
+        badgeType: event.badgeType || 'blue',
+        details: event.details,
+        timestamp: event.timestamp || new Date().toISOString(),
+      };
+      logs.unshift(newEntry);
+      if (logs.length > 500) logs = logs.slice(0, 500);
+      fs.writeFileSync(AdminService.auditLogsFilePath, JSON.stringify(logs, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save audit log:', err);
+    }
+  }
+
+  public async getAuditLogs(): Promise<any[]> {
+    const combinedLogs: any[] = [];
+
+    // 1. Read explicitly saved audit logs
+    try {
+      if (fs.existsSync(AdminService.auditLogsFilePath)) {
+        const raw = fs.readFileSync(AdminService.auditLogsFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          combinedLogs.push(...parsed);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load audit logs from file:', err);
+    }
+
+    // 2. Synthesize logs from real database and content records
+    const formatTime = (dateInput?: string | Date) => {
+      if (!dateInput) return 'Recently';
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return 'Recently';
+      const now = new Date();
+      const diffMs = now.getTime() - d.getTime();
+      if (diffMs < 0) return 'Just now';
+      const diffMin = Math.floor(diffMs / 60000);
+      if (diffMin < 1) return 'Just now';
+      if (diffMin < 60) return `${diffMin} min ago`;
+      const diffHours = Math.floor(diffMin / 60);
+      if (diffHours < 24) return `${diffHours} hr${diffHours > 1 ? 's' : ''} ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
+    try {
+      const users = await this.prisma.user.findMany({
+        take: 30,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, fullName: true, email: true, role: true, createdAt: true },
+      });
+
+      for (const u of users) {
+        const name = u.fullName || u.name || (u.email ? u.email.split('@')[0] : 'Learner');
+        combinedLogs.push({
+          id: `usr_${u.id}`,
+          action: u.role === 'ADMIN' ? 'Admin account created' : 'Student registered',
+          entity: name,
+          actor: u.role === 'ADMIN' ? 'Security' : name,
+          subtitle: `${name} · by Platform`,
+          time: formatTime(u.createdAt),
+          badgeType: u.role === 'ADMIN' ? 'purple' : 'blue',
+          details: `Account created for ${name} (${u.email}) with role ${u.role}.`,
+          timestamp: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+        });
+      }
+    } catch {}
+
+    try {
+      const payments = await this.prisma.payment.findMany({
+        take: 30,
+        orderBy: { createdAt: 'desc' },
+        include: { user: true, course: true },
+      });
+
+      for (const p of payments) {
+        const studentName = p.user?.fullName || p.user?.name || (p.user?.email ? p.user.email.split('@')[0] : 'Learner');
+        const courseName = p.course?.title || 'Platform Course';
+        const amountStr = `₹${Number(p.amount).toLocaleString('en-IN')}`;
+        const isPaid = p.status === 'COMPLETED' || (p.status as any) === 'SUCCESS' || p.status === 'PAID';
+
+        combinedLogs.push({
+          id: `pay_${p.id}`,
+          action: isPaid ? 'Payment received' : 'Payment checkout initiated',
+          entity: `INV-${p.id.slice(0, 8).toUpperCase()}`,
+          actor: 'Payment Gateway',
+          subtitle: `${courseName} · by ${studentName}`,
+          time: formatTime(p.createdAt),
+          badgeType: isPaid ? 'emerald' : 'amber',
+          details: `Captured ${amountStr} for enrollment into "${courseName}" by ${studentName} (${p.user?.email || ''}).`,
+          timestamp: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+        });
+      }
+    } catch {}
+
+    try {
+      const courses = await this.getAllCourses();
+      for (const c of courses.slice(0, 20)) {
+        if (c.title) {
+          combinedLogs.push({
+            id: `crs_${c.id}`,
+            action: 'Course published',
+            entity: c.title,
+            actor: c.instructor || 'Admin',
+            subtitle: `${c.title} · by ${c.instructor || 'Admin'}`,
+            time: formatTime(c.updatedAt || c.createdAt),
+            badgeType: 'emerald',
+            details: `Course "${c.title}" updated and made available to learners.`,
+            timestamp: c.updatedAt || c.createdAt || new Date().toISOString(),
+          });
+        }
+      }
+    } catch {}
+
+    try {
+      const recs = this.getAllRecordings();
+      for (const r of recs.slice(0, 20)) {
+        if (r.title) {
+          combinedLogs.push({
+            id: `rec_${r.id}`,
+            action: 'Recording uploaded',
+            entity: r.title,
+            actor: r.instructor || 'Admin',
+            subtitle: `${r.title} · by ${r.instructor || 'Admin'}`,
+            time: formatTime(r.createdAt || r.date),
+            badgeType: 'amber',
+            details: `Uploaded lecture recording "${r.title}".`,
+            timestamp: r.createdAt || r.date || new Date().toISOString(),
+          });
+        }
+      }
+    } catch {}
+
+    try {
+      const sessions = this.getAllLiveSessions();
+      for (const s of sessions.slice(0, 20)) {
+        if (s.title) {
+          combinedLogs.push({
+            id: `sess_${s.id}`,
+            action: 'Live session scheduled',
+            entity: s.title,
+            actor: s.instructor || 'Admin',
+            subtitle: `${s.title} · by ${s.instructor || 'Admin'}`,
+            time: formatTime(s.createdAt || s.date),
+            badgeType: 'blue',
+            details: `Live workshop "${s.title}" scheduled for ${s.date || 'upcoming session'}.`,
+            timestamp: s.createdAt || s.date || new Date().toISOString(),
+          });
+        }
+      }
+    } catch {}
+
+    try {
+      const probs = this.getAllPracticeProblems();
+      for (const pr of probs.slice(0, 20)) {
+        if (pr.title) {
+          combinedLogs.push({
+            id: `prob_${pr.id}`,
+            action: 'Practice problem published',
+            entity: pr.title,
+            actor: 'Admin',
+            subtitle: `${pr.title} · by Admin`,
+            time: formatTime(pr.updatedAt || pr.createdAt),
+            badgeType: 'purple',
+            details: `Coding challenge "${pr.title}" made live in problem arena.`,
+            timestamp: pr.updatedAt || pr.createdAt || new Date().toISOString(),
+          });
+        }
+      }
+    } catch {}
+
+    try {
+      const anns = this.getAllAnnouncements();
+      for (const a of anns.slice(0, 20)) {
+        if (a.title) {
+          combinedLogs.push({
+            id: `ann_${a.id}`,
+            action: 'Announcement broadcasted',
+            entity: a.title,
+            actor: a.author || 'Admin',
+            subtitle: `${a.title} · by ${a.author || 'Admin'}`,
+            time: formatTime(a.date || a.createdAt),
+            badgeType: 'rose',
+            details: a.description || `Platform announcement "${a.title}" posted.`,
+            timestamp: a.date || a.createdAt || new Date().toISOString(),
+          });
+        }
+      }
+    } catch {}
+
+    // Deduplicate by ID and sort descending by timestamp
+    const uniqueMap = new Map<string, any>();
+    for (const item of combinedLogs) {
+      if (item && item.id) {
+        if (!uniqueMap.has(String(item.id))) {
+          uniqueMap.set(String(item.id), {
+            ...item,
+            time: formatTime(item.timestamp),
+          });
+        }
+      }
+    }
+
+    const result = Array.from(uniqueMap.values());
+    result.sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    return result;
+  }
 }
 
 

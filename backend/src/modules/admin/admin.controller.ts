@@ -287,6 +287,22 @@ export default async function adminController(fastify: FastifyInstance) {
   fastify.get('/transactions', async () => {
     return adminService.getAllPayments();
   });
+
+  // Audit Logs
+  fastify.get('/audit-logs', async () => {
+    return adminService.getAuditLogs();
+  });
+
+  fastify.post('/audit-logs', async (request, reply) => {
+    const body = request.body as any;
+    try {
+      AdminService.logAuditEvent(body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send({ success: true });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to save audit log' });
+    }
+  });
 }
 
 

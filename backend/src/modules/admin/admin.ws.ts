@@ -42,7 +42,7 @@ export class AdminWsBroadcaster {
   private static async sendSnapshot(socket: WebSocket, prisma: PrismaClient, type: string) {
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
@@ -55,13 +55,14 @@ export class AdminWsBroadcaster {
         adminService.getInstructors(),
         adminService.getAllRecordings(),
         adminService.getAllPayments(),
+        adminService.getAuditLogs(),
       ]);
 
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(
           JSON.stringify({
             type,
-            data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments },
+            data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs },
             timestamp: new Date().toISOString(),
           })
         );
@@ -76,7 +77,7 @@ export class AdminWsBroadcaster {
 
     try {
       const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments] = await Promise.all([
+      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getAllStudents(),
         adminService.getAllCourses(),
@@ -89,11 +90,12 @@ export class AdminWsBroadcaster {
         adminService.getInstructors(),
         adminService.getAllRecordings(),
         adminService.getAllPayments(),
+        adminService.getAuditLogs(),
       ]);
 
       const payload = JSON.stringify({
         type: 'DATA_UPDATE',
-        data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments },
+        data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs },
         timestamp: new Date().toISOString(),
       });
 

@@ -156,6 +156,18 @@ export interface PaymentItem {
   createdAt?: string;
 }
 
+export interface AuditLogItem {
+  id: string | number;
+  action: string;
+  entity: string;
+  actor: string;
+  subtitle: string;
+  time: string;
+  badgeType: "emerald" | "blue" | "purple" | "amber" | "rose";
+  details: string;
+  timestamp?: string;
+}
+
 const CACHE_KEYS = {
   STATS: "lms_admin_cache_stats",
   STUDENTS: "lms_admin_cache_students",
@@ -168,6 +180,7 @@ const CACHE_KEYS = {
   RECORDINGS: "lms_admin_cache_recordings",
   INSTRUCTORS: "lms_admin_instructors",
   PAYMENTS: "lms_admin_cache_payments",
+  AUDIT_LOGS: "lms_admin_cache_audit_logs",
 };
 
 function readCache<T>(key: string, fallback: T): T {
@@ -227,6 +240,9 @@ export function useLiveAdminData() {
   );
   const [instructorsList, setInstructorsList] = useState<InstructorUser[]>(() =>
     readCache<InstructorUser[]>(CACHE_KEYS.INSTRUCTORS, [])
+  );
+  const [auditLogsList, setAuditLogsList] = useState<AuditLogItem[]>(() =>
+    readCache<AuditLogItem[]>(CACHE_KEYS.AUDIT_LOGS, [])
   );
   const [isLoading, setIsLoading] = useState(() => {
     const cached = readCache<Course[]>(CACHE_KEYS.COURSES, []);
@@ -631,6 +647,23 @@ export function useLiveAdminData() {
     } catch {}
   };
 
+  const updateAuditLogs = (data: AuditLogItem[]) => {
+    setAuditLogsList(data);
+    writeCache(CACHE_KEYS.AUDIT_LOGS, data);
+  };
+
+  const fetchAuditLogs = async () => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/admin/audit-logs");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          updateAuditLogs(data);
+        }
+      }
+    } catch {}
+  };
+
   const fetchInitialSnapshot = async () => {
     try {
       fetchCourses();
@@ -680,6 +713,11 @@ export function useLiveAdminData() {
       fetch("http://localhost:4000/api/v1/admin/payments")
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && Array.isArray(d) && updatePayments(d))
+        .catch(() => {});
+
+      fetch("http://localhost:4000/api/v1/admin/audit-logs")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && Array.isArray(d) && updateAuditLogs(d))
         .catch(() => {});
     } catch {
       // Backend offline fallback
@@ -750,6 +788,9 @@ export function useLiveAdminData() {
               if (payload.data?.instructors) {
                 updateInstructors(payload.data.instructors);
               }
+              if (payload.data?.auditLogs && Array.isArray(payload.data.auditLogs)) {
+                updateAuditLogs(payload.data.auditLogs);
+              }
               setIsLoading(false);
             }
           } catch {
@@ -806,6 +847,7 @@ export function useLiveAdminData() {
     recordings: recordingsList,
     payments: paymentsList,
     instructors: instructorsList,
+    auditLogs: auditLogsList,
     isLoading,
     isWsConnected,
     refresh,
@@ -824,6 +866,7 @@ export function useLiveAdminData() {
     setRecordings: updateRecordings,
     setPayments: updatePayments,
     setInstructors: updateInstructors,
+    setAuditLogs: updateAuditLogs,
   };
 }
 

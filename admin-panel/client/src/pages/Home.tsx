@@ -23,7 +23,7 @@ import CustomConfirmDialog from "@/components/CustomConfirmDialog";
 import CustomAlertDialog from "@/components/CustomAlertDialog";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useAdminRoute, navigateAdmin } from "@/lib/navigation";
-import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus, ContentItem, PracticeProblem, PaymentItem } from "@/hooks/useLiveAdminData";
+import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus, ContentItem, PracticeProblem, PaymentItem, AuditLogItem } from "@/hooks/useLiveAdminData";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -101,64 +101,22 @@ const sessions: any[] = [];
 const payments: PaymentItem[] = [];
 
 
-const feedback = [
-  { id: 1, student: "Meera Nair", course: "DSA Mastery", rating: 5, category: "Course quality", text: "The graph visualizations made the topic click for me.", date: "Today", status: "New" },
-  { id: 2, student: "Rohan Verma", course: "Python for Problem Solving", rating: 3, category: "Pacing", text: "Would love a slower walkthrough for recursion.", date: "Yesterday", status: "Open" },
-  { id: 3, student: "Ishita Kapoor", course: "System Design", rating: 5, category: "Instructor", text: "Maya's architecture breakdowns are excellent.", date: "Sep 10", status: "Responded" },
-];
+export interface FeedbackItem {
+  id: string | number;
+  student: string;
+  course: string;
+  rating: number;
+  category: string;
+  text: string;
+  date: string;
+  status: string;
+}
 
-const auditLogs = [
-  {
-    id: 1,
-    action: "Assessment published",
-    entity: "Weekly Test · Graphs",
-    actor: "Ava Patel",
-    subtitle: "Weekly Test · Graphs · by Ava Patel",
-    time: "12 min ago",
-    badgeType: "emerald",
-    details: "Published assessment 'Weekly Test · Graphs' for Spring Cohort learners with 25 MCQ & coding questions.",
-  },
-  {
-    id: 2,
-    action: "Student added",
-    entity: "Aarav Sharma",
-    actor: "Nisha Singh",
-    subtitle: "Aarav Sharma · by Nisha Singh",
-    time: "34 min ago",
-    badgeType: "blue",
-    details: "Enrolled new student Aarav Sharma (aarav.sharma@example.com) into Fullstack Next.js Masterclass.",
-  },
-  {
-    id: 3,
-    action: "Payment received",
-    entity: "INV-2048",
-    actor: "System",
-    subtitle: "INV-2048 · by System",
-    time: "1 hr ago",
-    badgeType: "purple",
-    details: "Automated payment gateway captured INR 4,999 for Invoice INV-2048 via UPI.",
-  },
-  {
-    id: 4,
-    action: "Lesson updated",
-    entity: "Graphs: BFS vs DFS",
-    actor: "Arjun Mehta",
-    subtitle: "Graphs: BFS vs DFS · by Arjun Mehta",
-    time: "3 hrs ago",
-    badgeType: "amber",
-    details: "Updated lecture notes, attached slide deck, and published new code sandbox.",
-  },
-  {
-    id: 5,
-    action: "Announcement posted",
-    entity: "Spring cohort",
-    actor: "Ava Patel",
-    subtitle: "Spring cohort · by Ava Patel",
-    time: "Yesterday",
-    badgeType: "rose",
-    details: "Broadcasted announcement regarding upcoming FAANG System Design live mock session.",
-  },
-];
+const feedback: FeedbackItem[] = [];
+
+
+const auditLogs: AuditLogItem[] = [];
+
 
 const practiceProblemsData: PracticeProblem[] = [];
 
@@ -2585,14 +2543,503 @@ function PaymentsView({
   );
 }
 
-function FeedbackView({ onAction, onToast }: { onAction: (state: DialogState) => void; onToast: (message: string) => void }) {
-  const [rows, setRows] = useState(feedback); const [filter, setFilter] = useState("All"); const filtered = rows.filter((item) => filter === "All" || item.status === filter);
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="feedback" description={sectionDescriptions.feedback} actionLabel="Review queue" onAction={() => onToast("Showing feedback that needs a response")} onExport={() => onToast("Feedback report exported") } /><MetricStrip items={[{ label: "Average rating", value: "4.8 / 5", change: "+0.3 this month" }, { label: "New feedback", value: "18", change: "Needs response", tone: "text-amber-600" }, { label: "Response rate", value: "92%", change: "+4.1%" }, { label: "Flagged items", value: "3", change: "Needs moderation", tone: "text-rose-600" }]} /><DataCard title="Feedback inbox" subtitle="Respond to learners and track instructor quality" toolbar={<div className="flex items-center gap-2"><CustomDropdown value={filter} onChange={setFilter} options={["All", "New", "Open", "Responded"]} icon={<MessageSquareText className="h-4 w-4 text-[var(--muted)]" />} /></div>}><div className="divide-y divide-[var(--app-line)]">{filtered.map((item) => <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:px-6" key={item.id}><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Star className="h-4 w-4 fill-current" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-[12px] font-bold">{item.student}</p><span className="text-[10px] text-[var(--muted)]">· {item.course}</span><span className="text-[10px] font-bold text-amber-600">{item.rating}.0</span></div><p className="mt-2 text-[12px] leading-5">{item.text}</p><p className="mt-2 text-[10px] text-[var(--muted)]">{item.category} · {item.date}</p></div><div className="flex items-center gap-2"><StatusBadge>{item.status}</StatusBadge><button onClick={() => setRows((current) => current.map((row) => row.id === item.id ? { ...row, status: row.status === "Responded" ? "Open" : "Responded" } : row))} className="secondary-button">{item.status === "Responded" ? "Reopen" : "Respond"}</button></div></div>)}</div></DataCard></div>;
+function FeedbackView({
+  onAction,
+  onToast,
+  feedbackList = [],
+}: {
+  onAction: (state: DialogState) => void;
+  onToast: (message: string) => void;
+  feedbackList?: FeedbackItem[];
+}) {
+  const [rows, setRows] = useState<FeedbackItem[]>(feedbackList.length > 0 ? feedbackList : feedback);
+  const [filter, setFilter] = useState("All");
+
+  useEffect(() => {
+    if (feedbackList) {
+      setRows(feedbackList.length > 0 ? feedbackList : feedback);
+    }
+  }, [feedbackList]);
+
+  const filtered = rows.filter((item) => filter === "All" || item.status === filter);
+
+  // Derive dynamic metrics from real items
+  const totalCount = rows.length;
+  const avgRating =
+    totalCount > 0
+      ? (rows.reduce((sum, r) => sum + (r.rating || 0), 0) / totalCount).toFixed(1)
+      : "0.0";
+  const newCount = rows.filter((r) => r.status?.toLowerCase() === "new").length;
+  const respondedCount = rows.filter((r) => r.status?.toLowerCase() === "responded").length;
+  const responseRate = totalCount > 0 ? `${Math.round((respondedCount / totalCount) * 100)}%` : "0%";
+  const flaggedCount = rows.filter((r) => (r.rating && r.rating <= 2) || r.status?.toLowerCase() === "flagged").length;
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="feedback"
+        description={sectionDescriptions.feedback}
+        actionLabel="Review queue"
+        onAction={() =>
+          onToast(
+            newCount > 0
+              ? `Showing ${newCount} feedback items that need response`
+              : "No pending feedback in queue"
+          )
+        }
+        onExport={() => {
+          if (rows.length === 0) {
+            onToast("No feedback records to export");
+            return;
+          }
+          onToast("Feedback report exported");
+        }}
+      />
+
+      <MetricStrip
+        items={[
+          {
+            label: "Average rating",
+            value: `${avgRating} / 5`,
+            change: totalCount > 0 ? `${totalCount} total reviews` : "No ratings yet",
+          },
+          {
+            label: "New feedback",
+            value: `${newCount}`,
+            change: newCount > 0 ? "Needs response" : "Inbox zero",
+            tone: newCount > 0 ? "text-amber-600" : "text-slate-500",
+          },
+          {
+            label: "Response rate",
+            value: responseRate,
+            change: totalCount > 0 ? `${respondedCount} of ${totalCount} resolved` : "0 responses",
+          },
+          {
+            label: "Flagged items",
+            value: `${flaggedCount}`,
+            change: flaggedCount > 0 ? "Needs moderation" : "0 flagged",
+            tone: flaggedCount > 0 ? "text-rose-600" : "text-slate-500",
+          },
+        ]}
+      />
+
+      <DataCard
+        title="Feedback inbox"
+        subtitle="Respond to learners and track instructor quality"
+        toolbar={
+          <div className="flex items-center gap-2">
+            <CustomDropdown
+              value={filter}
+              onChange={setFilter}
+              options={["All", "New", "Open", "Responded"]}
+              icon={<MessageSquareText className="h-4 w-4 text-[var(--muted)]" />}
+            />
+          </div>
+        }
+      >
+        {rows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 mb-3 shadow-inner">
+              <MessageSquareText className="h-7 w-7" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">No feedback submitted yet</h3>
+            <p className="mt-1 max-w-sm text-xs text-[var(--muted)] leading-relaxed">
+              Course ratings, reviews, and learner feedback submitted from the student portal will appear here automatically.
+            </p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <MessageSquare className="h-6 w-6 text-[var(--muted)] mb-2 opacity-50" />
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">No feedback matches &quot;{filter}&quot;</p>
+            <p className="mt-1 text-[11px] text-[var(--muted)]">Try selecting a different filter category.</p>
+            <button
+              onClick={() => setFilter("All")}
+              className="mt-3 text-xs font-semibold text-indigo-600 hover:underline"
+            >
+              Reset filter
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-[var(--app-line)]">
+            {filtered.map((item) => (
+              <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:px-6" key={item.id}>
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300">
+                  <Star className="h-4 w-4 fill-current" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[12px] font-bold">{item.student}</p>
+                    <span className="text-[10px] text-[var(--muted)]">· {item.course}</span>
+                    <span className="text-[10px] font-bold text-amber-600">{item.rating}.0</span>
+                  </div>
+                  <p className="mt-2 text-[12px] leading-5">{item.text}</p>
+                  <p className="mt-2 text-[10px] text-[var(--muted)]">
+                    {item.category} · {item.date}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <StatusBadge>{item.status}</StatusBadge>
+                  <button
+                    onClick={() =>
+                      setRows((current) =>
+                        current.map((row) =>
+                          row.id === item.id
+                            ? { ...row, status: row.status === "Responded" ? "Open" : "Responded" }
+                            : row
+                        )
+                      )
+                    }
+                    className="secondary-button"
+                  >
+                    {item.status === "Responded" ? "Reopen" : "Respond"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </DataCard>
+    </div>
+  );
 }
 
-function ReportsView({ onToast }: { onToast: (message: string) => void }) {
+function ReportsView({
+  onToast,
+  courses = [],
+  students = [],
+  assignments = [],
+  submissions = [],
+  practiceProblems = [],
+  payments = [],
+  stats,
+}: {
+  onToast: (message: string) => void;
+  courses?: Course[];
+  students?: StudentItem[];
+  assignments?: any[];
+  submissions?: any[];
+  practiceProblems?: PracticeProblem[];
+  payments?: PaymentItem[];
+  stats?: AdminStats;
+}) {
   const [timeRange, setTimeRange] = useState("Last 30 days");
-  return <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9"><SectionHeader section="reports" description={sectionDescriptions.reports} actionLabel="Build report" onAction={() => onToast("Report builder opened")} onExport={() => onToast("Analytics exported as CSV")} /><MetricStrip items={[{ label: "Engagement rate", value: "71.8%", change: "+8.4%" }, { label: "Course completion", value: "68.2%", change: "+5.2%" }, { label: "Learner retention", value: "84.6%", change: "+2.1%" }, { label: "Placement rate", value: "76.4%", change: "+11.8%" }]} /><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Learning engagement</p><h2 className="mt-1 font-display text-lg font-bold">Weekly active learners</h2></div><CustomDropdown value={timeRange} onChange={setTimeRange} options={["Last 30 days", "Last 90 days"]} /></div><div className="mt-7 h-56 flex items-end gap-2">{[46, 61, 52, 74, 68, 86, 78, 91, 72, 84, 88, 95].map((height, index) => <div key={index} className="group flex flex-1 flex-col justify-end gap-2"><div className="w-full rounded-t-lg bg-indigo-200 transition-all group-hover:bg-indigo-500 dark:bg-indigo-900/60" style={{ height: `${height}%` }} /><span className="text-center text-[9px] text-[var(--muted)]">W{index + 1}</span></div>)}</div></div><div className="surface-card p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-[12px] font-semibold text-[var(--muted)]">Course completion</p><h2 className="mt-1 font-display text-lg font-bold">Where learners drop off</h2></div><BarChart3 className="h-5 w-5 text-[var(--brand)]" /></div><div className="mt-6 space-y-5">{[{ label: "DSA Mastery", value: 78, color: "bg-indigo-500" }, { label: "System Design", value: 64, color: "bg-violet-500" }, { label: "Python for Problem Solving", value: 71, color: "bg-emerald-500" }, { label: "Competitive Programming", value: 52, color: "bg-amber-500" }].map((item) => <div key={item.label}><div className="flex justify-between text-[11px] font-bold"><span>{item.label}</span><span>{item.value}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className={cn("h-full rounded-full", item.color)} style={{ width: `${item.value}%` }} /></div></div>)}</div></div></div><DataCard title="Saved reports" subtitle="Reusable exports for your leadership and instructor teams" toolbar={<button onClick={() => onToast("New report template created")} className="secondary-button"><Plus className="h-4 w-4" /> Add template</button>}><div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">{["Monthly executive pulse", "Placement readiness", "Instructor performance"].map((report) => <button onClick={() => onToast(`${report} generated`)} className="rounded-xl border border-[var(--app-line)] p-4 text-left hover:bg-[var(--subtle-bg)]" key={report}><BarChart3 className="h-4 w-4 text-[var(--brand)]" /><p className="mt-4 text-[12px] font-bold">{report}</p><p className="mt-1 text-[10px] text-[var(--muted)]">Run report · CSV / PDF</p></button>)}</div></DataCard></div>;
+
+  // Derive Real High-Level Metrics
+  const totalStudents = stats?.totalStudents ?? students.length;
+  const activeStudents = stats?.activeStudents ?? students.filter((s) => s.status?.toLowerCase() === "active").length;
+  const paidEnrollments = stats?.paidEnrollments ?? payments.filter((p) => p.status?.toLowerCase() === "paid" || p.status?.toLowerCase() === "completed").length;
+
+  // Real Engagement Rate
+  const engagementRate = totalStudents > 0 ? ((activeStudents / totalStudents) * 100).toFixed(1) : "0.0";
+
+  // Real Average Course Progress / Completion
+  const avgProgress = useMemo(() => {
+    if (students.length === 0) return 0;
+    const totalProg = students.reduce((acc, s) => acc + (typeof s.progress === "number" ? s.progress : 0), 0);
+    return Math.round(totalProg / students.length);
+  }, [students]);
+
+  // Real Retention Rate (students with progress > 0 or active)
+  const retentionRate = useMemo(() => {
+    if (students.length === 0) return "0.0";
+    const retained = students.filter((s) => (s.progress && s.progress > 0) || s.status?.toLowerCase() === "active").length;
+    return ((retained / students.length) * 100).toFixed(1);
+  }, [students]);
+
+  // Real Paid Conversion Rate
+  const paidConversionRate = useMemo(() => {
+    if (totalStudents === 0) return "0.0";
+    return ((paidEnrollments / totalStudents) * 100).toFixed(1);
+  }, [totalStudents, paidEnrollments]);
+
+  // Real Weekly Active Learners timeline for 30 vs 90 days
+  const weeksCount = timeRange === "Last 30 days" ? 4 : 12;
+  const weeklyData = useMemo(() => {
+    const data = [];
+    const now = new Date();
+    
+    for (let i = weeksCount - 1; i >= 0; i--) {
+      const weekStart = new Date(now.getTime() - (i + 1) * 7 * 24 * 60 * 60 * 1000);
+      const weekEnd = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
+      
+      let count = 0;
+      students.forEach((s) => {
+        if (s.lastActiveAt) {
+          const d = new Date(s.lastActiveAt);
+          if (!isNaN(d.getTime()) && d >= weekStart && d < weekEnd) {
+            count++;
+          }
+        }
+      });
+
+      if (count === 0 && i === weeksCount - 1 && activeStudents > 0) {
+        count = activeStudents;
+      }
+
+      data.push({
+        label: `W${weeksCount - i}`,
+        count,
+        heightPct: totalStudents > 0 ? Math.min(100, Math.max(12, Math.round((count / Math.max(1, totalStudents)) * 100))) : 0,
+      });
+    }
+    return data;
+  }, [students, weeksCount, totalStudents, activeStudents]);
+
+  // Real Course Completion & Dropoff List
+  const courseCompletionData = useMemo(() => {
+    if (courses.length === 0) return [];
+    const palette = ["bg-indigo-500", "bg-violet-500", "bg-emerald-500", "bg-amber-500", "bg-cyan-500", "bg-rose-500"];
+    return courses.slice(0, 5).map((c, index) => {
+      const enrolledInCourse = students.filter((s) => s.course && s.course.toLowerCase().includes(c.title.toLowerCase()));
+      const compVal = enrolledInCourse.length > 0
+        ? Math.round(enrolledInCourse.reduce((sum, s) => sum + (s.progress || 0), 0) / enrolledInCourse.length)
+        : (typeof c.completion === "number" ? c.completion : 0);
+
+      return {
+        id: c.id,
+        title: c.title,
+        completion: compVal,
+        studentsCount: c.students || enrolledInCourse.length,
+        color: palette[index % palette.length],
+      };
+    });
+  }, [courses, students]);
+
+  // Export handlers for real reports
+  const handleExportCSV = () => {
+    const summaryData = [
+      ["Metric", "Value"],
+      ["Total Registered Students", totalStudents],
+      ["Active Students", activeStudents],
+      ["Engagement Rate", `${engagementRate}%`],
+      ["Average Course Progress", `${avgProgress}%`],
+      ["Learner Retention Rate", `${retentionRate}%`],
+      ["Paid Enrollments", paidEnrollments],
+      ["Paid Conversion Rate", `${paidConversionRate}%`],
+      ["Total Published Courses", courses.length],
+      ["Practice Problems Available", practiceProblems.length],
+      ["Total Submissions", submissions.length],
+      ["Export Date", new Date().toLocaleString()],
+    ];
+    const csvContent = "data:text/csv;charset=utf-8," + summaryData.map((e) => e.map((x) => `"${x}"`).join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Platform_Analytics_Report_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    onToast("Analytics report exported as CSV");
+  };
+
+  const handleExportSpecificReport = (type: string) => {
+    if (type === "Executive pulse") {
+      handleExportCSV();
+      return;
+    }
+
+    if (type === "Placement readiness") {
+      if (students.length === 0) {
+        onToast("No student records available for export");
+        return;
+      }
+      const headers = ["Student ID", "Name", "Email", "Role / Stream", "Course", "Progress (%)", "Status"];
+      const rows = students.map((s) => [
+        `"${s.id || ""}"`,
+        `"${s.name || ""}"`,
+        `"${s.email || ""}"`,
+        `"${s.role || s.education || ""}"`,
+        `"${s.course || ""}"`,
+        `"${s.progress ?? 0}"`,
+        `"${s.status || ""}"`,
+      ]);
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Learner_Readiness_Report_${new Date().toISOString().split("T")[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      onToast("Placement readiness report exported");
+      return;
+    }
+
+    if (type === "Instructor performance") {
+      if (courses.length === 0) {
+        onToast("No course performance records to export");
+        return;
+      }
+      const headers = ["Course Title", "Instructor", "Track", "Enrollments", "Avg Completion (%)", "Revenue", "Status"];
+      const rows = courses.map((c) => [
+        `"${c.title || ""}"`,
+        `"${c.instructor || c.instructorName || ""}"`,
+        `"${c.track || c.category || ""}"`,
+        `"${c.students || 0}"`,
+        `"${c.completion || 0}"`,
+        `"${c.revenue || c.price || 0}"`,
+        `"${c.status || ""}"`,
+      ]);
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Course_Performance_Report_${new Date().toISOString().split("T")[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      onToast("Course performance report exported");
+      return;
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
+      <SectionHeader
+        section="reports"
+        description={sectionDescriptions.reports}
+        actionLabel="Build report"
+        onAction={handleExportCSV}
+        onExport={handleExportCSV}
+      />
+
+      <MetricStrip
+        items={[
+          {
+            label: "Engagement rate",
+            value: `${engagementRate}%`,
+            change: totalStudents > 0 ? `${activeStudents} of ${totalStudents} active` : "0 registered users",
+          },
+          {
+            label: "Course progress",
+            value: `${avgProgress}%`,
+            change: students.length > 0 ? "Average student progress" : "No learners yet",
+          },
+          {
+            label: "Learner retention",
+            value: `${retentionRate}%`,
+            change: totalStudents > 0 ? `${retentionRate}% active/engaged` : "0 retention data",
+          },
+          {
+            label: "Paid conversion",
+            value: `${paidConversionRate}%`,
+            change: `${paidEnrollments} paid learners`,
+            tone: paidEnrollments > 0 ? "text-emerald-600" : "text-slate-500",
+          },
+        ]}
+      />
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="surface-card p-5 sm:p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[12px] font-semibold text-[var(--muted)]">Learning engagement</p>
+              <h2 className="mt-1 font-display text-lg font-bold">Weekly active learners</h2>
+            </div>
+            <CustomDropdown
+              value={timeRange}
+              onChange={setTimeRange}
+              options={["Last 30 days", "Last 90 days"]}
+            />
+          </div>
+
+          {totalStudents === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <BarChart3 className="h-7 w-7 text-indigo-500/50 mb-2" />
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">No activity data recorded yet</p>
+              <p className="mt-1 text-[11px] text-[var(--muted)]">Weekly active learner charts will render as students interact with courses.</p>
+            </div>
+          ) : (
+            <div className="mt-7 h-56 flex items-end gap-2">
+              {weeklyData.map((item, index) => (
+                <div key={index} className="group flex flex-1 flex-col justify-end gap-2" title={`${item.count} active in ${item.label}`}>
+                  <div
+                    className="w-full rounded-t-lg bg-indigo-200 transition-all group-hover:bg-indigo-500 dark:bg-indigo-900/60"
+                    style={{ height: `${item.heightPct}%` }}
+                  />
+                  <span className="text-center text-[9px] text-[var(--muted)]">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="surface-card p-5 sm:p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[12px] font-semibold text-[var(--muted)]">Course completion</p>
+              <h2 className="mt-1 font-display text-lg font-bold">Where learners drop off</h2>
+            </div>
+            <BarChart3 className="h-5 w-5 text-[var(--brand)]" />
+          </div>
+
+          {courseCompletionData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <BookOpen className="h-7 w-7 text-indigo-500/50 mb-2" />
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">No courses available</p>
+              <p className="mt-1 text-[11px] text-[var(--muted)]">Publish courses in the Course Builder to track completion statistics.</p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-5">
+              {courseCompletionData.map((item) => (
+                <div key={item.id}>
+                  <div className="flex justify-between text-[11px] font-bold">
+                    <span className="truncate max-w-[220px]">{item.title}</span>
+                    <span>{item.completion}%</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                    <div
+                      className={cn("h-full rounded-full transition-all duration-500", item.color)}
+                      style={{ width: `${item.completion}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <DataCard
+        title="Saved reports"
+        subtitle="Reusable exports for your leadership and instructor teams"
+        toolbar={
+          <button onClick={handleExportCSV} className="secondary-button">
+            <Download className="h-4 w-4" /> Export all analytics
+          </button>
+        }
+      >
+        <div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">
+          <button
+            onClick={() => handleExportSpecificReport("Executive pulse")}
+            className="rounded-xl border border-[var(--app-line)] p-4 text-left hover:bg-[var(--subtle-bg)] transition cursor-pointer"
+          >
+            <BarChart3 className="h-4 w-4 text-[var(--brand)]" />
+            <p className="mt-4 text-[12px] font-bold">Monthly executive pulse</p>
+            <p className="mt-1 text-[10px] text-[var(--muted)]">Run report · CSV export</p>
+          </button>
+
+          <button
+            onClick={() => handleExportSpecificReport("Placement readiness")}
+            className="rounded-xl border border-[var(--app-line)] p-4 text-left hover:bg-[var(--subtle-bg)] transition cursor-pointer"
+          >
+            <GraduationCap className="h-4 w-4 text-emerald-600" />
+            <p className="mt-4 text-[12px] font-bold">Placement readiness</p>
+            <p className="mt-1 text-[10px] text-[var(--muted)]">Learner progress · CSV export</p>
+          </button>
+
+          <button
+            onClick={() => handleExportSpecificReport("Instructor performance")}
+            className="rounded-xl border border-[var(--app-line)] p-4 text-left hover:bg-[var(--subtle-bg)] transition cursor-pointer"
+          >
+            <Users className="h-4 w-4 text-violet-600" />
+            <p className="mt-4 text-[12px] font-bold">Instructor &amp; course performance</p>
+            <p className="mt-1 text-[10px] text-[var(--muted)]">Catalog health · CSV export</p>
+          </button>
+        </div>
+      </DataCard>
+    </div>
+  );
 }
 
 function PracticeProblemsView({
@@ -4020,20 +4467,110 @@ function HelpCenterView({ onAction, onToast }: { onAction: (state: DialogState) 
   );
 }
 
-function AuditView({ onToast }: { onToast: (message: string) => void }) {
+function AuditView({
+  onToast,
+  auditLogs = [],
+}: {
+  onToast: (message: string) => void;
+  auditLogs?: AuditLogItem[];
+}) {
   const [query, setQuery] = useState("");
-  const [selectedLog, setSelectedLog] = useState<typeof auditLogs[0] | null>(null);
+  const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
 
-  const filtered = auditLogs.filter(
-    (item) =>
-      item.action.toLowerCase().includes(query.toLowerCase()) ||
-      item.subtitle.toLowerCase().includes(query.toLowerCase()) ||
-      item.actor.toLowerCase().includes(query.toLowerCase())
-  );
+  const rows = auditLogs || [];
+
+  // Derive Real Dynamic Metrics
+  const metrics = useMemo(() => {
+    const today = new Date().toDateString();
+    let eventsToday = 0;
+    let adminActions = 0;
+    let systemEvents = 0;
+    let securityAlerts = 0;
+
+    const adminsSet = new Set<string>();
+
+    rows.forEach((log) => {
+      if (log.timestamp) {
+        const logDate = new Date(log.timestamp).toDateString();
+        if (logDate === today) {
+          eventsToday++;
+        }
+      }
+
+      const isSystem =
+        log.actor?.toLowerCase().includes("gateway") ||
+        log.actor?.toLowerCase().includes("system") ||
+        log.actor?.toLowerCase().includes("platform");
+      const isSecurity =
+        log.action?.toLowerCase().includes("security") ||
+        log.action?.toLowerCase().includes("alert") ||
+        log.badgeType === "rose";
+
+      if (isSystem) {
+        systemEvents++;
+      } else {
+        adminActions++;
+        if (log.actor) adminsSet.add(log.actor);
+      }
+
+      if (isSecurity) {
+        securityAlerts++;
+      }
+    });
+
+    return {
+      eventsToday: eventsToday > 0 ? eventsToday : rows.length,
+      adminActions,
+      adminsCount: Math.max(1, adminsSet.size),
+      systemEvents,
+      securityAlerts,
+    };
+  }, [rows]);
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    if (!q) return rows;
+    return rows.filter(
+      (item) =>
+        item.action?.toLowerCase().includes(q) ||
+        item.entity?.toLowerCase().includes(q) ||
+        item.actor?.toLowerCase().includes(q) ||
+        item.subtitle?.toLowerCase().includes(q) ||
+        item.details?.toLowerCase().includes(q)
+    );
+  }, [rows, query]);
+
+  const handleExportCSV = () => {
+    if (rows.length === 0) {
+      onToast("No audit logs available for export");
+      return;
+    }
+
+    const headers = ["Audit ID", "Action", "Entity", "Actor", "Subtitle", "Time", "Details", "Timestamp"];
+    const csvRows = rows.map((r) => [
+      `"${r.id || ""}"`,
+      `"${r.action || ""}"`,
+      `"${r.entity || ""}"`,
+      `"${r.actor || ""}"`,
+      `"${r.subtitle || ""}"`,
+      `"${r.time || ""}"`,
+      `"${(r.details || "").replace(/"/g, '""')}"`,
+      `"${r.timestamp || ""}"`,
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...csvRows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Audit_Logs_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    onToast("Audit activity logs exported as CSV");
+  };
 
   return (
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
-      {/* Header matching reference screenshot */}
+      {/* Header */}
       <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
         <div>
           <div className="mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-indigo-600 dark:text-indigo-400">
@@ -4048,10 +4585,10 @@ function AuditView({ onToast }: { onToast: (message: string) => void }) {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => onToast("Exporting platform activity logs...")}
-            className="flex items-center gap-1.5 rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-indigo-200 transition hover:bg-indigo-700 dark:shadow-none"
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-indigo-200 transition hover:bg-indigo-700 dark:shadow-none cursor-pointer"
           >
-            <Plus className="h-3.5 w-3.5" /> Export logs
+            <Download className="h-3.5 w-3.5" /> Export logs
           </button>
         </div>
       </div>
@@ -4063,8 +4600,12 @@ function AuditView({ onToast }: { onToast: (message: string) => void }) {
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Events today</p>
             <TrendingUp className="h-4 w-4 text-emerald-500" />
           </div>
-          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">1,284</p>
-          <p className="mt-2 text-[11px] font-bold text-emerald-600">+14.2%</p>
+          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">
+            {metrics.eventsToday.toLocaleString()}
+          </p>
+          <p className="mt-2 text-[11px] font-bold text-emerald-600">
+            {rows.length > 0 ? `${rows.length} total logged events` : "0 logged events"}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
@@ -4072,8 +4613,12 @@ function AuditView({ onToast }: { onToast: (message: string) => void }) {
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Admin actions</p>
             <TrendingUp className="h-4 w-4 text-emerald-500" />
           </div>
-          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">326</p>
-          <p className="mt-2 text-[11px] font-bold text-emerald-600">Across 8 admins</p>
+          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">
+            {metrics.adminActions.toLocaleString()}
+          </p>
+          <p className="mt-2 text-[11px] font-bold text-emerald-600">
+            {metrics.adminActions > 0 ? `Across ${metrics.adminsCount} operator${metrics.adminsCount > 1 ? "s" : ""}` : "0 actions"}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
@@ -4081,17 +4626,25 @@ function AuditView({ onToast }: { onToast: (message: string) => void }) {
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">System events</p>
             <TrendingUp className="h-4 w-4 text-emerald-500" />
           </div>
-          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">958</p>
-          <p className="mt-2 text-[11px] font-bold text-emerald-600">All services</p>
+          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">
+            {metrics.systemEvents.toLocaleString()}
+          </p>
+          <p className="mt-2 text-[11px] font-bold text-emerald-600">
+            {metrics.systemEvents > 0 ? "Automated captures" : "All services operational"}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Security alerts</p>
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            <Shield className="h-4 w-4 text-emerald-500" />
           </div>
-          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">0</p>
-          <p className="mt-2 text-[11px] font-bold text-emerald-600">No action needed</p>
+          <p className="mt-3 font-display text-2xl font-bold text-slate-900 dark:text-white">
+            {metrics.securityAlerts}
+          </p>
+          <p className="mt-2 text-[11px] font-bold text-emerald-600">
+            {metrics.securityAlerts === 0 ? "No action needed" : `${metrics.securityAlerts} alerts need review`}
+          </p>
         </div>
       </div>
 
@@ -4115,111 +4668,140 @@ function AuditView({ onToast }: { onToast: (message: string) => void }) {
           </div>
         </div>
 
-        <div className="mt-6 divide-y divide-slate-100 dark:divide-slate-800/80">
-          {filtered.map((item) => {
-            const badgeClass =
-              item.badgeType === "emerald"
-                ? "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40"
-                : item.badgeType === "blue"
-                ? "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800/40"
-                : item.badgeType === "purple"
-                ? "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800/40"
-                : item.badgeType === "amber"
-                ? "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/40"
-                : "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/40";
-
-            return (
-              <div
-                key={item.id}
-                onClick={() => setSelectedLog(item)}
-                className="group flex items-center justify-between py-4 px-2 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 rounded-xl transition cursor-pointer"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition-transform group-hover:scale-105", badgeClass)}>
-                    <ShieldCheck className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
-                      {item.action}
-                    </p>
-                    <p className="mt-0.5 text-[11px] font-medium text-slate-400 dark:text-slate-400">
-                      {item.subtitle}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-slate-400">{item.time}</span>
-                  <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
-                </div>
-              </div>
-            );
-          })}
-          {filtered.length === 0 && (
-            <div className="py-12 text-center text-xs text-slate-400">
-              No audit events found matching "{query}"
+        {rows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 mb-3 shadow-inner">
+              <ShieldCheck className="h-7 w-7" />
             </div>
-          )}
-        </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">No audit events recorded yet</h3>
+            <p className="mt-1 max-w-sm text-xs text-[var(--muted)] leading-relaxed">
+              Administrative operations, course updates, student registrations, and payment events will be automatically logged here in real time.
+            </p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <Search className="h-6 w-6 text-slate-400 mb-2 opacity-50" />
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              No audit events found matching &quot;{query}&quot;
+            </p>
+            <p className="mt-1 text-[11px] text-[var(--muted)]">Try adjusting your search terms.</p>
+            <button
+              onClick={() => setQuery("")}
+              className="mt-3 text-xs font-semibold text-indigo-600 hover:underline cursor-pointer"
+            >
+              Reset search
+            </button>
+          </div>
+        ) : (
+          <div className="mt-6 divide-y divide-slate-100 dark:divide-slate-800/80">
+            {filtered.map((item) => {
+              const badgeClass =
+                item.badgeType === "emerald"
+                  ? "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40"
+                  : item.badgeType === "blue"
+                  ? "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800/40"
+                  : item.badgeType === "purple"
+                  ? "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800/40"
+                  : item.badgeType === "amber"
+                  ? "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/40"
+                  : "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/40";
+
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => setSelectedLog(item)}
+                  className="group flex items-center justify-between py-4 px-2 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 rounded-xl transition cursor-pointer"
+                >
+                  <div className="flex items-center gap-4 min-w-0 flex-1 pr-4">
+                    <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition-transform group-hover:scale-105", badgeClass)}>
+                      <ShieldCheck className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors truncate">
+                        {item.action}
+                      </p>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-400 dark:text-slate-400 truncate">
+                        {item.subtitle}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs font-medium text-slate-400">{item.time}</span>
+                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Log Detail Modal */}
+      {/* Audit Log Details Dialog */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">{selectedLog.action}</h3>
-                  <p className="text-[11px] text-slate-400">{selectedLog.time}</p>
+                  <h3 className="font-display text-sm font-bold text-slate-900 dark:text-white">{selectedLog.action}</h3>
+                  <p className="text-[10px] text-slate-500 font-mono">{selectedLog.id}</p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedLog(null)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 text-xs">
-              <div className="flex justify-between py-1 border-b border-slate-100/60 dark:border-slate-800/60">
-                <span className="font-semibold text-slate-500">Actor</span>
-                <span className="font-bold text-slate-900 dark:text-white">{selectedLog.actor}</span>
+            <div className="mt-5 space-y-3.5 text-xs">
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500">Target Entity</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{selectedLog.entity}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-100/60 dark:border-slate-800/60">
-                <span className="font-semibold text-slate-500">Entity</span>
-                <span className="font-bold text-slate-900 dark:text-white">{selectedLog.entity}</span>
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500">Actor / Operator</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">{selectedLog.actor}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-100/60 dark:border-slate-800/60">
-                <span className="font-semibold text-slate-500">Timestamp</span>
-                <span className="font-medium text-slate-700 dark:text-slate-300">{selectedLog.time}</span>
+              <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500">Time</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">{selectedLog.time}</span>
               </div>
+              {selectedLog.timestamp && (
+                <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-500">Exact Timestamp</span>
+                  <span className="font-mono text-[11px] text-slate-700 dark:text-slate-300">
+                    {new Date(selectedLog.timestamp).toLocaleString()}
+                  </span>
+                </div>
+              )}
               <div className="py-2">
-                <span className="font-semibold text-slate-500 block mb-1">Payload / Description</span>
-                <p className="rounded-xl bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+                <span className="text-slate-500 block mb-1.5 font-medium">Activity Details:</span>
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-200 leading-relaxed text-[11px]">
                   {selectedLog.details}
-                </p>
+                </div>
               </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
               <button
-                onClick={() => setSelectedLog(null)}
-                className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                onClick={() => {
+                  navigator.clipboard.writeText(JSON.stringify(selectedLog, null, 2));
+                  onToast("Audit log details copied to clipboard");
+                }}
+                className="secondary-button text-xs cursor-pointer"
               >
-                Close
+                Copy JSON
               </button>
               <button
-                onClick={() => {
-                  onToast(`Event payload copied for ${selectedLog.action}`);
-                  setSelectedLog(null);
-                }}
-                className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+                onClick={() => setSelectedLog(null)}
+                className="primary-button text-xs cursor-pointer"
               >
-                Copy event JSON
+                Done
               </button>
             </div>
           </div>
@@ -4934,6 +5516,7 @@ export default function Home() {
     recordings: liveRecordingsList,
     payments: livePaymentsList,
     instructors: liveInstructors,
+    auditLogs: liveAuditLogsList,
     stats: liveStats,
     isLoading,
     isWsConnected,
@@ -5726,9 +6309,18 @@ export default function Home() {
     ) : section === "feedback" ? (
       <FeedbackView onAction={onAction} onToast={onToast} />
     ) : section === "reports" ? (
-      <ReportsView onToast={onToast} />
+      <ReportsView
+        onToast={onToast}
+        courses={liveCourses}
+        students={liveStudents}
+        assignments={liveAssignments}
+        submissions={liveSubmissions}
+        practiceProblems={livePracticeProblems}
+        payments={livePaymentsList}
+        stats={liveStats}
+      />
     ) : section === "audit" || section === "audit_logs" ? (
-      <AuditView onToast={onToast} />
+      <AuditView onToast={onToast} auditLogs={liveAuditLogsList} />
     ) : section === "help" ? (
       <HelpCenterView onAction={onAction} onToast={onToast} />
     ) : (
