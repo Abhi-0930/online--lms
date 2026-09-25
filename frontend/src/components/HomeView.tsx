@@ -1703,11 +1703,23 @@ function RecordingsPage({ initialRecordingId }: { initialRecordingId?: string })
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  const scrollToTop = () => {
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  };
+
   useEffect(() => {
     if (initialRecordingId) {
       setSelectedId(initialRecordingId);
     }
   }, [initialRecordingId]);
+
+  useEffect(() => {
+    scrollToTop();
+  }, [selectedId]);
 
   const activeRecording = useMemo(() => {
     if (!selectedId) return null;
@@ -1735,6 +1747,7 @@ function RecordingsPage({ initialRecordingId }: { initialRecordingId?: string })
   const handleOpenRecording = (rec: LiveRecordingItem) => {
     setSelectedId(rec.id);
     setActiveChapterIndex(0);
+    scrollToTop();
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", createSecureUrl("/recordings", { id: rec.id }));
     }
@@ -1742,6 +1755,7 @@ function RecordingsPage({ initialRecordingId }: { initialRecordingId?: string })
 
   const handleClosePlayer = () => {
     setSelectedId("");
+    scrollToTop();
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", createSecureUrl("/recordings", { v: "recordings" }));
     }
@@ -5951,6 +5965,14 @@ export default function Home({
       setActiveProblemSlug(problemSlug);
     }
   }, [problemSlug]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [page, courseId, recordingId, sessionId]);
 
   const activeProblem = useMemo(() => {
     if (!activeProblemSlug) return null;
