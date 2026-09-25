@@ -208,7 +208,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
       ];
 
   return (
-    <aside className={cx("fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[#e5e8f0] bg-[#fbfcff] transition-[width] duration-200 dark:border-white/10 dark:bg-[#10172b] lg:flex", collapsed ? "w-[86px]" : "w-[250px]")}>
+    <aside className={cx("fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[#e5e8f0] bg-white transition-[width] duration-200 dark:border-white/10 dark:bg-[#10172b] lg:flex", collapsed ? "w-[86px]" : "w-[250px]")}>
       <div className={cx("flex h-[78px] items-center border-b border-[#e5e8f0] dark:border-white/10", collapsed ? "justify-center px-3" : "px-6")}>
         <Logo compact={collapsed} />
       </div>
@@ -440,11 +440,12 @@ function LearnerProfileDropdown({ displayName, roleName, user, onLogout }: { dis
 function Topbar({ onMenu }: { onMenu: () => void }) {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { unreadCount: unreadAnnouncements } = useAnnouncements();
   const [query, setQuery] = useState("");
   const displayName = resolveDisplayName(user);
   const roleName = resolveEducationStatus(user);
 
-  return <header className="sticky top-0 z-30 flex h-[78px] items-center justify-between border-b border-[#e5e8f0]/90 bg-[#fbfcff]/90 px-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#10172b]/90 sm:px-6 lg:px-8">
+  return <header className="sticky top-0 z-30 flex h-[78px] items-center justify-between border-b border-[#e5e8f0]/90 bg-white/90 px-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#10172b]/90 sm:px-6 lg:px-8">
     <div className="flex min-w-0 items-center gap-3">
       <button onClick={onMenu} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#5b6788] hover:bg-[#eef2ff] lg:hidden dark:hover:bg-white/10"><Menu className="h-5 w-5" /></button>
       <div className="hidden items-center gap-2 text-sm text-[#9aa4bc] md:flex"><span className="h-2 w-2 rounded-full bg-[#48c58a]" /> Learning space</div>
@@ -455,7 +456,10 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
       </div>
     </div>
     <div className="flex items-center gap-2 sm:gap-4">
-      <Link href={getSecureHref("/notifications")} aria-label="Open notifications" className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] dark:hover:bg-white/10"><Bell className="h-[18px] w-[18px]" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ef8354] ring-2 ring-[#fbfcff] dark:ring-[#10172b]" /></Link>
+      <Link href={getSecureHref("/announcements")} aria-label="Announcements" title="Announcements" className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] dark:hover:bg-white/10">
+        <Bell className="h-[18px] w-[18px]" />
+        {unreadAnnouncements > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#ef8354] ring-2 ring-white dark:ring-[#10172b]" />}
+      </Link>
       <button className="hidden h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] sm:inline-flex dark:hover:bg-white/10" onClick={toggleTheme}>{theme === "light" ? <Moon className="h-[17px] w-[17px]" /> : <Sun className="h-[17px] w-[17px]" />}</button>
       <div className="hidden h-7 w-px bg-[#e5e8f0] sm:block dark:bg-white/10" />
       <LearnerProfileDropdown displayName={displayName} roleName={roleName} user={user} onLogout={logout} />
@@ -611,7 +615,7 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
 function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
-  return <div className="min-h-screen bg-[#f5f7fb] text-[#17223d] dark:bg-[#0d1325] dark:text-white w-full max-w-full overflow-x-hidden"><Sidebar collapsed={collapsed} setCollapsed={setCollapsed} /><MobileDrawer open={drawer} onClose={() => setDrawer(false)} /><div className={cx("min-h-screen transition-[padding] duration-200 w-full max-w-full min-w-0 overflow-x-hidden", collapsed ? "lg:pl-[86px]" : "lg:pl-[250px]")}><Topbar onMenu={() => setDrawer(true)} /><main className="mx-auto max-w-[1540px] w-full min-w-0 px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-10 overflow-x-hidden">{children}</main></div><MobileNav /></div>;
+  return <div className="min-h-screen bg-white text-[#17223d] dark:bg-[#0d1325] dark:text-white w-full max-w-full overflow-x-hidden"><Sidebar collapsed={collapsed} setCollapsed={setCollapsed} /><MobileDrawer open={drawer} onClose={() => setDrawer(false)} /><div className={cx("min-h-screen transition-[padding] duration-200 w-full max-w-full min-w-0 overflow-x-hidden", collapsed ? "lg:pl-[86px]" : "lg:pl-[250px]")}><Topbar onMenu={() => setDrawer(true)} /><main className="mx-auto max-w-[1540px] w-full min-w-0 px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-10 overflow-x-hidden">{children}</main></div><MobileNav /></div>;
 }
 
 function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: React.ReactNode }) {
@@ -633,7 +637,6 @@ function ProgressBar({ value, color = "#3157e8" }: { value: number; color?: stri
 }
 
 function Dashboard() {
-  const [showAll, setShowAll] = useState(false);
   const { user } = useAuth();
   const { courses, loading: coursesLoading } = useLiveCourses();
   const { enrollments, isEnrolled } = useEnrollments();
@@ -662,7 +665,6 @@ function Dashboard() {
   );
 
   const activeDisplayCourses = enrolledCourses.length > 0 ? enrolledCourses : courses;
-  const currentFocusCourse = activeDisplayCourses[0];
 
   // 100% Real Weekly Focus Data from useUserActivity
   const { bars: weeklyBars, totalMinutes: weeklyTotalMins, totalSeconds: weeklyTotalSecs } = useMemo(() => {
@@ -701,80 +703,14 @@ function Dashboard() {
     return "0m today";
   }, [liveSecondsToday, formatMinutes]);
 
-  // Dynamic Real Activity Feed
-  const dynamicActivities = useMemo(() => {
-    const items: Array<{
-      id: string;
-      icon: LucideIcon;
-      title: string;
-      subtitle: string;
-      time: string;
-      color: "blue" | "emerald" | "violet" | "amber";
-      timestamp: number;
-    }> = [];
-
-    if (liveSecondsToday > 0) {
-      const mins = Math.floor(liveSecondsToday / 60);
-      const secs = liveSecondsToday % 60;
-      items.push({
-        id: "live-session-today",
-        icon: Clock3,
-        title: "Active study session",
-        subtitle: `${formatMinutes(mins, secs)} focused learning time`,
-        time: "Today",
-        color: "emerald",
-        timestamp: Date.now(),
-      });
-    }
-
-    mySubmissions.forEach((sub, idx) => {
-      items.push({
-        id: `sub-${sub.id || idx}`,
-        icon: ClipboardCheck,
-        title: "Submitted assignment",
-        subtitle: sub.assignment?.title || sub.assignmentId || "Assignment submission",
-        time: sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Recently",
-        color: "violet",
-        timestamp: sub.submittedAt ? new Date(sub.submittedAt).getTime() : Date.now() - (idx + 1) * 3600000,
-      });
-    });
-
-    liveProblems
-      .filter((p) => p.solved)
-      .forEach((prob, idx) => {
-        items.push({
-          id: `prob-${prob.id || idx}`,
-          icon: Code2,
-          title: "Solved problem",
-          subtitle: `${prob.title} (${prob.difficulty || "Medium"})`,
-          time: "Completed",
-          color: "amber",
-          timestamp: Date.now() - (idx + 2) * 7200000,
-        });
-      });
-
-    enrolledCourses.forEach((c, idx) => {
-      items.push({
-        id: `enroll-${c.id || idx}`,
-        icon: BookOpen,
-        title: "Enrolled in course",
-        subtitle: c.title,
-        time: "Active course",
-        color: "blue",
-        timestamp: Date.now() - (idx + 3) * 86400000,
-      });
-    });
-
-    return items.sort((a, b) => b.timestamp - a.timestamp);
-  }, [liveSecondsToday, mySubmissions, liveProblems, enrolledCourses, formatMinutes]);
-
   return (
     <>
-      <div className="mb-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
+      {/* Hero Welcome Banner */}
+      <div className="mb-7 w-full">
         <section className="relative min-h-[230px] overflow-hidden rounded-[24px] bg-[#17223d] p-6 text-white shadow-[0_18px_34px_rgba(23,34,61,0.16)] sm:p-8">
           <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full border-[34px] border-[#3157e8]/20" />
           <div className="absolute right-28 -bottom-28 h-64 w-64 rounded-full border-[1px] border-white/10" />
-          <div className="relative z-10 max-w-xl">
+          <div className="relative z-10 max-w-2xl">
             <div className="mb-6 flex items-center gap-2 text-xs font-semibold text-white/50">
               <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#3157e8] text-white">
                 <Sparkles className="h-3.5 w-3.5" />
@@ -784,7 +720,7 @@ function Dashboard() {
             <h1 className="font-display text-[28px] font-bold leading-tight tracking-[-0.05em] sm:text-[35px]">
               {greeting}, {firstName}<span className="text-[#ffca63]">.</span>
             </h1>
-            <p className="mt-3 max-w-sm text-sm leading-6 text-white/60">
+            <p className="mt-3 max-w-md text-sm leading-6 text-white/60">
               You’re building momentum. One focused session today can keep your placement prep on track.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -835,60 +771,9 @@ function Dashboard() {
             </div>
           </div>
         </section>
-        <section className="card-surface flex flex-col justify-between p-5 sm:p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold text-[#7c87a4]">
-                {enrolledCourses.length > 0 ? "Current focus" : "Get started"}
-              </p>
-              <h2 className="mt-1 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white line-clamp-1">
-                {enrolledCourses.length > 0 && currentFocusCourse ? currentFocusCourse.title : "Browse courses"}
-              </h2>
-            </div>
-            <span className="rounded-lg bg-[#eaf0ff] px-2 py-1 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">
-              {enrolledCourses.length > 0 && currentFocusCourse ? `${currentFocusCourse.progress}% done` : `${courses.length} available`}
-            </span>
-          </div>
-          <div className="mt-6">
-            <div className="mb-3 flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#17223d] text-white">
-                {enrolledCourses.length > 0 ? <Code2 className="h-5 w-5" /> : <Library className="h-5 w-5" />}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
-                  {enrolledCourses.length > 0 && currentFocusCourse
-                    ? currentFocusCourse.subtitle || currentFocusCourse.title
-                    : "Curated learning tracks"}
-                </p>
-                <p className="mt-0.5 text-xs text-[#9aa4bc]">
-                  {enrolledCourses.length > 0 && currentFocusCourse
-                    ? `${currentFocusCourse.category} · ${currentFocusCourse.lessons}`
-                    : "Live cohorts & self-paced learning"}
-                </p>
-              </div>
-            </div>
-            {enrolledCourses.length > 0 && currentFocusCourse ? (
-              <>
-                <ProgressBar value={currentFocusCourse.progress} />
-                <div className="mt-2 flex justify-between text-[10px] font-semibold text-[#9aa4bc]">
-                  <span>{currentFocusCourse.lessons}</span>
-                  <span>{currentFocusCourse.duration}</span>
-                </div>
-              </>
-            ) : (
-              <p className="text-xs text-[#7c87a4] leading-5">
-                Join a cohort to unlock live mentorship, projects, assessments, and placement assistance.
-              </p>
-            )}
-          </div>
-          <Link
-            href={getSecureHref(enrolledCourses.length > 0 && currentFocusCourse ? "/learn" : "/courses")}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#f1f4fb] py-3 text-xs font-bold text-[#3157e8] transition hover:bg-[#e6ebfb] dark:bg-white/5 dark:hover:bg-white/10"
-          >
-            {enrolledCourses.length > 0 ? "Continue lesson" : "Explore courses"} <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </section>
       </div>
+
+      {/* Metrics Row */}
       <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {enrolledCourses.length > 0 ? (
           <>
@@ -940,132 +825,77 @@ function Dashboard() {
           color="violet"
         />
       </div>
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)] min-w-0 max-w-full w-full">
-        <section className="min-w-0 max-w-full w-full">
-          <SectionTitle
-            title={enrolledCourses.length > 0 ? "Continue your learning" : "Popular courses"}
-            link={courses.length > 0 ? "Browse all" : undefined}
-            href={getSecureHref("/courses")}
-          />
-          <div className="flex w-full max-w-full min-w-0 gap-4 overflow-x-auto pb-1 pt-1 scroll-smooth snap-x snap-mandatory overscroll-x-contain no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {coursesLoading ? (
-              [1, 2, 3].map((n) => (
-                <div
-                  key={n}
-                  className="card-surface h-52 w-[270px] sm:w-[300px] shrink-0 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5"
-                />
-              ))
-            ) : activeDisplayCourses.length > 0 ? (
-              activeDisplayCourses.map((c) => (
-                <div key={c.id} className="w-[270px] sm:w-[300px] shrink-0 snap-start">
-                  <CourseProgressCard key={c.id} course={c} />
-                </div>
-              ))
-            ) : (
-              <div className="card-surface w-full p-8 text-center">
-                <Library className="mx-auto h-8 w-8 text-[#9aa4bc]" />
-                <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No courses available yet</p>
-                <p className="mt-1 text-xs text-[#9aa4bc]">Courses added via the Admin Panel will appear here live.</p>
-              </div>
-            )}
-          </div>
-          <div className="mt-8">
+
+      {/* Main Content Area */}
+      {enrolledCourses.length > 0 ? (
+        <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)] min-w-0 max-w-full w-full">
+          <section className="min-w-0 max-w-full w-full">
             <SectionTitle
-              title="Activity timeline"
-              link={dynamicActivities.length > 3 ? (showAll ? "Show less" : "View all activity") : undefined}
-              href="#"
+              title="Continue your learning"
+              link={courses.length > 0 ? "Browse all" : undefined}
+              href={getSecureHref("/courses")}
             />
-            <div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10">
-              {dynamicActivities.length === 0 ? (
-                <div className="py-7 text-center">
-                  <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-xl bg-slate-100 dark:bg-white/5 text-[#9aa4bc]">
-                    <Clock3 className="h-5 w-5" />
+            <div className="flex w-full max-w-full min-w-0 gap-4 overflow-x-auto pb-1 pt-1 scroll-smooth snap-x snap-mandatory overscroll-x-contain no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {coursesLoading ? (
+                [1, 2, 3].map((n) => (
+                  <div
+                    key={n}
+                    className="card-surface h-52 w-[270px] sm:w-[300px] shrink-0 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5"
+                  />
+                ))
+              ) : activeDisplayCourses.length > 0 ? (
+                activeDisplayCourses.map((c) => (
+                  <div key={c.id} className="w-[270px] sm:w-[300px] shrink-0 snap-start">
+                    <CourseProgressCard key={c.id} course={c} />
                   </div>
-                  <p className="text-xs font-semibold text-[#17223d] dark:text-white">No activity recorded yet</p>
-                  <p className="mt-0.5 text-[11px] text-[#9aa4bc]">Start studying, solving problems, or submitting assignments to track your progress live.</p>
-                </div>
+                ))
               ) : (
-                dynamicActivities
-                  .slice(0, showAll ? 8 : 3)
-                  .map((item, i) => (
-                    <ActivityRow
-                      key={item.id || item.title}
-                      item={item}
-                      last={i === (showAll ? Math.min(7, dynamicActivities.length - 1) : Math.min(2, dynamicActivities.length - 1))}
-                    />
-                  ))
-              )}
-              {dynamicActivities.length > 3 && (
-                <button
-                  onClick={() => setShowAll(!showAll)}
-                  className="flex w-full items-center justify-center gap-2 py-4 text-xs font-bold text-[#3157e8]"
-                >
-                  {showAll ? "Show less" : `Show ${dynamicActivities.length - 3} more activities`}
-                  <ChevronDown className={cx("h-3.5 w-3.5 transition-transform", showAll && "rotate-180")} />
-                </button>
+                <div className="card-surface w-full p-8 text-center">
+                  <Library className="mx-auto h-8 w-8 text-[#9aa4bc]" />
+                  <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No courses available yet</p>
+                  <p className="mt-1 text-xs text-[#9aa4bc]">Courses added via the Admin Panel will appear here live.</p>
+                </div>
               )}
             </div>
-          </div>
-        </section>
-        <aside className="space-y-8">
-          {enrolledCourses.length > 0 ? (
-            <>
-              <UpcomingSessions />
-              <AssignmentsWidget />
-            </>
-          ) : (
-            <>
-              {/* Daily Problem Arena Spotlight for un-enrolled students */}
-              <section className="card-surface p-5 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fff4db] text-[#d68c20] dark:bg-amber-950/40 dark:text-amber-400">
-                    <Code2 className="h-5 w-5" />
-                  </span>
-                  <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
-                    Free Arena
-                  </span>
-                </div>
-                <h3 className="mt-4 font-display text-base font-bold text-[#17223d] dark:text-white">
-                  Practice Coding Arena
-                </h3>
-                <p className="mt-1 text-xs text-[#7c87a4] leading-5">
-                  Solve industry-level problems filtered by top tech companies and topics with our in-browser code editor.
-                </p>
-                <Link
-                  href={getSecureHref("/practice")}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#3157e8] py-2.5 text-xs font-bold text-white transition hover:bg-[#2546c7]"
-                >
-                  <Code2 className="h-4 w-4" /> Start solving problems
-                </Link>
-              </section>
-
-              {/* Announcements preview widget */}
-              <section className="card-surface p-5 sm:p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Bell className="h-4 w-4 text-[#3157e8]" />
-                    <h3 className="font-display text-sm font-bold text-[#17223d] dark:text-white">
-                      Announcements
-                    </h3>
+          </section>
+          <aside className="space-y-8">
+            <UpcomingSessions />
+            <AssignmentsWidget />
+          </aside>
+        </div>
+      ) : (
+        <div className="min-w-0 max-w-full w-full">
+          <section className="min-w-0 max-w-full w-full">
+            <SectionTitle
+              title="Popular courses"
+              link={courses.length > 0 ? "Browse all" : undefined}
+              href={getSecureHref("/courses")}
+            />
+            <div className="flex w-full max-w-full min-w-0 gap-4 overflow-x-auto pb-1 pt-1 scroll-smooth snap-x snap-mandatory overscroll-x-contain no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {coursesLoading ? (
+                [1, 2, 3].map((n) => (
+                  <div
+                    key={n}
+                    className="card-surface h-52 w-[270px] sm:w-[300px] shrink-0 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5"
+                  />
+                ))
+              ) : activeDisplayCourses.length > 0 ? (
+                activeDisplayCourses.map((c) => (
+                  <div key={c.id} className="w-[270px] sm:w-[300px] shrink-0 snap-start">
+                    <CourseProgressCard key={c.id} course={c} />
                   </div>
-                  <Link href={getSecureHref("/announcements")} className="text-xs font-bold text-[#3157e8] hover:underline">
-                    View all
-                  </Link>
+                ))
+              ) : (
+                <div className="card-surface w-full p-8 text-center">
+                  <Library className="mx-auto h-8 w-8 text-[#9aa4bc]" />
+                  <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No courses available yet</p>
+                  <p className="mt-1 text-xs text-[#9aa4bc]">Courses added via the Admin Panel will appear here live.</p>
                 </div>
-                <p className="text-xs text-[#7c87a4] leading-5">
-                  Stay updated with platform announcements, upcoming webinars, and cohort notifications.
-                </p>
-                <Link
-                  href={getSecureHref("/announcements")}
-                  className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#f1f4fb] py-2.5 text-xs font-bold text-[#3157e8] transition hover:bg-[#e6ebfb] dark:bg-white/5 dark:hover:bg-white/10"
-                >
-                  Check announcements <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </section>
-            </>
-          )}
-        </aside>
-      </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
     </>
   );
 }
@@ -1109,41 +939,6 @@ function CourseProgressCard({ course }: { course: LiveCourseItem }) {
         </div>
       </div>
     </Link>
-  );
-}
-
-function ActivityRow({
-  item,
-  last,
-}: {
-  item: {
-    icon: LucideIcon;
-    title: string;
-    subtitle: string;
-    time: string;
-    color: "blue" | "emerald" | "violet" | "amber" | string;
-  };
-  last: boolean;
-}) {
-  const Icon = item.icon;
-  const colors: Record<string, string> = {
-    blue: "bg-[#eaf0ff] text-[#3157e8] dark:bg-blue-950/40 dark:text-blue-400",
-    emerald: "bg-[#e4f8ee] text-[#23a26d] dark:bg-emerald-950/40 dark:text-emerald-400",
-    violet: "bg-[#f0eaff] text-[#7f5af0] dark:bg-purple-950/40 dark:text-purple-400",
-    amber: "bg-[#fff4db] text-[#d68c20] dark:bg-amber-950/40 dark:text-amber-400",
-  };
-  return (
-    <div className="flex items-center gap-3 py-4">
-      <span className={cx("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", colors[item.color] || colors.blue)}>
-        <Icon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-[#17223d] dark:text-white">{item.title}</p>
-        <p className="mt-0.5 truncate text-xs text-[#9aa4bc]">{item.subtitle}</p>
-      </div>
-      <span className="shrink-0 text-[10px] font-medium text-[#a5aec2]">{item.time}</span>
-      {!last && <span className="sr-only">divider</span>}
-    </div>
   );
 }
 
