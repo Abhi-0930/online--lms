@@ -2274,7 +2274,7 @@ function CoursesPage() {
       </div>
 
       {categories.length > 1 && (
-        <div className="mb-7 flex gap-2 overflow-x-auto pb-1">
+        <div className="mb-7 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
           {categories.map((item) => (
             <button
               key={item}
@@ -3492,7 +3492,7 @@ function PlayerPage() {
               </div>
             </div>
           </div>
-          <div className="mt-6 flex gap-1 overflow-x-auto border-b border-[#e5e8f0] dark:border-white/10">
+          <div className="mt-6 flex gap-1 overflow-x-auto border-b border-[#e5e8f0] dark:border-white/10 no-scrollbar">
             {["Notes", "Resources", "Practice problems", "Assignments", "Discussion"].map((item) => (
               <button
                 key={item}
@@ -3761,7 +3761,7 @@ function PracticePage({
         </div>
       </div>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between flex-wrap">
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
           {["All", "Easy", "Medium", "Hard"].map((item) => (
             <button
               key={item}

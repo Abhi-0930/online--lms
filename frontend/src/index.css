@@ -91,6 +91,8 @@
   .button-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-[#e2e6ef] bg-white px-4 py-2.5 text-xs font-bold text-[#52617f] transition-all duration-150 hover:-translate-y-0.5 hover:border-[#b9c8ff] hover:text-[#3157e8] dark:border-white/10 dark:bg-white/5 dark:text-white; }
   .button-ghost-dark { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-bold text-white/75 transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white; }
   .font-display { font-family: "Manrope", ui-sans-serif, system-ui, sans-serif; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
