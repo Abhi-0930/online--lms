@@ -97,7 +97,117 @@
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { border-radius: 999px; background: #cbd3e3; }
-.dark ::-webkit-scrollbar-thumb { background: #384463; }
+::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(148, 163, 184, 0.45); }
+::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.6); }
+.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); }
+.dark ::-webkit-scrollbar-thumb:hover { background: rgba(129, 140, 248, 0.6); }
+
+/* Custom scrollbar utility */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.6);
+}
+.dark .custom-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(129, 140, 248, 0.6);
+}
+
+/* Dedicated Sidebar Scrollbar Styling (Ultra-compact 2.5px) */
+[data-slot="sidebar-content"],
+[data-sidebar="content"],
+[data-sidebar="sidebar"],
+[data-slot="sidebar"],
+aside,
+aside *,
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+[data-slot="sidebar-content"]::-webkit-scrollbar,
+[data-sidebar="content"]::-webkit-scrollbar,
+[data-sidebar="sidebar"]::-webkit-scrollbar,
+[data-slot="sidebar"]::-webkit-scrollbar,
+aside::-webkit-scrollbar,
+aside *::-webkit-scrollbar,
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 2.5px;
+  height: 2.5px;
+}
+[data-slot="sidebar-content"]::-webkit-scrollbar-track,
+[data-sidebar="content"]::-webkit-scrollbar-track,
+[data-sidebar="sidebar"]::-webkit-scrollbar-track,
+[data-slot="sidebar"]::-webkit-scrollbar-track,
+aside::-webkit-scrollbar-track,
+aside *::-webkit-scrollbar-track,
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-slot="sidebar-content"]::-webkit-scrollbar-thumb,
+[data-sidebar="content"]::-webkit-scrollbar-thumb,
+[data-sidebar="sidebar"]::-webkit-scrollbar-thumb,
+[data-slot="sidebar"]::-webkit-scrollbar-thumb,
+aside::-webkit-scrollbar-thumb,
+aside *::-webkit-scrollbar-thumb,
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+[data-slot="sidebar-content"]::-webkit-scrollbar-thumb:hover,
+[data-sidebar="content"]::-webkit-scrollbar-thumb:hover,
+[data-sidebar="sidebar"]::-webkit-scrollbar-thumb:hover,
+[data-slot="sidebar"]::-webkit-scrollbar-thumb:hover,
+aside::-webkit-scrollbar-thumb:hover,
+aside *::-webkit-scrollbar-thumb:hover,
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.6);
+}
+.dark [data-slot="sidebar-content"],
+.dark [data-sidebar="content"],
+.dark [data-sidebar="sidebar"],
+.dark [data-slot="sidebar"],
+.dark aside,
+.dark aside *,
+.dark .sidebar-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.dark [data-slot="sidebar-content"]::-webkit-scrollbar-thumb,
+.dark [data-sidebar="content"]::-webkit-scrollbar-thumb,
+.dark [data-sidebar="sidebar"]::-webkit-scrollbar-thumb,
+.dark [data-slot="sidebar"]::-webkit-scrollbar-thumb,
+.dark aside::-webkit-scrollbar-thumb,
+.dark aside *::-webkit-scrollbar-thumb,
+.dark .sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+.dark [data-slot="sidebar-content"]::-webkit-scrollbar-thumb:hover,
+.dark [data-sidebar="content"]::-webkit-scrollbar-thumb:hover,
+.dark [data-sidebar="sidebar"]::-webkit-scrollbar-thumb:hover,
+.dark [data-slot="sidebar-content"]::-webkit-scrollbar-thumb:hover,
+.dark aside::-webkit-scrollbar-thumb:hover,
+.dark aside *::-webkit-scrollbar-thumb:hover,
+.dark .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(129, 140, 248, 0.6);
+}
+
+

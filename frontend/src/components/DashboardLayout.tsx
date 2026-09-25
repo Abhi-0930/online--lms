@@ -213,7 +213,7 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0">
+          <SidebarContent className="gap-0 custom-scrollbar pr-0.5">
             <SidebarMenu className="px-2 py-1">
               {menuItems.map((item) => {
                 const isActive = pathname === item.path;

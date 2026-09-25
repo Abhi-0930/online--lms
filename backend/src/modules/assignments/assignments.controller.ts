@@ -78,8 +78,12 @@ export default async function assignmentsController(fastify: FastifyInstance) {
     } catch {}
 
     if (!userId) {
-      const student = await fastify.prisma.user.findFirst({ where: { role: 'STUDENT' } });
-      userId = student?.id || 'demo_student';
+      try {
+        const student = await fastify.prisma.user.findFirst({ where: { role: 'STUDENT' } });
+        userId = student?.id || 'demo_student';
+      } catch {
+        userId = 'demo_student';
+      }
     }
 
     const submissions = await assignmentsService.getUserSubmissions(userId);

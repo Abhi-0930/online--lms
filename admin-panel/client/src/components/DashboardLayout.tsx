@@ -156,7 +156,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-[var(--app-line)] bg-[var(--sidebar-bg)] px-4 py-5 transition-transform duration-200 lg:static lg:translate-x-0",
+            "fixed inset-y-0 left-0 z-50 flex h-screen max-h-screen w-[260px] flex-col border-r border-[var(--app-line)] bg-[var(--sidebar-bg)] px-4 py-5 transition-transform duration-200 lg:sticky lg:top-0 lg:translate-x-0 lg:shrink-0",
             collapsed ? "lg:w-[84px]" : "lg:w-[260px]",
             mobileOpen ? "translate-x-0" : "-translate-x-full",
           )}
@@ -189,7 +189,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           )}
 
-          <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto pr-1">
+          <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto custom-scrollbar pr-1">
             {navigation.map((group) => (
               <div key={group.label}>
                 {!collapsed && <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">{group.label}</p>}

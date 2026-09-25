@@ -197,7 +197,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
       <div className={cx("flex h-[78px] items-center border-b border-[#e5e8f0] dark:border-white/10", collapsed ? "justify-center px-3" : "px-6")}>
         <Logo compact={collapsed} />
       </div>
-      <div className="flex flex-1 flex-col overflow-y-auto px-3 py-6">
+      <div className="flex flex-1 flex-col overflow-y-auto custom-scrollbar px-3 py-6">
         {!collapsed && <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>}
         <nav className="space-y-1">
           {dynamicNavItems.map((item) => <SidebarLink key={item.href} item={item} active={isActive(item.href)} collapsed={collapsed} />)}
@@ -486,7 +486,7 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex-1 px-4 py-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-6">
           <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>
           {[...dynamicNavItems, ...utilityItems].map((item) => (
             <div key={item.href} onClick={onClose}>
@@ -2254,11 +2254,6 @@ function CoursesPage() {
         eyebrow="Explore the library"
         title="Find your next edge"
         description="Curated courses, guided practice, and real interview patterns to help you move with confidence."
-        action={
-          <button onClick={() => toast.info("Saved courses are coming next")} className="button-secondary">
-            <Bookmark className="h-4 w-4" /> Saved courses
-          </button>
-        }
       />
       <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-[#e5e8f0] bg-white p-3 shadow-[0_8px_20px_rgba(23,34,61,0.03)] dark:border-white/10 dark:bg-white/5 sm:flex-row">
         <div className="relative flex-1">
@@ -2405,16 +2400,6 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
               </span>
             )}
           </div>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              toast.success("Course saved to your library");
-            }}
-            className="absolute right-3 top-3 rounded-lg bg-black/20 p-2 text-white backdrop-blur-md hover:bg-black/40"
-          >
-            <Bookmark className="h-4 w-4" />
-          </button>
           <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white">
             <div className="min-w-0 pr-2">
               <p className="text-[10px] text-white/60 truncate">By {course.instructor}</p>
@@ -2607,9 +2592,6 @@ function CourseDetail({ courseId }: { courseId: string }) {
                 Enroll now · {course.price}
               </Link>
             )}
-            <button onClick={() => toast.success("You're on the course waitlist")} className="button-ghost-dark">
-              <Bookmark className="h-4 w-4" /> Save for later
-            </button>
           </div>
         </div>
       </section>
@@ -3632,7 +3614,7 @@ function PlayerPage() {
             </div>
             <span className="text-xs font-bold text-[#3157e8]">68%</span>
           </div>
-          <div className="max-h-[640px] overflow-y-auto p-3">
+          <div className="max-h-[640px] overflow-y-auto custom-scrollbar p-3">
             {["Foundations", "Sliding Window Patterns", "Stacks & Queues", "Trees & Graphs"].map((module, moduleIndex) => (
               <div key={module} className="mb-2 overflow-hidden rounded-xl border border-[#edf0f6] dark:border-white/10">
                 <button

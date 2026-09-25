@@ -6385,7 +6385,7 @@ export default function Home() {
   return (
     <DashboardLayout>
       <div className="relative">
-        <div className="flex items-center gap-3 border-b border-[var(--app-line)] bg-[var(--app-bg)] px-5 py-3 sm:px-8">
+        <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-[var(--app-line)] bg-[var(--app-bg)]/95 backdrop-blur-md px-5 py-3 sm:px-8">
           <div className="relative flex min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]" />
             <input
