@@ -15,6 +15,11 @@ import {
   CheckCircle2,
   Circle,
   User,
+  Laptop,
+  ShieldAlert,
+  LogOut,
+  ArrowRight,
+  X,
 } from "lucide-react";
 import { COUNTRIES, DEFAULT_COUNTRY, type Country } from "@/lib/countries";
 import { CountryFlag } from "@/components/CountryFlag";
@@ -48,6 +53,12 @@ function AuthForm({
   );
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [deviceLimitModal, setDeviceLimitModal] = useState<{
+    open: boolean;
+    activeDeviceName?: string;
+    ipAddress?: string;
+    lastActiveAt?: string;
+  }>({ open: false });
 
   const setMode = (signUp: boolean) => {
     setIsSignUp(signUp);
@@ -123,7 +134,9 @@ function AuthForm({
         setFormData((prev) => ({ ...prev, email: emailParam }));
       }
     } else if (errorParam === "DEVICE_LIMIT_REACHED") {
-      toast.error("Device limit reached for this account.");
+      toast.error("Device limit reached (Maximum 1 device allowed). Please sign out from your other device.");
+    } else if (errorParam === "SESSION_REVOKED") {
+      toast.error("Your session ended because your account was logged into on another device.");
     } else if (errorParam === "AUTH_FAILED") {
       toast.error("Authentication failed. Please try again.");
     }
@@ -143,6 +156,31 @@ function AuthForm({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const getPersistentDeviceId = (): string => {
+    if (typeof window === "undefined") return "web-unknown";
+    try {
+      let id = localStorage.getItem("lms_device_id");
+      if (!id) {
+        id = `web-${Math.random().toString(36).substring(2, 10)}${Date.now().toString(36)}`;
+        localStorage.setItem("lms_device_id", id);
+      }
+      return id;
+    } catch {
+      return `web-fallback-${Date.now().toString(36)}`;
+    }
+  };
+
+  const getBrowserDeviceName = (): string => {
+    if (typeof window === "undefined") return "Web Browser";
+    const ua = navigator.userAgent || "";
+    if (/android/i.test(ua)) return "Android Device";
+    if (/iPad|iPhone|iPod/.test(ua)) return "iOS Device (Safari/Chrome)";
+    if (/Macintosh|Mac OS X/.test(ua)) return "Mac (Web Browser)";
+    if (/Windows/.test(ua)) return "Windows PC (Web Browser)";
+    if (/Linux/.test(ua)) return "Linux PC (Web Browser)";
+    return "Web Browser";
+  };
+
   const filteredCountries = COUNTRIES.filter(
     (c) =>
       c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
@@ -155,6 +193,56 @@ function AuthForm({
       ...prev,
       [e.target.name]: e.target.value,
     }));
+  };
+
+  const handleForceLogin = async () => {
+    setDeviceLimitModal({ open: false });
+    setIsLoading(true);
+    try {
+      const endpoint = "http://localhost:4000/api/v1/auth/login";
+      const payload = {
+        email: formData.email,
+        password: formData.password,
+        deviceId: getPersistentDeviceId(),
+        deviceName: getBrowserDeviceName(),
+        force: true,
+      };
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const resData = await res.json().catch(() => ({}));
+        const rawUser = resData?.user || {};
+        const fallbackName = formData.fullName.trim() || formData.email.split("@")[0];
+        const userObj = {
+          ...rawUser,
+          id: rawUser.id || undefined,
+          email: rawUser.email || formData.email,
+          name: rawUser.name || rawUser.fullName || fallbackName,
+          fullName: rawUser.fullName || rawUser.name || fallbackName,
+          role: rawUser.role || "STUDENT",
+          avatarUrl: rawUser.avatarUrl || null,
+        };
+
+        setUser(userObj);
+        refresh().catch(() => {});
+        toast.success("Signed in successfully! Other device disconnected.");
+        router.push(createSecureUrl("/dashboard", { v: "dashboard" }));
+        return;
+      }
+
+      const errData = await res.json().catch(() => ({}));
+      toast.error(errData.message || "Failed to disconnect other device");
+    } catch {
+      toast.error("Unable to connect to authentication server");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -186,12 +274,14 @@ function AuthForm({
             email: formData.email,
             password: formData.password,
             phone: `${selectedCountry.dialCode}${formData.phone}`,
+            deviceId: getPersistentDeviceId(),
+            deviceName: getBrowserDeviceName(),
           }
         : {
             email: formData.email,
             password: formData.password,
-            deviceId: `web-${Math.random().toString(36).substring(2, 10)}`,
-            deviceName: "Web Browser (Chrome)",
+            deviceId: getPersistentDeviceId(),
+            deviceName: getBrowserDeviceName(),
           };
 
       const res = await fetch(endpoint, {
@@ -232,6 +322,18 @@ function AuthForm({
 
       const errData = await res.json().catch(() => ({}));
       if (
+        res.status === 409 ||
+        errData.code === "DEVICE_LIMIT_REACHED" ||
+        errData.error === "DEVICE_LIMIT_REACHED" ||
+        errData.message?.toLowerCase().includes("device limit")
+      ) {
+        setDeviceLimitModal({
+          open: true,
+          activeDeviceName: errData.activeDevice?.deviceName || "Another Device",
+          ipAddress: errData.activeDevice?.ipAddress,
+          lastActiveAt: errData.activeDevice?.lastActiveAt,
+        });
+      } else if (
         res.status === 404 ||
         errData.code === "ACCOUNT_NOT_FOUND" ||
         errData.error === "ACCOUNT_NOT_FOUND" ||
@@ -250,7 +352,9 @@ function AuthForm({
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = `http://localhost:4000/api/v1/auth/google?state=${isSignUp ? "register" : "login"}`;
+    const deviceId = getPersistentDeviceId();
+    const deviceName = getBrowserDeviceName();
+    window.location.href = `http://localhost:4000/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}`;
   };
 
   return (
@@ -684,6 +788,84 @@ function AuthForm({
         {/* Bottom subtle space */}
         <div className="h-2 shrink-0" />
       </div>
+
+      {/* Device Limit Exceeded Modal */}
+      {deviceLimitModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setDeviceLimitModal({ open: false })}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100 transition cursor-pointer"
+              aria-label="Close dialog"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="flex items-center gap-3.5">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-500/20 shrink-0">
+                <ShieldAlert className="h-5 w-5" />
+              </span>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Device Limit Reached</h3>
+                <p className="text-xs text-gray-500">1 active device allowed per account</p>
+              </div>
+            </div>
+
+            <div className="mt-4 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Active Device</p>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Currently Signed In
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-blue-600 shrink-0 shadow-xs">
+                  <Laptop className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {deviceLimitModal.activeDeviceName || "Web Browser"}
+                  </p>
+                  <p className="text-[11px] text-gray-500 truncate">
+                    IP: {deviceLimitModal.ipAddress || "Active"} • Last active:{" "}
+                    {deviceLimitModal.lastActiveAt
+                      ? new Date(deviceLimitModal.lastActiveAt).toLocaleDateString([], {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "Recently"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-3.5 text-xs text-gray-600 leading-relaxed">
+              Signing in here will safely disconnect your other active device.
+            </p>
+
+            <div className="mt-5 flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeviceLimitModal({ open: false })}
+                className="w-1/3 py-2.5 px-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100/80 transition cursor-pointer text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleForceLogin}
+                className="w-2/3 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-semibold shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Switch to this Device</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

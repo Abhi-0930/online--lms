@@ -5,6 +5,8 @@ export const registerSchema = {
     email: Type.String({ format: 'email' }),
     password: Type.String({ minLength: 8 }),
     fullName: Type.String({ minLength: 2 }),
+    deviceId: Type.Optional(Type.String()),
+    deviceName: Type.Optional(Type.String()),
   }),
 };
 
@@ -14,6 +16,7 @@ export const loginSchema = {
     password: Type.String(),
     deviceId: Type.String(),
     deviceName: Type.String(),
+    force: Type.Optional(Type.Boolean()),
   }),
 };
 
@@ -67,6 +70,7 @@ export const googleTokenSchema = {
     idToken: Type.String(),
     deviceId: Type.String(),
     deviceName: Type.String(),
+    force: Type.Optional(Type.Boolean()),
   }),
 };
 

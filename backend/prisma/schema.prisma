@@ -86,7 +86,7 @@ model User {
   avatarUrl       String?
   role            Role                  @default(STUDENT)
   isEmailVerified Boolean               @default(false)
-  maxDevices      Int                   @default(2) // Configurable concurrent device limit
+  maxDevices      Int                   @default(1) // Configurable concurrent device limit
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
 

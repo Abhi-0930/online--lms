@@ -71,7 +71,15 @@ export class AuthService {
     return { success: true, message: `User ${normalizedEmail} deleted successfully` };
   }
 
-  async register(payload: { email: string; password: string; fullName: string }) {
+  async register(payload: {
+    email: string;
+    password: string;
+    fullName: string;
+    deviceId?: string;
+    deviceName?: string;
+    ip?: string;
+    userAgent?: string;
+  }) {
     const normalizedEmail = payload.email.toLowerCase().trim();
     const existingUser = await this.findUser(normalizedEmail);
 
@@ -97,8 +105,6 @@ export class AuthService {
       fullName: payload.fullName,
       role: 'STUDENT' as any,
       maxDevices: env.MAX_CONCURRENT_DEVICES_PER_USER,
-      lastLoginAt: new Date().toISOString(),
-      lastActiveAt: new Date().toISOString(),
     };
 
     let user: any = newUserData;
@@ -123,6 +129,41 @@ export class AuthService {
     }).catch((err) => logger.error({ err }, 'Failed sending welcome email in background'));
 
     const sessionToken = uuidv4();
+    const deviceId = payload.deviceId || `web-${uuidv4().substring(0, 12)}`;
+    const deviceName = payload.deviceName || 'Web Browser';
+    const ip = payload.ip || '127.0.0.1';
+    const userAgent = payload.userAgent || 'Unknown';
+
+    try {
+      await this.prisma.userDevice.upsert({
+        where: { userId_deviceId: { userId: user.id, deviceId } },
+        update: {
+          sessionToken,
+          lastActiveAt: new Date(),
+          ipAddress: ip,
+          userAgent,
+        },
+        create: {
+          userId: user.id,
+          deviceId,
+          deviceName,
+          sessionToken,
+          ipAddress: ip,
+          userAgent,
+        },
+      });
+
+      await this.prisma.activityLog.create({
+        data: {
+          userId: user.id,
+          action: 'AUTH_REGISTER',
+          ipAddress: ip,
+          metadata: { deviceId, deviceName },
+        },
+      }).catch(() => {});
+    } catch {
+      // Non-blocking fallback
+    }
 
     return {
       user: {
@@ -144,6 +185,7 @@ export class AuthService {
     deviceName: string;
     ip: string;
     userAgent: string;
+    force?: boolean;
   }) {
     const normalizedEmail = payload.email.toLowerCase().trim();
     const user = await this.findUser(normalizedEmail);
@@ -166,7 +208,46 @@ export class AuthService {
 
     const sessionToken = uuidv4();
 
+    // Device capacity check (48 hours active window)
     try {
+      const activeWindow = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      const activeDevices = await this.prisma.userDevice.findMany({
+        where: {
+          userId: user.id,
+          lastActiveAt: { gte: activeWindow },
+        },
+        orderBy: { lastActiveAt: 'desc' },
+      });
+
+      const isExistingDevice = activeDevices.some((d: any) => d.deviceId === payload.deviceId);
+      const allowedMax = user.role === 'ADMIN' ? 10 : (env.MAX_CONCURRENT_DEVICES_PER_USER || 1);
+
+      if (payload.force) {
+        await this.prisma.userDevice.deleteMany({
+          where: { userId: user.id },
+        }).catch(() => {});
+
+        await this.prisma.activityLog.create({
+          data: {
+            userId: user.id,
+            action: 'AUTH_FORCE_LOGIN_DISCONNECTED_OTHER_DEVICES',
+            ipAddress: payload.ip,
+            metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
+          },
+        }).catch(() => {});
+      } else if (!isExistingDevice && activeDevices.length >= allowedMax) {
+        const primaryOtherDevice = activeDevices[0];
+        const err: any = new Error(`Device limit reached. You are currently logged in on ${primaryOtherDevice?.deviceName || 'another device'}.`);
+        err.statusCode = 409;
+        err.code = 'DEVICE_LIMIT_REACHED';
+        err.activeDevice = {
+          deviceName: primaryOtherDevice?.deviceName || 'Web Browser',
+          ipAddress: primaryOtherDevice?.ipAddress || 'Unknown',
+          lastActiveAt: primaryOtherDevice?.lastActiveAt?.toISOString?.() || new Date().toISOString(),
+        };
+        throw err;
+      }
+
       await this.prisma.userDevice.upsert({
         where: { userId_deviceId: { userId: user.id, deviceId: payload.deviceId } },
         update: {
@@ -193,8 +274,9 @@ export class AuthService {
           metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
         },
       }).catch(() => {});
-    } catch {
-      // Non-blocking fallback
+    } catch (err: any) {
+      if (err.code === 'DEVICE_LIMIT_REACHED') throw err;
+      logger.warn({ err: err.message }, 'Database device tracking deferred, session active');
     }
 
     const nowIso = new Date().toISOString();
@@ -312,6 +394,7 @@ export class AuthService {
     deviceName: string;
     ip: string;
     userAgent: string;
+    force?: boolean;
   }) {
     if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
       throw new Error('Google OAuth is not configured');
@@ -359,6 +442,7 @@ export class AuthService {
       deviceName: payload.deviceName,
       ip: payload.ip,
       userAgent: payload.userAgent,
+      force: payload.force,
     });
   }
 
@@ -369,6 +453,7 @@ export class AuthService {
     deviceName: string;
     ip: string;
     userAgent: string;
+    force?: boolean;
   }) {
     const tokenInfoRes = await fetch(
       `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(payload.idToken)}`
@@ -394,6 +479,7 @@ export class AuthService {
       deviceName: payload.deviceName,
       ip: payload.ip,
       userAgent: payload.userAgent,
+      force: payload.force,
     });
   }
 
@@ -407,6 +493,7 @@ export class AuthService {
     deviceName: string;
     ip: string;
     userAgent: string;
+    force?: boolean;
   }) {
     const normalizedEmail = payload.email.toLowerCase().trim();
     let user = await this.findUser(normalizedEmail, payload.googleId);
@@ -463,24 +550,44 @@ export class AuthService {
       }
     }
 
-    // Device capacity check (7 days active window)
+    // Device capacity check (48 hours active window)
     const sessionToken = uuidv4();
     try {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const activeWindow = new Date(Date.now() - 48 * 60 * 60 * 1000);
       const activeDevices = await this.prisma.userDevice.findMany({
         where: {
           userId: user.id,
-          lastActiveAt: { gte: sevenDaysAgo },
+          lastActiveAt: { gte: activeWindow },
         },
+        orderBy: { lastActiveAt: 'desc' },
       });
 
-      const activeDeviceIds = activeDevices.map((d: any) => d.deviceId);
-      const isExistingDevice = activeDeviceIds.includes(payload.deviceId);
+      const isExistingDevice = activeDevices.some((d: any) => d.deviceId === payload.deviceId);
+      const allowedMax = user.role === 'ADMIN' ? 10 : (env.MAX_CONCURRENT_DEVICES_PER_USER || 1);
 
-      if (!isExistingDevice && activeDevices.length >= (user.maxDevices || 2)) {
-        const err: any = new Error(`Device limit reached. Maximum allowed: ${user.maxDevices || 2} devices.`);
+      if (payload.force) {
+        await this.prisma.userDevice.deleteMany({
+          where: { userId: user.id },
+        }).catch(() => {});
+
+        await this.prisma.activityLog.create({
+          data: {
+            userId: user.id,
+            action: 'AUTH_FORCE_LOGIN_GOOGLE_DISCONNECTED_OTHER_DEVICES',
+            ipAddress: payload.ip,
+            metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
+          },
+        }).catch(() => {});
+      } else if (!isExistingDevice && activeDevices.length >= allowedMax) {
+        const primaryOtherDevice = activeDevices[0];
+        const err: any = new Error(`Device limit reached. You are currently logged in on ${primaryOtherDevice?.deviceName || 'another device'}.`);
         err.statusCode = 409;
         err.code = 'DEVICE_LIMIT_REACHED';
+        err.activeDevice = {
+          deviceName: primaryOtherDevice?.deviceName || 'Web Browser',
+          ipAddress: primaryOtherDevice?.ipAddress || 'Unknown',
+          lastActiveAt: primaryOtherDevice?.lastActiveAt?.toISOString?.() || new Date().toISOString(),
+        };
         throw err;
       }
 

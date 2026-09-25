@@ -16,7 +16,7 @@ export const env = {
   JWT_SECRET: process.env.JWT_SECRET || 'super-secret-jwt-key-replace-in-production',
 
   // Device Limits
-  MAX_CONCURRENT_DEVICES_PER_USER: parseInt(process.env.MAX_CONCURRENT_DEVICES_PER_USER || '2', 10),
+  MAX_CONCURRENT_DEVICES_PER_USER: parseInt(process.env.MAX_CONCURRENT_DEVICES_PER_USER || '1', 10),
 
   // Email (Resend)
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',

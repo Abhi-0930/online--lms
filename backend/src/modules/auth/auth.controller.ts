@@ -14,6 +14,7 @@ import {
 import { getClientIp } from '../../utils/device';
 import { env } from '../../config/env';
 import logger from '../../utils/logger';
+import { v4 as uuidv4 } from 'uuid';
 
 export default async function authController(fastify: FastifyInstance) {
   const authService = new AuthService(fastify.prisma);
@@ -49,19 +50,35 @@ export default async function authController(fastify: FastifyInstance) {
       return reply.status(400).send({ error: 'BadRequest', message: 'Missing authorization code' });
     }
 
+    let parsedState: any = {};
+    if (query?.state) {
+      try {
+        if (typeof query.state === 'string' && query.state.startsWith('{')) {
+          parsedState = JSON.parse(query.state);
+        } else if (typeof query.state === 'string') {
+          const decoded = Buffer.from(query.state, 'base64url').toString('utf8');
+          parsedState = JSON.parse(decoded);
+        }
+      } catch {
+        parsedState = { mode: query.state };
+      }
+    }
+
     const ip = getClientIp(request.headers);
     const userAgent = request.headers['user-agent'] || 'Unknown';
-    const deviceId = query?.deviceId || `web-${Buffer.from(userAgent + ip).toString('base64').substring(0, 16)}`;
-    const deviceName = query?.deviceName || 'Web Browser (Google OAuth)';
+    const deviceId = parsedState.deviceId || query?.deviceId || `web-${uuidv4().substring(0, 12)}`;
+    const deviceName = parsedState.deviceName || query?.deviceName || 'Web Browser (Google OAuth)';
+    const mode = parsedState.mode || 'login';
 
     try {
       const result = await authService.loginWithGoogleCallback({
         code: query.code,
-        mode: query?.state,
+        mode,
         deviceId,
         deviceName,
         ip,
         userAgent,
+        force: parsedState.force === true,
       });
 
       const accessToken = fastify.jwt.sign({
@@ -105,7 +122,14 @@ export default async function authController(fastify: FastifyInstance) {
       return handleGoogleCallback(request, reply);
     }
 
-    const authUrl = authService.getGoogleAuthUrl(query?.state);
+    const statePayload = {
+      mode: query?.state || 'login',
+      deviceId: query?.deviceId || '',
+      deviceName: query?.deviceName || '',
+    };
+    const stateStr = Buffer.from(JSON.stringify(statePayload)).toString('base64url');
+
+    const authUrl = authService.getGoogleAuthUrl(stateStr);
 
     if (query?.json === 'true' || request.headers.accept?.includes('application/json')) {
       return reply.send({ url: authUrl });
@@ -127,34 +151,50 @@ export default async function authController(fastify: FastifyInstance) {
     const ip = getClientIp(request.headers);
     const userAgent = request.headers['user-agent'] || 'Unknown';
 
-    const result = await authService.loginWithGoogleIdToken({
-      idToken: body.idToken,
-      deviceId: body.deviceId,
-      deviceName: body.deviceName,
-      ip,
-      userAgent,
-    });
+    try {
+      const result = await authService.loginWithGoogleIdToken({
+        idToken: body.idToken,
+        deviceId: body.deviceId,
+        deviceName: body.deviceName,
+        ip,
+        userAgent,
+        force: body.force,
+      });
 
-    const accessToken = fastify.jwt.sign({
-      id: result.user.id,
-      email: result.user.email,
-      role: result.user.role,
-      sessionToken: result.sessionToken,
-    });
+      const accessToken = fastify.jwt.sign({
+        id: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        sessionToken: result.sessionToken,
+      });
 
-    setAuthCookie(reply, accessToken);
+      setAuthCookie(reply, accessToken);
 
-    return reply.send({
-      ...result,
-      accessToken,
-    });
+      return reply.send({
+        ...result,
+        accessToken,
+      });
+    } catch (err: any) {
+      return reply.status(err.statusCode || 400).send({
+        error: err.code || 'GoogleAuthFailed',
+        message: err.message || 'Google authentication failed',
+        code: err.code || 'GoogleAuthFailed',
+        activeDevice: err.activeDevice || null,
+      });
+    }
   });
 
   fastify.post('/register', {
     schema: registerSchema,
   }, async (request, reply) => {
     const body = request.body as any;
-    const result = await authService.register(body);
+    const ip = getClientIp(request.headers);
+    const userAgent = request.headers['user-agent'] || 'Unknown';
+    const result = await authService.register({
+      ...body,
+      ip,
+      userAgent,
+    });
 
     const accessToken = fastify.jwt.sign({
       id: result.user.id,
@@ -204,6 +244,7 @@ export default async function authController(fastify: FastifyInstance) {
         error: err.code || 'InvalidCredentials',
         message: err.message || 'Invalid email or password',
         code: err.code || 'InvalidCredentials',
+        activeDevice: err.activeDevice || null,
       });
     }
   });

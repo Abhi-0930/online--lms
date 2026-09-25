@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -68,6 +68,7 @@ import {
   LineChart,
   ListChecks,
   LockKeyhole,
+  LogOut,
   Menu,
   MessageCircle,
   MoreHorizontal,
@@ -84,6 +85,7 @@ import {
   Shield,
   ShieldCheck,
   SlidersHorizontal,
+  Smartphone,
   Sparkles,
   Star,
   Sun,
@@ -5925,6 +5927,54 @@ function ProfilePage() {
   const roleDisplay = user?.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()) : "Student";
   const educationStatus = resolveEducationStatus(user);
 
+  const [devices, setDevices] = useState<any[]>([]);
+  const [loadingDevices, setLoadingDevices] = useState(true);
+  const [revokingToken, setRevokingToken] = useState<string | null>(null);
+
+  const fetchDevices = useCallback(async () => {
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/auth/devices", {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDevices(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // Non-blocking
+    } finally {
+      setLoadingDevices(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
+
+  const handleRevokeDevice = async (sessionToken: string) => {
+    setRevokingToken(sessionToken);
+    try {
+      const res = await fetch("http://localhost:4000/api/v1/auth/devices/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ sessionToken }),
+      });
+      if (res.ok) {
+        toast.success("Device session signed out successfully");
+        fetchDevices();
+      } else {
+        toast.error("Failed to sign out device");
+      }
+    } catch {
+      toast.error("Network error while signing out device");
+    } finally {
+      setRevokingToken(null);
+    }
+  };
+
+  const currentLocalDeviceId = typeof window !== "undefined" ? localStorage.getItem("lms_device_id") : null;
+
   return (
     <>
       <PageHeader
@@ -5987,6 +6037,80 @@ function ProfilePage() {
               <Field label="Current role / Education" value={educationStatus} />
             </div>
           </div>
+
+          {/* Active Devices & Security Section */}
+          <div className="card-surface p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#edf0f6] pb-4 dark:border-white/10">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-[#3157e8]" />
+                  <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">Active Devices & Security</h2>
+                </div>
+                <p className="mt-1 text-xs text-[#9aa4bc]">
+                  Your account is protected with a limit of <strong>1 active device</strong>.
+                </p>
+              </div>
+              <span className={cx(
+                "rounded-full px-3 py-1 text-xs font-bold",
+                devices.length >= 1
+                  ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                  : "bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white"
+              )}>
+                {devices.length} / 1 Device Used
+              </span>
+            </div>
+
+            <div className="mt-4 divide-y divide-[#edf0f6] dark:divide-white/10">
+              {loadingDevices ? (
+                <div className="py-6 text-center text-xs text-[#9aa4bc]">Loading active sessions...</div>
+              ) : devices.length === 0 ? (
+                <div className="py-6 text-center text-xs text-[#9aa4bc]">Current device session active</div>
+              ) : (
+                devices.map((dev) => {
+                  const isCurrent = currentLocalDeviceId && dev.deviceId === currentLocalDeviceId;
+                  const isMobile = /android|ios|iphone|ipad|mobile/i.test(dev.deviceName || dev.userAgent || "");
+                  const DeviceIcon = isMobile ? Smartphone : Laptop;
+
+                  return (
+                    <div key={dev.sessionToken || dev.deviceId} className="flex flex-wrap items-center justify-between gap-3 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f1f3f8] text-[#3157e8] dark:bg-white/10">
+                          <DeviceIcon className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-[#17223d] dark:text-white">
+                              {dev.deviceName || "Web Browser"}
+                            </p>
+                            {isCurrent && (
+                              <span className="rounded-md bg-[#e4f8ee] px-2 py-0.5 text-[10px] font-bold text-[#23a26d]">
+                                This Device
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-0.5 text-xs text-[#9aa4bc]">
+                            IP: {dev.ipAddress || "Unknown"} • Last active: {new Date(dev.lastActiveAt).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </div>
+
+                      {!isCurrent && (
+                        <button
+                          onClick={() => handleRevokeDevice(dev.sessionToken)}
+                          disabled={revokingToken === dev.sessionToken}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-900/40 dark:hover:bg-red-950/20"
+                        >
+                          <LogOut className="h-3.5 w-3.5" />
+                          {revokingToken === dev.sessionToken ? "Revoking..." : "Revoke"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
           <div className="card-surface p-5 sm:p-6">
             <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">Preferences</h2>
             <div className="mt-4 divide-y divide-[#edf0f6] dark:divide-white/10">

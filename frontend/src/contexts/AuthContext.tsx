@@ -125,11 +125,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // If 401 or unauthenticated response, clear local cache
         if (res.status === 401 || res.status === 403) {
+          const errData = await res.json().catch(() => ({}));
+          const wasRevoked = errData?.code === "SESSION_REVOKED";
           setUserState(null);
           if (typeof window !== "undefined") {
             try {
               localStorage.removeItem(USER_STORAGE_KEY);
             } catch {}
+            if (wasRevoked && window.location.pathname !== "/") {
+              window.location.href = createSecureUrl("/", { error: "SESSION_REVOKED" });
+            }
           }
         }
         return null;
@@ -163,9 +168,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {}
     };
 
+    // Check session validity periodically and on window focus
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        fetchUser();
+      }
+    }, 15000);
+
+    const handleFocus = () => {
+      fetchUser();
+    };
+
+    window.addEventListener("focus", handleFocus);
     window.addEventListener("storage", handleAuthChange);
     window.addEventListener("lms:auth-change", handleAuthChange);
     return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
       window.removeEventListener("storage", handleAuthChange);
       window.removeEventListener("lms:auth-change", handleAuthChange);
     };
