@@ -180,20 +180,32 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
   const { unreadCount: unreadAnnouncements } = useAnnouncements();
   const isActive = (href: string) => href === "/" ? location === "/" : location.startsWith(href);
 
-  const dynamicNavItems: NavItem[] = [
-    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Browse courses", href: "/courses", icon: Library, badge: courses.length > 0 ? String(courses.length) : undefined },
-    { label: "My learning", href: "/my-courses", icon: BookOpen, badge: enrollments.length > 0 ? String(enrollments.length) : undefined },
-    { label: "Practice problems", href: "/practice", icon: Code2, badge: liveProblems.length > 0 ? String(liveProblems.length) : undefined },
-    { label: "Assignments", href: "/assignments", icon: ClipboardCheck, badge: assignments.length > 0 ? String(assignments.length) : undefined },
-  ];
+  const hasEnrollments = Array.isArray(enrollments) && enrollments.length > 0;
 
-  const dynamicUtilityItems: NavItem[] = [
-    { label: "Live Sessions", href: "/live-session", icon: Video, badge: liveSessions.length > 0 ? String(liveSessions.length) : undefined },
-    { label: "Class Recordings", href: "/recordings", icon: Film, badge: recordings.length > 0 ? String(recordings.length) : undefined },
-    { label: "Announcements", href: "/announcements", icon: Bell, badge: unreadAnnouncements > 0 ? String(unreadAnnouncements) : undefined },
-    { label: "Progress", href: "/progress", icon: LineChart },
-  ];
+  const dynamicNavItems: NavItem[] = hasEnrollments
+    ? [
+        { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        { label: "Browse courses", href: "/courses", icon: Library, badge: courses.length > 0 ? String(courses.length) : undefined },
+        { label: "My learning", href: "/my-courses", icon: BookOpen, badge: String(enrollments.length) },
+        { label: "Practice problems", href: "/practice", icon: Code2, badge: liveProblems.length > 0 ? String(liveProblems.length) : undefined },
+        { label: "Assignments", href: "/assignments", icon: ClipboardCheck, badge: assignments.length > 0 ? String(assignments.length) : undefined },
+      ]
+    : [
+        { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        { label: "Browse courses", href: "/courses", icon: Library, badge: courses.length > 0 ? String(courses.length) : undefined },
+        { label: "Practice problems", href: "/practice", icon: Code2, badge: liveProblems.length > 0 ? String(liveProblems.length) : undefined },
+      ];
+
+  const dynamicUtilityItems: NavItem[] = hasEnrollments
+    ? [
+        { label: "Live Sessions", href: "/live-session", icon: Video, badge: liveSessions.length > 0 ? String(liveSessions.length) : undefined },
+        { label: "Class Recordings", href: "/recordings", icon: Film, badge: recordings.length > 0 ? String(recordings.length) : undefined },
+        { label: "Announcements", href: "/announcements", icon: Bell, badge: unreadAnnouncements > 0 ? String(unreadAnnouncements) : undefined },
+        { label: "Progress", href: "/progress", icon: LineChart },
+      ]
+    : [
+        { label: "Announcements", href: "/announcements", icon: Bell, badge: unreadAnnouncements > 0 ? String(unreadAnnouncements) : undefined },
+      ];
 
   return (
     <aside className={cx("fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[#e5e8f0] bg-[#fbfcff] transition-[width] duration-200 dark:border-white/10 dark:bg-[#10172b] lg:flex", collapsed ? "w-[86px]" : "w-[250px]")}>
@@ -453,10 +465,47 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
 
 function MobileNav() {
   const location = usePathname() || "";
-  const items = [{ label: "Home", href: "/", icon: LayoutDashboard }, { label: "Learn", href: "/my-courses", icon: BookOpen }, { label: "Practice", href: "/practice", icon: Code2 }, { label: "Progress", href: "/progress", icon: LineChart }];
-  return <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[72px] items-center justify-around border-t border-[#e5e8f0] bg-[#fbfcff]/95 px-2 pb-1 backdrop-blur-xl dark:border-white/10 dark:bg-[#10172b]/95 lg:hidden">
-    {items.map(({ label, href, icon: Icon }) => { const active = href === "/" ? location === "/" : location.startsWith(href); return <Link key={href} href={getSecureHref(href)} className={cx("flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-[10px] font-bold transition", active ? "text-[#3157e8]" : "text-[#9aa4bc]")}><Icon className={cx("h-[19px] w-[19px]", active && "stroke-[2.5]")} /><span>{label}</span>{active && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-[#3157e8]" />}</Link> })}
-  </nav>;
+  const { enrollments } = useEnrollments();
+  const isEnrolled = Array.isArray(enrollments) && enrollments.length > 0;
+
+  const items = isEnrolled
+    ? [
+        { label: "Home", href: "/dashboard", icon: LayoutDashboard },
+        { label: "Learn", href: "/my-courses", icon: BookOpen },
+        { label: "Practice", href: "/practice", icon: Code2 },
+        { label: "Live", href: "/live-session", icon: Video },
+      ]
+    : [
+        { label: "Home", href: "/dashboard", icon: LayoutDashboard },
+        { label: "Courses", href: "/courses", icon: Library },
+        { label: "Practice", href: "/practice", icon: Code2 },
+      ];
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[72px] items-center justify-around border-t border-[#e5e8f0] bg-[#fbfcff]/95 px-2 pb-1 backdrop-blur-xl dark:border-white/10 dark:bg-[#10172b]/95 lg:hidden">
+      {items.map(({ label, href, icon: Icon }) => {
+        const active =
+          href === "/dashboard" || href === "/"
+            ? location === "/" || location === "/dashboard"
+            : location.startsWith(href);
+
+        return (
+          <Link
+            key={href}
+            href={getSecureHref(href)}
+            className={cx(
+              "relative flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-[10px] font-bold transition",
+              active ? "text-[#3157e8]" : "text-[#9aa4bc] hover:text-[#17223d] dark:hover:text-white"
+            )}
+          >
+            <Icon className={cx("h-[19px] w-[19px]", active && "stroke-[2.5]")} />
+            <span>{label}</span>
+            {active && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-[#3157e8]" />}
+          </Link>
+        );
+      })}
+    </nav>
+  );
 }
 
 function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -466,18 +515,40 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
   const { courses } = useLiveCourses();
   const { enrollments } = useEnrollments();
   const { assignments } = useAssignments();
+  const { recordings } = useLiveRecordings();
+  const { sessions: liveSessions } = useLiveSessions();
+  const { unreadCount: unreadAnnouncements } = useAnnouncements();
   const { getStreakData } = useUserActivity();
   const { streak } = getStreakData();
   const displayName = resolveDisplayName(user);
   if (!open) return null;
 
-  const dynamicNavItems: NavItem[] = [
-    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Browse courses", href: "/courses", icon: Library, badge: courses.length > 0 ? String(courses.length) : undefined },
-    { label: "My learning", href: "/my-courses", icon: BookOpen, badge: enrollments.length > 0 ? String(enrollments.length) : undefined },
-    { label: "Practice problems", href: "/practice", icon: Code2, badge: liveProblems.length > 0 ? String(liveProblems.length) : undefined },
-    { label: "Assignments", href: "/assignments", icon: ClipboardCheck, badge: assignments.length > 0 ? String(assignments.length) : undefined },
-  ];
+  const hasEnrollments = Array.isArray(enrollments) && enrollments.length > 0;
+
+  const dynamicNavItems: NavItem[] = hasEnrollments
+    ? [
+        { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        { label: "Browse courses", href: "/courses", icon: Library, badge: courses.length > 0 ? String(courses.length) : undefined },
+        { label: "My learning", href: "/my-courses", icon: BookOpen, badge: String(enrollments.length) },
+        { label: "Practice problems", href: "/practice", icon: Code2, badge: liveProblems.length > 0 ? String(liveProblems.length) : undefined },
+        { label: "Assignments", href: "/assignments", icon: ClipboardCheck, badge: assignments.length > 0 ? String(assignments.length) : undefined },
+      ]
+    : [
+        { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        { label: "Browse courses", href: "/courses", icon: Library, badge: courses.length > 0 ? String(courses.length) : undefined },
+        { label: "Practice problems", href: "/practice", icon: Code2, badge: liveProblems.length > 0 ? String(liveProblems.length) : undefined },
+      ];
+
+  const dynamicUtilityItems: NavItem[] = hasEnrollments
+    ? [
+        { label: "Live Sessions", href: "/live-session", icon: Video, badge: liveSessions.length > 0 ? String(liveSessions.length) : undefined },
+        { label: "Class Recordings", href: "/recordings", icon: Film, badge: recordings.length > 0 ? String(recordings.length) : undefined },
+        { label: "Announcements", href: "/announcements", icon: Bell, badge: unreadAnnouncements > 0 ? String(unreadAnnouncements) : undefined },
+        { label: "Progress", href: "/progress", icon: LineChart },
+      ]
+    : [
+        { label: "Announcements", href: "/announcements", icon: Bell, badge: unreadAnnouncements > 0 ? String(unreadAnnouncements) : undefined },
+      ];
 
   return (
     <div className="fixed inset-0 z-[60] lg:hidden">
@@ -491,9 +562,16 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-6">
           <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Workspace</p>
-          {[...dynamicNavItems, ...utilityItems].map((item) => (
+          {dynamicNavItems.map((item) => (
             <div key={item.href} onClick={onClose}>
-              <SidebarLink item={item} active={item.href === "/" ? location === "/" : location.startsWith(item.href)} collapsed={false} />
+              <SidebarLink item={item} active={item.href === "/" || item.href === "/dashboard" ? location === "/" || location === "/dashboard" : location.startsWith(item.href)} collapsed={false} />
+            </div>
+          ))}
+
+          <p className="mb-3 mt-6 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9aa4bc]">Keep going</p>
+          {dynamicUtilityItems.map((item) => (
+            <div key={item.href} onClick={onClose}>
+              <SidebarLink item={item} active={location.startsWith(item.href)} collapsed={false} />
             </div>
           ))}
         </div>
@@ -547,6 +625,7 @@ function Dashboard() {
   const { submissions: mySubmissions } = useAssignments();
   const { problems: liveProblems } = useLiveProblems();
   const { getActivityBars, getStreakData, formatMinutes, liveSecondsToday, activityMap } = useUserActivity();
+  const { streak } = useMemo(() => getStreakData(), [getStreakData]);
 
   const displayName = resolveDisplayName(user);
   const firstName = resolveFirstName(user);
@@ -697,8 +776,12 @@ function Dashboard() {
               <Link href={getSecureHref(enrolledCourses.length > 0 ? "/learn" : "/courses")} className="button-primary">
                 <Play className="h-3.5 w-3.5 fill-current" /> {enrolledCourses.length > 0 ? "Resume learning" : "Explore courses"}
               </Link>
-              <Link href={getSecureHref("/progress")} className="button-ghost-dark">
-                View progress <ArrowRight className="h-3.5 w-3.5" />
+              <Link href={getSecureHref(enrolledCourses.length > 0 ? "/progress" : "/practice")} className="button-ghost-dark">
+                {enrolledCourses.length > 0 ? (
+                  <>View progress <ArrowRight className="h-3.5 w-3.5" /></>
+                ) : (
+                  <><Code2 className="h-3.5 w-3.5" /> Start practicing</>
+                )}
               </Link>
             </div>
           </div>
@@ -740,77 +823,112 @@ function Dashboard() {
         <section className="card-surface flex flex-col justify-between p-5 sm:p-6">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold text-[#7c87a4]">Current focus</p>
+              <p className="text-xs font-bold text-[#7c87a4]">
+                {enrolledCourses.length > 0 ? "Current focus" : "Get started"}
+              </p>
               <h2 className="mt-1 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white line-clamp-1">
-                {currentFocusCourse ? currentFocusCourse.title : "Get Started"}
+                {enrolledCourses.length > 0 && currentFocusCourse ? currentFocusCourse.title : "Browse courses"}
               </h2>
             </div>
             <span className="rounded-lg bg-[#eaf0ff] px-2 py-1 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">
-              {currentFocusCourse ? `${currentFocusCourse.progress}% done` : "Available"}
+              {enrolledCourses.length > 0 && currentFocusCourse ? `${currentFocusCourse.progress}% done` : `${courses.length} available`}
             </span>
           </div>
           <div className="mt-6">
             <div className="mb-3 flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#17223d] text-white">
-                <Code2 className="h-5 w-5" />
+                {enrolledCourses.length > 0 ? <Code2 className="h-5 w-5" /> : <Library className="h-5 w-5" />}
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
-                  {currentFocusCourse ? currentFocusCourse.subtitle || currentFocusCourse.title : "Browse real courses"}
+                  {enrolledCourses.length > 0 && currentFocusCourse
+                    ? currentFocusCourse.subtitle || currentFocusCourse.title
+                    : "Curated learning tracks"}
                 </p>
                 <p className="mt-0.5 text-xs text-[#9aa4bc]">
-                  {currentFocusCourse ? `${currentFocusCourse.category} · ${currentFocusCourse.lessons}` : "Self-paced learning"}
+                  {enrolledCourses.length > 0 && currentFocusCourse
+                    ? `${currentFocusCourse.category} · ${currentFocusCourse.lessons}`
+                    : "Live cohorts & self-paced learning"}
                 </p>
               </div>
             </div>
-            <ProgressBar value={currentFocusCourse ? currentFocusCourse.progress : 0} />
-            <div className="mt-2 flex justify-between text-[10px] font-semibold text-[#9aa4bc]">
-              <span>{currentFocusCourse ? currentFocusCourse.lessons : "0 modules"}</span>
-              <span>{currentFocusCourse ? currentFocusCourse.duration : "Real time"}</span>
-            </div>
+            {enrolledCourses.length > 0 && currentFocusCourse ? (
+              <>
+                <ProgressBar value={currentFocusCourse.progress} />
+                <div className="mt-2 flex justify-between text-[10px] font-semibold text-[#9aa4bc]">
+                  <span>{currentFocusCourse.lessons}</span>
+                  <span>{currentFocusCourse.duration}</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-[#7c87a4] leading-5">
+                Join a cohort to unlock live mentorship, projects, assessments, and placement assistance.
+              </p>
+            )}
           </div>
           <Link
-            href={getSecureHref(currentFocusCourse ? (isEnrolled(currentFocusCourse.id) ? "/learn" : `/courses?courseId=${currentFocusCourse.id}`) : "/courses")}
+            href={getSecureHref(enrolledCourses.length > 0 && currentFocusCourse ? "/learn" : "/courses")}
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#f1f4fb] py-3 text-xs font-bold text-[#3157e8] transition hover:bg-[#e6ebfb] dark:bg-white/5 dark:hover:bg-white/10"
           >
-            {enrolledCourses.length > 0 ? "Continue lesson" : "Start learning"} <ArrowRight className="h-3.5 w-3.5" />
+            {enrolledCourses.length > 0 ? "Continue lesson" : "Explore courses"} <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </section>
       </div>
       <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        <StatCard
-          icon={BookOpen}
-          value={String(enrollments.length).padStart(2, "0")}
-          label="Courses enrolled"
-          trend={enrollments.length > 0 ? `+${enrollments.length} active` : "0 active"}
-          color="blue"
-        />
-        <StatCard
-          icon={ClipboardCheck}
-          value={String(mySubmissions.length).padStart(2, "0")}
-          label="Assignments submitted"
-          trend={mySubmissions.length > 0 ? `${mySubmissions.length} submitted` : "0 submitted"}
-          color="violet"
-        />
+        {enrolledCourses.length > 0 ? (
+          <>
+            <StatCard
+              icon={BookOpen}
+              value={String(enrollments.length).padStart(2, "0")}
+              label="Courses enrolled"
+              trend={`+${enrollments.length} active`}
+              color="blue"
+            />
+            <StatCard
+              icon={ClipboardCheck}
+              value={String(mySubmissions.length).padStart(2, "0")}
+              label="Assignments submitted"
+              trend={`${mySubmissions.length} submitted`}
+              color="violet"
+            />
+          </>
+        ) : (
+          <>
+            <StatCard
+              icon={Library}
+              value={String(courses.length).padStart(2, "0")}
+              label="Available courses"
+              trend="Explore tracks"
+              color="blue"
+            />
+            <StatCard
+              icon={Flame}
+              value={`${String(streak).padStart(2, "0")}d`}
+              label="Current streak"
+              trend="Daily momentum"
+              color="amber"
+            />
+          </>
+        )}
         <StatCard
           icon={Code2}
           value={String(solvedCount).padStart(2, "0")}
           label="Problems solved"
           trend={liveProblems.length > 0 ? `${solvedCount} of ${liveProblems.length} solved` : "0 available"}
-          color="amber"
+          color="emerald"
         />
         <StatCard
           icon={Clock3}
           value={formattedActiveTime}
           label="Active study time"
           trend={todayActiveTrend}
-          color="emerald"
+          color="violet"
         />
       </div>
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)]">
         <section>
           <SectionTitle
-            title="Continue your learning"
+            title={enrolledCourses.length > 0 ? "Continue your learning" : "Popular courses"}
             link={courses.length > 0 ? "Browse all" : undefined}
             href={getSecureHref("/courses")}
           />
@@ -870,8 +988,62 @@ function Dashboard() {
           </div>
         </section>
         <aside className="space-y-8">
-          <UpcomingSessions />
-          <AssignmentsWidget />
+          {enrolledCourses.length > 0 ? (
+            <>
+              <UpcomingSessions />
+              <AssignmentsWidget />
+            </>
+          ) : (
+            <>
+              {/* Daily Problem Arena Spotlight for un-enrolled students */}
+              <section className="card-surface p-5 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fff4db] text-[#d68c20] dark:bg-amber-950/40 dark:text-amber-400">
+                    <Code2 className="h-5 w-5" />
+                  </span>
+                  <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                    Free Arena
+                  </span>
+                </div>
+                <h3 className="mt-4 font-display text-base font-bold text-[#17223d] dark:text-white">
+                  Practice Coding Arena
+                </h3>
+                <p className="mt-1 text-xs text-[#7c87a4] leading-5">
+                  Solve industry-level problems filtered by top tech companies and topics with our in-browser code editor.
+                </p>
+                <Link
+                  href={getSecureHref("/practice")}
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#3157e8] py-2.5 text-xs font-bold text-white transition hover:bg-[#2546c7]"
+                >
+                  <Code2 className="h-4 w-4" /> Start solving problems
+                </Link>
+              </section>
+
+              {/* Announcements preview widget */}
+              <section className="card-surface p-5 sm:p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-[#3157e8]" />
+                    <h3 className="font-display text-sm font-bold text-[#17223d] dark:text-white">
+                      Announcements
+                    </h3>
+                  </div>
+                  <Link href={getSecureHref("/announcements")} className="text-xs font-bold text-[#3157e8] hover:underline">
+                    View all
+                  </Link>
+                </div>
+                <p className="text-xs text-[#7c87a4] leading-5">
+                  Stay updated with platform announcements, upcoming webinars, and cohort notifications.
+                </p>
+                <Link
+                  href={getSecureHref("/announcements")}
+                  className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#f1f4fb] py-2.5 text-xs font-bold text-[#3157e8] transition hover:bg-[#e6ebfb] dark:bg-white/5 dark:hover:bg-white/10"
+                >
+                  Check announcements <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </section>
+            </>
+          )}
         </aside>
       </div>
     </>
@@ -1089,6 +1261,8 @@ function SessionRow({
 }
 
 function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
+  const { enrollments } = useEnrollments();
+  const hasEnrollments = Array.isArray(enrollments) && enrollments.length > 0;
   const { sessions, refreshSessions } = useLiveSessions();
   const [selectedId, setSelectedId] = useState<string>(initialSessionId || "");
   const [copiedLink, setCopiedLink] = useState(false);
@@ -1152,6 +1326,34 @@ function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
     toast.success("Passcode copied!");
     setTimeout(() => setCopiedPasscode(false), 2500);
   };
+
+  if (!hasEnrollments) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Interactive Learning"
+          title="Live Sessions & Workshops"
+          description="Join interactive live lectures, system design deep dives, and live doubt resolution sessions with industry mentors."
+        />
+        <div className="card-surface flex flex-col items-center justify-center p-12 text-center">
+          <div className="grid h-16 w-16 place-items-center rounded-3xl bg-indigo-50 dark:bg-indigo-950/50 text-[#3157e8] dark:text-indigo-400 mb-4 shadow-sm">
+            <Video className="h-8 w-8" />
+          </div>
+          <h2 className="font-display text-xl font-bold text-[#17223d] dark:text-white">
+            No enrolled courses yet
+          </h2>
+          <p className="mt-2 text-sm text-[#7c87a4] max-w-md">
+            Live interactive classes and workshop cohorts are unlocked when you enroll in a course.
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <Link href={getSecureHref("/courses")} className="button-primary inline-flex items-center gap-2">
+              <Library className="h-4 w-4" /> Browse Courses
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentSession) {
     return (
@@ -1695,6 +1897,8 @@ function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
 }
 
 function RecordingsPage({ initialRecordingId }: { initialRecordingId?: string }) {
+  const { enrollments } = useEnrollments();
+  const hasEnrollments = Array.isArray(enrollments) && enrollments.length > 0;
   const { recordings, loading } = useLiveRecordings();
   const [selectedId, setSelectedId] = useState<string>(initialRecordingId || "");
   const [selectedCourse, setSelectedCourse] = useState("All");
@@ -1770,6 +1974,34 @@ function RecordingsPage({ initialRecordingId }: { initialRecordingId?: string })
       setTimeout(() => setCopiedLink(false), 2000);
     }
   };
+
+  if (!hasEnrollments) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="On-Demand Archive"
+          title="Class Recordings & Workshops"
+          description="Review recorded lectures, workshops, system design clinics, and code walkthroughs with chapter timestamps and downloadable study notes."
+        />
+        <div className="card-surface flex flex-col items-center justify-center p-12 text-center">
+          <div className="grid h-16 w-16 place-items-center rounded-3xl bg-indigo-50 dark:bg-indigo-950/50 text-[#3157e8] dark:text-indigo-400 mb-4 shadow-sm">
+            <Film className="h-8 w-8" />
+          </div>
+          <h2 className="font-display text-xl font-bold text-[#17223d] dark:text-white">
+            No enrolled courses yet
+          </h2>
+          <p className="mt-2 text-sm text-[#7c87a4] max-w-md">
+            On-demand video lecture recordings and resources unlock once you enroll in a course cohort.
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <Link href={getSecureHref("/courses")} className="button-primary inline-flex items-center gap-2">
+              <Library className="h-4 w-4" /> Browse Courses
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (activeRecording) {
     const otherRecordingsInCourse = recordings.filter(
@@ -4532,10 +4764,10 @@ Keep up the consistent momentum!
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
         {/* Course Progress Section */}
         <section>
-          <SectionTitle title="Course progress" link="My courses" href="/my-courses" />
+          <SectionTitle title="Course progress" link={enrolledCourses.length > 0 ? "My courses" : "Browse courses"} href={enrolledCourses.length > 0 ? "/my-courses" : "/courses"} />
           <div className="card-surface px-5">
-            {targetCourses.length > 0 ? (
-              targetCourses.slice(0, 3).map((course) => (
+            {enrolledCourses.length > 0 ? (
+              enrolledCourses.slice(0, 3).map((course) => (
                 <div
                   key={course.id}
                   className="border-b border-[#edf0f6] py-5 last:border-0 dark:border-white/10"
@@ -4567,8 +4799,15 @@ Keep up the consistent momentum!
                 </div>
               ))
             ) : (
-              <div className="py-8 text-center text-xs text-[#9aa4bc]">
-                No courses available to track progress.
+              <div className="py-8 text-center">
+                <BookOpen className="mx-auto h-8 w-8 text-[#9aa4bc] mb-2" />
+                <p className="text-xs font-bold text-[#17223d] dark:text-white">No active course progress</p>
+                <p className="mt-1 text-[11px] text-[#9aa4bc] max-w-xs mx-auto">
+                  Enroll in a course to track live curriculum progress and milestone certificates.
+                </p>
+                <Link href={getSecureHref("/courses")} className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#3157e8] px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-[#2546c7]">
+                  Browse Courses
+                </Link>
               </div>
             )}
           </div>
@@ -4605,39 +4844,45 @@ Keep up the consistent momentum!
                 "text-xs font-bold",
                 pendingCount === 0 && totalAssignments > 0 ? "text-[#23a26d]" : submittedCount > 0 ? "text-[#23a26d]" : "text-[#d68c20]"
               )}>
-                {pendingCount === 0 && totalAssignments > 0 ? "All caught up" : submittedCount > 0 ? "On track" : "Pending start"}
+                {enrolledCourses.length === 0 ? "Unlock with course" : pendingCount === 0 && totalAssignments > 0 ? "All caught up" : submittedCount > 0 ? "On track" : "Pending start"}
               </span>
             </div>
-            <div className="mt-5 flex items-center gap-4">
-              <div
-                className="relative h-20 w-20 rounded-full shrink-0"
-                style={{
-                  background: totalAssignments > 0
-                    ? `conic-gradient(#23a26d 0 ${submittedPct}%, #ffca63 ${submittedPct}% ${submittedPct + pendingPct}%, #eef1f6 ${submittedPct + pendingPct}% 100%)`
-                    : "conic-gradient(#23a26d 0 100%, #eef1f6 100% 100%)",
-                }}
-              >
-                <div className="absolute inset-[8px] flex items-center justify-center rounded-full bg-white dark:bg-[#182036]">
-                  <span className="font-display text-lg font-bold text-[#17223d] dark:text-white" suppressHydrationWarning>
-                    {submittedCount}
-                  </span>
+            {enrolledCourses.length > 0 ? (
+              <div className="mt-5 flex items-center gap-4">
+                <div
+                  className="relative h-20 w-20 rounded-full shrink-0"
+                  style={{
+                    background: totalAssignments > 0
+                      ? `conic-gradient(#23a26d 0 ${submittedPct}%, #ffca63 ${submittedPct}% ${submittedPct + pendingPct}%, #eef1f6 ${submittedPct + pendingPct}% 100%)`
+                      : "conic-gradient(#23a26d 0 100%, #eef1f6 100% 100%)",
+                  }}
+                >
+                  <div className="absolute inset-[8px] flex items-center justify-center rounded-full bg-white dark:bg-[#182036]">
+                    <span className="font-display text-lg font-bold text-[#17223d] dark:text-white" suppressHydrationWarning>
+                      {submittedCount}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2 text-[10px] font-semibold text-[#7c87a4]">
+                  <p>
+                    <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#23a26d]" />
+                    Submitted <b className="text-[#17223d] dark:text-white">{String(submittedCount).padStart(2, "0")}</b>
+                  </p>
+                  <p>
+                    <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#ffca63]" />
+                    Pending <b className="text-[#17223d] dark:text-white">{String(pendingCount).padStart(2, "0")}</b>
+                  </p>
+                  <p>
+                    <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#e1e5ed]" />
+                    Reviewed <b className="text-[#17223d] dark:text-white">{String(reviewedCount).padStart(2, "0")}</b>
+                  </p>
                 </div>
               </div>
-              <div className="space-y-2 text-[10px] font-semibold text-[#7c87a4]">
-                <p>
-                  <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#23a26d]" />
-                  Submitted <b className="text-[#17223d] dark:text-white">{String(submittedCount).padStart(2, "0")}</b>
-                </p>
-                <p>
-                  <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#ffca63]" />
-                  Pending <b className="text-[#17223d] dark:text-white">{String(pendingCount).padStart(2, "0")}</b>
-                </p>
-                <p>
-                  <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[#e1e5ed]" />
-                  Reviewed <b className="text-[#17223d] dark:text-white">{String(reviewedCount).padStart(2, "0")}</b>
-                </p>
-              </div>
-            </div>
+            ) : (
+              <p className="mt-3 text-xs text-[#9aa4bc]">
+                Assignments and project checkpoints will be evaluated and graphed here when you enroll in a course.
+              </p>
+            )}
           </div>
         </section>
       </div>
@@ -5036,6 +5281,8 @@ function NotificationsPage() {
 }
 
 function AssignmentsPage() {
+  const { enrollments } = useEnrollments();
+  const hasEnrollments = Array.isArray(enrollments) && enrollments.length > 0;
   const { assignments, submissions, loading, submitAssignment } = useAssignments();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -5153,6 +5400,35 @@ function AssignmentsPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (!hasEnrollments) {
+    return (
+      <>
+        <PageHeader
+          eyebrow="Show your work & master concepts"
+          title="Course Assignments & Problem Sets"
+          description="Complete practical problem sets, build end-to-end projects, and submit your code for mentor evaluation."
+        />
+        <div className="card-surface p-12 text-center">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300 mb-4">
+            <ClipboardCheck className="h-8 w-8" />
+          </div>
+          <h2 className="font-display text-xl font-bold text-[#17223d] dark:text-white">
+            No enrolled courses yet
+          </h2>
+          <p className="mt-2 text-xs text-[#9aa4bc] max-w-md mx-auto">
+            Course assignments, milestone projects, and evaluation checkpoints unlock once you enroll in a course cohort.
+          </p>
+          <Link
+            href={getSecureHref("/courses")}
+            className="button-primary mt-6 inline-flex items-center gap-2"
+          >
+            <Library className="h-4 w-4" /> Browse Courses <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
