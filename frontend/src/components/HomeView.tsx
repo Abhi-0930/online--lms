@@ -55,6 +55,7 @@ import {
   ExternalLink,
   FileText,
   Film,
+  Filter,
   Flame,
   FolderOpen,
   Github,
@@ -75,12 +76,14 @@ import {
   PlaySquare,
   Plus,
   Radio,
+  RotateCcw,
   Search,
   Send,
   Settings2,
   Share2,
   Shield,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Star,
   Sun,
@@ -884,15 +887,20 @@ function CourseProgressCard({ course }: { course: LiveCourseItem }) {
           alt={course.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        <span className="absolute left-3 top-3 rounded-lg bg-black/60 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-md">
-          {course.category}
-        </span>
       </div>
-      <div className="p-4">
+      <div className="p-4 space-y-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="rounded-md bg-blue-50 dark:bg-blue-950/50 border border-blue-100/80 dark:border-blue-900/40 px-2 py-0.5 text-[10px] font-bold text-blue-600 dark:text-blue-400">
+            {course.category}
+          </span>
+          <span className="rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+            {course.level}
+          </span>
+        </div>
         <h3 className="font-display text-sm font-bold text-[#17223d] dark:text-white line-clamp-1">{course.title}</h3>
-        <p className="mt-1 text-[11px] text-[#9aa4bc] line-clamp-1">{course.subtitle}</p>
-        <div className="mt-4 flex items-center justify-between border-t border-[#edf0f6] pt-3 text-[10px] font-bold text-[#7c87a4] dark:border-white/10">
-          <span>{course.level}</span>
+        <p className="text-[11px] text-[#9aa4bc] line-clamp-1">{course.subtitle}</p>
+        <div className="flex items-center justify-between border-t border-[#edf0f6] pt-3 text-[10px] font-bold text-[#7c87a4] dark:border-white/10">
+          <span>{course.lessons}</span>
           <span className="text-[#3157e8]">{course.price}</span>
         </div>
       </div>
@@ -1163,12 +1171,9 @@ function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
           <p className="mt-2 text-sm text-[#7c87a4] max-w-md">
             There are currently no live sessions scheduled for your cohort. New lectures, webinars, and doubt clearing sessions will be announced here.
           </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link href={getSecureHref("/announcements")} className="button-primary">
+          <div className="mt-6 flex items-center justify-center">
+            <Link href={getSecureHref("/announcements")} className="button-primary inline-flex items-center gap-2">
               <Bell className="h-4 w-4" /> Check announcements
-            </Link>
-            <Link href={getSecureHref("/courses")} className="button-ghost">
-              Browse courses <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -2326,23 +2331,22 @@ function CourseCardSkeleton() {
   return (
     <div className="card-surface flex flex-col justify-between overflow-hidden animate-pulse">
       <div>
-        <div className="relative h-44 bg-slate-200/70 dark:bg-white/5">
-          <div className="absolute left-4 top-4 flex gap-2">
-            <div className="h-5 w-16 rounded-md bg-slate-300/80 dark:bg-white/10" />
-            <div className="h-5 w-16 rounded-md bg-slate-300/60 dark:bg-white/10" />
-          </div>
-          <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
-            <div className="space-y-1.5 flex-1 pr-4">
-              <div className="h-2.5 w-20 rounded bg-slate-300/70 dark:bg-white/10" />
-              <div className="h-5 w-3/4 rounded-md bg-slate-300/90 dark:bg-white/15" />
+        <div className="relative h-44 bg-slate-200/70 dark:bg-white/5" />
+        <div className="p-4 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              <div className="h-5 w-16 rounded-lg bg-slate-200/80 dark:bg-white/10" />
+              <div className="h-5 w-14 rounded-lg bg-slate-200/60 dark:bg-white/10" />
             </div>
-            <div className="h-4 w-8 rounded bg-slate-300/70 dark:bg-white/10" />
+            <div className="h-4 w-10 rounded bg-slate-200/70 dark:bg-white/10" />
           </div>
-        </div>
-        <div className="p-4 space-y-2">
+          <div className="space-y-1.5 pt-0.5">
+            <div className="h-5 w-4/5 rounded-md bg-slate-300/90 dark:bg-white/15" />
+            <div className="h-3 w-28 rounded bg-slate-200/70 dark:bg-white/10" />
+          </div>
           <div className="h-3.5 w-full rounded bg-slate-200/80 dark:bg-white/5" />
           <div className="h-3.5 w-4/5 rounded bg-slate-200/80 dark:bg-white/5" />
-          <div className="mt-4 flex items-center gap-3 pt-2">
+          <div className="flex items-center gap-3 pt-1">
             <div className="h-3 w-16 rounded bg-slate-200/60 dark:bg-white/5" />
             <div className="h-3 w-16 rounded bg-slate-200/60 dark:bg-white/5" />
             <div className="h-3 w-16 rounded bg-slate-200/60 dark:bg-white/5" />
@@ -2381,43 +2385,46 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
             alt={course.title}
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#17223d]/80 via-transparent to-[#17223d]/5" />
-          <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-            <span className="rounded-md bg-white/15 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">
-              {course.category}
-            </span>
-            <span className="rounded-md bg-[#17223d]/40 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">
-              {course.level}
-            </span>
-            {course.hasDiscount && course.discountPercentage ? (
-              <span className="rounded-md bg-emerald-500/90 px-2 py-1 text-[10px] font-bold text-white shadow-sm backdrop-blur-md">
-                {course.discountPercentage}% OFF
-              </span>
-            ) : null}
-            {enrolled && (
-              <span className="flex items-center gap-1 rounded-md bg-emerald-500/90 px-2 py-1 text-[10px] font-bold text-white shadow-sm backdrop-blur-md">
-                <Check className="h-3 w-3 stroke-[3]" /> Enrolled
-              </span>
-            )}
-          </div>
-          <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white">
-            <div className="min-w-0 pr-2">
-              <p className="text-[10px] text-white/60 truncate">By {course.instructor}</p>
-              <p className="mt-1 font-display text-lg font-bold tracking-[-0.04em] line-clamp-1">
-                {course.title}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-1 text-xs font-bold">
-              <Star className="h-3.5 w-3.5 fill-[#ffca63] text-[#ffca63]" />
-              {course.rating}
-            </div>
-          </div>
         </div>
-        <div className="p-4">
-          <p className="line-clamp-2 min-h-[40px] text-sm leading-5 text-[#7c87a4]">
+        <div className="p-4 space-y-2.5">
+          {/* Top Row: Category, Level, Discount/Enrolled Badges + Star Rating */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-100/80 dark:border-blue-900/40 px-2.5 py-0.5 text-[10.5px] font-bold text-blue-600 dark:text-blue-400">
+                {course.category}
+              </span>
+              <span className="rounded-lg bg-slate-100 dark:bg-white/10 px-2.5 py-0.5 text-[10.5px] font-semibold text-slate-600 dark:text-slate-300">
+                {course.level}
+              </span>
+              {course.hasDiscount && course.discountPercentage ? (
+                <span className="rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-900/40 px-2 py-0.5 text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400">
+                  {course.discountPercentage}% OFF
+                </span>
+              ) : null}
+              {enrolled && (
+                <span className="flex items-center gap-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-900/40 px-2 py-0.5 text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <Check className="h-3 w-3 stroke-[3]" /> Enrolled
+                </span>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-1 text-xs font-bold text-amber-500 dark:text-amber-400">
+              <Star className="h-3.5 w-3.5 fill-[#ffca63] text-[#ffca63]" />
+              <span>{course.rating}</span>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-display text-base font-bold text-[#17223d] dark:text-white line-clamp-1 group-hover:text-[#3157e8] transition-colors">
+              {course.title}
+            </h3>
+            <p className="mt-0.5 text-[11px] font-medium text-[#9aa4bc]">By {course.instructor}</p>
+          </div>
+
+          <p className="line-clamp-2 min-h-[38px] text-xs leading-5 text-[#7c87a4]">
             {course.subtitle || course.description}
           </p>
-          <div className="mt-4 flex items-center gap-3 text-[10px] font-semibold text-[#9aa4bc]">
+
+          <div className="flex items-center gap-3.5 text-[11px] font-semibold text-[#9aa4bc] pt-1">
             <span className="flex items-center gap-1">
               <Video className="h-3.5 w-3.5" />
               {course.lessons}
@@ -3368,10 +3375,12 @@ function MyCoursesPage() {
 function MyCourseCardSkeleton() {
   return (
     <div className="card-surface overflow-hidden animate-pulse">
-      <div className="relative h-36 bg-slate-200/70 dark:bg-white/5">
-        <div className="absolute bottom-3 left-4 h-4 w-20 rounded-md bg-slate-300/80 dark:bg-white/10" />
-      </div>
+      <div className="relative h-36 bg-slate-200/70 dark:bg-white/5" />
       <div className="p-5">
+        <div className="flex gap-2 mb-2.5">
+          <div className="h-4 w-16 rounded-md bg-slate-200/80 dark:bg-white/10" />
+          <div className="h-4 w-14 rounded-md bg-slate-200/60 dark:bg-white/10" />
+        </div>
         <div className="h-5 w-3/4 rounded-md bg-slate-200/80 dark:bg-white/10" />
         <div className="mt-2 h-3.5 w-full rounded bg-slate-100 dark:bg-white/5" />
         <div className="mt-5 flex items-center justify-between">
@@ -3390,12 +3399,21 @@ function MyCourseCard({ course }: { course: LiveCourseItem }) {
     <div className="card-surface group overflow-hidden">
       <div className="relative h-36 overflow-hidden">
         <img src={course.image} alt={course.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#17223d]/75 to-transparent" />
-        <span className="absolute bottom-3 left-4 rounded-md bg-white/15 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">
-          {course.progress === 100 ? "Completed" : "In progress"}
-        </span>
       </div>
       <div className="p-5">
+        <div className="mb-2.5 flex items-center gap-2 flex-wrap">
+          <span className={cx(
+            "rounded-md px-2 py-0.5 text-[10px] font-bold",
+            course.progress === 100
+              ? "bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800"
+              : "bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800"
+          )}>
+            {course.progress === 100 ? "Completed" : "In progress"}
+          </span>
+          <span className="rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+            {course.category}
+          </span>
+        </div>
         <h3 className="font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white line-clamp-1">{course.title}</h3>
         <p className="mt-1 text-xs text-[#9aa4bc] line-clamp-1">{course.subtitle || course.description}</p>
         <div className="mt-5 flex items-center justify-between text-xs font-bold">
@@ -3663,6 +3681,147 @@ function PlayerPage() {
   );
 }
 
+interface SearchableFilterDropdownProps {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  options: string[];
+  icon?: React.ReactNode;
+  isCompany?: boolean;
+}
+
+function SearchableFilterDropdown({
+  label,
+  value,
+  onChange,
+  options,
+  icon,
+  isCompany = false,
+}: SearchableFilterDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) {
+      document.addEventListener("mousedown", handleOutside);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    } else {
+      setSearch("");
+    }
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [open]);
+
+  const filteredOptions = useMemo(() => {
+    if (!search.trim()) return options;
+    const q = search.toLowerCase();
+    return options.filter((opt) => opt.toLowerCase().includes(q));
+  }, [options, search]);
+
+  return (
+    <div ref={containerRef} className="relative w-full text-left">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={cx(
+          "flex h-11 w-full items-center justify-between gap-2.5 rounded-xl border border-[#e5e8f0] bg-white px-3.5 text-xs font-semibold text-[#17223d] outline-none transition-all dark:border-white/10 dark:bg-white/5 dark:text-white cursor-pointer select-none",
+          open && "ring-2 ring-[#3157e8]/30 border-[#3157e8] shadow-sm"
+        )}
+      >
+        <span className="flex items-center gap-2.5 min-w-0 truncate">
+          {isCompany && value !== "All companies" ? (
+            <CompanyLogo name={value} size="xs" />
+          ) : (
+            icon
+          )}
+          <span className="truncate font-bold text-xs text-[#17223d] dark:text-white">
+            {value}
+          </span>
+        </span>
+        <ChevronDown
+          className={cx(
+            "h-4 w-4 transition-transform duration-200 text-[#9aa4bc] shrink-0",
+            open && "rotate-180 text-[#3157e8]"
+          )}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-2xl border border-[#e5e8f0] bg-white p-2 shadow-2xl backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-100 dark:border-white/10 dark:bg-[#151c30]">
+          {/* Search bar inside dropdown */}
+          <div className="relative mb-2">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9aa4bc]" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={`Search ${label.toLowerCase()}...`}
+              className="h-9 w-full rounded-lg border border-[#e5e8f0] bg-[#f8fafc] pl-8 pr-7 text-xs font-medium text-[#17223d] outline-none transition placeholder:text-[#9aa4bc] focus:border-[#3157e8] focus:bg-white dark:border-white/10 dark:bg-white/5 dark:text-white"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#9aa4bc] hover:text-[#17223d] dark:hover:text-white cursor-pointer"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Options list */}
+          <div className="max-h-60 overflow-y-auto space-y-0.5 no-scrollbar">
+            {filteredOptions.length === 0 ? (
+              <div className="py-4 text-center text-xs text-[#9aa4bc]">
+                No {label.toLowerCase()} found
+              </div>
+            ) : (
+              filteredOptions.map((opt) => {
+                const isSelected = opt.toLowerCase() === value.toLowerCase();
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => {
+                      onChange(opt);
+                      setOpen(false);
+                    }}
+                    className={cx(
+                      "flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors cursor-pointer",
+                      isSelected
+                        ? "bg-[#eef2ff] font-bold text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white"
+                        : "text-[#5f6c8c] hover:bg-slate-100 hover:text-[#17223d] dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                    )}
+                  >
+                    <span className="flex items-center gap-2.5 min-w-0 truncate">
+                      {isCompany && opt !== "All companies" ? (
+                        <CompanyLogo name={opt} size="xs" />
+                      ) : (
+                        icon
+                      )}
+                      <span className="truncate">{opt}</span>
+                    </span>
+                    {isSelected && (
+                      <Check className="h-3.5 w-3.5 stroke-[3] text-[#3157e8] shrink-0 dark:text-blue-400" />
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PracticePage({
   onSelectProblem,
 }: {
@@ -3672,19 +3831,58 @@ function PracticePage({
   const [difficulty, setDifficulty] = useState("All");
   const [topic, setTopic] = useState("All topics");
   const [selectedCompany, setSelectedCompany] = useState("All companies");
-  const [saved, setSaved] = useState<string[]>([]);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [saved, setSaved] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("saved_problems");
+        return stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
 
+  // Persist bookmarks
+  const toggleSave = (titleOrId: string) => {
+    setSaved((prev) => {
+      const next = prev.includes(titleOrId)
+        ? prev.filter((item) => item !== titleOrId)
+        : [...prev, titleOrId];
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("saved_problems", JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
+  };
+
+  // Close drawer on escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && filterDrawerOpen) {
+        setFilterDrawerOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [filterDrawerOpen]);
+
+  // Topic options
   const topicOptions = useMemo(() => {
     const set = new Set<string>();
     liveProblems.forEach((p) => {
-      if (p.topic || p.category) set.add(p.topic || p.category);
+      const t = (p.topic || p.category || "").trim();
+      if (t) set.add(t);
     });
-    const customList = Array.from(set);
-    return customList.length > 0
-      ? ["All topics", ...customList]
-      : ["All topics", "Arrays", "Strings", "Stack", "Sliding Window", "Trees", "Graphs", "Two Pointers"];
+    ["Arrays", "Strings", "Linked List", "Stack", "Queue", "Trees", "Graphs", "Dynamic Programming", "Two Pointers", "Sliding Window", "Binary Search", "Heap", "Greedy", "Backtracking", "Trie", "Bit Manipulation"].forEach((t) => set.add(t));
+    const list = Array.from(set).sort();
+    return ["All topics", ...list];
   }, [liveProblems]);
 
+  // Company options
   const companyOptions = useMemo(() => {
     const set = new Set<string>();
     liveProblems.forEach((p) => {
@@ -3697,24 +3895,45 @@ function PracticePage({
           .forEach((c) => set.add(c));
       }
     });
-    const list = Array.from(set);
-    return list.length > 0
-      ? ["All companies", ...list]
-      : ["All companies", "Google", "Amazon", "Microsoft", "Meta", "Adobe", "Apple", "Netflix"];
+    ["Google", "Amazon", "Microsoft", "Meta", "Apple", "Netflix", "Adobe", "Uber", "Salesforce", "Atlassian", "Stripe", "PayPal", "Twitter / X", "Spotify", "LinkedIn"].forEach((c) => set.add(c));
+    const list = Array.from(set).sort();
+    return ["All companies", ...list];
   }, [liveProblems]);
 
-  const filtered = liveProblems.filter(
-    (p) =>
-      (difficulty === "All" || p.difficulty.toLowerCase() === difficulty.toLowerCase()) &&
-      (topic === "All topics" || (p.topic || p.category || "").toLowerCase() === topic.toLowerCase()) &&
-      (selectedCompany === "All companies" ||
+  const filtered = useMemo(() => {
+    return liveProblems.filter((p) => {
+      const diffMatch =
+        difficulty === "All" ||
+        (p.difficulty || "").toLowerCase() === difficulty.toLowerCase();
+
+      const topicMatch =
+        topic === "All topics" ||
+        (p.topic || p.category || "").toLowerCase() === topic.toLowerCase();
+
+      const compMatch =
+        selectedCompany === "All companies" ||
         (typeof p.companies === "string" &&
-          p.companies.toLowerCase().includes(selectedCompany.toLowerCase())))
-  );
+          p.companies.toLowerCase().includes(selectedCompany.toLowerCase()));
+
+      return diffMatch && topicMatch && compMatch;
+    });
+  }, [liveProblems, difficulty, topic, selectedCompany]);
 
   const solvedCount = liveProblems.filter((p) => p.solved).length;
   const totalCount = liveProblems.length;
   const accuracyPct = totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0;
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (topic !== "All topics") count++;
+    if (selectedCompany !== "All companies") count++;
+    return count;
+  }, [topic, selectedCompany]);
+
+  const handleResetFilters = () => {
+    setTopic("All topics");
+    setSelectedCompany("All companies");
+  };
 
   return (
     <>
@@ -3760,38 +3979,90 @@ function PracticePage({
           </p>
         </div>
       </div>
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between flex-wrap">
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {["All", "Easy", "Medium", "Hard"].map((item) => (
+
+      {/* Control Bar: Difficulty Pills + Filter Button */}
+      <div className="mt-8 flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          {/* Difficulty pills */}
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {["All", "Easy", "Medium", "Hard"].map((item) => (
+              <button
+                key={item}
+                onClick={() => setDifficulty(item)}
+                className={cx(
+                  "rounded-full px-4 py-2 text-xs font-bold transition-colors cursor-pointer shrink-0",
+                  difficulty === item
+                    ? "bg-[#17223d] text-white dark:bg-[#3157e8]"
+                    : "bg-white text-[#7c87a4] dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
+                )}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          {/* Filter Right Sidebar Trigger Button */}
+          <button
+            type="button"
+            onClick={() => setFilterDrawerOpen(true)}
+            className={cx(
+              "flex h-10 items-center gap-2 rounded-xl border px-4 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 select-none",
+              activeFiltersCount > 0
+                ? "border-[#3157e8] bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white dark:border-[#3157e8]/50 ring-2 ring-[#3157e8]/20"
+                : "border-[#e5e8f0] bg-white text-[#5f6c8c] hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>Filters</span>
+            {activeFiltersCount > 0 && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#3157e8] text-[10px] font-bold text-white shadow-xs">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Active Filter Chips */}
+        {activeFiltersCount > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap pt-1">
+            <span className="text-[11px] font-bold text-[#9aa4bc] mr-1">Active:</span>
+            {topic !== "All topics" && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/40 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
+                <Code2 className="h-3 w-3" />
+                <span>{topic}</span>
+                <button
+                  onClick={() => setTopic("All topics")}
+                  className="hover:text-blue-900 dark:hover:text-white ml-0.5 cursor-pointer"
+                  title="Remove topic filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+            {selectedCompany !== "All companies" && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-900/40 px-2.5 py-1 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+                <CompanyLogo name={selectedCompany} size="xs" />
+                <span>{selectedCompany}</span>
+                <button
+                  onClick={() => setSelectedCompany("All companies")}
+                  className="hover:text-violet-900 dark:hover:text-white ml-0.5 cursor-pointer"
+                  title="Remove company filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
             <button
-              key={item}
-              onClick={() => setDifficulty(item)}
-              className={cx(
-                "rounded-full px-4 py-2 text-xs font-bold transition-colors cursor-pointer",
-                difficulty === item
-                  ? "bg-[#17223d] text-white dark:bg-[#3157e8]"
-                  : "bg-white text-[#7c87a4] dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10"
-              )}
+              onClick={handleResetFilters}
+              className="text-[11px] font-bold text-[#ef8354] hover:underline ml-1 cursor-pointer"
             >
-              {item}
+              Clear all
             </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <CustomDropdown
-            value={topic}
-            onChange={setTopic}
-            options={topicOptions}
-            icon={<Code2 className="h-4 w-4 text-[#9aa4bc]" />}
-          />
-          <CustomDropdown
-            value={selectedCompany}
-            onChange={setSelectedCompany}
-            options={companyOptions}
-            icon={<Building2 className="h-4 w-4 text-[#9aa4bc]" />}
-          />
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* Problem List Table */}
       <div className="mt-5 card-surface overflow-hidden">
         <div className="hidden grid-cols-[minmax(0,1fr)_130px_110px_110px_54px] gap-4 border-b border-[#edf0f6] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9aa4bc] dark:border-white/10 sm:grid">
           <span>Problem</span>
@@ -3801,8 +4072,20 @@ function PracticePage({
           <span />
         </div>
         {filtered.length === 0 ? (
-          <div className="p-8 text-center text-xs text-[#9aa4bc]">
-            No practice problems match the selected filters.
+          <div className="p-12 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#3157e8] dark:bg-white/5 dark:text-white">
+              <SlidersHorizontal className="h-6 w-6" />
+            </div>
+            <p className="text-sm font-bold text-[#17223d] dark:text-white">No matching problems found</p>
+            <p className="mt-1 text-xs text-[#9aa4bc]">Try adjusting your topic or target company filter.</p>
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={handleResetFilters}
+                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#3157e8] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#2545c4] transition cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Reset filters
+              </button>
+            )}
           </div>
         ) : (
           filtered.map((problem) => (
@@ -3830,6 +4113,17 @@ function PracticePage({
                   <span className="block truncate text-sm font-bold text-[#17223d] group-hover:text-[#3157e8] dark:text-white transition-colors">
                     {problem.title}
                   </span>
+                  {(problem.topic || problem.category) && (
+                    <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-[#9aa4bc] truncate">
+                      <span>{problem.topic || problem.category}</span>
+                      {problem.companies && (
+                        <>
+                          <span>·</span>
+                          <span className="truncate">{String(problem.companies).replace(/[\[\]"']/g, "")}</span>
+                        </>
+                      )}
+                    </span>
+                  )}
                 </div>
               </div>
               <span
@@ -3856,23 +4150,150 @@ function PracticePage({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSaved(
-                    saved.includes(problem.title)
-                      ? saved.filter((item) => item !== problem.title)
-                      : [...saved, problem.title]
-                  );
+                  toggleSave(String(problem.id || problem.title));
                 }}
                 className={cx(
                   "justify-self-start rounded-lg p-2 transition-colors cursor-pointer",
-                  saved.includes(problem.title) ? "text-[#3157e8]" : "text-[#b6bfd0] hover:text-[#3157e8]"
+                  saved.includes(String(problem.id || problem.title)) || (problem.slug && saved.includes(problem.slug))
+                    ? "text-[#3157e8]"
+                    : "text-[#b6bfd0] hover:text-[#3157e8]"
                 )}
+                title={
+                  saved.includes(String(problem.id || problem.title)) || (problem.slug && saved.includes(problem.slug))
+                    ? "Remove bookmark"
+                    : "Bookmark problem"
+                }
               >
-                <Bookmark className={cx("h-4 w-4", saved.includes(problem.title) && "fill-current")} />
+                <Bookmark
+                  className={cx(
+                    "h-4 w-4",
+                    (saved.includes(String(problem.id || problem.title)) || (problem.slug && saved.includes(problem.slug))) && "fill-current"
+                  )}
+                />
               </button>
             </div>
           ))
         )}
       </div>
+
+      {/* Clean Right Sidebar Filter Drawer: Topics & Companies Only */}
+      {filterDrawerOpen && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-[#0f172a]/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+            onClick={() => setFilterDrawerOpen(false)}
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative z-10 flex h-full w-full max-w-sm flex-col bg-white shadow-2xl border-l border-[#e5e8f0] dark:border-white/10 dark:bg-[#111827] animate-in slide-in-from-right duration-250">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between border-b border-[#e5e8f0] px-5 py-4 dark:border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-[#6d8eff]">
+                  <SlidersHorizontal className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-bold text-[#17223d] dark:text-white">
+                    Filters
+                  </h2>
+                  <p className="text-[11px] text-[#9aa4bc]">
+                    Select topic and target company
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={handleResetFilters}
+                    className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-[#ef8354] hover:bg-[#fff0ed] dark:hover:bg-[#ef8354]/10 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Reset
+                  </button>
+                )}
+                <button
+                  onClick={() => setFilterDrawerOpen(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-[#9aa4bc] hover:bg-slate-100 hover:text-[#17223d] dark:hover:bg-white/10 dark:hover:text-white transition-colors cursor-pointer"
+                  aria-label="Close filters"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Drawer Body: ONLY Topics & Companies */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              {/* Topic Filter */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-[#9aa4bc] flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[#17223d] dark:text-white font-bold normal-case text-sm">
+                    <Code2 className="h-4 w-4 text-[#3157e8]" /> Topics
+                  </span>
+                  {topic !== "All topics" && (
+                    <button
+                      onClick={() => setTopic("All topics")}
+                      className="text-[11px] text-[#3157e8] hover:underline font-semibold cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </label>
+                <SearchableFilterDropdown
+                  label="Topics"
+                  value={topic}
+                  onChange={setTopic}
+                  options={topicOptions}
+                  icon={<Code2 className="h-4 w-4 text-[#9aa4bc]" />}
+                />
+              </div>
+
+              {/* Company Filter (with Company Logos!) */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-[#9aa4bc] flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[#17223d] dark:text-white font-bold normal-case text-sm">
+                    <Building2 className="h-4 w-4 text-[#3157e8]" /> Companies
+                  </span>
+                  {selectedCompany !== "All companies" && (
+                    <button
+                      onClick={() => setSelectedCompany("All companies")}
+                      className="text-[11px] text-[#3157e8] hover:underline font-semibold cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </label>
+                <SearchableFilterDropdown
+                  label="Companies"
+                  value={selectedCompany}
+                  onChange={setSelectedCompany}
+                  options={companyOptions}
+                  icon={<Building2 className="h-4 w-4 text-[#9aa4bc]" />}
+                  isCompany={true}
+                />
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="border-t border-[#e5e8f0] p-4 bg-[#f8fafc] dark:bg-[#0f172a] dark:border-white/10 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-[#17223d] dark:text-white">
+                  {filtered.length} problem{filtered.length === 1 ? "" : "s"} found
+                </p>
+                <p className="text-[10px] text-[#9aa4bc]">
+                  Out of {totalCount} total challenges
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFilterDrawerOpen(false)}
+                className="rounded-xl bg-[#0066ff] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#0052cc] transition cursor-pointer active:scale-95"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
