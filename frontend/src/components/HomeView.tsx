@@ -482,29 +482,44 @@ function MobileNav() {
       ];
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 flex h-[72px] items-center justify-around border-t border-[#e5e8f0] bg-[#fbfcff]/95 px-2 pb-1 backdrop-blur-xl dark:border-white/10 dark:bg-[#10172b]/95 lg:hidden">
-      {items.map(({ label, href, icon: Icon }) => {
-        const active =
-          href === "/dashboard" || href === "/"
-            ? location === "/" || location === "/dashboard"
-            : location.startsWith(href);
+    <div className="fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 pointer-events-none lg:hidden">
+      <nav
+        aria-label="Mobile Navigation"
+        className="pointer-events-auto relative flex items-center justify-center gap-8 sm:gap-10 rounded-full border border-white/60 bg-white/35 px-8 sm:px-10 py-2.5 shadow-[0_20px_50px_rgba(15,23,42,0.18),0_0_0_1px_rgba(255,255,255,0.6)_inset,0_1px_2px_rgba(255,255,255,0.9)_inset] backdrop-blur-3xl backdrop-saturate-150 transition-all duration-300 dark:border-white/20 dark:bg-[#0b1120]/45 dark:shadow-[0_24px_50px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.12)_inset,0_1px_1px_rgba(255,255,255,0.25)_inset] min-w-[310px] sm:min-w-[370px] max-w-[430px] overflow-hidden"
+      >
+        {/* Liquid Glass Specular Top Highlight */}
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white/80 to-transparent dark:via-white/40" />
 
-        return (
-          <Link
-            key={href}
-            href={getSecureHref(href)}
-            className={cx(
-              "relative flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-[10px] font-bold transition",
-              active ? "text-[#3157e8]" : "text-[#9aa4bc] hover:text-[#17223d] dark:hover:text-white"
-            )}
-          >
-            <Icon className={cx("h-[19px] w-[19px]", active && "stroke-[2.5]")} />
-            <span>{label}</span>
-            {active && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-[#3157e8]" />}
-          </Link>
-        );
-      })}
-    </nav>
+        {items.map(({ label, href, icon: Icon }) => {
+          const active =
+            href === "/dashboard" || href === "/"
+              ? location === "/" || location === "/dashboard"
+              : location.startsWith(href);
+
+          return (
+            <Link
+              key={href}
+              href={getSecureHref(href)}
+              aria-label={label}
+              title={label}
+              className={cx(
+                "group relative flex h-11 w-12 sm:w-14 items-center justify-center rounded-2xl transition-all duration-200 active:scale-90",
+                active
+                  ? "bg-gradient-to-b from-[#3b66ff] to-[#2546c7] text-white shadow-[0_6px_20px_rgba(49,87,232,0.45),0_1px_0_rgba(255,255,255,0.4)_inset] scale-105"
+                  : "text-[#1e293b]/75 hover:bg-white/40 hover:text-[#0f172a] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+              )}
+            >
+              <Icon
+                className={cx(
+                  "h-[21px] w-[21px] transition-transform duration-150 group-hover:scale-110",
+                  active ? "stroke-[2.4]" : "stroke-[1.85]"
+                )}
+              />
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }
 
@@ -596,7 +611,7 @@ function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void })
 function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
-  return <div className="min-h-screen bg-[#f5f7fb] text-[#17223d] dark:bg-[#0d1325] dark:text-white"><Sidebar collapsed={collapsed} setCollapsed={setCollapsed} /><MobileDrawer open={drawer} onClose={() => setDrawer(false)} /><div className={cx("min-h-screen transition-[padding] duration-200", collapsed ? "lg:pl-[86px]" : "lg:pl-[250px]")}><Topbar onMenu={() => setDrawer(true)} /><main className="mx-auto max-w-[1540px] px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-10">{children}</main></div><MobileNav /></div>;
+  return <div className="min-h-screen bg-[#f5f7fb] text-[#17223d] dark:bg-[#0d1325] dark:text-white w-full max-w-full overflow-x-hidden"><Sidebar collapsed={collapsed} setCollapsed={setCollapsed} /><MobileDrawer open={drawer} onClose={() => setDrawer(false)} /><div className={cx("min-h-screen transition-[padding] duration-200 w-full max-w-full min-w-0 overflow-x-hidden", collapsed ? "lg:pl-[86px]" : "lg:pl-[250px]")}><Topbar onMenu={() => setDrawer(true)} /><main className="mx-auto max-w-[1540px] w-full min-w-0 px-4 pb-28 pt-7 sm:px-6 lg:px-8 lg:pb-10 overflow-x-hidden">{children}</main></div><MobileNav /></div>;
 }
 
 function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: React.ReactNode }) {
@@ -925,24 +940,29 @@ function Dashboard() {
           color="violet"
         />
       </div>
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)]">
-        <section>
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)] min-w-0 max-w-full w-full">
+        <section className="min-w-0 max-w-full w-full">
           <SectionTitle
             title={enrolledCourses.length > 0 ? "Continue your learning" : "Popular courses"}
             link={courses.length > 0 ? "Browse all" : undefined}
             href={getSecureHref("/courses")}
           />
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex w-full max-w-full min-w-0 gap-4 overflow-x-auto pb-1 pt-1 scroll-smooth snap-x snap-mandatory overscroll-x-contain no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {coursesLoading ? (
-              [1, 2].map((n) => (
-                <div key={n} className="card-surface h-48 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5" />
+              [1, 2, 3].map((n) => (
+                <div
+                  key={n}
+                  className="card-surface h-52 w-[270px] sm:w-[300px] shrink-0 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5"
+                />
               ))
             ) : activeDisplayCourses.length > 0 ? (
-              activeDisplayCourses.slice(0, 2).map((c) => (
-                <CourseProgressCard key={c.id} course={c} />
+              activeDisplayCourses.map((c) => (
+                <div key={c.id} className="w-[270px] sm:w-[300px] shrink-0 snap-start">
+                  <CourseProgressCard key={c.id} course={c} />
+                </div>
               ))
             ) : (
-              <div className="card-surface col-span-full p-8 text-center">
+              <div className="card-surface w-full p-8 text-center">
                 <Library className="mx-auto h-8 w-8 text-[#9aa4bc]" />
                 <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No courses available yet</p>
                 <p className="mt-1 text-xs text-[#9aa4bc]">Courses added via the Admin Panel will appear here live.</p>
@@ -1052,15 +1072,23 @@ function Dashboard() {
 
 function CourseProgressCard({ course }: { course: LiveCourseItem }) {
   return (
-    <Link href={createSecureUrl("/courses", { courseId: course.id })} className="card-surface group overflow-hidden">
-      <div className="relative h-[125px] overflow-hidden">
+    <Link
+      href={createSecureUrl("/courses", { courseId: course.id })}
+      className="card-surface group flex h-full flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:shadow-lg dark:hover:border-white/20"
+    >
+      <div className="relative h-[130px] w-full overflow-hidden bg-slate-100 dark:bg-slate-900">
         <img
           src={course.image}
           alt={course.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
+        {course.progress !== undefined && course.progress > 0 && (
+          <div className="absolute top-2.5 right-2.5 rounded-full bg-[#17223d]/80 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-bold text-white shadow">
+            {course.progress}% done
+          </div>
+        )}
       </div>
-      <div className="p-4 space-y-2">
+      <div className="flex flex-1 flex-col p-4 space-y-2">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="rounded-md bg-blue-50 dark:bg-blue-950/50 border border-blue-100/80 dark:border-blue-900/40 px-2 py-0.5 text-[10px] font-bold text-blue-600 dark:text-blue-400">
             {course.category}
@@ -1069,11 +1097,15 @@ function CourseProgressCard({ course }: { course: LiveCourseItem }) {
             {course.level}
           </span>
         </div>
-        <h3 className="font-display text-sm font-bold text-[#17223d] dark:text-white line-clamp-1">{course.title}</h3>
-        <p className="text-[11px] text-[#9aa4bc] line-clamp-1">{course.subtitle}</p>
+        <h3 className="font-display text-sm font-bold text-[#17223d] dark:text-white line-clamp-1 group-hover:text-[#3157e8] transition-colors">
+          {course.title}
+        </h3>
+        <p className="text-[11px] text-[#9aa4bc] line-clamp-1 leading-4 flex-1">
+          {course.subtitle}
+        </p>
         <div className="flex items-center justify-between border-t border-[#edf0f6] pt-3 text-[10px] font-bold text-[#7c87a4] dark:border-white/10">
           <span>{course.lessons}</span>
-          <span className="text-[#3157e8]">{course.price}</span>
+          <span className="text-[#3157e8] font-extrabold">{course.price}</span>
         </div>
       </div>
     </Link>

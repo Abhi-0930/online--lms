@@ -2803,7 +2803,6 @@ export class AdminService {
           user: {
             select: {
               id: true,
-              name: true,
               fullName: true,
               email: true,
               avatarUrl: true,
@@ -2828,7 +2827,7 @@ export class AdminService {
       });
 
       return payments.map((p) => {
-        const studentName = p.user?.fullName || p.user?.name || (p.user?.email ? p.user.email.split('@')[0] : 'Learner');
+        const studentName = p.user?.fullName || (p.user?.email ? p.user.email.split('@')[0] : 'Learner');
         const courseName = p.course?.title || p.cohort?.name || 'Platform Course';
         const numAmount = Number(p.amount) || 0;
         const formattedAmount = `₹${numAmount.toLocaleString('en-IN')}`;
@@ -2839,7 +2838,7 @@ export class AdminService {
         if (p.status === 'PENDING') status = 'Pending';
         else if (p.status === 'FAILED') status = 'Failed';
         else if (p.status === 'REFUNDED') status = 'Refund requested';
-        else if (p.status === 'COMPLETED' || (p.status as any) === 'SUCCESS') status = 'Paid';
+        else if (p.status === 'COMPLETED' || (p.status as any) === 'SUCCESS' || (p.status as any) === 'PAID') status = 'Paid';
 
         const invId = p.razorpayOrderId 
           ? `INV-${p.razorpayOrderId.replace(/^order_/, '').slice(0, 8).toUpperCase()}`
@@ -2948,11 +2947,11 @@ export class AdminService {
       const users = await this.prisma.user.findMany({
         take: 30,
         orderBy: { createdAt: 'desc' },
-        select: { id: true, name: true, fullName: true, email: true, role: true, createdAt: true },
+        select: { id: true, fullName: true, email: true, role: true, createdAt: true },
       });
 
       for (const u of users) {
-        const name = u.fullName || u.name || (u.email ? u.email.split('@')[0] : 'Learner');
+        const name = u.fullName || (u.email ? u.email.split('@')[0] : 'Learner');
         combinedLogs.push({
           id: `usr_${u.id}`,
           action: u.role === 'ADMIN' ? 'Admin account created' : 'Student registered',
@@ -2975,10 +2974,10 @@ export class AdminService {
       });
 
       for (const p of payments) {
-        const studentName = p.user?.fullName || p.user?.name || (p.user?.email ? p.user.email.split('@')[0] : 'Learner');
+        const studentName = p.user?.fullName || (p.user?.email ? p.user.email.split('@')[0] : 'Learner');
         const courseName = p.course?.title || 'Platform Course';
         const amountStr = `₹${Number(p.amount).toLocaleString('en-IN')}`;
-        const isPaid = p.status === 'COMPLETED' || (p.status as any) === 'SUCCESS' || p.status === 'PAID';
+        const isPaid = p.status === 'COMPLETED' || (p.status as any) === 'SUCCESS' || (p.status as any) === 'PAID';
 
         combinedLogs.push({
           id: `pay_${p.id}`,
@@ -3014,7 +3013,7 @@ export class AdminService {
     } catch {}
 
     try {
-      const recs = this.getAllRecordings();
+      const recs = await this.getAllRecordings();
       for (const r of recs.slice(0, 20)) {
         if (r.title) {
           combinedLogs.push({
@@ -3033,7 +3032,7 @@ export class AdminService {
     } catch {}
 
     try {
-      const sessions = this.getAllLiveSessions();
+      const sessions = await this.getAllLiveSessions();
       for (const s of sessions.slice(0, 20)) {
         if (s.title) {
           combinedLogs.push({
@@ -3052,7 +3051,7 @@ export class AdminService {
     } catch {}
 
     try {
-      const probs = this.getAllPracticeProblems();
+      const probs = await this.getAllPracticeProblems();
       for (const pr of probs.slice(0, 20)) {
         if (pr.title) {
           combinedLogs.push({
@@ -3071,7 +3070,7 @@ export class AdminService {
     } catch {}
 
     try {
-      const anns = this.getAllAnnouncements();
+      const anns = await this.getAllAnnouncements();
       for (const a of anns.slice(0, 20)) {
         if (a.title) {
           combinedLogs.push({

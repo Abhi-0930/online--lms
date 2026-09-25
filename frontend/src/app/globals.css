@@ -78,8 +78,8 @@
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-  html { min-width: 320px; background: var(--background); }
-  body { @apply bg-background text-foreground; margin: 0; min-width: 320px; font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; }
+  html { min-width: 320px; background: var(--background); overflow-x: hidden; max-width: 100%; }
+  body { @apply bg-background text-foreground; margin: 0; min-width: 320px; overflow-x: hidden; max-width: 100%; font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; }
   button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
   button:active, a:active { transform: scale(0.98); }
   ::selection { background: #dce6ff; color: #17223d; }
@@ -112,18 +112,18 @@
   scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
 }
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
   background: rgba(148, 163, 184, 0.45);
-  border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.6);
+  background: rgba(49, 87, 232, 0.65);
 }
 .dark .custom-scrollbar {
   scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
@@ -132,7 +132,7 @@
   background: rgba(255, 255, 255, 0.2);
 }
 .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(129, 140, 248, 0.6);
+  background: rgba(93, 123, 255, 0.65);
 }
 
 /* Dedicated Sidebar Scrollbar Styling (Ultra-compact 2.5px) */
