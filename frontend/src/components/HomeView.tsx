@@ -441,26 +441,19 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const { unreadCount: unreadAnnouncements } = useAnnouncements();
-  const [query, setQuery] = useState("");
   const displayName = resolveDisplayName(user);
   const roleName = resolveEducationStatus(user);
 
   return <header className="sticky top-0 z-30 flex h-[78px] items-center justify-between border-b border-[#e5e8f0]/90 bg-white/90 px-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#10172b]/90 sm:px-6 lg:px-8">
     <div className="flex min-w-0 items-center gap-3">
-      <button onClick={onMenu} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#5b6788] hover:bg-[#eef2ff] lg:hidden dark:hover:bg-white/10"><Menu className="h-5 w-5" /></button>
-      <div className="hidden items-center gap-2 text-sm text-[#9aa4bc] md:flex"><span className="h-2 w-2 rounded-full bg-[#48c58a]" /> Learning space</div>
-      <div className="relative hidden w-[260px] lg:block">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa4bc]" />
-        <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && toast.info(query ? `Searching for “${query}”` : "Try searching for a course or problem")} placeholder="Search anything..." className="h-10 w-full rounded-xl border border-[#e5e8f0] bg-white pl-9 pr-12 text-sm text-[#17223d] outline-none transition focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white" />
-        <span className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-md border border-[#e5e8f0] px-1.5 py-0.5 text-[10px] font-semibold text-[#9aa4bc] xl:block dark:border-white/10">⌘ K</span>
-      </div>
+      <button onClick={onMenu} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#5b6788] hover:bg-[#eef2ff] lg:hidden dark:hover:bg-white/10" aria-label="Open sidebar menu"><Menu className="h-5 w-5" /></button>
     </div>
     <div className="flex items-center gap-2 sm:gap-4">
       <Link href={getSecureHref("/announcements")} aria-label="Announcements" title="Announcements" className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] dark:hover:bg-white/10">
         <Bell className="h-[18px] w-[18px]" />
         {unreadAnnouncements > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#ef8354] ring-2 ring-white dark:ring-[#10172b]" />}
       </Link>
-      <button className="hidden h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] sm:inline-flex dark:hover:bg-white/10" onClick={toggleTheme}>{theme === "light" ? <Moon className="h-[17px] w-[17px]" /> : <Sun className="h-[17px] w-[17px]" />}</button>
+      <button className="hidden h-10 w-10 items-center justify-center rounded-xl text-[#7c87a4] transition hover:bg-[#eef2ff] hover:text-[#3157e8] sm:inline-flex dark:hover:bg-white/10" onClick={toggleTheme} aria-label="Toggle theme">{theme === "light" ? <Moon className="h-[17px] w-[17px]" /> : <Sun className="h-[17px] w-[17px]" />}</button>
       <div className="hidden h-7 w-px bg-[#e5e8f0] sm:block dark:bg-white/10" />
       <LearnerProfileDropdown displayName={displayName} roleName={roleName} user={user} onLogout={logout} />
     </div>
