@@ -29,6 +29,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   LineChart,
+  Loader2,
   LogOut,
   PanelLeft,
   Settings,
@@ -128,6 +129,7 @@ function DashboardLayoutContent({
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find((item) => item.path === pathname);
   const isMobile = useIsMobile();
@@ -264,11 +266,29 @@ function DashboardLayoutContent({
                   <span>Profile Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={logout}
-                  className="cursor-pointer text-destructive focus:text-destructive"
+                  disabled={isLoggingOut}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    setIsLoggingOut(true);
+                    try {
+                      await logout();
+                    } catch {
+                      setIsLoggingOut(false);
+                    }
+                  }}
+                  className="cursor-pointer text-destructive focus:text-destructive flex items-center gap-2"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
+                  {isLoggingOut ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <span>Signing out...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign out</span>
+                    </>
+                  )}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

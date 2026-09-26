@@ -44,43 +44,39 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
 
       const decoded = fastify.jwt.verify<AuthenticatedUser>(token);
 
-      if (decoded?.sessionToken) {
-        try {
-          const session = await fastify.prisma.userDevice.findUnique({
-            where: {
-              sessionToken: decoded.sessionToken,
-            },
-          });
+      const clientSessionToken = (request.headers['x-session-token'] as string) || decoded?.sessionToken;
 
-          if (!session) {
-            // Verify if database is active and user exists
-            const userExists = await fastify.prisma.user.findUnique({
-              where: { id: decoded.id },
-              select: { id: true },
-            }).catch(() => null);
-
-            if (userExists) {
-              (reply as any).clearCookie?.('access_token', { path: '/' });
-              return reply.status(401).send({
-                error: 'Unauthorized',
-                code: 'SESSION_REVOKED',
-                message: 'Your session has ended because your account was logged into on another device.',
-              });
-            }
-          } else {
-            await fastify.prisma.userDevice.update({
-              where: {
-                sessionToken: decoded.sessionToken,
-              },
-              data: {
-                lastActiveAt: new Date(),
-              },
-            }).catch(() => {});
-          }
-        } catch {
-          // Non-blocking database fallback
-        }
+      if (!clientSessionToken) {
+        return reply.status(401).send({
+          error: 'Unauthorized',
+          code: 'SESSION_REVOKED',
+          message: 'Your session has ended because your account was logged into on another device.',
+        });
       }
+
+      const session = await fastify.prisma.userDevice.findUnique({
+        where: {
+          sessionToken: clientSessionToken,
+        },
+      }).catch(() => null);
+
+      if (!session) {
+        return reply.status(401).send({
+          error: 'Unauthorized',
+          code: 'SESSION_REVOKED',
+          message: 'Your session has ended because your account was logged into on another device.',
+        });
+      }
+
+      // Update active timestamp asynchronously
+      fastify.prisma.userDevice.update({
+        where: {
+          sessionToken: decoded.sessionToken,
+        },
+        data: {
+          lastActiveAt: new Date(),
+        },
+      }).catch(() => {});
 
       if (decoded?.email) {
         const memUser = AuthService.fallbackUsers.get(decoded.email.toLowerCase());

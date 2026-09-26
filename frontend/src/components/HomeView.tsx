@@ -67,6 +67,7 @@ import {
   Library,
   LineChart,
   ListChecks,
+  Loader2,
   LockKeyhole,
   LogOut,
   Menu,
@@ -350,19 +351,31 @@ function CustomDropdown({
   );
 }
 
-function LearnerProfileDropdown({ displayName, roleName, user, onLogout }: { displayName: string; roleName: string; user: any; onLogout: () => void }) {
+function LearnerProfileDropdown({ displayName, roleName, user, onLogout }: { displayName: string; roleName: string; user: any; onLogout: () => Promise<void> | void }) {
   const [open, setOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleOutside = (e: MouseEvent) => {
+      if (isLoggingOut) return;
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
     if (open) document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
-  }, [open]);
+  }, [open, isLoggingOut]);
+
+  const handleLogoutClick = async () => {
+    setIsLoggingOut(true);
+    try {
+      await onLogout();
+    } catch {
+      setIsLoggingOut(false);
+      setOpen(false);
+    }
+  };
 
   return (
     <div ref={ref} className="relative inline-block text-left">
@@ -423,14 +436,21 @@ function LearnerProfileDropdown({ displayName, roleName, user, onLogout }: { dis
           <div className="pt-1.5">
             <button
               type="button"
-              onClick={() => {
-                setOpen(false);
-                onLogout();
-              }}
-              className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30 cursor-pointer"
+              disabled={isLoggingOut}
+              onClick={handleLogoutClick}
+              className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              <LockKeyhole className="h-4 w-4 text-rose-500" />
-              <span>Sign out</span>
+              {isLoggingOut ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-rose-500 shrink-0" />
+                  <span>Signing out...</span>
+                </>
+              ) : (
+                <>
+                  <LockKeyhole className="h-4 w-4 text-rose-500 shrink-0" />
+                  <span>Sign out</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -5930,6 +5950,7 @@ function ProfilePage() {
   const [devices, setDevices] = useState<any[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(true);
   const [revokingToken, setRevokingToken] = useState<string | null>(null);
+  const [isProfileLoggingOut, setIsProfileLoggingOut] = useState(false);
 
   const fetchDevices = useCallback(async () => {
     try {
@@ -6018,13 +6039,26 @@ function ProfilePage() {
             </div>
           </div>
           <button
-            onClick={() => {
-              logout();
-              toast.success("Signed out successfully");
+            disabled={isProfileLoggingOut}
+            onClick={async () => {
+              setIsProfileLoggingOut(true);
+              try {
+                await logout();
+                toast.success("Signed out successfully");
+              } catch {
+                setIsProfileLoggingOut(false);
+              }
             }}
-            className="mt-5 w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/20"
+            className="mt-5 w-full flex items-center justify-center gap-2 rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/20 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
           >
-            Sign out
+            {isProfileLoggingOut ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-red-500" />
+                <span>Signing out...</span>
+              </>
+            ) : (
+              <span>Sign out</span>
+            )}
           </button>
         </aside>
         <section className="space-y-5">
@@ -6176,9 +6210,16 @@ export default function Home({
   sessionId?: string;
   recordingId?: string;
 }) {
-  useAuth();
+  const { user, loading } = useAuth();
+  const router = useRouter();
   const { problems: liveProblems } = useLiveProblems();
   const [activeProblemSlug, setActiveProblemSlug] = useState<string | null>(problemSlug || null);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace(createSecureUrl("/", { mode: "login" }));
+    }
+  }, [loading, user, router]);
 
   useEffect(() => {
     if (problemSlug) {
@@ -6235,6 +6276,27 @@ export default function Home({
       default: return <Dashboard />;
     }
   }, [courseId, page, sessionId, recordingId]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-white dark:bg-[#0b0e17]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-white dark:bg-[#0b0e17]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-rose-500 border-t-transparent" />
+          <p className="text-xs font-semibold text-gray-500">Session ended. Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Full-page LeetCode-style problem arena view (outside AppShell, exactly like admin panel)
   if (page === "practice" && activeProblem) {

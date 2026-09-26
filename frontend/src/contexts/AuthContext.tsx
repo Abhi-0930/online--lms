@@ -38,16 +38,19 @@ export const USER_STORAGE_KEY = "lms_user_profile";
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
-  // Instant synchronous hydration from localStorage on client render
+  // Instant synchronous hydration from tab storage or localStorage on client render
   const [user, setUserState] = useState<User | null>(() => {
     if (typeof window === "undefined") return null;
     try {
+      const tabStored = sessionStorage.getItem("lms_user");
+      if (tabStored) {
+        const parsed = JSON.parse(tabStored);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
       const stored = localStorage.getItem(USER_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed && typeof parsed === "object") {
-          return parsed;
-        }
+        if (parsed && typeof parsed === "object") return parsed;
       }
     } catch {
       // ignore JSON parse errors
@@ -58,8 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     try {
-      const stored = localStorage.getItem(USER_STORAGE_KEY);
-      if (stored) return false;
+      if (sessionStorage.getItem("lms_user") || localStorage.getItem(USER_STORAGE_KEY)) return false;
     } catch {}
     return true;
   });
@@ -79,8 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           if (nextUser) {
             localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
+            sessionStorage.setItem("lms_user", JSON.stringify(nextUser));
           } else {
             localStorage.removeItem(USER_STORAGE_KEY);
+            sessionStorage.removeItem("lms_user");
+            sessionStorage.removeItem("lms_session_token");
           }
           window.dispatchEvent(new Event("lms:auth-change"));
         } catch {}
@@ -98,9 +103,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const promise = (async () => {
       try {
+        const tabSessionToken = typeof window !== "undefined" ? sessionStorage.getItem("lms_session_token") : null;
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (tabSessionToken) {
+          headers["X-Session-Token"] = tabSessionToken;
+        }
+
         const res = await fetch("http://localhost:4000/api/v1/auth/me", {
           method: "GET",
-          headers: { "Content-Type": "application/json" },
+          headers,
           credentials: "include",
         });
 
@@ -117,29 +128,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (typeof window !== "undefined") {
               try {
                 localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(resolvedUser));
+                sessionStorage.setItem("lms_user", JSON.stringify(resolvedUser));
               } catch {}
             }
             return resolvedUser;
           }
         }
 
-        // If 401 or unauthenticated response, clear local cache
+        // If 401 or unauthenticated response, clear local React state for this tab
         if (res.status === 401 || res.status === 403) {
           const errData = await res.json().catch(() => ({}));
           const wasRevoked = errData?.code === "SESSION_REVOKED";
           setUserState(null);
           if (typeof window !== "undefined") {
             try {
-              localStorage.removeItem(USER_STORAGE_KEY);
+              sessionStorage.removeItem("lms_session_token");
+              sessionStorage.removeItem("lms_user");
             } catch {}
+            // Only redirect if actively on an internal page and session was revoked
             if (wasRevoked && window.location.pathname !== "/") {
-              window.location.href = createSecureUrl("/", { error: "SESSION_REVOKED" });
+              router.replace(createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" }));
             }
           }
         }
         return null;
       } catch {
-        // Offline / network failure: keep the currently cached user for graceful resilience
         return null;
       } finally {
         setLoading(false);
@@ -149,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     inFlightPromiseRef.current = promise;
     return promise;
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     fetchUser();
@@ -161,30 +174,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const parsed = JSON.parse(stored);
           if (parsed && typeof parsed === "object") {
             setUserState(parsed);
+            return;
           }
-        } else {
-          setUserState(null);
         }
       } catch {}
+      // If storage changed or was cleared, verify with backend rather than blindly logging out
+      fetchUser().catch(() => {});
     };
 
-    // Check session validity periodically and on window focus
+    // Heartbeat to check active session validity
     const interval = setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState === "visible") {
         fetchUser();
       }
-    }, 15000);
+    }, 5000);
 
     const handleFocus = () => {
       fetchUser();
     };
 
     window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
     window.addEventListener("storage", handleAuthChange);
     window.addEventListener("lms:auth-change", handleAuthChange);
+
     return () => {
       clearInterval(interval);
       window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
       window.removeEventListener("storage", handleAuthChange);
       window.removeEventListener("lms:auth-change", handleAuthChange);
     };

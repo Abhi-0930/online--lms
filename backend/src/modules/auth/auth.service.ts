@@ -208,9 +208,18 @@ export class AuthService {
 
     const sessionToken = uuidv4();
 
-    // Device capacity check (48 hours active window)
+    // Device capacity check (3 minutes active heartbeat window)
     try {
-      const activeWindow = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      const activeWindow = new Date(Date.now() - 3 * 60 * 1000);
+      
+      // Auto-purge inactive stale devices older than 3 minutes
+      await this.prisma.userDevice.deleteMany({
+        where: {
+          userId: user.id,
+          lastActiveAt: { lt: activeWindow },
+        },
+      }).catch(() => {});
+
       const activeDevices = await this.prisma.userDevice.findMany({
         where: {
           userId: user.id,
@@ -219,7 +228,7 @@ export class AuthService {
         orderBy: { lastActiveAt: 'desc' },
       });
 
-      const isExistingDevice = activeDevices.some((d: any) => d.deviceId === payload.deviceId);
+      const otherActiveDevices = activeDevices.filter((d: any) => d.deviceId !== payload.deviceId);
       const allowedMax = user.role === 'ADMIN' ? 10 : (env.MAX_CONCURRENT_DEVICES_PER_USER || 1);
 
       if (payload.force) {
@@ -235,8 +244,8 @@ export class AuthService {
             metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
           },
         }).catch(() => {});
-      } else if (!isExistingDevice && activeDevices.length >= allowedMax) {
-        const primaryOtherDevice = activeDevices[0];
+      } else if (otherActiveDevices.length >= allowedMax) {
+        const primaryOtherDevice = otherActiveDevices[0];
         const err: any = new Error(`Device limit reached. You are currently logged in on ${primaryOtherDevice?.deviceName || 'another device'}.`);
         err.statusCode = 409;
         err.code = 'DEVICE_LIMIT_REACHED';
@@ -349,17 +358,23 @@ export class AuthService {
   }
 
   async logout(userId: string, sessionToken: string) {
-    await this.prisma.userDevice.delete({
-      where: { sessionToken },
-    });
+    if (sessionToken) {
+      await this.prisma.userDevice.deleteMany({
+        where: { sessionToken },
+      }).catch(() => {});
+    } else if (userId) {
+      await this.prisma.userDevice.deleteMany({
+        where: { userId },
+      }).catch(() => {});
+    }
 
     await this.prisma.activityLog.create({
       data: {
-        userId,
+        userId: userId || 'anonymous',
         action: 'AUTH_LOGOUT',
         metadata: { sessionToken },
       },
-    });
+    }).catch(() => {});
 
     logger.info({ userId, sessionToken }, 'User logged out');
 
@@ -550,10 +565,19 @@ export class AuthService {
       }
     }
 
-    // Device capacity check (48 hours active window)
+    // Device capacity check (3 minutes active heartbeat window)
     const sessionToken = uuidv4();
     try {
-      const activeWindow = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      const activeWindow = new Date(Date.now() - 3 * 60 * 1000);
+
+      // Auto-purge inactive stale devices older than 3 minutes
+      await this.prisma.userDevice.deleteMany({
+        where: {
+          userId: user.id,
+          lastActiveAt: { lt: activeWindow },
+        },
+      }).catch(() => {});
+
       const activeDevices = await this.prisma.userDevice.findMany({
         where: {
           userId: user.id,
@@ -562,7 +586,7 @@ export class AuthService {
         orderBy: { lastActiveAt: 'desc' },
       });
 
-      const isExistingDevice = activeDevices.some((d: any) => d.deviceId === payload.deviceId);
+      const otherActiveDevices = activeDevices.filter((d: any) => d.deviceId !== payload.deviceId);
       const allowedMax = user.role === 'ADMIN' ? 10 : (env.MAX_CONCURRENT_DEVICES_PER_USER || 1);
 
       if (payload.force) {
@@ -578,8 +602,8 @@ export class AuthService {
             metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
           },
         }).catch(() => {});
-      } else if (!isExistingDevice && activeDevices.length >= allowedMax) {
-        const primaryOtherDevice = activeDevices[0];
+      } else if (otherActiveDevices.length >= allowedMax) {
+        const primaryOtherDevice = otherActiveDevices[0];
         const err: any = new Error(`Device limit reached. You are currently logged in on ${primaryOtherDevice?.deviceName || 'another device'}.`);
         err.statusCode = 409;
         err.code = 'DEVICE_LIMIT_REACHED';

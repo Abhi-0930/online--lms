@@ -126,6 +126,7 @@ export default async function authController(fastify: FastifyInstance) {
       mode: query?.state || 'login',
       deviceId: query?.deviceId || '',
       deviceName: query?.deviceName || '',
+      force: query?.force === 'true' || query?.force === true,
     };
     const stateStr = Buffer.from(JSON.stringify(statePayload)).toString('base64url');
 
@@ -364,12 +365,30 @@ export default async function authController(fastify: FastifyInstance) {
     });
   });
 
-  fastify.post('/logout', {
-    onRequest: [fastify.authenticate],
-  }, async (request, reply) => {
-    const user = request.user as any;
+  fastify.post('/logout', async (request, reply) => {
     clearAuthCookie(reply);
-    await authService.logout(user.id, user.sessionToken);
+    let userId: string | undefined;
+    let sessionToken: string | undefined;
+
+    try {
+      const cookieToken = (request as any).cookies?.access_token;
+      let token = cookieToken;
+      if (!token) {
+        const authHeader = request.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          token = authHeader.substring(7);
+        }
+      }
+      if (token) {
+        const decoded = fastify.jwt.verify<any>(token);
+        userId = decoded?.id;
+        sessionToken = decoded?.sessionToken;
+      }
+    } catch {}
+
+    if (userId || sessionToken) {
+      await authService.logout(userId || '', sessionToken || '').catch(() => {});
+    }
     return reply.send({ success: true });
   });
 

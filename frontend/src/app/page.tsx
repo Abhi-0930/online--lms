@@ -58,6 +58,7 @@ function AuthForm({
     activeDeviceName?: string;
     ipAddress?: string;
     lastActiveAt?: string;
+    isGoogleOAuth?: boolean;
   }>({ open: false });
 
   const setMode = (signUp: boolean) => {
@@ -134,7 +135,12 @@ function AuthForm({
         setFormData((prev) => ({ ...prev, email: emailParam }));
       }
     } else if (errorParam === "DEVICE_LIMIT_REACHED") {
-      toast.error("Device limit reached (Maximum 1 device allowed). Please sign out from your other device.");
+      setDeviceLimitModal({
+        open: true,
+        activeDeviceName: "Another Device",
+        isGoogleOAuth: true,
+      });
+      toast.error("Device limit reached (Maximum 1 device allowed). Switch device below.");
     } else if (errorParam === "SESSION_REVOKED") {
       toast.error("Your session ended because your account was logged into on another device.");
     } else if (errorParam === "AUTH_FAILED") {
@@ -196,7 +202,16 @@ function AuthForm({
   };
 
   const handleForceLogin = async () => {
+    const isOAuth = deviceLimitModal.isGoogleOAuth;
     setDeviceLimitModal({ open: false });
+
+    if (isOAuth) {
+      const deviceId = getPersistentDeviceId();
+      const deviceName = getBrowserDeviceName();
+      window.location.href = `http://localhost:4000/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}&force=true`;
+      return;
+    }
+
     setIsLoading(true);
     try {
       const endpoint = "http://localhost:4000/api/v1/auth/login";
@@ -228,6 +243,13 @@ function AuthForm({
           role: rawUser.role || "STUDENT",
           avatarUrl: rawUser.avatarUrl || null,
         };
+
+        if (resData?.sessionToken && typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem("lms_session_token", resData.sessionToken);
+            sessionStorage.setItem("lms_user", JSON.stringify(userObj));
+          } catch {}
+        }
 
         setUser(userObj);
         refresh().catch(() => {});
@@ -304,6 +326,13 @@ function AuthForm({
           role: rawUser.role || "STUDENT",
           avatarUrl: rawUser.avatarUrl || null,
         };
+
+        if (resData?.sessionToken && typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem("lms_session_token", resData.sessionToken);
+            sessionStorage.setItem("lms_user", JSON.stringify(userObj));
+          } catch {}
+        }
 
         // Instantly update AuthContext React state and localStorage
         setUser(userObj);
