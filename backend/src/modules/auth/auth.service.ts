@@ -6,10 +6,73 @@ import logger from '../../utils/logger';
 import { sendPasswordResetLinkEmail, sendPasswordResetOtpEmail, sendWelcomeEmail } from '../../utils/email';
 import { AdminWsBroadcaster } from '../admin/admin.ws';
 
+export interface ActiveSession {
+  sessionToken: string;
+  userId: string;
+  deviceId: string;
+  deviceName: string;
+  ipAddress: string;
+  userAgent: string;
+  lastActiveAt: Date;
+  createdAt: Date;
+}
+
 export class AuthService {
   constructor(private prisma: PrismaClient) {}
 
   public static fallbackUsers = new Map<string, any>();
+  public static activeSessions = new Map<string, ActiveSession>();
+
+  static getActiveSessions(userId: string, activeWindowMs = 30000): ActiveSession[] {
+    const cutoff = Date.now() - activeWindowMs;
+    const active: ActiveSession[] = [];
+    for (const [token, session] of AuthService.activeSessions.entries()) {
+      if (session.userId === userId) {
+        if (session.lastActiveAt.getTime() >= cutoff) {
+          active.push(session);
+        } else {
+          AuthService.activeSessions.delete(token);
+        }
+      }
+    }
+    return active.sort((a, b) => b.lastActiveAt.getTime() - a.lastActiveAt.getTime());
+  }
+
+  static trackSession(session: ActiveSession) {
+    AuthService.activeSessions.set(session.sessionToken, session);
+  }
+
+  static touchSession(sessionToken: string): boolean {
+    const session = AuthService.activeSessions.get(sessionToken);
+    if (session) {
+      session.lastActiveAt = new Date();
+      return true;
+    }
+    return false;
+  }
+
+  static isValidSession(sessionToken: string): boolean {
+    const session = AuthService.activeSessions.get(sessionToken);
+    if (!session) return false;
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    if (session.lastActiveAt.getTime() < sevenDaysAgo) {
+      AuthService.activeSessions.delete(sessionToken);
+      return false;
+    }
+    return true;
+  }
+
+  static revokeAllSessions(userId: string) {
+    for (const [token, session] of AuthService.activeSessions.entries()) {
+      if (session.userId === userId) {
+        AuthService.activeSessions.delete(token);
+      }
+    }
+  }
+
+  static revokeSession(sessionToken: string) {
+    AuthService.activeSessions.delete(sessionToken);
+  }
 
   private async findUser(email: string, googleId?: string): Promise<any | null> {
     const normalizedEmail = email.toLowerCase().trim();
@@ -134,6 +197,17 @@ export class AuthService {
     const ip = payload.ip || '127.0.0.1';
     const userAgent = payload.userAgent || 'Unknown';
 
+    AuthService.trackSession({
+      sessionToken,
+      userId: user.id,
+      deviceId,
+      deviceName,
+      ipAddress: ip,
+      userAgent,
+      lastActiveAt: new Date(),
+      createdAt: new Date(),
+    });
+
     try {
       await this.prisma.userDevice.upsert({
         where: { userId_deviceId: { userId: user.id, deviceId } },
@@ -206,59 +280,81 @@ export class AuthService {
       throw new Error('Invalid email or password');
     }
 
-    const sessionToken = uuidv4();
+    const allowedMax = user.role === 'ADMIN' ? 10 : (env.MAX_CONCURRENT_DEVICES_PER_USER || 1);
+    const activeWindow = new Date(Date.now() - 30 * 1000);
 
-    // Device capacity check (3 minutes active heartbeat window)
+    // Sync active sessions from database if available
     try {
-      const activeWindow = new Date(Date.now() - 3 * 60 * 1000);
-      
-      // Auto-purge inactive stale devices older than 3 minutes
-      await this.prisma.userDevice.deleteMany({
-        where: {
-          userId: user.id,
-          lastActiveAt: { lt: activeWindow },
-        },
-      }).catch(() => {});
-
-      const activeDevices = await this.prisma.userDevice.findMany({
+      const dbActiveDevices = await this.prisma.userDevice.findMany({
         where: {
           userId: user.id,
           lastActiveAt: { gte: activeWindow },
         },
         orderBy: { lastActiveAt: 'desc' },
       });
-
-      const otherActiveDevices = activeDevices.filter((d: any) => d.deviceId !== payload.deviceId);
-      const allowedMax = user.role === 'ADMIN' ? 10 : (env.MAX_CONCURRENT_DEVICES_PER_USER || 1);
-
-      if (payload.force) {
-        await this.prisma.userDevice.deleteMany({
-          where: { userId: user.id },
-        }).catch(() => {});
-
-        await this.prisma.activityLog.create({
-          data: {
-            userId: user.id,
-            action: 'AUTH_FORCE_LOGIN_DISCONNECTED_OTHER_DEVICES',
-            ipAddress: payload.ip,
-            metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
-          },
-        }).catch(() => {});
-      } else if (otherActiveDevices.length >= allowedMax) {
-        const primaryOtherDevice = otherActiveDevices[0];
-        const err: any = new Error(`Device limit reached. You are currently logged in on ${primaryOtherDevice?.deviceName || 'another device'}.`);
-        err.statusCode = 409;
-        err.code = 'DEVICE_LIMIT_REACHED';
-        err.activeDevice = {
-          deviceName: primaryOtherDevice?.deviceName || 'Web Browser',
-          ipAddress: primaryOtherDevice?.ipAddress || 'Unknown',
-          lastActiveAt: primaryOtherDevice?.lastActiveAt?.toISOString?.() || new Date().toISOString(),
-        };
-        throw err;
+      for (const d of dbActiveDevices) {
+        if (!AuthService.activeSessions.has(d.sessionToken)) {
+          AuthService.trackSession({
+            sessionToken: d.sessionToken,
+            userId: d.userId,
+            deviceId: d.deviceId,
+            deviceName: d.deviceName,
+            ipAddress: d.ipAddress,
+            userAgent: d.userAgent,
+            lastActiveAt: d.lastActiveAt,
+            createdAt: d.createdAt,
+          });
+        }
       }
+    } catch {
+      // In-memory fallback
+    }
 
+    const activeSessions = AuthService.getActiveSessions(user.id, 30000);
+
+    if (payload.force) {
+      AuthService.revokeAllSessions(user.id);
+      this.prisma.userDevice.deleteMany({
+        where: { userId: user.id },
+      }).catch(() => {});
+
+      this.prisma.activityLog.create({
+        data: {
+          userId: user.id,
+          action: 'AUTH_FORCE_LOGIN_DISCONNECTED_OTHER_DEVICES',
+          ipAddress: payload.ip,
+          metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
+        },
+      }).catch(() => {});
+    } else if (activeSessions.length >= allowedMax) {
+      const primaryOtherDevice = activeSessions[0];
+      const err: any = new Error(`Device limit reached. You are currently logged in on ${primaryOtherDevice?.deviceName || 'another device'}.`);
+      err.statusCode = 409;
+      err.code = 'DEVICE_LIMIT_REACHED';
+      err.activeDevice = {
+        deviceName: primaryOtherDevice?.deviceName || 'Web Browser',
+        ipAddress: primaryOtherDevice?.ipAddress || 'Unknown',
+        lastActiveAt: primaryOtherDevice?.lastActiveAt?.toISOString?.() || new Date().toISOString(),
+      };
+      throw err;
+    }
+
+    const sessionToken = uuidv4();
+    const sessionRecord: ActiveSession = {
+      sessionToken,
+      userId: user.id,
+      deviceId: payload.deviceId || `web-${uuidv4().substring(0, 12)}`,
+      deviceName: payload.deviceName || 'Web Browser',
+      ipAddress: payload.ip || '127.0.0.1',
+      userAgent: payload.userAgent || 'Unknown',
+      lastActiveAt: new Date(),
+      createdAt: new Date(),
+    };
+    AuthService.trackSession(sessionRecord);
+
+    try {
       await this.prisma.userDevice.upsert({
-        where: { userId_deviceId: { userId: user.id, deviceId: payload.deviceId } },
+        where: { userId_deviceId: { userId: user.id, deviceId: sessionRecord.deviceId } },
         update: {
           sessionToken,
           lastActiveAt: new Date(),
@@ -267,8 +363,8 @@ export class AuthService {
         },
         create: {
           userId: user.id,
-          deviceId: payload.deviceId,
-          deviceName: payload.deviceName,
+          deviceId: sessionRecord.deviceId,
+          deviceName: sessionRecord.deviceName,
           sessionToken,
           ipAddress: payload.ip,
           userAgent: payload.userAgent,
@@ -284,8 +380,7 @@ export class AuthService {
         },
       }).catch(() => {});
     } catch (err: any) {
-      if (err.code === 'DEVICE_LIMIT_REACHED') throw err;
-      logger.warn({ err: err.message }, 'Database device tracking deferred, session active');
+      logger.warn({ err: err.message }, 'Database device tracking deferred, session active in memory');
     }
 
     const nowIso = new Date().toISOString();
@@ -565,59 +660,81 @@ export class AuthService {
       }
     }
 
-    // Device capacity check (3 minutes active heartbeat window)
-    const sessionToken = uuidv4();
+    const allowedMax = user.role === 'ADMIN' ? 10 : (env.MAX_CONCURRENT_DEVICES_PER_USER || 1);
+    const activeWindow = new Date(Date.now() - 30 * 1000);
+
+    // Sync active sessions from database if available
     try {
-      const activeWindow = new Date(Date.now() - 3 * 60 * 1000);
-
-      // Auto-purge inactive stale devices older than 3 minutes
-      await this.prisma.userDevice.deleteMany({
-        where: {
-          userId: user.id,
-          lastActiveAt: { lt: activeWindow },
-        },
-      }).catch(() => {});
-
-      const activeDevices = await this.prisma.userDevice.findMany({
+      const dbActiveDevices = await this.prisma.userDevice.findMany({
         where: {
           userId: user.id,
           lastActiveAt: { gte: activeWindow },
         },
         orderBy: { lastActiveAt: 'desc' },
       });
-
-      const otherActiveDevices = activeDevices.filter((d: any) => d.deviceId !== payload.deviceId);
-      const allowedMax = user.role === 'ADMIN' ? 10 : (env.MAX_CONCURRENT_DEVICES_PER_USER || 1);
-
-      if (payload.force) {
-        await this.prisma.userDevice.deleteMany({
-          where: { userId: user.id },
-        }).catch(() => {});
-
-        await this.prisma.activityLog.create({
-          data: {
-            userId: user.id,
-            action: 'AUTH_FORCE_LOGIN_GOOGLE_DISCONNECTED_OTHER_DEVICES',
-            ipAddress: payload.ip,
-            metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
-          },
-        }).catch(() => {});
-      } else if (otherActiveDevices.length >= allowedMax) {
-        const primaryOtherDevice = otherActiveDevices[0];
-        const err: any = new Error(`Device limit reached. You are currently logged in on ${primaryOtherDevice?.deviceName || 'another device'}.`);
-        err.statusCode = 409;
-        err.code = 'DEVICE_LIMIT_REACHED';
-        err.activeDevice = {
-          deviceName: primaryOtherDevice?.deviceName || 'Web Browser',
-          ipAddress: primaryOtherDevice?.ipAddress || 'Unknown',
-          lastActiveAt: primaryOtherDevice?.lastActiveAt?.toISOString?.() || new Date().toISOString(),
-        };
-        throw err;
+      for (const d of dbActiveDevices) {
+        if (!AuthService.activeSessions.has(d.sessionToken)) {
+          AuthService.trackSession({
+            sessionToken: d.sessionToken,
+            userId: d.userId,
+            deviceId: d.deviceId,
+            deviceName: d.deviceName,
+            ipAddress: d.ipAddress,
+            userAgent: d.userAgent,
+            lastActiveAt: d.lastActiveAt,
+            createdAt: d.createdAt,
+          });
+        }
       }
+    } catch {
+      // In-memory fallback
+    }
 
-      // Upsert UserDevice record
+    const activeSessions = AuthService.getActiveSessions(user.id, 30000);
+
+    if (payload.force) {
+      AuthService.revokeAllSessions(user.id);
+      this.prisma.userDevice.deleteMany({
+        where: { userId: user.id },
+      }).catch(() => {});
+
+      this.prisma.activityLog.create({
+        data: {
+          userId: user.id,
+          action: 'AUTH_FORCE_LOGIN_GOOGLE_DISCONNECTED_OTHER_DEVICES',
+          ipAddress: payload.ip,
+          metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
+        },
+      }).catch(() => {});
+    } else if (activeSessions.length >= allowedMax) {
+      const primaryOtherDevice = activeSessions[0];
+      const err: any = new Error(`Device limit reached. You are currently logged in on ${primaryOtherDevice?.deviceName || 'another device'}.`);
+      err.statusCode = 409;
+      err.code = 'DEVICE_LIMIT_REACHED';
+      err.activeDevice = {
+        deviceName: primaryOtherDevice?.deviceName || 'Web Browser',
+        ipAddress: primaryOtherDevice?.ipAddress || 'Unknown',
+        lastActiveAt: primaryOtherDevice?.lastActiveAt?.toISOString?.() || new Date().toISOString(),
+      };
+      throw err;
+    }
+
+    const sessionToken = uuidv4();
+    const sessionRecord: ActiveSession = {
+      sessionToken,
+      userId: user.id,
+      deviceId: payload.deviceId || `web-${uuidv4().substring(0, 12)}`,
+      deviceName: payload.deviceName || 'Web Browser',
+      ipAddress: payload.ip || '127.0.0.1',
+      userAgent: payload.userAgent || 'Unknown',
+      lastActiveAt: new Date(),
+      createdAt: new Date(),
+    };
+    AuthService.trackSession(sessionRecord);
+
+    try {
       await this.prisma.userDevice.upsert({
-        where: { userId_deviceId: { userId: user.id, deviceId: payload.deviceId } },
+        where: { userId_deviceId: { userId: user.id, deviceId: sessionRecord.deviceId } },
         update: {
           sessionToken,
           lastActiveAt: new Date(),
@@ -626,15 +743,14 @@ export class AuthService {
         },
         create: {
           userId: user.id,
-          deviceId: payload.deviceId,
-          deviceName: payload.deviceName,
+          deviceId: sessionRecord.deviceId,
+          deviceName: sessionRecord.deviceName,
           sessionToken,
           ipAddress: payload.ip,
           userAgent: payload.userAgent,
         },
       });
 
-      // Log Activity
       await this.prisma.activityLog.create({
         data: {
           userId: user.id,
@@ -642,10 +758,9 @@ export class AuthService {
           ipAddress: payload.ip,
           metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
         },
-      });
+      }).catch(() => {});
     } catch (err: any) {
-      if (err.code === 'DEVICE_LIMIT_REACHED') throw err;
-      logger.warn({ err: err.message }, 'Database device tracking deferred, session active');
+      logger.warn({ err: err.message }, 'Database device tracking deferred, session active in memory');
     }
 
     const nowIso = new Date().toISOString();

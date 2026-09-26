@@ -54,13 +54,30 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      const session = await fastify.prisma.userDevice.findUnique({
-        where: {
-          sessionToken: clientSessionToken,
-        },
-      }).catch(() => null);
+      let sessionExists = AuthService.isValidSession(clientSessionToken);
 
-      if (!session) {
+      if (!sessionExists) {
+        // Fallback: check database in case of fresh server start
+        const dbSession = await fastify.prisma.userDevice.findUnique({
+          where: { sessionToken: clientSessionToken },
+        }).catch(() => null);
+
+        if (dbSession) {
+          sessionExists = true;
+          AuthService.trackSession({
+            sessionToken: dbSession.sessionToken,
+            userId: dbSession.userId,
+            deviceId: dbSession.deviceId,
+            deviceName: dbSession.deviceName,
+            ipAddress: dbSession.ipAddress,
+            userAgent: dbSession.userAgent,
+            lastActiveAt: dbSession.lastActiveAt,
+            createdAt: dbSession.createdAt,
+          });
+        }
+      }
+
+      if (!sessionExists) {
         return reply.status(401).send({
           error: 'Unauthorized',
           code: 'SESSION_REVOKED',
@@ -68,10 +85,11 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      // Update active timestamp asynchronously
+      // Touch active timestamp in memory and DB
+      AuthService.touchSession(clientSessionToken);
       fastify.prisma.userDevice.update({
         where: {
-          sessionToken: decoded.sessionToken,
+          sessionToken: clientSessionToken,
         },
         data: {
           lastActiveAt: new Date(),

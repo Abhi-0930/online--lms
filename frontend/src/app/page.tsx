@@ -165,10 +165,10 @@ function AuthForm({
   const getPersistentDeviceId = (): string => {
     if (typeof window === "undefined") return "web-unknown";
     try {
-      let id = localStorage.getItem("lms_device_id");
+      let id = sessionStorage.getItem("lms_tab_device_id");
       if (!id) {
         id = `web-${Math.random().toString(36).substring(2, 10)}${Date.now().toString(36)}`;
-        localStorage.setItem("lms_device_id", id);
+        sessionStorage.setItem("lms_tab_device_id", id);
       }
       return id;
     } catch {
