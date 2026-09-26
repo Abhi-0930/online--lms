@@ -73,8 +73,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   });
 
+  const isLoggingOutRef = useRef(false);
+
   const setUser = useCallback((newUserOrFn: User | null | ((prev: User | null) => User | null), sessionToken?: string | null) => {
+    isLoggingOutRef.current = false;
     inFlightPromiseRef.current = null;
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.removeItem("lms_manual_logout");
+      } catch {}
+    }
     setUserState((prev) => {
       let nextUser = typeof newUserOrFn === "function" ? newUserOrFn(prev) : newUserOrFn;
       if (nextUser && typeof nextUser === "object") {
@@ -127,6 +135,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUser = useCallback(async (): Promise<User | null> => {
     if (inFlightPromiseRef.current) {
       return inFlightPromiseRef.current;
+    }
+
+    if (isLoggingOutRef.current || (typeof window !== "undefined" && sessionStorage.getItem("lms_manual_logout") === "true")) {
+      return null;
     }
 
     const promise = (async () => {
@@ -185,6 +197,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // If 401 or unauthenticated response
         if (res.status === 401 || res.status === 403) {
+          const isManualLogout = isLoggingOutRef.current || (typeof window !== "undefined" && sessionStorage.getItem("lms_manual_logout") === "true");
+          if (isManualLogout) {
+            return null;
+          }
+
           const errData = await res.json().catch(() => ({}));
           const wasRevoked = errData?.code === "SESSION_REVOKED";
 
@@ -198,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } catch {}
 
             // ONLY redirect if the backend explicitly informed us that the session was revoked
-            // AND we had an active session and are on an internal route
+            // AND we had an active session and are on an internal route and not manual logout
             if (wasRevoked && hadActiveSession && window.location.pathname !== "/") {
               window.location.href = createSecureUrl("/", {
                 mode: "login",
@@ -339,6 +356,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchUser]);
 
   const logout = useCallback(async () => {
+    isLoggingOutRef.current = true;
+    inFlightPromiseRef.current = null;
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("lms_manual_logout", "true");
+        localStorage.removeItem(USER_STORAGE_KEY);
+        localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+        localStorage.removeItem("lms_token");
+        localStorage.removeItem("lms_user");
+        sessionStorage.removeItem("lms_session_token");
+        sessionStorage.removeItem("lms_user");
+        if ("BroadcastChannel" in window) {
+          const bc = new BroadcastChannel("lms_auth_sync");
+          bc.postMessage({ type: "LOGOUT" });
+          bc.close();
+        }
+      } catch {}
+    }
+    setUserState(null);
+
     try {
       await fetch("http://localhost:4000/api/v1/auth/logout", {
         method: "POST",
@@ -346,24 +383,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }).catch(() => {});
     } finally {
       if (typeof window !== "undefined") {
-        try {
-          localStorage.removeItem(USER_STORAGE_KEY);
-          localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
-          localStorage.removeItem("lms_token");
-          localStorage.removeItem("lms_user");
-          sessionStorage.removeItem("lms_session_token");
-          sessionStorage.removeItem("lms_user");
-          if ("BroadcastChannel" in window) {
-            const bc = new BroadcastChannel("lms_auth_sync");
-            bc.postMessage({ type: "LOGOUT" });
-            bc.close();
-          }
-        } catch {}
+        window.location.href = createSecureUrl("/", { mode: "login" });
       }
-      setUserState(null);
-      router.push(createSecureUrl("/", { mode: "login" }));
     }
-  }, [router]);
+  }, []);
 
   return (
     <AuthContext.Provider

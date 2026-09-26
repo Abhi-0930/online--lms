@@ -126,6 +126,19 @@ function AuthForm({
     ? `Password Requirements:\n${hasMinLength ? "✓" : "✗"} Minimum 8 characters\n${hasCapital ? "✓" : "✗"} At least 1 capital letter (A-Z)\n${hasSpecial ? "✓" : "✗"} At least 1 special character (!@#$%^&*...)`
     : undefined;
 
+  // Handle manual sign out toast confirmation
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isManual = sessionStorage.getItem("lms_manual_logout");
+      if (isManual === "true") {
+        sessionStorage.removeItem("lms_manual_logout");
+        if (!errorParam) {
+          toast.success("You have been signed out successfully.");
+        }
+      }
+    }
+  }, [errorParam]);
+
   // Handle OAuth error callbacks and session error notifications
   const displayedErrorRef = useRef<string | null>(null);
 
