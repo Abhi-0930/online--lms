@@ -126,8 +126,18 @@ function AuthForm({
     ? `Password Requirements:\n${hasMinLength ? "✓" : "✗"} Minimum 8 characters\n${hasCapital ? "✓" : "✗"} At least 1 capital letter (A-Z)\n${hasSpecial ? "✓" : "✗"} At least 1 special character (!@#$%^&*...)`
     : undefined;
 
-  // Handle OAuth error callbacks
+  // Handle OAuth error callbacks and session error notifications
+  const displayedErrorRef = useRef<string | null>(null);
+
   useEffect(() => {
+    if (!errorParam) {
+      displayedErrorRef.current = null;
+      return;
+    }
+
+    if (displayedErrorRef.current === errorParam) return;
+    displayedErrorRef.current = errorParam;
+
     if (errorParam === "ACCOUNT_NOT_FOUND") {
       toast.error("No account found with this Google account. Please create an account first.");
       setIsSignUp(true);
@@ -146,7 +156,17 @@ function AuthForm({
     } else if (errorParam === "AUTH_FAILED") {
       toast.error("Authentication failed. Please try again.");
     }
-  }, [errorParam, emailParam]);
+
+    // Immediately sanitize and remove the error query parameter from the URL
+    // so that subsequent reloads, tab focus, or navigations will never show the toast again
+    const cleanUrl = createSecureUrl("/", {
+      mode: isSignUp ? "register" : "login",
+      ...(emailParam ? { email: emailParam } : {}),
+    });
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", cleanUrl);
+    }
+  }, [errorParam, emailParam, isSignUp]);
 
   // Close country dropdown on outside click
   useEffect(() => {

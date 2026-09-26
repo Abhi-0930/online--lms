@@ -2,6 +2,7 @@ import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import logger from '../utils/logger';
 import { AuthService } from '../modules/auth/auth.service';
+import { env } from '../config/env';
 
 export interface AuthenticatedUser {
   id: string;
@@ -78,6 +79,12 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
       }
 
       if (!sessionExists) {
+        reply.clearCookie('access_token', {
+          path: '/',
+          httpOnly: true,
+          secure: env.NODE_ENV === 'production',
+          sameSite: 'lax',
+        });
         return reply.status(401).send({
           error: 'Unauthorized',
           code: 'SESSION_REVOKED',
