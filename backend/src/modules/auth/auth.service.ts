@@ -426,6 +426,7 @@ export class AuthService {
   }
 
   async revokeDevice(userId: string, sessionToken: string) {
+    AuthService.revokeSession(sessionToken);
     const session = await this.prisma.userDevice.findUnique({
       where: { sessionToken },
     });
@@ -454,10 +455,12 @@ export class AuthService {
 
   async logout(userId: string, sessionToken: string) {
     if (sessionToken) {
+      AuthService.revokeSession(sessionToken);
       await this.prisma.userDevice.deleteMany({
         where: { sessionToken },
       }).catch(() => {});
     } else if (userId) {
+      AuthService.revokeAllSessions(userId);
       await this.prisma.userDevice.deleteMany({
         where: { userId },
       }).catch(() => {});

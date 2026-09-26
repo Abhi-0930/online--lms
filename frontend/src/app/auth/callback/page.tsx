@@ -41,7 +41,7 @@ function CallbackHandler() {
               name: user.fullName || user.name,
               fullName: user.fullName || user.name,
             };
-            setUser(resolvedUser);
+            setUser(resolvedUser, data?.sessionToken);
           }
 
           if (isNewUser || !user?.onboarding?.isCompleted) {

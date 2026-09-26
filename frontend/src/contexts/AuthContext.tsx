@@ -26,7 +26,7 @@ export interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
-  setUser: (user: User | null | ((prev: User | null) => User | null)) => void;
+  setUser: (user: User | null | ((prev: User | null) => User | null), sessionToken?: string | null) => void;
   logout: () => Promise<void>;
   refresh: () => Promise<User | null>;
 }
@@ -34,6 +34,7 @@ export interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const USER_STORAGE_KEY = "lms_user_profile";
+export const ACTIVE_SESSION_STORAGE_KEY = "lms_active_session_token";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -42,6 +43,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = useState<User | null>(() => {
     if (typeof window === "undefined") return null;
     try {
+      const isRevoked = sessionStorage.getItem("lms_session_revoked") === "true";
+      if (isRevoked) return null;
+
+      const myTabToken = sessionStorage.getItem("lms_session_token");
+      const activeToken = localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
+      if (myTabToken && activeToken && myTabToken !== activeToken) {
+        return null;
+      }
+
       const tabStored = sessionStorage.getItem("lms_user");
       if (tabStored) {
         const parsed = JSON.parse(tabStored);
@@ -61,12 +71,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     try {
+      if (sessionStorage.getItem("lms_session_revoked") === "true") return false;
       if (sessionStorage.getItem("lms_user") || localStorage.getItem(USER_STORAGE_KEY)) return false;
     } catch {}
     return true;
   });
 
-  const setUser = useCallback((newUserOrFn: User | null | ((prev: User | null) => User | null)) => {
+  const setUser = useCallback((newUserOrFn: User | null | ((prev: User | null) => User | null), sessionToken?: string | null) => {
     setUserState((prev) => {
       let nextUser = typeof newUserOrFn === "function" ? newUserOrFn(prev) : newUserOrFn;
       if (nextUser && typeof nextUser === "object") {
@@ -82,10 +93,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (nextUser) {
             localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
             sessionStorage.setItem("lms_user", JSON.stringify(nextUser));
+            sessionStorage.removeItem("lms_session_revoked");
+            if (sessionToken) {
+              sessionStorage.setItem("lms_session_token", sessionToken);
+              localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, sessionToken);
+            }
+            try {
+              const tokenToSend = sessionToken || localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY) || sessionStorage.getItem("lms_session_token");
+              if (tokenToSend && "BroadcastChannel" in window) {
+                const bc = new BroadcastChannel("lms_auth_sync");
+                bc.postMessage({ type: "SESSION_SWITCHED", sessionToken: tokenToSend, userId: nextUser.id });
+                bc.close();
+              }
+            } catch {}
           } else {
             localStorage.removeItem(USER_STORAGE_KEY);
+            localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
             sessionStorage.removeItem("lms_user");
             sessionStorage.removeItem("lms_session_token");
+            sessionStorage.removeItem("lms_session_revoked");
+            try {
+              if ("BroadcastChannel" in window) {
+                const bc = new BroadcastChannel("lms_auth_sync");
+                bc.postMessage({ type: "LOGOUT" });
+                bc.close();
+              }
+            } catch {}
           }
           window.dispatchEvent(new Event("lms:auth-change"));
         } catch {}
@@ -103,6 +136,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const promise = (async () => {
       try {
+        const isRevoked = typeof window !== "undefined" && sessionStorage.getItem("lms_session_revoked") === "true";
+        const myToken = typeof window !== "undefined" ? sessionStorage.getItem("lms_session_token") : null;
+        const activeToken = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY) : null;
+
+        if (isRevoked || (myToken && activeToken && myToken !== activeToken)) {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("lms_session_revoked", "true");
+            sessionStorage.removeItem("lms_session_token");
+            sessionStorage.removeItem("lms_user");
+          }
+          setUserState(null);
+          return null;
+        }
+
         const tabSessionToken = typeof window !== "undefined" ? sessionStorage.getItem("lms_session_token") : null;
         const headers: Record<string, string> = { "Content-Type": "application/json" };
         if (tabSessionToken) {
@@ -129,6 +176,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               try {
                 localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(resolvedUser));
                 sessionStorage.setItem("lms_user", JSON.stringify(resolvedUser));
+                if (data.sessionToken) {
+                  sessionStorage.setItem("lms_session_token", data.sessionToken);
+                  localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, data.sessionToken);
+                }
               } catch {}
             }
             return resolvedUser;
@@ -142,11 +193,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUserState(null);
           if (typeof window !== "undefined") {
             try {
+              if (wasRevoked) {
+                sessionStorage.setItem("lms_session_revoked", "true");
+              }
               sessionStorage.removeItem("lms_session_token");
               sessionStorage.removeItem("lms_user");
             } catch {}
-            // Only redirect if actively on an internal page and session was revoked
-            if (wasRevoked && window.location.pathname !== "/") {
+            // If session was revoked, redirect immediately
+            if (wasRevoked) {
               router.replace(createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" }));
             }
           }
@@ -168,29 +222,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchUser();
 
     const handleAuthChange = () => {
-      try {
-        const stored = localStorage.getItem(USER_STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed && typeof parsed === "object") {
-            setUserState(parsed);
-            return;
-          }
+      const myToken = typeof window !== "undefined" ? sessionStorage.getItem("lms_session_token") : null;
+      const activeToken = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY) : null;
+      const isRevoked = typeof window !== "undefined" ? sessionStorage.getItem("lms_session_revoked") === "true" : false;
+
+      if (isRevoked || (myToken && activeToken && myToken !== activeToken)) {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("lms_session_revoked", "true");
+          sessionStorage.removeItem("lms_session_token");
+          sessionStorage.removeItem("lms_user");
         }
-      } catch {}
-      // If storage changed or was cleared, verify with backend rather than blindly logging out
+        setUserState(null);
+        router.replace(createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" }));
+        return;
+      }
+
+      if (typeof window !== "undefined" && !localStorage.getItem(USER_STORAGE_KEY)) {
+        sessionStorage.removeItem("lms_session_token");
+        sessionStorage.removeItem("lms_user");
+        setUserState(null);
+        return;
+      }
+
       fetchUser().catch(() => {});
     };
 
-    // Heartbeat to check active session validity
-    const interval = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        fetchUser();
+    // BroadcastChannel for instant zero-latency cross-tab communication
+    let channel: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        channel = new BroadcastChannel("lms_auth_sync");
+        channel.onmessage = (event) => {
+          const data = event.data;
+          if (data?.type === "SESSION_SWITCHED") {
+            const myToken = sessionStorage.getItem("lms_session_token");
+            const newActiveToken = data.sessionToken;
+            if (myToken && newActiveToken && myToken !== newActiveToken) {
+              sessionStorage.setItem("lms_session_revoked", "true");
+              sessionStorage.removeItem("lms_session_token");
+              sessionStorage.removeItem("lms_user");
+              setUserState(null);
+              router.replace(createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" }));
+            }
+          } else if (data?.type === "LOGOUT") {
+            sessionStorage.removeItem("lms_session_token");
+            sessionStorage.removeItem("lms_user");
+            setUserState(null);
+            router.replace(createSecureUrl("/", { mode: "login" }));
+          }
+        };
       }
-    }, 5000);
+    } catch {}
+
+    // Heartbeat to check active session validity every 3 seconds
+    const interval = setInterval(() => {
+      fetchUser().catch(() => {});
+    }, 3000);
 
     const handleFocus = () => {
-      fetchUser();
+      handleAuthChange();
+      fetchUser().catch(() => {});
     };
 
     window.addEventListener("focus", handleFocus);
@@ -200,12 +291,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       clearInterval(interval);
+      if (channel) {
+        try {
+          channel.close();
+        } catch {}
+      }
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleFocus);
       window.removeEventListener("storage", handleAuthChange);
       window.removeEventListener("lms:auth-change", handleAuthChange);
     };
-  }, [fetchUser]);
+  }, [fetchUser, router]);
 
   const logout = useCallback(async () => {
     try {
@@ -217,8 +313,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== "undefined") {
         try {
           localStorage.removeItem(USER_STORAGE_KEY);
+          localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
           localStorage.removeItem("lms_token");
           localStorage.removeItem("lms_user");
+          sessionStorage.removeItem("lms_session_token");
+          sessionStorage.removeItem("lms_user");
+          sessionStorage.removeItem("lms_session_revoked");
+          if ("BroadcastChannel" in window) {
+            const bc = new BroadcastChannel("lms_auth_sync");
+            bc.postMessage({ type: "LOGOUT" });
+            bc.close();
+          }
         } catch {}
       }
       setUserState(null);

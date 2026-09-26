@@ -352,6 +352,7 @@ export default async function authController(fastify: FastifyInstance) {
 
     return reply.send({
       success: true,
+      sessionToken: (request as any).user?.sessionToken,
       user: {
         id: dbUser.id,
         email: dbUser.email,
