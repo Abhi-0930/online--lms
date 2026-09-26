@@ -40,7 +40,17 @@ export async function createApp() {
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Cookie',
+      'X-Session-Token',
+      'x-session-token',
+      'Accept',
+      'Origin',
+      'X-Requested-With',
+    ],
+    exposedHeaders: ['Set-Cookie', 'X-Session-Token'],
   });
 
   // Register Cookie Plugin
@@ -51,7 +61,7 @@ export async function createApp() {
 
   // Register Rate Limiting
   await fastify.register(rateLimit, {
-    max: 100,
+    max: env.NODE_ENV === 'development' ? 1000 : 200,
     timeWindow: '1 minute',
     skipOnError: true,
   });

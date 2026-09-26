@@ -62,9 +62,13 @@ export class AuthService {
     return true;
   }
 
-  static revokeAllSessions(userId: string) {
+  static revokeAllSessions(userId: string, email?: string) {
+    const normalizedEmail = email?.toLowerCase().trim();
     for (const [token, session] of AuthService.activeSessions.entries()) {
-      if (session.userId === userId) {
+      if (
+        session.userId === userId ||
+        (normalizedEmail && session.userId === normalizedEmail)
+      ) {
         AuthService.activeSessions.delete(token);
       }
     }
@@ -313,9 +317,14 @@ export class AuthService {
     const activeSessions = AuthService.getActiveSessions(user.id, 30000);
 
     if (payload.force) {
-      AuthService.revokeAllSessions(user.id);
-      this.prisma.userDevice.deleteMany({
-        where: { userId: user.id },
+      AuthService.revokeAllSessions(user.id, user.email);
+      await this.prisma.userDevice.deleteMany({
+        where: {
+          OR: [
+            { userId: user.id },
+            ...(user.email ? [{ userId: user.email }] : []),
+          ],
+        },
       }).catch(() => {});
 
       this.prisma.activityLog.create({
@@ -696,9 +705,14 @@ export class AuthService {
     const activeSessions = AuthService.getActiveSessions(user.id, 30000);
 
     if (payload.force) {
-      AuthService.revokeAllSessions(user.id);
-      this.prisma.userDevice.deleteMany({
-        where: { userId: user.id },
+      AuthService.revokeAllSessions(user.id, user.email);
+      await this.prisma.userDevice.deleteMany({
+        where: {
+          OR: [
+            { userId: user.id },
+            ...(user.email ? [{ userId: user.email }] : []),
+          ],
+        },
       }).catch(() => {});
 
       this.prisma.activityLog.create({

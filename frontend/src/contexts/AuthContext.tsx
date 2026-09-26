@@ -74,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const setUser = useCallback((newUserOrFn: User | null | ((prev: User | null) => User | null), sessionToken?: string | null) => {
+    inFlightPromiseRef.current = null;
     setUserState((prev) => {
       let nextUser = typeof newUserOrFn === "function" ? newUserOrFn(prev) : newUserOrFn;
       if (nextUser && typeof nextUser === "object") {
@@ -140,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           setUserState(null);
           if (typeof window !== "undefined" && window.location.pathname !== "/") {
-            router.replace(createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" }));
+            window.location.href = createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" });
           }
           return null;
         }
@@ -192,12 +193,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
               sessionStorage.removeItem("lms_session_token");
               sessionStorage.removeItem("lms_user");
+              localStorage.removeItem(USER_STORAGE_KEY);
+              localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
             } catch {}
-            // ONLY redirect with error if this tab WAS actively logged in and is on an internal dashboard page
+
+            // ONLY redirect if the backend explicitly informed us that the session was revoked
+            // AND we had an active session and are on an internal route
             if (wasRevoked && hadActiveSession && window.location.pathname !== "/") {
-              router.replace(createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" }));
+              window.location.href = createSecureUrl("/", {
+                mode: "login",
+                error: "SESSION_REVOKED",
+              });
+            } else if (window.location.pathname !== "/" && !window.location.pathname.startsWith("/auth")) {
+              router.replace(createSecureUrl("/", { mode: "login" }));
             }
           }
+          return null;
         }
         return null;
       } catch {
@@ -225,8 +236,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionStorage.removeItem("lms_user");
         }
         setUserState(null);
-        if (typeof window !== "undefined" && window.location.pathname !== "/") {
-          router.replace(createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" }));
+        if (typeof window !== "undefined") {
+          window.location.href = createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" });
         }
         return;
       }
@@ -255,34 +266,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               sessionStorage.removeItem("lms_session_token");
               sessionStorage.removeItem("lms_user");
               setUserState(null);
-              if (typeof window !== "undefined" && window.location.pathname !== "/") {
-                router.replace(createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" }));
+              if (typeof window !== "undefined") {
+                window.location.href = createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" });
               }
             }
           } else if (data?.type === "LOGOUT") {
             sessionStorage.removeItem("lms_session_token");
             sessionStorage.removeItem("lms_user");
             setUserState(null);
-            if (typeof window !== "undefined" && window.location.pathname !== "/") {
-              router.replace(createSecureUrl("/", { mode: "login" }));
+            if (typeof window !== "undefined") {
+              window.location.href = createSecureUrl("/", { mode: "login" });
             }
           }
         };
       }
     } catch {}
 
-    // Heartbeat to check active session validity every 4 seconds
+    // Heartbeat to check active session validity every 1.5 seconds across browsers/devices
     const interval = setInterval(() => {
-      fetchUser().catch(() => {});
-    }, 4000);
+      const hasSession = typeof window !== "undefined" && (
+        sessionStorage.getItem("lms_session_token") ||
+        localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)
+      );
+      if (hasSession) {
+        fetchUser().catch(() => {});
+      }
+    }, 1500);
 
-    const handleFocus = () => {
-      handleAuthChange();
-      fetchUser().catch(() => {});
+    const handleInteraction = () => {
+      const hasSession = typeof window !== "undefined" && (
+        sessionStorage.getItem("lms_session_token") ||
+        localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)
+      );
+      if (hasSession) {
+        handleAuthChange();
+        fetchUser().catch(() => {});
+      }
     };
 
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleFocus);
+    let lastInteraction = 0;
+    const handleThrottledInteraction = () => {
+      const now = Date.now();
+      if (now - lastInteraction > 1000) {
+        lastInteraction = now;
+        handleInteraction();
+      }
+    };
+
+    window.addEventListener("focus", handleInteraction);
+    document.addEventListener("visibilitychange", handleInteraction);
+    window.addEventListener("click", handleInteraction);
+    window.addEventListener("mousemove", handleThrottledInteraction, { passive: true });
+    window.addEventListener("keydown", handleThrottledInteraction, { passive: true });
     window.addEventListener("storage", handleAuthChange);
     window.addEventListener("lms:auth-change", handleAuthChange);
 
@@ -293,12 +328,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           channel.close();
         } catch {}
       }
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleFocus);
+      window.removeEventListener("focus", handleInteraction);
+      document.removeEventListener("visibilitychange", handleInteraction);
+      window.removeEventListener("click", handleInteraction);
+      window.removeEventListener("mousemove", handleThrottledInteraction);
+      window.removeEventListener("keydown", handleThrottledInteraction);
       window.removeEventListener("storage", handleAuthChange);
       window.removeEventListener("lms:auth-change", handleAuthChange);
     };
-  }, [fetchUser, router]);
+  }, [fetchUser]);
 
   const logout = useCallback(async () => {
     try {

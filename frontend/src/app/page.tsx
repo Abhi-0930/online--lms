@@ -268,12 +268,13 @@ function AuthForm({
           try {
             sessionStorage.setItem("lms_session_token", resData.sessionToken);
             sessionStorage.setItem("lms_user", JSON.stringify(userObj));
+            localStorage.setItem("lms_active_session_token", resData.sessionToken);
+            localStorage.setItem("lms_user_profile", JSON.stringify(userObj));
             sessionStorage.removeItem("lms_session_revoked");
           } catch {}
         }
 
         setUser(userObj, resData?.sessionToken);
-        refresh().catch(() => {});
         toast.success("Signed in successfully! Other device disconnected.");
         router.push(createSecureUrl("/dashboard", { v: "dashboard" }));
         return;
@@ -352,13 +353,14 @@ function AuthForm({
           try {
             sessionStorage.setItem("lms_session_token", resData.sessionToken);
             sessionStorage.setItem("lms_user", JSON.stringify(userObj));
+            localStorage.setItem("lms_active_session_token", resData.sessionToken);
+            localStorage.setItem("lms_user_profile", JSON.stringify(userObj));
             sessionStorage.removeItem("lms_session_revoked");
           } catch {}
         }
 
         // Instantly update AuthContext React state and localStorage
         setUser(userObj, resData?.sessionToken);
-        refresh().catch(() => {});
 
         toast.success(
           isSignUp ? "Account created successfully!" : "Welcome back!"
