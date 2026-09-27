@@ -25,6 +25,8 @@ type CardType = {
   src: string;
   title: string;
   category: string;
+  description?: string;
+  icon?: React.ReactNode;
   content: React.ReactNode;
 };
 
@@ -98,7 +100,7 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
         >
           <div
             className={cn(
-              "absolute right-0 z-[1000] h-auto w-[5%] overflow-hidden bg-gradient-to-l from-white/80 dark:from-neutral-900/80 to-transparent pointer-events-none"
+              "absolute right-0 z-[1000] h-auto w-[5%] overflow-hidden bg-gradient-to-l from-[#151c2e] to-transparent pointer-events-none"
             )}
           />
 
@@ -135,20 +137,20 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
         {/* Floating Navigation Controls */}
         <div className="flex justify-end gap-2 mr-4 md:mr-10">
           <button
-            className="relative z-40 h-10 w-10 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-sm border border-slate-200 dark:border-neutral-700 cursor-pointer"
+            className="relative z-40 h-10 w-10 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-100 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 shadow-md border border-slate-600/60 cursor-pointer"
             onClick={scrollLeft}
             disabled={!canScrollLeft}
             aria-label="Previous cards"
           >
-            <ArrowLeft className="h-5 w-5 text-slate-700 dark:text-neutral-300" />
+            <ArrowLeft className="h-5 w-5 text-slate-200" />
           </button>
           <button
-            className="relative z-40 h-10 w-10 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-sm border border-slate-200 dark:border-neutral-700 cursor-pointer"
+            className="relative z-40 h-10 w-10 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-100 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 shadow-md border border-slate-600/60 cursor-pointer"
             onClick={scrollRight}
             disabled={!canScrollRight}
             aria-label="Next cards"
           >
-            <ArrowRight className="h-5 w-5 text-slate-700 dark:text-neutral-300" />
+            <ArrowRight className="h-5 w-5 text-slate-200" />
           </button>
         </div>
       </div>
@@ -223,18 +225,30 @@ export const Card = ({
               >
                 <X className="h-4 w-4" />
               </button>
-              <motion.p
-                layoutId={layout ? `category-${card.title}` : undefined}
-                className="text-xs md:text-sm font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400"
-              >
-                {card.category}
-              </motion.p>
+              <div className="flex items-center gap-2.5">
+                {card.icon && (
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                    {card.icon}
+                  </div>
+                )}
+                <motion.p
+                  layoutId={layout ? `category-${card.title}` : undefined}
+                  className="text-xs md:text-sm font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400"
+                >
+                  {card.category}
+                </motion.p>
+              </div>
               <motion.h3
                 layoutId={layout ? `title-${card.title}` : undefined}
                 className="text-2xl md:text-4xl font-bold text-slate-900 dark:text-white mt-2 leading-tight"
               >
                 {card.title}
               </motion.h3>
+              {card.description && (
+                <p className="mt-2 text-sm md:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {card.description}
+                </p>
+              )}
               <div className="py-6">{card.content}</div>
             </motion.div>
           </div>
@@ -244,29 +258,43 @@ export const Card = ({
       <motion.button
         layoutId={layout ? `card-${card.title}` : undefined}
         onClick={handleOpen}
-        className="rounded-3xl bg-slate-100 dark:bg-neutral-900 h-80 w-56 md:h-[36rem] md:w-96 overflow-hidden flex flex-col items-start justify-start relative z-10 text-left group cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 border border-slate-200/80 dark:border-neutral-800"
+        className="rounded-3xl bg-slate-100 dark:bg-neutral-900 h-80 w-56 md:h-[36rem] md:w-96 overflow-hidden flex flex-col items-start justify-start relative z-10 text-left group cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 border border-slate-700/40"
       >
-        <div className="absolute h-full top-0 inset-x-0 bg-gradient-to-b from-black/70 via-black/30 to-black/80 z-30 pointer-events-none group-hover:from-black/60 group-hover:to-black/90 transition-all duration-300" />
+        <div className="absolute h-full top-0 inset-x-0 bg-gradient-to-b from-black/80 via-black/40 to-black/85 z-30 pointer-events-none group-hover:from-black/70 group-hover:to-black/90 transition-all duration-300" />
         
         <div className="relative z-40 p-6 md:p-8 flex flex-col justify-between h-full w-full">
           <div>
-            <motion.p
-              layoutId={layout ? `category-${card.category}` : undefined}
-              className="text-white/80 text-xs md:text-sm font-semibold uppercase tracking-wider"
-            >
-              {card.category}
-            </motion.p>
-            <motion.p
+            <div className="flex items-center justify-between gap-2 mb-3">
+              {card.icon && (
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-sm">
+                  {card.icon}
+                </div>
+              )}
+              <motion.p
+                layoutId={layout ? `category-${card.category}` : undefined}
+                className="text-white/80 text-xs md:text-sm font-semibold uppercase tracking-wider ml-auto"
+              >
+                {card.category}
+              </motion.p>
+            </div>
+
+            <motion.h3
               layoutId={layout ? `title-${card.title}` : undefined}
-              className="text-white text-xl md:text-3xl font-bold max-w-xs text-left [text-wrap:balance] font-sans mt-2 leading-snug drop-shadow-sm"
+              className="text-white text-xl md:text-2xl font-bold max-w-xs text-left [text-wrap:balance] font-sans leading-snug drop-shadow-sm"
             >
               {card.title}
-            </motion.p>
+            </motion.h3>
+
+            {card.description && (
+              <p className="mt-2.5 text-xs md:text-sm text-slate-200/90 leading-relaxed max-w-xs font-normal">
+                {card.description}
+              </p>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 text-white/90 text-xs md:text-sm font-semibold group-hover:text-white transition-colors">
-            <span className="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30">
-              Explore breakdown →
+          <div className="flex items-center gap-2 text-white/90 text-xs md:text-sm font-semibold group-hover:text-white transition-colors mt-4">
+            <span className="px-3.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 transition-colors">
+              Explore details →
             </span>
           </div>
         </div>
