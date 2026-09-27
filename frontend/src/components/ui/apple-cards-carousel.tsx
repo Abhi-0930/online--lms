@@ -284,12 +284,6 @@ export const Card = ({
             >
               {card.title}
             </motion.h3>
-
-            {card.description && (
-              <p className="mt-2.5 text-xs md:text-sm text-slate-200/90 leading-relaxed max-w-xs font-normal">
-                {card.description}
-              </p>
-            )}
           </div>
         </div>
 

@@ -2,29 +2,18 @@
 
 import React from "react";
 import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
+import { Route } from "@/components/animate-ui/icons/route";
+import { MessageCircleCode } from "@/components/animate-ui/icons/message-circle-code";
+import { ClipboardList } from "@/components/animate-ui/icons/clipboard-list";
+import { Clapperboard } from "@/components/animate-ui/icons/clapperboard";
+import { ChartNoAxesColumnDecreasing } from "@/components/animate-ui/icons/chart-no-axes-column-decreasing";
+import { MessageCircleMore } from "@/components/animate-ui/icons/message-circle-more";
 import {
-  BookOpen,
-  Compass,
-  Code2,
-  Target,
-  ClipboardCheck,
-  Video,
-  BarChart3,
-  TrendingUp,
-  Users2,
   CheckCircle2,
-  Sparkles,
-  Terminal,
-  Layers,
-  Award,
   Calendar,
   Clock,
   Zap,
-  Activity,
-  MessageSquare,
-  FileCode2,
-  Flame,
-  ShieldCheck
+  MessageSquare
 } from "lucide-react";
 
 export function WhyChooseUs() {
@@ -55,7 +44,7 @@ const StructuredLearningContent = () => {
       <div className="bg-[#F5F5F7] dark:bg-neutral-800/70 p-6 md:p-10 rounded-3xl space-y-5 border border-slate-200/60 dark:border-neutral-700/60">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-            <BookOpen className="w-5 h-5" />
+            <Route size={20} className="w-5 h-5" />
           </div>
           <div>
             <h4 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">
@@ -98,7 +87,7 @@ const HandsOnPracticeContent = () => {
       <div className="bg-[#F5F5F7] dark:bg-neutral-800/70 p-6 md:p-10 rounded-3xl space-y-4 border border-slate-200/60 dark:border-neutral-700/60">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <Code2 className="w-5 h-5" />
+            <MessageCircleCode size={20} className="w-5 h-5" />
           </div>
           <div>
             <h4 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">
@@ -137,7 +126,7 @@ const RealAssignmentsContent = () => {
       <div className="bg-[#F5F5F7] dark:bg-neutral-800/70 p-6 md:p-10 rounded-3xl space-y-4 border border-slate-200/60 dark:border-neutral-700/60">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-            <ClipboardCheck className="w-5 h-5" />
+            <ClipboardList size={20} className="w-5 h-5" />
           </div>
           <div>
             <h4 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">
@@ -183,7 +172,7 @@ const LiveInteractiveSessionsContent = () => {
       <div className="bg-[#F5F5F7] dark:bg-neutral-800/70 p-6 md:p-10 rounded-3xl space-y-4 border border-slate-200/60 dark:border-neutral-700/60">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-            <Video className="w-5 h-5" />
+            <Clapperboard size={20} className="w-5 h-5" />
           </div>
           <div>
             <h4 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">
@@ -224,7 +213,7 @@ const ProgressTrackingContent = () => {
       <div className="bg-[#F5F5F7] dark:bg-neutral-800/70 p-6 md:p-10 rounded-3xl space-y-4 border border-slate-200/60 dark:border-neutral-700/60">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5" />
+            <ChartNoAxesColumnDecreasing size={20} className="w-5 h-5" />
           </div>
           <div>
             <h4 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">
@@ -263,7 +252,7 @@ const CommunitySupportContent = () => {
       <div className="bg-[#F5F5F7] dark:bg-neutral-800/70 p-6 md:p-10 rounded-3xl space-y-4 border border-slate-200/60 dark:border-neutral-700/60">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
-            <Users2 className="w-5 h-5" />
+            <MessageCircleMore size={20} className="w-5 h-5" />
           </div>
           <div>
             <h4 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">
@@ -306,48 +295,48 @@ const data = [
     category: "Roadmap",
     title: "Structured Learning Path",
     description: "Follow a clear roadmap from fundamentals to advanced concepts with no guesswork.",
-    icon: <BookOpen className="w-5 h-5" />,
-    src: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2670&auto=format&fit=crop",
+    icon: <Route size={22} className="w-5 h-5 text-white" />,
+    src: "/structured-learning.jpg",
     content: <StructuredLearningContent />,
   },
   {
     category: "Practice",
     title: "Hands-On Practice",
     description: "Strengthen your understanding through curated practice problems and coding challenges.",
-    icon: <Code2 className="w-5 h-5" />,
-    src: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=2670&auto=format&fit=crop",
+    icon: <MessageCircleCode size={22} className="w-5 h-5 text-white" />,
+    src: "/hands-on-practice.jpg",
     content: <HandsOnPracticeContent />,
   },
   {
     category: "Assignments",
     title: "Real Assignments",
     description: "Apply concepts through practical assignments designed to simulate real-world scenarios.",
-    icon: <ClipboardCheck className="w-5 h-5" />,
-    src: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=2670&auto=format&fit=crop",
+    icon: <ClipboardList size={22} className="w-5 h-5 text-white" />,
+    src: "/real-assignments.jpg",
     content: <RealAssignmentsContent />,
   },
   {
     category: "Live Classes",
     title: "Live Interactive Sessions",
     description: "Attend live classes, ask questions, and learn directly from experienced instructors.",
-    icon: <Video className="w-5 h-5" />,
-    src: "https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=2670&auto=format&fit=crop",
+    icon: <Clapperboard size={22} className="w-5 h-5 text-white" />,
+    src: "/live-sessions.jpg",
     content: <LiveInteractiveSessionsContent />,
   },
   {
     category: "Analytics",
     title: "Progress Tracking",
     description: "Track learning milestones, consistency, course completion, and overall performance.",
-    icon: <TrendingUp className="w-5 h-5" />,
-    src: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2670&auto=format&fit=crop",
+    icon: <ChartNoAxesColumnDecreasing size={22} className="w-5 h-5 text-white" />,
+    src: "/progress-tracking.jpg",
     content: <ProgressTrackingContent />,
   },
   {
     category: "Community",
     title: "Community & Support",
     description: "Learn alongside a community of peers, mentors, and professionals.",
-    icon: <Users2 className="w-5 h-5" />,
-    src: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2670&auto=format&fit=crop",
+    icon: <MessageCircleMore size={22} className="w-5 h-5 text-white" />,
+    src: "/community-support.jpg",
     content: <CommunitySupportContent />,
   },
 ];

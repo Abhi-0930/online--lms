@@ -336,16 +336,14 @@ function AnimateIcon({
             return;
           }
           if (!activeRef.current) {
-            if (status !== 'initial' && !persistOnAnimateEnd) {
+            if (status !== 'initial' && !persistOnAnimateEnd)
               await startAnim('initial');
-            }
             return;
           }
         } else {
           if (!activeRef.current) {
-            if (status !== 'initial' && !persistOnAnimateEnd) {
+            if (status !== 'initial' && !persistOnAnimateEnd)
               await startAnim('initial');
-            }
             return;
           }
         }

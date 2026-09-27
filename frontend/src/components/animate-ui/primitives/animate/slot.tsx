@@ -58,13 +58,11 @@ function mergeProps<T extends HTMLElement>(
   return merged;
 }
 
-function Slot<T extends HTMLElement = HTMLElement>(
-  {
-    children,
-    ref,
-    ...props
-  }: SlotProps<T>
-) {
+function Slot<T extends HTMLElement = HTMLElement>({
+  children,
+  ref,
+  ...props
+}: SlotProps<T>) {
   const isAlreadyMotion =
     typeof children.type === 'object' &&
     children.type !== null &&
