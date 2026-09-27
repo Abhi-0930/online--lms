@@ -153,12 +153,12 @@ function CompanyLogoItem({ company }: { company: Company }) {
   }
 
   return (
-    <div className="group relative flex items-center justify-center bg-white/95 hover:bg-white border border-slate-200/90 hover:border-blue-300 rounded-2xl px-6 py-3.5 min-w-[130px] sm:min-w-[155px] h-[62px] sm:h-[70px] shadow-[0_2px_8px_rgba(0,0,0,0.025)] hover:shadow-[0_8px_20px_rgba(37,99,235,0.08)] transition-all duration-300 hover:-translate-y-0.5 cursor-default shrink-0">
+    <div className="flex items-center justify-center px-4 sm:px-6 shrink-0 transition-transform duration-300 hover:scale-110 cursor-pointer">
       <img
         src={imageSrc}
         alt={`${company.name} logo`}
         onError={handleError}
-        className="max-h-6 sm:max-h-7 max-w-[95px] sm:max-w-[115px] w-auto object-contain filter grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-105"
+        className="h-7 sm:h-8 md:h-9 max-w-[110px] sm:max-w-[130px] md:max-w-[150px] w-auto object-contain select-none"
         loading="lazy"
       />
     </div>
@@ -175,7 +175,7 @@ export function CompaniesMarquee() {
       <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-96 h-96 bg-blue-100/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-96 h-96 bg-indigo-100/30 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-10 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-12 relative z-10">
         {/* Top Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/60 text-blue-700 text-xs font-bold tracking-wide uppercase shadow-2xs mb-4">
           <Sparkles className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
@@ -216,10 +216,10 @@ export function CompaniesMarquee() {
       <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-24 sm:w-48 bg-gradient-to-r from-white via-white/80 to-transparent z-20" />
       <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-24 sm:w-48 bg-gradient-to-l from-white via-white/80 to-transparent z-20" />
 
-      {/* Single Marquee Track with relaxed, gentle speed */}
+      {/* Single Marquee Track without bounding boxes, full color, relaxed speed */}
       <div className="relative">
         <div
-          className="flex w-max animate-marquee hover:[animation-play-state:paused] items-center gap-4 sm:gap-6"
+          className="flex w-max animate-marquee hover:[animation-play-state:paused] items-center gap-10 sm:gap-14 md:gap-16"
           style={{ animationDuration: "65s" }}
         >
           {marqueeItems.map((company, index) => (
