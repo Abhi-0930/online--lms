@@ -33,9 +33,9 @@ export function WhyChooseUs() {
   ));
 
   return (
-    <section id="why-us" className="w-full h-full py-20 sm:py-28 bg-gradient-to-b from-[#1e293b] via-[#1a233a] to-[#151c2e] overflow-hidden border-t border-slate-700/60">
+    <section id="why-us" className="w-full h-full py-20 sm:py-28 bg-white overflow-hidden border-t border-slate-200/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight font-display text-white">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight font-display text-slate-900">
           Why Choose Us
         </h2>
       </div>

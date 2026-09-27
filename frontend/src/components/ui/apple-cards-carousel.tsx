@@ -100,7 +100,7 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
         >
           <div
             className={cn(
-              "absolute right-0 z-[1000] h-auto w-[5%] overflow-hidden bg-gradient-to-l from-[#151c2e] to-transparent pointer-events-none"
+              "absolute right-0 z-[1000] h-auto w-[5%] overflow-hidden bg-gradient-to-l from-white to-transparent pointer-events-none"
             )}
           />
 
@@ -137,20 +137,20 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
         {/* Floating Navigation Controls */}
         <div className="flex justify-end gap-2 mr-4 md:mr-10">
           <button
-            className="relative z-40 h-10 w-10 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-100 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 shadow-md border border-slate-600/60 cursor-pointer"
+            className="relative z-40 h-10 w-10 rounded-full bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-950 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 shadow-sm border border-slate-300/80 cursor-pointer"
             onClick={scrollLeft}
             disabled={!canScrollLeft}
             aria-label="Previous cards"
           >
-            <ArrowLeft className="h-5 w-5 text-slate-200" />
+            <ArrowLeft className="h-5 w-5 text-slate-700" />
           </button>
           <button
-            className="relative z-40 h-10 w-10 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-100 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 shadow-md border border-slate-600/60 cursor-pointer"
+            className="relative z-40 h-10 w-10 rounded-full bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-950 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 shadow-sm border border-slate-300/80 cursor-pointer"
             onClick={scrollRight}
             disabled={!canScrollRight}
             aria-label="Next cards"
           >
-            <ArrowRight className="h-5 w-5 text-slate-200" />
+            <ArrowRight className="h-5 w-5 text-slate-700" />
           </button>
         </div>
       </div>
@@ -258,7 +258,7 @@ export const Card = ({
       <motion.button
         layoutId={layout ? `card-${card.title}` : undefined}
         onClick={handleOpen}
-        className="rounded-3xl bg-slate-100 dark:bg-neutral-900 h-80 w-56 md:h-[36rem] md:w-96 overflow-hidden flex flex-col items-start justify-start relative z-10 text-left group cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 border border-slate-700/40"
+        className="rounded-3xl bg-slate-100 dark:bg-neutral-900 h-80 w-56 md:h-[36rem] md:w-96 overflow-hidden flex flex-col items-start justify-start relative z-10 text-left group cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 border border-slate-200/90 dark:border-neutral-800"
       >
         <div className="absolute h-full top-0 inset-x-0 bg-gradient-to-b from-black/80 via-black/40 to-black/85 z-30 pointer-events-none group-hover:from-black/70 group-hover:to-black/90 transition-all duration-300" />
         
