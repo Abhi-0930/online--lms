@@ -64,25 +64,25 @@ export function VelorahHero({ onBeginJourney }: { onBeginJourney?: () => void })
               Home
             </Link>
             <Link
-              href="/landing#courses"
+              href="#courses"
               className="text-sm text-[#a1a1aa] hover:text-white transition-colors"
             >
               Courses
             </Link>
             <Link
-              href="/landing#stories"
+              href="#stories"
               className="text-sm text-[#a1a1aa] hover:text-white transition-colors"
             >
               Success Stories
             </Link>
             <Link
-              href="/landing#testimonials"
+              href="#testimonials"
               className="text-sm text-[#a1a1aa] hover:text-white transition-colors"
             >
               Testimonials
             </Link>
             <Link
-              href="/landing#contact"
+              href="#contact"
               className="text-sm text-[#a1a1aa] hover:text-white transition-colors"
             >
               Contact

@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { VelorahHero, HeroScrollDemo, CompaniesMarquee } from "@/landing";
+import { VelorahHero, HeroScrollDemo, CompaniesMarquee, SuccessStories, WhyChooseUs } from "@/landing";
 import { toast } from "sonner";
 
 export default function RootHomePage() {
@@ -36,6 +36,8 @@ export default function RootHomePage() {
       <VelorahHero onBeginJourney={handleBeginJourney} />
       <HeroScrollDemo />
       <CompaniesMarquee />
+      <SuccessStories />
+      <WhyChooseUs />
     </div>
   );
 }

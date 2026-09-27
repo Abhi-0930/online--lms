@@ -47,6 +47,10 @@ export interface SuccessStory {
   companyLogo: string;
   previousRole: string;
   salaryHike: string;
+  compensation?: string;
+  prepDuration?: string;
+  brandColor?: string;
+  skills?: string[];
   category: "FAANG" | "Unicorn" | "Fintech" | "Product";
   quote: string;
   story: string;
@@ -476,11 +480,15 @@ export const SUCCESS_STORIES: SuccessStory[] = [
     currentRole: "Software Engineer II",
     company: "Google",
     companyLogo: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg",
-    previousRole: "Service-based QA Engineer",
+    previousRole: "Service QA Analyst",
     salaryHike: "240%",
+    compensation: "₹48 LPA",
+    prepDuration: "5 Months",
+    brandColor: "#4285F4",
+    skills: ["System Design", "Distributed Caching", "Graph Algorithms", "Concurrency"],
     category: "FAANG",
     quote: "The structured DSA pattern approach and system design deep-dives helped me clear the Google L4 loop in one go.",
-    story: "Transitioned from a non-CS background and manual QA role to Google after 6 months of intense practice and 1:1 mock interview coaching.",
+    story: "Transitioned from a non-CS background and manual QA role to Google after 5 months of intense practice and 1:1 mock interview coaching.",
     linkedin: "https://linkedin.com"
   },
   {
@@ -492,8 +500,12 @@ export const SUCCESS_STORIES: SuccessStory[] = [
     companyLogo: "https://upload.wikimedia.org/wikipedia/commons/9/96/Microsoft_logo_%282012%29.svg",
     previousRole: "Junior React Dev",
     salaryHike: "190%",
+    compensation: "₹42 LPA",
+    prepDuration: "4 Months",
+    brandColor: "#00A4EF",
+    skills: ["React 19", "Next.js 15", "Distributed Microservices", "Azure Cloud"],
     category: "FAANG",
-    quote: "Building distributed microservices and handling high-concurrency assignments gave me the exact confidence needed for the interview.",
+    quote: "Building distributed microservices and handling high-concurrency assignments gave me the exact confidence needed for the Azure interview.",
     story: "Landed an SDE role at Microsoft Azure Core team. The code reviews from mentor engineers pushed my code quality to senior levels.",
     linkedin: "https://linkedin.com"
   },
@@ -506,6 +518,10 @@ export const SUCCESS_STORIES: SuccessStory[] = [
     companyLogo: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg",
     previousRole: "Support Engineer",
     salaryHike: "210%",
+    compensation: "₹52 LPA",
+    prepDuration: "6 Months",
+    brandColor: "#FF9900",
+    skills: ["Kafka Streams", "Redis Sharding", "PostgreSQL Internals", "AWS DynamoDB"],
     category: "FAANG",
     quote: "The low-level design and distributed systems modules were gold. The system design mock interview changed how I think about scale.",
     story: "Cracked Amazon SDE-2 after mastering Kafka, Redis sharding, and concurrency patterns in the distributed systems track.",
@@ -520,9 +536,85 @@ export const SUCCESS_STORIES: SuccessStory[] = [
     companyLogo: "https://upload.wikimedia.org/wikipedia/commons/5/5f/Adobe_Inc._logo.svg",
     previousRole: "Frontend Intern",
     salaryHike: "175%",
+    compensation: "₹38 LPA",
+    prepDuration: "3.5 Months",
+    brandColor: "#FF0000",
+    skills: ["WebGL & Canvas", "Framer Motion", "Core Web Vitals", "TypeScript"],
     category: "Product",
     quote: "The focus on WebGL, Framer Motion, and Core Web Vitals optimization set my portfolio miles ahead of other candidates.",
     story: "Joined Adobe Creative Cloud team. The portfolio projects built during the course became the central discussion topic in all 4 interview rounds.",
+    linkedin: "https://linkedin.com"
+  },
+  {
+    id: "story-5",
+    name: "Rohan Varma",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+    currentRole: "Staff Backend Engineer",
+    company: "Uber",
+    companyLogo: "https://upload.wikimedia.org/wikipedia/commons/c/cc/Uber_logo_2018.png",
+    previousRole: "Backend Dev @ Local Agency",
+    salaryHike: "280%",
+    compensation: "₹65 LPA",
+    prepDuration: "5.5 Months",
+    brandColor: "#000000",
+    skills: ["Geospatial Indexing (H3)", "High-Throughput Go", "gRPC", "Distributed Locking"],
+    category: "Unicorn",
+    quote: "Mastering real-time geospatial pipelines and high-throughput Go services helped me ace Uber's rigorous architectural round.",
+    story: "Transitioned from a local agency building simple CRUD apps to building Uber's high-frequency dispatch engines.",
+    linkedin: "https://linkedin.com"
+  },
+  {
+    id: "story-6",
+    name: "Ananya Iyer",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
+    currentRole: "Senior Payments Engineer",
+    company: "Razorpay",
+    companyLogo: "https://cdn.simpleicons.org/razorpay/002992",
+    previousRole: "Junior PHP Developer",
+    salaryHike: "205%",
+    compensation: "₹36 LPA",
+    prepDuration: "4 Months",
+    brandColor: "#002992",
+    skills: ["Payment Gateways", "Event-Driven Architecture", "Idempotency", "PostgreSQL ACID"],
+    category: "Fintech",
+    quote: "The ledger consistency and idempotency modules were identical to the real-world technical problems Razorpay tests for.",
+    story: "Transformed from legacy PHP maintenance into a core fintech payments architect handling millions in daily transaction volumes.",
+    linkedin: "https://linkedin.com"
+  },
+  {
+    id: "story-7",
+    name: "Kabir Sengupta",
+    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80",
+    currentRole: "AI / LLM Systems Engineer",
+    company: "Swiggy",
+    companyLogo: "https://cdn.simpleicons.org/swiggy/FC8019",
+    previousRole: "Data Analyst",
+    salaryHike: "230%",
+    compensation: "₹45 LPA",
+    prepDuration: "5 Months",
+    brandColor: "#FC8019",
+    skills: ["Vector DBs (Milvus)", "RAG Systems", "LangGraph Agents", "FastAPI"],
+    category: "Unicorn",
+    quote: "Building autonomous agents and low-latency RAG architectures during the AI track gave me an unstoppable edge during interviews.",
+    story: "Pivot from tabular SQL reporting to designing Swiggy's GenAI voice ordering and personalized recommendation systems.",
+    linkedin: "https://linkedin.com"
+  },
+  {
+    id: "story-8",
+    name: "Tara Deshmukh",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    currentRole: "DevOps & Infrastructure Lead",
+    company: "Atlassian",
+    companyLogo: "https://cdn.simpleicons.org/atlassian/0052CC",
+    previousRole: "System Admin",
+    salaryHike: "185%",
+    compensation: "₹40 LPA",
+    prepDuration: "4.5 Months",
+    brandColor: "#0052CC",
+    skills: ["Kubernetes Operators", "Terraform Cloud", "ArgoCD GitOps", "Chaos Engineering"],
+    category: "Product",
+    quote: "The production-grade Kubernetes and Terraform capstone labs gave me immediate answers to every scenario Atlassian threw at me.",
+    story: "Moved from on-premise hardware maintenance to orchestrating multi-region Kubernetes clusters on AWS at global scale.",
     linkedin: "https://linkedin.com"
   }
 ];
