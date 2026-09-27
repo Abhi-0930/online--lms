@@ -26,7 +26,7 @@ type CardType = {
   title: string;
   category: string;
   description?: string;
-  icon?: React.ReactNode;
+  icon?: React.ReactNode | ((isHovered: boolean) => React.ReactNode);
   content: React.ReactNode;
 };
 
@@ -168,6 +168,7 @@ export const Card = ({
   layout?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { onCardClose } = useContext(CarouselContext);
 
@@ -228,7 +229,11 @@ export const Card = ({
               <div className="flex items-center gap-2.5">
                 {card.icon && (
                   <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                    {card.icon}
+                    {typeof card.icon === "function"
+                      ? card.icon(true)
+                      : React.isValidElement(card.icon)
+                      ? React.cloneElement(card.icon as React.ReactElement<{ isHovered?: boolean }>, { isHovered: true })
+                      : card.icon}
                   </div>
                 )}
                 <motion.p
@@ -258,6 +263,8 @@ export const Card = ({
       <motion.button
         layoutId={layout ? `card-${card.title}` : undefined}
         onClick={handleOpen}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         className="rounded-3xl bg-slate-100 dark:bg-neutral-900 h-80 w-56 md:h-[36rem] md:w-96 overflow-hidden flex flex-col items-start justify-start relative z-10 text-left group cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 border border-slate-200/90 dark:border-neutral-800"
       >
         <div className="absolute h-full top-0 inset-x-0 bg-gradient-to-b from-black/80 via-black/40 to-black/85 z-30 pointer-events-none group-hover:from-black/70 group-hover:to-black/90 transition-all duration-300" />
@@ -267,7 +274,11 @@ export const Card = ({
             <div className="flex items-center justify-between gap-2 mb-3">
               {card.icon && (
                 <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-sm">
-                  {card.icon}
+                  {typeof card.icon === "function"
+                    ? card.icon(isHovered)
+                    : React.isValidElement(card.icon)
+                    ? React.cloneElement(card.icon as React.ReactElement<{ isHovered?: boolean }>, { isHovered })
+                    : card.icon}
                 </div>
               )}
               <motion.p

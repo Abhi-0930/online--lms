@@ -7,13 +7,18 @@ export interface ChartNoAxesColumnDecreasingProps
   extends SVGMotionProps<SVGSVGElement> {
   size?: number | string;
   className?: string;
+  isHovered?: boolean;
 }
 
 export function ChartNoAxesColumnDecreasing({
   size = 20,
   className,
+  isHovered,
   ...props
 }: ChartNoAxesColumnDecreasingProps) {
+  const [localHover, setLocalHover] = React.useState(false);
+  const active = isHovered !== undefined ? isHovered : localHover;
+
   return (
     <motion.svg
       xmlns="http://www.w3.org/2000/svg"
@@ -27,48 +32,84 @@ export function ChartNoAxesColumnDecreasing({
       strokeLinejoin="round"
       className={className}
       {...props}
+      onMouseEnter={(e) => {
+        setLocalHover(true);
+        if (typeof props.onMouseEnter === 'function') {
+          (props.onMouseEnter as any)(e);
+        }
+      }}
+      onMouseLeave={(e) => {
+        setLocalHover(false);
+        if (typeof props.onMouseLeave === 'function') {
+          (props.onMouseLeave as any)(e);
+        }
+      }}
     >
       {/* Column 1 (tallest, left) */}
       <motion.path
         d="M5 21V3"
-        animate={{
-          scaleY: [1, 0.45, 1.15, 1],
-        }}
-        transition={{
-          duration: 2.2,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
+        animate={
+          active
+            ? {
+                scaleY: [1, 0.45, 1.15, 1],
+              }
+            : { scaleY: 1 }
+        }
+        transition={
+          active
+            ? {
+                duration: 2.2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }
+            : { duration: 0.3 }
+        }
         style={{ transformOrigin: '5px 21px' }}
       />
 
       {/* Column 2 (middle) */}
       <motion.path
         d="M12 21V9"
-        animate={{
-          scaleY: [1, 1.28, 0.52, 1],
-        }}
-        transition={{
-          duration: 2.2,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: 0.35,
-        }}
+        animate={
+          active
+            ? {
+                scaleY: [1, 1.28, 0.52, 1],
+              }
+            : { scaleY: 1 }
+        }
+        transition={
+          active
+            ? {
+                duration: 2.2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay: 0.35,
+              }
+            : { duration: 0.3 }
+        }
         style={{ transformOrigin: '12px 21px' }}
       />
 
       {/* Column 3 (shortest, right) */}
       <motion.path
         d="M19 21V15"
-        animate={{
-          scaleY: [1, 0.32, 1.35, 1],
-        }}
-        transition={{
-          duration: 2.2,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: 0.7,
-        }}
+        animate={
+          active
+            ? {
+                scaleY: [1, 0.32, 1.35, 1],
+              }
+            : { scaleY: 1 }
+        }
+        transition={
+          active
+            ? {
+                duration: 2.2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay: 0.7,
+              }
+            : { duration: 0.3 }
+        }
         style={{ transformOrigin: '19px 21px' }}
       />
     </motion.svg>
