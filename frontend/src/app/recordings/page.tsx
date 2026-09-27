@@ -1,19 +1,33 @@
-import { redirect } from "next/navigation";
-import Home from "@/components/HomeView";
-import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
+"use client";
 
-export default async function RecordingsAppPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ data?: string; q?: string; id?: string }>;
-}) {
-  const { data, q, id } = await searchParams;
+import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { decodeDataParam } from "@/lib/urlParams";
+import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
+
+const Home = dynamic(() => import("@/components/HomeView"), {
+  loading: () => <DashboardLayoutSkeleton />,
+  ssr: false,
+});
+
+function RecordingsContent() {
+  const searchParams = useSearchParams();
+  const data = searchParams.get("data");
+  const q = searchParams.get("q");
+  const id = searchParams.get("id");
   const decoded = decodeDataParam<{ id?: string; recordingId?: string }>(data || q);
   const recordingId = id || decoded?.id || decoded?.recordingId || "";
 
-  if (!decoded && !id) {
-    redirect(createSecureUrl("/recordings", { v: "recordings" }));
-  }
-
   return <Home page="recordings" recordingId={recordingId} />;
 }
+
+export default function RecordingsAppPage() {
+  return (
+    <Suspense fallback={<DashboardLayoutSkeleton />}>
+      <RecordingsContent />
+    </Suspense>
+  );
+}
+
+

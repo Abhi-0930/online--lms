@@ -1,18 +1,15 @@
-import { redirect } from "next/navigation";
-import Home from "@/components/HomeView";
-import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
+"use client";
 
-export default async function AssignmentsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ data?: string; q?: string }>;
-}) {
-  const { data, q } = await searchParams;
-  const decoded = decodeDataParam(data || q);
+import dynamic from "next/dynamic";
+import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 
-  if (!decoded) {
-    redirect(createSecureUrl("/assignments", { v: "assignments" }));
-  }
+const Home = dynamic(() => import("@/components/HomeView"), {
+  loading: () => <DashboardLayoutSkeleton />,
+  ssr: false,
+});
 
+export default function AssignmentsPage() {
   return <Home page="assignments" />;
 }
+
+

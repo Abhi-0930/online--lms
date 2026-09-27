@@ -141,7 +141,7 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#f8fafc] flex items-center justify-center p-4 sm:p-6 select-none overflow-hidden font-sans">
+    <div className="relative min-h-screen w-full bg-white dark:bg-[#0b0e14] flex items-center justify-center p-4 sm:p-6 select-none overflow-hidden font-sans">
       {/* Ambient background soft glow orbs */}
       <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-blue-100/50 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-indigo-50/60 blur-3xl" />

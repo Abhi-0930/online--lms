@@ -438,10 +438,6 @@ function Overview({
     <div className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 sm:py-9">
       <div className="mb-7 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
         <div>
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.13em] text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300">
-            <span className={`h-1.5 w-1.5 rounded-full ${isWsConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
-            {isWsConnected ? "Live WebSocket Connected" : "Connecting Live Stream"} · Sunday, September 13, 2026
-          </div>
           <h1 className="font-display text-3xl font-bold tracking-[-0.04em] sm:text-[36px]">
             Good morning, {displayName}<span className="text-[var(--brand)]">.</span>
           </h1>
@@ -6039,7 +6035,7 @@ export default function Home() {
 
   if (isCourseBuilderOpen || section === "create-course") {
     return (
-      <div className="relative min-h-screen bg-[#f8fafc]">
+      <div className="relative min-h-screen bg-white dark:bg-[#0b0e14]">
         <CourseBuilder
           initialData={editingCourseData || undefined}
           onClose={handleCloseCourseBuilder}
@@ -6060,7 +6056,7 @@ export default function Home() {
 
   if (isAssignmentBuilderOpen || section === "create-assignment") {
     return (
-      <div className="relative min-h-screen bg-[#f8fafc]">
+      <div className="relative min-h-screen bg-white dark:bg-[#0b0e14]">
         <AssignmentBuilder
           initialData={editingAssignmentData || undefined}
           onClose={handleCloseAssignmentBuilder}
@@ -6082,7 +6078,7 @@ export default function Home() {
 
   if (isScheduleSessionOpen || section === "schedule-session" || section === "schedule_session") {
     return (
-      <div className="relative min-h-screen bg-[#f8fafc]">
+      <div className="relative min-h-screen bg-white dark:bg-[#0b0e14]">
         <ScheduleSessionBuilder
           initialData={editingSessionData || undefined}
           onClose={handleCloseScheduleSession}
@@ -6106,7 +6102,7 @@ export default function Home() {
 
   if (isUploadRecordingOpen || section === "upload-recording" || section === "upload_recording") {
     return (
-      <div className="relative min-h-screen bg-[#f8fafc]">
+      <div className="relative min-h-screen bg-white dark:bg-[#0b0e14]">
         <UploadRecordingBuilder
           initialData={editingRecordingData || undefined}
           onClose={handleCloseUploadRecording}
@@ -6129,7 +6125,7 @@ export default function Home() {
 
   if (isPracticeProblemBuilderOpen || section === "create-practice-problem" || section === "create_practice_problem") {
     return (
-      <div className="relative min-h-screen bg-[#f8fafc]">
+      <div className="relative min-h-screen bg-white dark:bg-[#0b0e14]">
         <PracticeProblemBuilder
           initialData={editingProblemData}
           onClose={handleClosePracticeProblemBuilder}
@@ -6152,7 +6148,7 @@ export default function Home() {
 
   if (viewingProblemData && !isPracticeProblemBuilderOpen) {
     return (
-      <div className="relative min-h-screen bg-[#f8fafc]">
+      <div className="relative min-h-screen bg-white dark:bg-[#0b0e14]">
         <PracticeProblemDetailView
           problem={viewingProblemData}
           onBack={() => {

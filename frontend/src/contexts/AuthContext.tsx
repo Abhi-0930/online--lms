@@ -152,8 +152,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             sessionStorage.removeItem("lms_user");
           }
           setUserState(null);
-          if (typeof window !== "undefined" && window.location.pathname !== "/") {
-            window.location.href = createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" });
+          if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+            window.location.href = createSecureUrl("/login", { error: "SESSION_REVOKED" });
           }
           return null;
         }
@@ -216,13 +216,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // ONLY redirect if the backend explicitly informed us that the session was revoked
             // AND we had an active session and are on an internal route and not manual logout
-            if (wasRevoked && hadActiveSession && window.location.pathname !== "/") {
-              window.location.href = createSecureUrl("/", {
+            if (wasRevoked && hadActiveSession && window.location.pathname !== "/login") {
+              window.location.href = createSecureUrl("/login", {
                 mode: "login",
                 error: "SESSION_REVOKED",
               });
-            } else if (window.location.pathname !== "/" && !window.location.pathname.startsWith("/auth")) {
-              router.replace(createSecureUrl("/", { mode: "login" }));
             }
           }
           return null;
@@ -253,8 +251,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionStorage.removeItem("lms_user");
         }
         setUserState(null);
-        if (typeof window !== "undefined") {
-          window.location.href = createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" });
+        if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+          window.location.href = createSecureUrl("/login", { error: "SESSION_REVOKED" });
         }
         return;
       }
@@ -284,7 +282,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               sessionStorage.removeItem("lms_user");
               setUserState(null);
               if (typeof window !== "undefined") {
-                window.location.href = createSecureUrl("/", { mode: "login", error: "SESSION_REVOKED" });
+                window.location.href = createSecureUrl("/login", { error: "SESSION_REVOKED" });
               }
             }
           } else if (data?.type === "LOGOUT") {
@@ -292,7 +290,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             sessionStorage.removeItem("lms_user");
             setUserState(null);
             if (typeof window !== "undefined") {
-              window.location.href = createSecureUrl("/", { mode: "login" });
+              window.location.href = "/";
             }
           }
         };
@@ -383,7 +381,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }).catch(() => {});
     } finally {
       if (typeof window !== "undefined") {
-        window.location.href = createSecureUrl("/", { mode: "login" });
+        window.location.href = "/";
       }
     }
   }, []);

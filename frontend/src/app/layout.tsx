@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans, Manrope } from "next/font/google";
+import { DM_Sans, Manrope, Playfair_Display } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -11,6 +11,12 @@ const dmSans = DM_Sans({
 const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-display",
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  variable: "--font-serif",
 });
 
 export const metadata: Metadata = {
@@ -31,7 +37,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${dmSans.variable} ${manrope.variable} font-sans antialiased min-h-screen bg-background text-foreground`}>
+      <body className={`${dmSans.variable} ${manrope.variable} ${playfair.variable} font-sans antialiased min-h-screen bg-background text-foreground`}>
         <Providers>{children}</Providers>
       </body>
     </html>

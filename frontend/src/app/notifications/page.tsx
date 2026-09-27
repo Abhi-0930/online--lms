@@ -1,18 +1,15 @@
-import { redirect } from "next/navigation";
-import Home from "@/components/HomeView";
-import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
+"use client";
 
-export default async function NotificationsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ data?: string; q?: string }>;
-}) {
-  const { data, q } = await searchParams;
-  const decoded = decodeDataParam(data || q);
+import dynamic from "next/dynamic";
+import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 
-  if (!decoded) {
-    redirect(createSecureUrl("/notifications", { v: "notifications" }));
-  }
+const Home = dynamic(() => import("@/components/HomeView"), {
+  loading: () => <DashboardLayoutSkeleton />,
+  ssr: false,
+});
 
+export default function NotificationsPage() {
   return <Home page="notifications" />;
 }
+
+

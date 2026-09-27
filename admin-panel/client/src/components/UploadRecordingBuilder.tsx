@@ -583,7 +583,7 @@ export default function UploadRecordingBuilder({
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0b0e14] text-slate-900 dark:text-slate-100 flex flex-col antialiased">
+    <div className="min-h-screen bg-white dark:bg-[#0b0e14] text-slate-900 dark:text-slate-100 flex flex-col antialiased">
       {/* Top Sticky Header */}
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-[#121620]/95 backdrop-blur-md px-6 py-4">
         <div className="flex items-center gap-3">

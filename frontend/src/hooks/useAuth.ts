@@ -14,7 +14,7 @@ export function useAuth(options?: { redirectOnUnauthenticated?: boolean; redirec
 
   useEffect(() => {
     if (options?.redirectOnUnauthenticated && !loading && !user) {
-      router.push(createSecureUrl(options.redirectPath || "/", { mode: "login" }));
+      router.push(createSecureUrl(options.redirectPath || "/login", {}));
     }
   }, [options, loading, user, router]);
 

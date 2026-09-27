@@ -1,17 +1,12 @@
-import { redirect } from "next/navigation";
-import { createSecureUrl } from "@/lib/urlParams";
+"use client";
 
-export default async function RegisterRoute({
-  searchParams,
-}: {
-  searchParams: Promise<{ data?: string; q?: string; email?: string; error?: string }>;
-}) {
-  const { email, error } = await searchParams;
-  redirect(
-    createSecureUrl("/", {
-      mode: "register",
-      ...(error ? { error } : {}),
-      ...(email ? { email } : {}),
-    })
+import { Suspense } from "react";
+import { AuthForm } from "@/components/AuthForm";
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="h-screen w-full bg-white" />}>
+      <AuthForm initialMode="register" />
+    </Suspense>
   );
 }

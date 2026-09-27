@@ -1,17 +1,12 @@
-import { redirect } from "next/navigation";
-import { createSecureUrl } from "@/lib/urlParams";
+"use client";
 
-export default async function LoginRoute({
-  searchParams,
-}: {
-  searchParams: Promise<{ data?: string; q?: string; error?: string; email?: string }>;
-}) {
-  const { error, email } = await searchParams;
-  redirect(
-    createSecureUrl("/", {
-      mode: "login",
-      ...(error ? { error } : {}),
-      ...(email ? { email } : {}),
-    })
+import { Suspense } from "react";
+import { AuthForm } from "@/components/AuthForm";
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="h-screen w-full bg-white" />}>
+      <AuthForm initialMode="login" />
+    </Suspense>
   );
 }

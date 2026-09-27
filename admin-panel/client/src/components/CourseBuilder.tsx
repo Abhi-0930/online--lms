@@ -1765,7 +1765,7 @@ export default function CourseBuilder({
   ];
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 pb-16">
+    <div className="min-h-screen bg-white text-slate-800 pb-16">
       {/* Top Navigation Header */}
       <div className="mx-auto max-w-[1100px] px-6 pt-6 pb-4 flex items-center justify-between">
         <button

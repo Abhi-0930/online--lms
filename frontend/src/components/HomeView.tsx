@@ -18,6 +18,7 @@ import { useAnnouncements, AnnouncementItem } from "@/hooks/useAnnouncements";
 import { useUserActivity, getLocalDateString } from "@/hooks/useUserActivity";
 import StudentProblemArena from "@/components/StudentProblemArena";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 
 
 function getSecureHref(path: string, params?: Record<string, any>) {
@@ -6217,7 +6218,11 @@ export default function Home({
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace(createSecureUrl("/", { mode: "login" }));
+      if (typeof window !== "undefined" && sessionStorage.getItem("lms_manual_logout") === "true") {
+        window.location.href = "/";
+        return;
+      }
+      router.replace("/login");
     }
   }, [loading, user, router]);
 
@@ -6277,25 +6282,8 @@ export default function Home({
     }
   }, [courseId, page, sessionId, recordingId]);
 
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-white dark:bg-[#0b0e17]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-white dark:bg-[#0b0e17]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-rose-500 border-t-transparent" />
-          <p className="text-xs font-semibold text-gray-500">Session ended. Redirecting...</p>
-        </div>
-      </div>
-    );
+  if (loading || !user) {
+    return <DashboardLayoutSkeleton />;
   }
 
   // Full-page LeetCode-style problem arena view (outside AppShell, exactly like admin panel)

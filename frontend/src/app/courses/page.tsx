@@ -1,25 +1,40 @@
-import { redirect } from "next/navigation";
-import Home from "@/components/HomeView";
-import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
+"use client";
 
-export default async function CoursesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ data?: string; q?: string }>;
-}) {
-  const { data, q } = await searchParams;
+import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { decodeDataParam } from "@/lib/urlParams";
+import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
+
+const Home = dynamic(() => import("@/components/HomeView"), {
+  loading: () => <DashboardLayoutSkeleton />,
+  ssr: false,
+});
+
+function CoursesContent() {
+  const searchParams = useSearchParams();
+  const data = searchParams.get("data");
+  const q = searchParams.get("q");
+  const courseIdParam = searchParams.get("courseId");
   const decoded = decodeDataParam<{ courseId?: string; v?: string }>(data || q);
+  const targetCourseId = courseIdParam || decoded?.courseId;
 
-  if (!decoded) {
-    redirect(createSecureUrl("/courses", { v: "courses" }));
-  }
-
-  if (decoded?.courseId) {
-    if (decoded.v === "checkout") {
-      return <Home page="checkout" courseId={decoded.courseId} />;
+  if (targetCourseId) {
+    if (decoded?.v === "checkout") {
+      return <Home page="checkout" courseId={targetCourseId} />;
     }
-    return <Home page="course-detail" courseId={decoded.courseId} />;
+    return <Home page="course-detail" courseId={targetCourseId} />;
   }
 
   return <Home page="courses" />;
 }
+
+export default function CoursesPage() {
+  return (
+    <Suspense fallback={<DashboardLayoutSkeleton />}>
+      <CoursesContent />
+    </Suspense>
+  );
+}
+
+

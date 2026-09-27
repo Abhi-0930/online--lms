@@ -17,7 +17,7 @@ function CallbackHandler() {
 
       if (errorParam) {
         router.replace(
-          createSecureUrl("/", {
+          createSecureUrl("/login", {
             mode: "login",
             error: errorParam,
           })
@@ -62,14 +62,14 @@ function CallbackHandler() {
 
         // If not authenticated or error, redirect to login
         router.replace(
-          createSecureUrl("/", {
+          createSecureUrl("/login", {
             mode: "login",
             error: "AUTH_FAILED",
           })
         );
       } catch {
         router.replace(
-          createSecureUrl("/", {
+          createSecureUrl("/login", {
             mode: "login",
             error: "AUTH_FAILED",
           })

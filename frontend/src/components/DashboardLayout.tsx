@@ -88,7 +88,7 @@ export default function DashboardLayout({
             </p>
           </div>
           <Button
-            onClick={() => router.push(createSecureUrl("/", { mode: "login" }))}
+            onClick={() => router.push("/login")}
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >

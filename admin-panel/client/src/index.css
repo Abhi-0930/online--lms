@@ -40,7 +40,7 @@
 
 :root {
   --radius: 0.75rem;
-  --background: #f7f8fc;
+  --background: #ffffff;
   --foreground: #192033;
   --card: #ffffff;
   --card-foreground: #192033;
@@ -67,11 +67,11 @@
   --sidebar-accent-foreground: #3f46a6;
   --sidebar-border: #e7e9f0;
   --sidebar-ring: #8d96ef;
-  --app-bg: #f7f8fc;
+  --app-bg: #ffffff;
   --app-card: #ffffff;
   --app-ink: #192033;
   --app-line: #e7e9f0;
-  --subtle-bg: #f5f6fa;
+  --subtle-bg: #f8fafc;
   --sidebar-bg: #ffffff;
   --brand: #5865d8;
   --nav-active: #eef0ff;
