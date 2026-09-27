@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { TrendingUp, Users, Award } from "lucide-react";
+import { UsersIcon } from "@/components/animate-ui/icons/users";
+import { ChartNoAxesColumnIncreasingIcon } from "@/components/animate-ui/icons/chart-no-axes-column-increasing";
+import { SparklesIcon } from "@/components/animate-ui/icons/sparkles";
 
 export interface Company {
   name: string;
@@ -191,16 +193,16 @@ export function CompaniesMarquee() {
 
         {/* Quick Highlights Strip */}
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-bold text-slate-700">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
-            <Users className="w-4 h-4 text-blue-600" />
+          <div className="group flex items-center gap-2.5 px-4 py-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-xs hover:border-blue-300 transition-all duration-300 cursor-pointer">
+            <UsersIcon size={18} animateOnHover className="text-blue-600 group-hover:scale-110 transition-transform" />
             <span>500+ Hiring Partners</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
-            <TrendingUp className="w-4 h-4 text-emerald-600" />
+          <div className="group flex items-center gap-2.5 px-4 py-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-xs hover:border-emerald-300 transition-all duration-300 cursor-pointer">
+            <ChartNoAxesColumnIncreasingIcon size={18} animateOnHover className="text-emerald-600 group-hover:scale-110 transition-transform" />
             <span>168% Avg. Salary Hike</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
-            <Award className="w-4 h-4 text-indigo-600" />
+          <div className="group flex items-center gap-2.5 px-4 py-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs hover:shadow-xs hover:border-indigo-300 transition-all duration-300 cursor-pointer">
+            <SparklesIcon size={18} animateOnHover className="text-indigo-600 group-hover:scale-110 transition-transform" />
             <span>96% Placement Success Rate</span>
           </div>
         </div>
