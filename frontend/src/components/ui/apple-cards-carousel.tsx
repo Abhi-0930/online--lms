@@ -291,12 +291,6 @@ export const Card = ({
               </p>
             )}
           </div>
-
-          <div className="flex items-center gap-2 text-white/90 text-xs md:text-sm font-semibold group-hover:text-white transition-colors mt-4">
-            <span className="px-3.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 transition-colors">
-              Explore details →
-            </span>
-          </div>
         </div>
 
         <img

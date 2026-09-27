@@ -304,7 +304,7 @@ const CommunitySupportContent = () => {
 const data = [
   {
     category: "Roadmap",
-    title: "1. Structured Learning Path",
+    title: "Structured Learning Path",
     description: "Follow a clear roadmap from fundamentals to advanced concepts with no guesswork.",
     icon: <BookOpen className="w-5 h-5" />,
     src: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2670&auto=format&fit=crop",
@@ -312,7 +312,7 @@ const data = [
   },
   {
     category: "Practice",
-    title: "2. Hands-On Practice",
+    title: "Hands-On Practice",
     description: "Strengthen your understanding through curated practice problems and coding challenges.",
     icon: <Code2 className="w-5 h-5" />,
     src: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=2670&auto=format&fit=crop",
@@ -320,7 +320,7 @@ const data = [
   },
   {
     category: "Assignments",
-    title: "3. Real Assignments",
+    title: "Real Assignments",
     description: "Apply concepts through practical assignments designed to simulate real-world scenarios.",
     icon: <ClipboardCheck className="w-5 h-5" />,
     src: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=2670&auto=format&fit=crop",
@@ -328,7 +328,7 @@ const data = [
   },
   {
     category: "Live Classes",
-    title: "4. Live Interactive Sessions",
+    title: "Live Interactive Sessions",
     description: "Attend live classes, ask questions, and learn directly from experienced instructors.",
     icon: <Video className="w-5 h-5" />,
     src: "https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=2670&auto=format&fit=crop",
@@ -336,7 +336,7 @@ const data = [
   },
   {
     category: "Analytics",
-    title: "5. Progress Tracking",
+    title: "Progress Tracking",
     description: "Track learning milestones, consistency, course completion, and overall performance.",
     icon: <TrendingUp className="w-5 h-5" />,
     src: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2670&auto=format&fit=crop",
@@ -344,7 +344,7 @@ const data = [
   },
   {
     category: "Community",
-    title: "6. Community & Support",
+    title: "Community & Support",
     description: "Learn alongside a community of peers, mentors, and professionals.",
     icon: <Users2 className="w-5 h-5" />,
     src: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2670&auto=format&fit=crop",
