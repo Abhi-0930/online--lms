@@ -263,25 +263,46 @@ function ThankYouSuccessScreen({ onRedirect }: { onRedirect: () => void }) {
   const [progressPct, setProgressPct] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(3);
   const redirectedRef = useRef(false);
+  const startTimeRef = useRef<number | null>(null);
+  const onRedirectRef = useRef(onRedirect);
 
   useEffect(() => {
-    const startTime = Date.now();
+    onRedirectRef.current = onRedirect;
+  });
+
+  const triggerRedirect = useCallback(() => {
+    if (redirectedRef.current) return;
+    redirectedRef.current = true;
+    onRedirectRef.current();
+    // Safety fallback in case client router transition is delayed
+    setTimeout(() => {
+      if (typeof window !== "undefined" && window.location.pathname.includes("/onboarding")) {
+        window.location.href = createSecureUrl("/dashboard", { v: "dashboard" });
+      }
+    }, 600);
+  }, []);
+
+  useEffect(() => {
+    if (!startTimeRef.current) {
+      startTimeRef.current = Date.now();
+    }
+    const startTime = startTimeRef.current;
+
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const pct = Math.min(100, (elapsed / TOTAL_DURATION_MS) * 100);
-      const remainingSec = Math.max(1, Math.ceil((TOTAL_DURATION_MS - elapsed) / 1000));
+      const remainingSec = Math.max(0, Math.ceil((TOTAL_DURATION_MS - elapsed) / 1000));
       setProgressPct(pct);
-      setSecondsLeft(remainingSec);
+      setSecondsLeft(remainingSec > 0 ? remainingSec : 1);
 
-      if (elapsed >= TOTAL_DURATION_MS && !redirectedRef.current) {
-        redirectedRef.current = true;
+      if (elapsed >= TOTAL_DURATION_MS) {
         clearInterval(interval);
-        onRedirect();
+        triggerRedirect();
       }
     }, 40);
 
     return () => clearInterval(interval);
-  }, [onRedirect]);
+  }, [triggerRedirect]);
 
   return (
     <div className="min-h-screen w-full bg-white relative flex flex-col justify-between p-6 sm:p-10 overflow-hidden select-none">
@@ -299,20 +320,20 @@ function ThankYouSuccessScreen({ onRedirect }: { onRedirect: () => void }) {
 
       {/* Top Navbar */}
       <header className="w-full flex items-center justify-between z-10">
-        {/* Left: LearnHub brand logo */}
+        {/* Left: PrepPath brand logo */}
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-[#1a73e8] flex items-center justify-center text-white shadow-xs">
             <BookOpen className="w-4.5 h-4.5 stroke-[2.2]" />
           </div>
           <span className="font-bold text-[20px] tracking-tight text-slate-900">
-            LearnHub
+            PrepPath
           </span>
         </div>
 
         {/* Right: Back to home */}
         <button
           type="button"
-          onClick={onRedirect}
+          onClick={triggerRedirect}
           className="flex items-center gap-1.5 text-[14px] font-medium text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
         >
           <Home className="w-4 h-4 stroke-[1.8]" />
@@ -656,7 +677,7 @@ function OnboardingContent() {
         }),
       }).catch(() => {});
 
-      toast.success(`Welcome to LearnHub, ${cleanName}!`);
+      toast.success(`Welcome to PrepPath, ${cleanName}!`);
       updateStep(5);
     } catch {
       updateStep(5);
@@ -665,12 +686,14 @@ function OnboardingContent() {
     }
   };
 
+  const handleRedirectToDashboard = useCallback(() => {
+    router.push(createSecureUrl("/dashboard", { v: "dashboard" }));
+  }, [router]);
+
   if (currentStep === 5) {
     return (
       <ThankYouSuccessScreen
-        onRedirect={() => {
-          router.push(createSecureUrl("/dashboard", { v: "dashboard" }));
-        }}
+        onRedirect={handleRedirectToDashboard}
       />
     );
   }
