@@ -1,14 +1,80 @@
 "use client";
 
-import React from "react";
-import { motion } from "motion/react";
+import React, { useRef } from "react";
+import { motion, useInView } from "framer-motion";
 import dynamic from "next/dynamic";
-import { Users, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { IN, US, GB, CA, AU, DE, SG } from "country-flag-icons/react/3x2";
 
 const World = dynamic(() => import("../components/ui/globe").then((m) => m.World), {
   ssr: false,
 });
+
+const DIGIT_SEQUENCE = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+];
+
+function RollingDigit({
+  char,
+  isInView,
+  delay = 0,
+}: {
+  char: string;
+  isInView: boolean;
+  delay?: number;
+}) {
+  const isDigit = /^[0-9]$/.test(char);
+
+  if (!isDigit) {
+    return <span className="inline-block">{char}</span>;
+  }
+
+  const num = parseInt(char, 10);
+  const targetPercent = ((20 + num) / 30) * 100;
+
+  return (
+    <span className="inline-block h-[1.15em] overflow-hidden leading-none align-baseline">
+      <motion.span
+        initial={{ y: "0%" }}
+        animate={{ y: isInView ? `-${targetPercent}%` : "0%" }}
+        transition={
+          isInView
+            ? {
+                duration: 1.6 + delay * 0.15,
+                ease: [0.16, 1, 0.3, 1],
+                delay: delay * 0.08,
+              }
+            : {
+                duration: 0.25,
+                ease: "easeOut",
+              }
+        }
+        className="inline-flex flex-col text-center"
+      >
+        {DIGIT_SEQUENCE.map((d, idx) => (
+          <span
+            key={idx}
+            className="h-[1.15em] flex items-center justify-center select-none"
+          >
+            {d}
+          </span>
+        ))}
+      </motion.span>
+    </span>
+  );
+}
+
+function RollingNumber({ value, isInView }: { value: string; isInView: boolean }) {
+  return (
+    <span className="inline-flex items-center">
+      {value.split("").map((ch, idx) => (
+        <RollingDigit key={idx} char={ch} isInView={isInView} delay={idx} />
+      ))}
+    </span>
+  );
+}
 
 function WhatsAppIcon({ className = "w-6 h-6" }: { className?: string }) {
   return (
@@ -19,6 +85,9 @@ function WhatsAppIcon({ className = "w-6 h-6" }: { className?: string }) {
 }
 
 export function CommunitySection() {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(sectionRef, { once: false, margin: "-40px" });
+
   const globeConfig = {
     pointSize: 4,
     globeColor: "#0b2559",
@@ -466,7 +535,7 @@ export function CommunitySection() {
   ];
 
   return (
-    <section id="community" className="py-20 sm:py-28 lg:py-32 bg-gradient-to-b from-[#f8fafc] via-[#f0f7ff]/40 to-[#f8fafc] relative overflow-hidden border-t border-slate-200/60 select-none">
+    <section ref={sectionRef} id="community" className="py-20 sm:py-28 lg:py-32 bg-gradient-to-b from-[#f8fafc] via-[#f0f7ff]/40 to-[#f8fafc] relative overflow-hidden border-t border-slate-200/60 select-none">
       {/* Subtle Background Glows */}
       <div className="absolute top-1/2 left-1/4 -translate-y-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-blue-100/40 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-1/2 right-1/4 -translate-y-1/2 translate-x-1/2 w-[600px] h-[600px] bg-indigo-100/35 rounded-full blur-3xl pointer-events-none" />
@@ -482,12 +551,6 @@ export function CommunitySection() {
             transition={{ duration: 0.7, ease: "easeOut" }}
             className="lg:col-span-5 flex flex-col items-start text-left"
           >
-            {/* Pill Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50/90 border border-blue-200/70 text-blue-600 text-xs sm:text-sm font-semibold mb-6 shadow-xs">
-              <Users className="w-4 h-4 text-blue-600" />
-              <span>Global Community</span>
-            </div>
-
             {/* Main Headline */}
             <h2 className="text-4xl sm:text-5xl lg:text-[54px] xl:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.12] font-display mb-6">
               A Global Community{" "}
@@ -513,22 +576,11 @@ export function CommunitySection() {
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </a>
 
-            {/* Stats Row with Vertical Dividers */}
+            {/* Stats Row with Vertical Dividers and Scroll-Up Numbers */}
             <div className="flex items-center gap-6 sm:gap-8 pt-4">
               <div>
-                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-display">
-                  10K+
-                </div>
-                <div className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-                  Learners Worldwide
-                </div>
-              </div>
-
-              <div className="h-10 w-px bg-slate-200" />
-
-              <div>
-                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-display">
-                  50+
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-display flex items-center">
+                  <RollingNumber value="5+" isInView={isInView} />
                 </div>
                 <div className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
                   Countries
@@ -538,8 +590,19 @@ export function CommunitySection() {
               <div className="h-10 w-px bg-slate-200" />
 
               <div>
-                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-display">
-                  24/7
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-display flex items-center">
+                  <RollingNumber value="1.3k+" isInView={isInView} />
+                </div>
+                <div className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+                  Active Learners
+                </div>
+              </div>
+
+              <div className="h-10 w-px bg-slate-200" />
+
+              <div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-display flex items-center">
+                  <RollingNumber value="24/7" isInView={isInView} />
                 </div>
                 <div className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
                   Discussions
@@ -556,25 +619,6 @@ export function CommunitySection() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="lg:col-span-7 relative w-full h-[450px] sm:h-[550px] md:h-[620px] flex items-center justify-center"
           >
-            {/* Playful Handwritten Annotation & Arrow */}
-            <div className="absolute top-2 sm:top-6 right-6 sm:right-12 z-20 hidden sm:flex flex-col items-end pointer-events-none">
-              <span className="text-blue-600 text-sm sm:text-base font-bold italic tracking-wide font-sans transform rotate-[-4deg]">
-                Learners <br /> from around <br /> the world
-              </span>
-              <svg
-                className="w-10 h-10 text-blue-500 transform -rotate-12 mt-1 mr-2"
-                viewBox="0 0 50 50"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M 40 8 C 25 10, 10 20, 12 40" />
-                <path d="M 6 32 L 12 40 L 20 34" />
-              </svg>
-            </div>
-
             {/* Dotted Orbit Rings in Background for Atmosphere */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-[340px] sm:w-[460px] md:w-[540px] h-[340px] sm:h-[460px] md:h-[540px] rounded-full border border-blue-200/50 border-dashed animate-[spin_60s_linear_infinite]" />
@@ -586,21 +630,12 @@ export function CommunitySection() {
               <World data={sampleArcs} globeConfig={globeConfig} />
             </div>
 
-            {/* Floating Student Avatar Badges with Country Flags */}
+            {/* Student Avatar Badges with Country Flags */}
             {avatars.map((av) => {
               const FlagComponent = av.Flag;
               return (
-                <motion.div
+                <div
                   key={av.id}
-                  animate={{
-                    y: [0, -7, 0],
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 3 + av.floatDelay,
-                    ease: "easeInOut",
-                    delay: av.floatDelay,
-                  }}
                   className={`absolute ${av.pos} z-20 pointer-events-auto`}
                 >
                   <div className="relative group cursor-pointer">
@@ -617,7 +652,7 @@ export function CommunitySection() {
                       <FlagComponent title={av.name} className="w-full h-full object-cover" />
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </motion.div>
