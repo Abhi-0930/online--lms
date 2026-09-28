@@ -900,7 +900,7 @@ export default function StudentProblemArena({
         {/* ================= LEFT COLUMN: PROBLEM INFO & COMMUNITY (6 or 7 cols) ================= */}
         <div className="lg:col-span-6 xl:col-span-6 flex flex-col rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121622] shadow-xs overflow-hidden">
           {/* Tabs Navigation Header */}
-          <div className="flex items-center gap-1 border-b border-slate-100 dark:border-white/5 px-4 pt-2.5 bg-slate-50/50 dark:bg-white/[0.01] overflow-x-auto custom-scrollbar">
+          <div className="flex items-center gap-1 border-b border-slate-100 dark:border-white/5 px-4 pt-2.5 bg-slate-50/50 dark:bg-white/[0.01] overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {[
               { id: "description", label: "Description", icon: FileText },
               { id: "editorial", label: "Editorial", icon: BookOpen },
@@ -943,7 +943,7 @@ export default function StudentProblemArena({
           </div>
 
           {/* Left Pane Scrollable Content */}
-          <div className="flex-1 p-5 sm:p-6 overflow-y-auto custom-scrollbar space-y-6">
+          <div className="flex-1 p-5 sm:p-6 overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden space-y-6">
             {/* ================= TAB 1: DESCRIPTION ================= */}
             {activeTab === "description" && (
               <div className="space-y-6">
@@ -1210,7 +1210,7 @@ export default function StudentProblemArena({
                 {/* Editorial Multi-Language Reference Solutions */}
                 <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#0f131f] p-4 text-slate-900 dark:text-slate-100 font-mono text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-white/10 mb-3 font-sans">
-                    <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-0.5">
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-0.5">
                       {(["python", "javascript", "typescript", "java", "cpp"] as const).map((lang) => (
                         <button
                           key={lang}
@@ -1253,7 +1253,7 @@ export default function StudentProblemArena({
                       </button>
                     </div>
                   </div>
-                  <pre className="overflow-x-auto custom-scrollbar leading-relaxed font-mono text-[11px]">
+                  <pre className="overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden leading-relaxed font-mono text-[11px]">
                     <code>{editorialCode}</code>
                   </pre>
                 </div>
@@ -1275,7 +1275,7 @@ export default function StudentProblemArena({
                 </div>
 
                 {/* Language Filter Pills */}
-                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden pb-1">
                   {["All", "Python", "JavaScript", "TypeScript", "Java", "C++"].map((item) => (
                     <button
                       key={item}
@@ -1400,7 +1400,7 @@ export default function StudentProblemArena({
                             </button>
                           </div>
                         </div>
-                        <pre className="overflow-x-auto custom-scrollbar text-[11px] leading-relaxed">
+                        <pre className="overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden text-[11px] leading-relaxed">
                           <code>{sol.code}</code>
                         </pre>
                       </div>
@@ -1472,7 +1472,7 @@ export default function StudentProblemArena({
 
                         {/* Submitted Code Preview */}
                         <div className="rounded-lg border border-slate-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#0f131f] p-3 text-slate-900 dark:text-slate-100 font-mono text-[11px]">
-                          <pre className="overflow-x-auto custom-scrollbar">
+                          <pre className="overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                             <code>{sub.codeSnippet}</code>
                           </pre>
                         </div>
@@ -1526,7 +1526,7 @@ export default function StudentProblemArena({
                       placeholder="Explain your thought process, what you tried, or what confused you..."
                       value={newDiscussionBody}
                       onChange={(e) => setNewDiscussionBody(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 custom-scrollbar"
+                      className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                     />
                     <div className="flex justify-end gap-2">
                       <button
@@ -1635,7 +1635,7 @@ export default function StudentProblemArena({
               value={code}
               onChange={(e) => setCode(e.target.value)}
               spellCheck={false}
-              className="w-full flex-1 min-h-[280px] bg-transparent border-0 text-slate-800 dark:text-slate-100 font-mono text-xs leading-relaxed focus:outline-none resize-none custom-scrollbar"
+              className="w-full flex-1 min-h-[280px] bg-transparent border-0 text-slate-800 dark:text-slate-100 font-mono text-xs leading-relaxed focus:outline-none resize-none no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             />
           </div>
 
