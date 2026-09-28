@@ -43,6 +43,7 @@ export interface WorldProps {
   data: Position[];
 }
 
+
 export function Globe({ globeConfig, data }: WorldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [countriesData, setCountriesData] = useState<any>(null);
@@ -71,7 +72,7 @@ export function Globe({ globeConfig, data }: WorldProps) {
       alpha: true,
       powerPreference: "high-performance",
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.setSize(width, height);
     renderer.setClearColor(0x000000, 0);
 
@@ -97,7 +98,7 @@ export function Globe({ globeConfig, data }: WorldProps) {
       .arcsData(data)
       .arcColor((e: any) => e.color)
       .arcAltitude((e: any) => e.arcAlt)
-      .arcStroke((e: any) => 0.4)
+      .arcStroke(() => 0.4)
       .arcDashLength(globeConfig.arcLength ?? 0.9)
       .arcDashGap(4)
       .arcDashAnimateTime(globeConfig.arcTime ?? 1000)
@@ -181,7 +182,6 @@ export function Globe({ globeConfig, data }: WorldProps) {
     }
 
     // Resize Handler
-    let animationFrameId: number;
     const handleResize = () => {
       if (!container) return;
       const newWidth = container.clientWidth;
@@ -196,8 +196,24 @@ export function Globe({ globeConfig, data }: WorldProps) {
     });
     resizeObserver.observe(container);
 
+    // Viewport Visibility Observer (pause render loop when offscreen to save GPU/CPU)
+    let isVisible = true;
+    let animationFrameId: number;
+
+    const intersectionObserver = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting;
+        if (isVisible) {
+          animate();
+        }
+      },
+      { threshold: 0.05 }
+    );
+    intersectionObserver.observe(container);
+
     // Render loop
     const animate = () => {
+      if (!isVisible) return;
       animationFrameId = requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
@@ -207,6 +223,7 @@ export function Globe({ globeConfig, data }: WorldProps) {
     // Cleanup
     return () => {
       cancelAnimationFrame(animationFrameId);
+      intersectionObserver.disconnect();
       resizeObserver.disconnect();
       controls.dispose();
       renderer.dispose();
@@ -214,7 +231,7 @@ export function Globe({ globeConfig, data }: WorldProps) {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [globeConfig, data, countriesData]);
+  }, [countriesData]);
 
   return <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />;
 }
@@ -222,3 +239,4 @@ export function Globe({ globeConfig, data }: WorldProps) {
 export function World(props: WorldProps) {
   return <Globe {...props} />;
 }
+

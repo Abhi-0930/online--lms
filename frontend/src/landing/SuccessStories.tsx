@@ -132,7 +132,7 @@ export function SuccessStories() {
           </div>
 
           {/* Minimal Floating Chevrons (< and >) placed downwards in the hollow arch */}
-          <div className="absolute top-[340px] sm:top-[380px] md:top-[415px] left-1/2 -translate-x-1/2 flex items-center justify-between w-[260px] sm:w-[320px] md:w-[360px] px-2 pointer-events-none z-40">
+          <div className="absolute top-[340px] sm:top-[380px] md:top-[415px] left-1/2 -translate-x-1/2 flex items-center justify-center gap-3 sm:gap-4 pointer-events-none z-40">
             <button
               onClick={(e) => {
                 e.stopPropagation();

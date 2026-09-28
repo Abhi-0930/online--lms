@@ -23,4 +23,5 @@ export * from "./LayerRevealCanvas";
 export * from "./Hero3DVisualization";
 export * from "./Hero3DCanvas";
 export * from "./HeroScrollDemo";
+export * from "./GeminiExploreSection";
 export * from "./landingData";
