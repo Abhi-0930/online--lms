@@ -704,37 +704,61 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     id: "faq-1",
     category: "General",
-    question: "How is this platform different from YouTube or generic EdTech websites?",
-    answer: "We focus on real production engineering and structured discipline. You receive an integrated browser coding IDE, weekly automated and mentor-reviewed assignments, personalized 1:1 mentorship calls with engineers from Google/Amazon, and direct hiring partner referrals with resume audits."
+    question: "How is Velorah different from YouTube or generic EdTech platforms?",
+    answer: "Unlike static video tutorials or passive video libraries, Velorah is built as an interactive engineering school. You write and test real code in our cloud sandbox, build production-grade distributed microservices, receive line-by-line pull request reviews from senior FAANG engineers, and participate in live weekly architectural teardowns."
   },
   {
     id: "faq-2",
     category: "Courses",
-    question: "Do I get lifetime access to the courses and future updates?",
-    answer: "Yes! Once enrolled in any course track, you receive lifetime access to all recorded sessions, curriculum revisions, code templates, assignments, and Discord community discussions."
+    question: "Do I get lifetime access to all course tracks, codebases, and future updates?",
+    answer: "Yes, 100%! Once enrolled, you receive permanent lifetime access to all course modules, GitHub repositories, production boilerplate templates, community discussions, and any future curriculum updates at zero additional charge."
   },
   {
     id: "faq-3",
-    category: "Placements",
-    question: "How does the placement support and referral program work?",
-    answer: "Upon completing the core curriculum, passing the final project review, and clearing 2 mock interviews, you are added to our elite talent board. Our dedicated hiring team directly introduces your profile to 500+ partner tech companies with fast-tracked interview loops."
+    category: "Billing",
+    question: "What is your 100% money-back guarantee and refund policy?",
+    answer: "We offer a 7-day unconditional 100% money-back guarantee. If you dive in, explore the materials, and feel it's not the right fit for your learning goals, simply email support@velorah.dev within 7 days for an immediate, no-questions-asked refund."
   },
   {
     id: "faq-4",
-    category: "Mentorship",
-    question: "What happens during the 1:1 mentorship and live doubt sessions?",
-    answer: "You are paired with a senior mentor working in your target domain. You can schedule 1:1 Zoom sessions to review project architecture, conduct mock interviews, or troubleshoot complex bugs. Our Discord teaching assistants also answer queries 24/7 in <15 minutes."
+    category: "Placements",
+    question: "How does placement support, hiring referrals, and mock interviews work?",
+    answer: "After completing your capstone projects and passing two 1:1 technical mock interviews, your profile is spotlighted on our exclusive Talent Board accessed by 500+ tech hiring partners (Google, Microsoft, Razorpay, Swiggy, Uber, etc.) with fast-tracked interview loops that bypass resume filters."
   },
   {
     id: "faq-5",
-    category: "Billing",
-    question: "What is your refund and satisfaction guarantee policy?",
-    answer: "We offer a 100% no-questions-asked 7-day money-back guarantee. If you feel the course doesn't meet your expectations within the first 7 days, email our support team for an immediate full refund."
+    category: "Mentorship",
+    question: "What happens during 1:1 mentorship sessions and live doubt clearing?",
+    answer: "You are paired with active senior engineers from top tech companies. You can schedule 1:1 Zoom sessions to audit code, practice system design whiteboards, or get tailored career roadmap advice. Plus, our Discord community has dedicated TA bots and staff responding within 15 minutes."
   },
   {
     id: "faq-6",
     category: "Courses",
-    question: "Are certificates provided and are they verifiable?",
-    answer: "Yes, every graduate receives a tamper-proof, verifiable digital certificate with a unique QR code and permanent verification URL that can be directly shared on LinkedIn and your resume."
+    question: "Are course completion certificates recognized and verifiable?",
+    answer: "Yes. Every graduate earns a cryptographic, verifiable digital certificate with a permanent URL and QR code. Top recruiters recognize our rigorous capstone evaluation criteria, making it a powerful asset for LinkedIn and resumes."
+  },
+  {
+    id: "faq-7",
+    category: "General",
+    question: "I am from a non-CS or beginner background. Can I still enroll and succeed?",
+    answer: "Over 40% of our successful alumni transitioned from non-traditional or service backgrounds. Every track begins with foundational deep-dives (data structures, memory models, clean architecture) before scaling up to distributed systems and advanced engineering."
+  },
+  {
+    id: "faq-8",
+    category: "Courses",
+    question: "What are the hardware and software prerequisites to get started?",
+    answer: "All you need is a modern web browser and an internet connection. Our integrated in-browser IDE compiles and executes code in the cloud with automated test runners. For local project development, any standard laptop (8GB+ RAM, Windows/Mac/Linux) is sufficient."
+  },
+  {
+    id: "faq-9",
+    category: "Placements",
+    question: "How do you prepare students for System Design and Behavioral (STAR) rounds?",
+    answer: "We dedicate entire modules to Low-Level Design (LLD / Design Patterns) and High-Level Design (HLD / Distributed Systems, Caching, Event Queues, Sharding). You also undergo real-time whiteboard simulations and behavioral coaching using the Amazon Leadership Principles STAR framework."
+  },
+  {
+    id: "faq-10",
+    category: "Mentorship",
+    question: "How active is the alumni and student community after graduating?",
+    answer: "Our Discord network connects 25,000+ engineers worldwide. Even after landing your dream job, you keep full access to exclusive alumni hackathons, internal job referrals, engineering book clubs, and technical AMAs with industry leaders."
   }
 ];

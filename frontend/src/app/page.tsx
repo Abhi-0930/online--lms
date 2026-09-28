@@ -13,6 +13,7 @@ import {
   VideoTestimonials,
   CommunitySection,
   GeminiExploreSection,
+  FaqSection,
 } from "@/landing";
 import { toast } from "sonner";
 
@@ -52,6 +53,7 @@ export default function RootHomePage() {
       <VideoTestimonials />
       <CommunitySection />
       <GeminiExploreSection />
+      <FaqSection />
     </div>
   );
 }

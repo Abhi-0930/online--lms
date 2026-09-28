@@ -19,12 +19,12 @@ export function GoogleGeminiEffectDemo() {
     restDelta: 0.0001,
   });
 
-  // Snappy path transformations: sweeps across the entire screen swiftly without drag
-  const pathLengthFirst = useTransform(smoothProgress, [0, 0.52], [0.2, 1.2]);
-  const pathLengthSecond = useTransform(smoothProgress, [0, 0.52], [0.15, 1.2]);
-  const pathLengthThird = useTransform(smoothProgress, [0, 0.52], [0.1, 1.2]);
-  const pathLengthFourth = useTransform(smoothProgress, [0, 0.52], [0.05, 1.2]);
-  const pathLengthFifth = useTransform(smoothProgress, [0, 0.52], [0, 1.2]);
+  // Snappy path transformations: sweeps across the screen swiftly on scroll entry
+  const pathLengthFirst = useTransform(smoothProgress, [0, 0.4], [0.2, 1.2]);
+  const pathLengthSecond = useTransform(smoothProgress, [0, 0.4], [0.15, 1.2]);
+  const pathLengthThird = useTransform(smoothProgress, [0, 0.4], [0.1, 1.2]);
+  const pathLengthFourth = useTransform(smoothProgress, [0, 0.4], [0.05, 1.2]);
+  const pathLengthFifth = useTransform(smoothProgress, [0, 0.4], [0, 1.2]);
 
   const handleBrowseCourses = () => {
     const el = document.getElementById("courses");
@@ -39,7 +39,7 @@ export function GoogleGeminiEffectDemo() {
     <div
       ref={ref}
       id="explore"
-      className="h-[170vh] sm:h-[190vh] bg-black w-full relative pt-28 sm:pt-36 overflow-clip"
+      className="min-h-[400px] sm:min-h-[460px] md:min-h-[500px] h-[60vh] sm:h-[68vh] md:h-[72vh] bg-black w-full relative pt-8 sm:pt-10 md:pt-12 pb-2 sm:pb-4 overflow-clip"
     >
       <GoogleGeminiEffect
         title="Still Exploring Where To Start?"
