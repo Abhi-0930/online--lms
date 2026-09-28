@@ -45,7 +45,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const myTabToken = sessionStorage.getItem("lms_session_token");
       const activeToken = localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
-      if (myTabToken && activeToken && myTabToken !== activeToken) {
+      // To be considered authenticated in this tab, this tab MUST have its own active session token
+      // and it must match the global active session token.
+      if (!myTabToken || !activeToken || myTabToken !== activeToken) {
         return null;
       }
 
@@ -68,6 +70,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     try {
+      const myTabToken = sessionStorage.getItem("lms_session_token");
+      const activeToken = localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
+      if (!myTabToken || !activeToken || myTabToken !== activeToken) {
+        return false;
+      }
       if (sessionStorage.getItem("lms_user") || localStorage.getItem(USER_STORAGE_KEY)) return false;
     } catch {}
     return true;
@@ -141,29 +148,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
 
+    const myToken = typeof window !== "undefined" ? sessionStorage.getItem("lms_session_token") : null;
+    const activeToken = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY) : null;
+
+    // Strict Device / Tab Enforcement: If this tab does NOT possess an active session token,
+    // do not automatically promote this tab or authenticate via cookie
+    if (!myToken || !activeToken || myToken !== activeToken) {
+      setUserState(null);
+      setLoading(false);
+      return null;
+    }
+
     const promise = (async () => {
       try {
-        const myToken = typeof window !== "undefined" ? sessionStorage.getItem("lms_session_token") : null;
-        const activeToken = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY) : null;
-
-        if (myToken && activeToken && myToken !== activeToken) {
-          if (typeof window !== "undefined") {
-            sessionStorage.removeItem("lms_session_token");
-            sessionStorage.removeItem("lms_user");
-          }
-          setUserState(null);
-          if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-            window.location.href = createSecureUrl("/login", { error: "SESSION_REVOKED" });
-          }
-          return null;
-        }
-
-        const tabSessionToken = typeof window !== "undefined" ? sessionStorage.getItem("lms_session_token") : null;
+        const tabSessionToken = myToken;
         const hadActiveSession = Boolean(tabSessionToken);
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (tabSessionToken) {
-          headers["X-Session-Token"] = tabSessionToken;
-        }
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          "X-Session-Token": tabSessionToken,
+        };
 
         const res = await fetch("http://localhost:4000/api/v1/auth/me", {
           method: "GET",
@@ -251,15 +254,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionStorage.removeItem("lms_user");
         }
         setUserState(null);
-        if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        if (typeof window !== "undefined" && window.location.pathname !== "/login" && window.location.pathname !== "/") {
           window.location.href = createSecureUrl("/login", { error: "SESSION_REVOKED" });
         }
         return;
       }
 
-      if (typeof window !== "undefined" && !localStorage.getItem(USER_STORAGE_KEY)) {
-        sessionStorage.removeItem("lms_session_token");
-        sessionStorage.removeItem("lms_user");
+      if (!myToken || !activeToken) {
         setUserState(null);
         return;
       }
@@ -299,21 +300,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Heartbeat to check active session validity every 1.5 seconds across browsers/devices
     const interval = setInterval(() => {
-      const hasSession = typeof window !== "undefined" && (
-        sessionStorage.getItem("lms_session_token") ||
-        localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)
-      );
-      if (hasSession) {
+      const myToken = typeof window !== "undefined" ? sessionStorage.getItem("lms_session_token") : null;
+      const activeToken = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY) : null;
+      if (myToken && activeToken && myToken === activeToken) {
         fetchUser().catch(() => {});
       }
     }, 1500);
 
     const handleInteraction = () => {
-      const hasSession = typeof window !== "undefined" && (
-        sessionStorage.getItem("lms_session_token") ||
-        localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)
-      );
-      if (hasSession) {
+      const myToken = typeof window !== "undefined" ? sessionStorage.getItem("lms_session_token") : null;
+      const activeToken = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY) : null;
+      if (myToken && activeToken && myToken === activeToken) {
         handleAuthChange();
         fetchUser().catch(() => {});
       }
