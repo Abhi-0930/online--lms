@@ -4,11 +4,9 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
-  MessageSquare,
   ThumbsUp,
   ThumbsDown,
-  CheckCircle2,
-  Calendar
+  CheckCircle2
 } from "lucide-react";
 import { FAQ_ITEMS } from "./landingData";
 
@@ -21,7 +19,7 @@ export function FaqSection() {
   };
 
   return (
-    <section id="faq" className="py-24 sm:py-32 bg-gradient-to-b from-[#f8fafc] via-[#f1f5f9]/50 to-[#ffffff] relative overflow-hidden">
+    <section id="faq" className="py-20 sm:py-28 bg-gradient-to-b from-[#f8fafc] via-[#f1f5f9]/50 to-[#ffffff] relative overflow-hidden">
       {/* Background Decorative Mesh Glows */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-blue-100/50 rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-indigo-100/40 rounded-full blur-3xl pointer-events-none -z-10" />
@@ -39,7 +37,7 @@ export function FaqSection() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16 space-y-4">
+        <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-14 space-y-4">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight font-display">
             Frequently Asked{" "}
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-600">
@@ -142,45 +140,6 @@ export function FaqSection() {
               </motion.div>
             );
           })}
-        </div>
-
-        {/* Bottom Contact & Advisor Support Card */}
-        <div className="mt-16 sm:mt-20 max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-blue-50/90 via-indigo-50/50 to-white border border-blue-200/80 p-6 sm:p-8 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            
-            <div className="space-y-2 text-center sm:text-left">
-              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-100/80 border border-emerald-200 text-emerald-800 text-xs font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Admissions Team Online</span>
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                Still have questions?
-              </h3>
-              <p className="text-sm text-slate-600 max-w-md">
-                Can&apos;t find what you&apos;re looking for? Chat directly with our learning advisors for a personalized curriculum recommendation.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto shrink-0">
-              <a
-                href="https://discord.gg"
-                target="_blank"
-                rel="noreferrer"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-semibold hover:bg-slate-800 transition shadow-sm"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Chat on Discord</span>
-              </a>
-              <a
-                href="#contact"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-slate-800 text-xs sm:text-sm font-semibold border border-slate-200 hover:bg-slate-50 transition shadow-xs"
-              >
-                <Calendar className="w-4 h-4 text-blue-600" />
-                <span>Book 1:1 Call</span>
-              </a>
-            </div>
-
-          </div>
         </div>
 
       </div>

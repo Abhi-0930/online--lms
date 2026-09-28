@@ -14,6 +14,8 @@ import {
   CommunitySection,
   GeminiExploreSection,
   FaqSection,
+  ContactSection,
+  Footer,
 } from "@/landing";
 import { toast } from "sonner";
 
@@ -52,8 +54,10 @@ export default function RootHomePage() {
       <CourseFolderSection />
       <VideoTestimonials />
       <CommunitySection />
-      <GeminiExploreSection />
       <FaqSection />
+      <GeminiExploreSection />
+      <ContactSection />
+      <Footer />
     </div>
   );
 }

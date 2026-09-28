@@ -39,7 +39,7 @@ export function GoogleGeminiEffectDemo() {
     <div
       ref={ref}
       id="explore"
-      className="min-h-[400px] sm:min-h-[460px] md:min-h-[500px] h-[60vh] sm:h-[68vh] md:h-[72vh] bg-black w-full relative pt-8 sm:pt-10 md:pt-12 pb-2 sm:pb-4 overflow-clip"
+      className="min-h-[300px] sm:min-h-[580px] md:min-h-[680px] lg:min-h-[750px] h-[42vh] sm:h-[80vh] md:h-[88vh] bg-black w-full relative pt-6 sm:pt-16 md:pt-20 pb-4 sm:pb-10 overflow-clip"
     >
       <GoogleGeminiEffect
         title="Still Exploring Where To Start?"

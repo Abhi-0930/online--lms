@@ -703,62 +703,38 @@ export const INSTRUCTORS: Instructor[] = [
 export const FAQ_ITEMS: FaqItem[] = [
   {
     id: "faq-1",
-    category: "General",
-    question: "How is Velorah different from YouTube or generic EdTech platforms?",
-    answer: "Unlike static video tutorials or passive video libraries, Velorah is built as an interactive engineering school. You write and test real code in our cloud sandbox, build production-grade distributed microservices, receive line-by-line pull request reviews from senior FAANG engineers, and participate in live weekly architectural teardowns."
+    category: "Courses",
+    question: "Are the sessions live or recorded?",
+    answer: "Yes. Programs include live sessions, and recordings are provided for revision and flexible learning."
   },
   {
     id: "faq-2",
-    category: "Courses",
-    question: "Do I get lifetime access to all course tracks, codebases, and future updates?",
-    answer: "Yes, 100%! Once enrolled, you receive permanent lifetime access to all course modules, GitHub repositories, production boilerplate templates, community discussions, and any future curriculum updates at zero additional charge."
+    category: "General",
+    question: "Do I need prior experience to join?",
+    answer: "No. We offer learning paths suitable for beginners, intermediate learners, and professionals."
   },
   {
     id: "faq-3",
-    category: "Billing",
-    question: "What is your 100% money-back guarantee and refund policy?",
-    answer: "We offer a 7-day unconditional 100% money-back guarantee. If you dive in, explore the materials, and feel it's not the right fit for your learning goals, simply email support@velorah.dev within 7 days for an immediate, no-questions-asked refund."
+    category: "Courses",
+    question: "Are assignments and projects included?",
+    answer: "Yes. Every program includes hands-on assignments, coding challenges, and real-world projects."
   },
   {
     id: "faq-4",
-    category: "Placements",
-    question: "How does placement support, hiring referrals, and mock interviews work?",
-    answer: "After completing your capstone projects and passing two 1:1 technical mock interviews, your profile is spotlighted on our exclusive Talent Board accessed by 500+ tech hiring partners (Google, Microsoft, Razorpay, Swiggy, Uber, etc.) with fast-tracked interview loops that bypass resume filters."
+    category: "Mentorship",
+    question: "Is mentorship included?",
+    answer: "Yes. Learners receive guidance through mentorship, doubt-solving sessions, and project reviews."
   },
   {
     id: "faq-5",
-    category: "Mentorship",
-    question: "What happens during 1:1 mentorship sessions and live doubt clearing?",
-    answer: "You are paired with active senior engineers from top tech companies. You can schedule 1:1 Zoom sessions to audit code, practice system design whiteboards, or get tailored career roadmap advice. Plus, our Discord community has dedicated TA bots and staff responding within 15 minutes."
+    category: "Courses",
+    question: "Will I receive a certificate?",
+    answer: "Yes. A certificate of completion is provided after successfully meeting the course requirements."
   },
   {
     id: "faq-6",
-    category: "Courses",
-    question: "Are course completion certificates recognized and verifiable?",
-    answer: "Yes. Every graduate earns a cryptographic, verifiable digital certificate with a permanent URL and QR code. Top recruiters recognize our rigorous capstone evaluation criteria, making it a powerful asset for LinkedIn and resumes."
-  },
-  {
-    id: "faq-7",
-    category: "General",
-    question: "I am from a non-CS or beginner background. Can I still enroll and succeed?",
-    answer: "Over 40% of our successful alumni transitioned from non-traditional or service backgrounds. Every track begins with foundational deep-dives (data structures, memory models, clean architecture) before scaling up to distributed systems and advanced engineering."
-  },
-  {
-    id: "faq-8",
-    category: "Courses",
-    question: "What are the hardware and software prerequisites to get started?",
-    answer: "All you need is a modern web browser and an internet connection. Our integrated in-browser IDE compiles and executes code in the cloud with automated test runners. For local project development, any standard laptop (8GB+ RAM, Windows/Mac/Linux) is sufficient."
-  },
-  {
-    id: "faq-9",
     category: "Placements",
-    question: "How do you prepare students for System Design and Behavioral (STAR) rounds?",
-    answer: "We dedicate entire modules to Low-Level Design (LLD / Design Patterns) and High-Level Design (HLD / Distributed Systems, Caching, Event Queues, Sharding). You also undergo real-time whiteboard simulations and behavioral coaching using the Amazon Leadership Principles STAR framework."
-  },
-  {
-    id: "faq-10",
-    category: "Mentorship",
-    question: "How active is the alumni and student community after graduating?",
-    answer: "Our Discord network connects 25,000+ engineers worldwide. Even after landing your dream job, you keep full access to exclusive alumni hackathons, internal job referrals, engineering book clubs, and technical AMAs with industry leaders."
+    question: "Do you provide placement support?",
+    answer: "We help with resume building, mock interviews, portfolio development, and interview preparation."
   }
 ];

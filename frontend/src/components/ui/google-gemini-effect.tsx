@@ -23,21 +23,21 @@ export const GoogleGeminiEffect = ({
   return (
     <div
       className={cn(
-        "sticky top-4 sm:top-6 md:top-8 w-full flex flex-col items-center justify-start overflow-visible",
+        "sticky top-4 sm:top-8 md:top-12 w-full flex flex-col items-center justify-start overflow-visible",
         className
       )}
     >
-      <p className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold pb-2 text-center bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-400 font-display tracking-tight px-4 z-30">
+      <p className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold pb-2 sm:pb-3 text-center bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-400 font-display tracking-tight px-4 z-30 leading-tight sm:leading-tight">
         {title || `Still Exploring Where To Start?`}
       </p>
-      <p className="text-sm sm:text-base md:text-lg font-normal text-center text-neutral-400 mt-1 max-w-xl mx-auto px-4 z-30 leading-relaxed">
+      <p className="text-base sm:text-base md:text-lg font-normal text-center text-neutral-200 mt-2 sm:mt-2 max-w-xl mx-auto px-4 z-30 leading-relaxed">
         {description ||
           `Find the right learning path, explore courses, and start building skills that matter.`}
       </p>
 
       {/* SVG Canvas with Centered Action Button at the curves intersection */}
       <div
-        className="relative w-full h-[320px] sm:h-[380px] md:h-[420px] flex items-center justify-center pointer-events-none -mt-20 sm:-mt-24 md:-mt-28 lg:-mt-32 overflow-visible"
+        className="relative w-full h-[220px] sm:h-[460px] md:h-[560px] flex items-center justify-center pointer-events-none -mt-10 sm:-mt-26 md:-mt-34 overflow-visible"
         style={{ transform: "translate3d(0, 0, 0)" }}
       >
         <svg
@@ -46,7 +46,7 @@ export const GoogleGeminiEffect = ({
           viewBox="0 0 1440 890"
           xmlns="http://www.w3.org/2000/svg"
           preserveAspectRatio="xMidYMid meet"
-          className="w-full min-w-[900px] md:min-w-[1280px] lg:min-w-[1440px] max-w-[1600px] h-full"
+          className="w-full min-w-[950px] md:min-w-[1300px] lg:min-w-[1460px] max-w-[1700px] h-full"
           style={{ willChange: "transform" }}
         >
           <defs>
@@ -198,7 +198,7 @@ export const GoogleGeminiEffect = ({
           ) : (
             <button
               onClick={onButtonClick}
-              className="font-bold bg-white hover:bg-neutral-100 text-slate-950 rounded-full px-7 sm:px-9 py-2.5 sm:py-3 text-sm sm:text-base shadow-2xl shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer flex items-center gap-2 border border-white/90 select-none whitespace-nowrap"
+              className="font-bold bg-white hover:bg-neutral-100 text-slate-950 rounded-full px-7 sm:px-10 py-2.5 sm:py-3.5 text-sm sm:text-base md:text-lg shadow-2xl shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer flex items-center gap-2 border border-white/90 select-none whitespace-nowrap"
             >
               <span>{buttonText}</span>
             </button>
