@@ -3,7 +3,14 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { VelorahHero, HeroScrollDemo, CompaniesMarquee, SuccessStories, WhyChooseUs } from "@/landing";
+import {
+  VelorahHero,
+  HeroScrollDemo,
+  CompaniesMarquee,
+  SuccessStories,
+  WhyChooseUs,
+  CourseFolderSection,
+} from "@/landing";
 import { toast } from "sonner";
 
 export default function RootHomePage() {
@@ -38,6 +45,7 @@ export default function RootHomePage() {
       <CompaniesMarquee />
       <SuccessStories />
       <WhyChooseUs />
+      <CourseFolderSection />
     </div>
   );
 }

@@ -5,6 +5,7 @@ export * from "./CompaniesMarquee";
 export * from "./LMSShowcase";
 export * from "./LearningJourney";
 export * from "./WhyChooseUs";
+export * from "./CourseFolderSection";
 export * from "./CourseCategories";
 export * from "./CourseDetailModal";
 export * from "./PlatformStats";
