@@ -147,11 +147,11 @@ export function CourseFolderSection() {
   };
 
   return (
-    <section id="courses" className="w-full py-24 sm:py-32 bg-black text-white overflow-hidden">
+    <section id="courses" className="w-full pt-20 pb-12 sm:py-32 bg-black text-white relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Heading */}
-        <div className="text-center max-w-2xl mx-auto mb-14 sm:mb-20 space-y-3">
+        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-20 space-y-3">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight font-display text-white">
             Courses We Offer
           </h2>
@@ -171,14 +171,14 @@ export function CourseFolderSection() {
           ))}
         </div>
 
-        {/* 2. MOBILE & TABLET VIEW (Vertical Scroll Sticky Stacking Animation) */}
-        <div className="block lg:hidden">
-          <MobileStickyCardDeck
-            courses={OFFERED_COURSES}
-            onSelectCard={handleOpenDetail}
-          />
-        </div>
+      </div>
 
+      {/* 2. MOBILE & TABLET VIEW (Exact Sticky Section Animation from User Reference) */}
+      <div className="block lg:hidden w-full">
+        <MobileStickyCardDeck
+          courses={OFFERED_COURSES}
+          onSelectCard={handleOpenDetail}
+        />
       </div>
 
       {/* Curriculum Modal */}
@@ -275,7 +275,7 @@ function DesktopFolderCard({
 }
 
 // ----------------------------------------------------
-// MOBILE & TABLET VERTICAL SCROLL STICKY STACKING DECK
+// MOBILE & TABLET VERTICAL SCROLL STICKY DECK (UI-LAYOUT REFERENCE)
 // ----------------------------------------------------
 
 function MobileStickyCardDeck({
@@ -285,200 +285,166 @@ function MobileStickyCardDeck({
   courses: FolderCardData[];
   onSelectCard: (card: FolderCardData) => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const container = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
-    target: containerRef,
+    target: container,
     offset: ["start start", "end end"],
   });
 
-  const total = courses.length;
-
   return (
-    // Outer scroll track: each card gets 65vh of scroll travel
     <div
-      ref={containerRef}
-      className="relative w-full"
-      style={{ height: `${total * 65}vh` }}
+      ref={container}
+      className="relative bg-black"
+      style={{ height: `${courses.length * 100}vh` }}
     >
-      {/* Sticky Deck Viewport pinned at top-20 (80px) */}
-      <div className="sticky top-20 sm:top-24 h-[520px] sm:h-[550px] w-full flex items-center justify-center overflow-visible">
-        <div className="relative w-[90vw] max-w-[340px] sm:max-w-[380px] h-[460px] sm:h-[480px]">
-          {courses.map((card, i) => (
-            <MobileStackCardLayer
-              key={card.id}
-              card={card}
-              index={i}
-              total={total}
-              progress={scrollYProgress}
-              onOpen={() => onSelectCard(card)}
-            />
-          ))}
-        </div>
-      </div>
+      {courses.map((card, index) => (
+        <MobileCardSection
+          key={card.id}
+          card={card}
+          index={index}
+          total={courses.length}
+          scrollYProgress={scrollYProgress}
+          onClick={() => onSelectCard(card)}
+        />
+      ))}
     </div>
   );
 }
 
-function MobileStackCardLayer({
+function MobileCardSection({
   card,
   index,
   total,
-  progress,
-  onOpen,
+  scrollYProgress,
+  onClick,
 }: {
   card: FolderCardData;
   index: number;
   total: number;
-  progress: any;
-  onOpen: () => void;
+  scrollYProgress: any;
+  onClick: () => void;
 }) {
-  const [isFlapOpen, setIsFlapOpen] = useState(false);
-
-  // Exact step duration for each card
-  const step = 1 / total;
-  const enterStart = Math.max(0, (index - 1) * step);
-  const enterEnd = index * step;
-  const exitEnd = Math.min(1, (index + 1) * step);
-
   const isFirst = index === 0;
   const isLast = index === total - 1;
+  const tilt = index % 2 === 0 ? -4 : 4;
 
-  // 1. translateY: Stays offscreen (800px) until its turn, slides up to 0px, then stays at 0px
-  const translateY = useTransform(
-    progress,
-    isFirst
-      ? [0, 1]
-      : [0, enterStart, enterEnd, 1],
-    isFirst
-      ? ["0px", "0px"]
-      : ["800px", "800px", "0px", "0px"]
-  );
+  const prevStep = (index - 1) / total;
+  const currStep = index / total;
+  const nextStep = (index + 1) / total;
 
-  // 2. scale: Card enters at 1, then scales down to 0.93 when the next card enters over it
+  // Scale: enters from 0.88 to 1, then exits from 1 to 0.88 when next card stacks over it
   const scale = useTransform(
-    progress,
-    isLast
-      ? [0, 1]
-      : isFirst
-      ? [0, enterEnd, exitEnd, 1]
-      : [0, enterStart, enterEnd, exitEnd, 1],
-    isLast
-      ? [1, 1]
-      : isFirst
-      ? [1, 1, 0.93, 0.93]
-      : [1, 1, 1, 0.93, 0.93]
+    scrollYProgress,
+    isFirst
+      ? [0, nextStep]
+      : isLast
+      ? [prevStep, 1]
+      : [prevStep, currStep, nextStep],
+    isFirst
+      ? [1, 0.88]
+      : isLast
+      ? [0.88, 1]
+      : [0.88, 1, 0.88]
   );
 
-  // 3. rotate: Card tilts slightly (-3deg / +3deg) when next card stacks over it
-  const tiltAngle = index % 2 === 0 ? -3 : 3;
+  // Rotate: tilts entering and exiting, upright (0deg) when active
   const rotate = useTransform(
-    progress,
-    isLast
-      ? [0, 1]
-      : isFirst
-      ? [0, enterEnd, exitEnd, 1]
-      : [0, enterStart, enterEnd, exitEnd, 1],
-    isLast
-      ? [0, 0]
-      : isFirst
-      ? [0, 0, tiltAngle, tiltAngle]
-      : [0, 0, 0, tiltAngle, tiltAngle]
+    scrollYProgress,
+    isFirst
+      ? [0, nextStep]
+      : isLast
+      ? [prevStep, 1]
+      : [prevStep, currStep, nextStep],
+    isFirst
+      ? [0, -4]
+      : isLast
+      ? [tilt, 0]
+      : [tilt, 0, tilt]
   );
 
-  // 4. opacity: Completely hidden (0) before entering, 100% solid opaque (1) once active with zero text bleeding
-  const opacity = useTransform(
-    progress,
-    isFirst
-      ? [0, 1]
-      : [0, enterStart, enterStart + 0.001, 1],
-    isFirst
-      ? [1, 1]
-      : [0, 0, 1, 1]
-  );
+  const [isFlapOpen, setIsFlapOpen] = useState(false);
 
   return (
-    <motion.div
-      style={{
-        translateY,
-        scale,
-        rotate,
-        opacity,
-        zIndex: index + 10,
-      }}
-      onClick={() => {
-        setIsFlapOpen(!isFlapOpen);
-        onOpen();
-      }}
-      className="absolute inset-0 w-full h-full rounded-[28px] overflow-hidden cursor-pointer select-none bg-black border border-white/15 shadow-[0_25px_60px_rgba(0,0,0,0.9)] transition-shadow duration-300 active:scale-[0.98]"
+    <motion.section
+      style={{ scale, rotate }}
+      className="sticky top-0 h-screen w-full flex flex-col items-center justify-center p-4 select-none"
     >
-      {/* 1. Backplate Gradient */}
-      <div className={`absolute inset-0 w-full h-full ${card.backplateGradient}`}>
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
-      </div>
-
-      {/* 2. 3D Artwork */}
-      <div className="absolute top-7 right-3 w-44 h-44 sm:w-48 sm:h-48 z-10 pointer-events-none transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-2 group-hover:scale-105">
-        <img
-          src={card.artworkSrc}
-          alt={card.title}
-          className="w-full h-full object-cover rounded-2xl drop-shadow-[0_20px_35px_rgba(0,0,0,0.7)]"
-        />
-      </div>
-
-      {/* 3. Front Folder Flap (Smooth Deep Slide-Down on Hover or Tap) */}
       <div
-        className={`absolute inset-x-0 bottom-0 h-[305px] sm:h-[320px] z-20 pointer-events-none transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          isFlapOpen ? "translate-y-[145px]" : "group-hover:translate-y-[145px]"
-        }`}
+        onClick={() => {
+          setIsFlapOpen(!isFlapOpen);
+          onClick();
+        }}
+        className="group relative w-[90vw] max-w-[340px] sm:max-w-[380px] h-[460px] sm:h-[480px] rounded-[28px] overflow-hidden cursor-pointer select-none bg-black border border-white/15 shadow-[0_25px_60px_rgba(0,0,0,0.9)] transition-all duration-300 active:scale-[0.98]"
       >
-        {/* Seamless Smooth Folder Flap SVG Silhouette */}
-        <svg
-          viewBox="0 0 340 330"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="absolute inset-0 w-full h-full pointer-events-none"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M 0 26 
-               C 0 11.6 11.6 0 26 0 
-               H 175 
-               C 188 0 195 7 202 17 
-               C 208 27 216 32 228 32 
-               H 314 
-               C 328.4 32 340 43.6 340 58 
-               V 304 
-               C 340 318.4 328.4 330 314 330 
-               H 26 
-               C 11.6 330 0 318.4 0 304 
-               Z"
-            fill={card.flapBg}
+        {/* 1. Backplate Gradient */}
+        <div className={`absolute inset-0 w-full h-full ${card.backplateGradient}`}>
+          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
+        </div>
+
+        {/* 2. 3D Artwork */}
+        <div className="absolute top-7 right-3 w-44 h-44 sm:w-48 sm:h-48 z-10 pointer-events-none transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-2 group-hover:scale-105">
+          <img
+            src={card.artworkSrc}
+            alt={card.title}
+            className="w-full h-full object-cover rounded-2xl drop-shadow-[0_20px_35px_rgba(0,0,0,0.7)]"
           />
-        </svg>
+        </div>
 
-        {/* Flap Content */}
-        <div className={`relative w-full h-full flex flex-col justify-between p-6 sm:p-7 ${card.textColor}`}>
-          {/* Top Row: Index & Minimal Arrow */}
-          <div className="flex items-start justify-between">
-            <span className="font-display font-extrabold text-5xl sm:text-6xl tracking-tight leading-none select-none">
-              {card.index}
-            </span>
-            <div className="mt-3.5 mr-1">
-              <ArrowUpRight className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${card.arrowColor}`} />
+        {/* 3. Front Folder Flap (Smooth Deep Slide-Down on Hover or Tap) */}
+        <div
+          className={`absolute inset-x-0 bottom-0 h-[305px] sm:h-[320px] z-20 pointer-events-none transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            isFlapOpen ? "translate-y-[145px]" : "group-hover:translate-y-[145px]"
+          }`}
+        >
+          {/* Seamless Smooth Folder Flap SVG Silhouette */}
+          <svg
+            viewBox="0 0 340 330"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M 0 26 
+                 C 0 11.6 11.6 0 26 0 
+                 H 175 
+                 C 188 0 195 7 202 17 
+                 C 208 27 216 32 228 32 
+                 H 314 
+                 C 328.4 32 340 43.6 340 58 
+                 V 304 
+                 C 340 318.4 328.4 330 314 330 
+                 H 26 
+                 C 11.6 330 0 318.4 0 304 
+                 Z"
+              fill={card.flapBg}
+            />
+          </svg>
+
+          {/* Flap Content */}
+          <div className={`relative w-full h-full flex flex-col justify-between p-6 sm:p-7 ${card.textColor}`}>
+            {/* Top Row: Index & Minimal Arrow */}
+            <div className="flex items-start justify-between">
+              <span className="font-display font-extrabold text-5xl sm:text-6xl tracking-tight leading-none select-none">
+                {card.index}
+              </span>
+              <div className="mt-3.5 mr-1">
+                <ArrowUpRight className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${card.arrowColor}`} />
+              </div>
             </div>
-          </div>
 
-          {/* Bottom Row: Title & Subtitle */}
-          <div className="space-y-1.5 pb-2">
-            <h3 className="text-base sm:text-lg font-bold tracking-tight leading-snug">
-              {card.title}
-            </h3>
-            <p className={`text-xs sm:text-sm leading-relaxed ${card.subtextColor}`}>
-              {card.description}
-            </p>
+            {/* Bottom Row: Title & Subtitle */}
+            <div className="space-y-1.5 pb-2">
+              <h3 className="text-base sm:text-lg font-bold tracking-tight leading-snug">
+                {card.title}
+              </h3>
+              <p className={`text-xs sm:text-sm leading-relaxed ${card.subtextColor}`}>
+                {card.description}
+              </p>
+            </div>
           </div>
         </div>
       </div>
-    </motion.div>
+    </motion.section>
   );
 }

@@ -39,7 +39,7 @@ export default function RootHomePage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f8fafc] overflow-x-hidden">
+    <div className="flex flex-col min-h-screen bg-[#f8fafc] overflow-x-clip">
       <VelorahHero onBeginJourney={handleBeginJourney} />
       <HeroScrollDemo />
       <CompaniesMarquee />

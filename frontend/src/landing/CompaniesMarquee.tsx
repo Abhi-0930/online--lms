@@ -420,9 +420,9 @@ export function CompaniesMarquee() {
         </div>
       </div>
 
-      {/* Side gradient blur masks for smooth edge fading */}
-      <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-24 sm:w-48 bg-gradient-to-r from-white via-white/80 to-transparent z-20" />
-      <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-24 sm:w-48 bg-gradient-to-l from-white via-white/80 to-transparent z-20" />
+      {/* Side gradient blur masks for smooth edge fading on desktop only, removed on mobile */}
+      <div className="pointer-events-none absolute left-0 top-0 bottom-0 hidden sm:block sm:w-32 md:w-48 bg-gradient-to-r from-white via-white/80 to-transparent z-20" />
+      <div className="pointer-events-none absolute right-0 top-0 bottom-0 hidden sm:block sm:w-32 md:w-48 bg-gradient-to-l from-white via-white/80 to-transparent z-20" />
 
       {/* Single Marquee Track without bounding boxes, full color, relaxed speed */}
       <div className="relative">
