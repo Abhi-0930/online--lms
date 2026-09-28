@@ -10,6 +10,8 @@ import {
   SuccessStories,
   WhyChooseUs,
   CourseFolderSection,
+  VideoTestimonials,
+  CommunitySection,
 } from "@/landing";
 import { toast } from "sonner";
 
@@ -46,6 +48,8 @@ export default function RootHomePage() {
       <SuccessStories />
       <WhyChooseUs />
       <CourseFolderSection />
+      <VideoTestimonials />
+      <CommunitySection />
     </div>
   );
 }

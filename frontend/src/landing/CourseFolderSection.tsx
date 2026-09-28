@@ -27,9 +27,9 @@ export const OFFERED_COURSES: FolderCardData[] = [
     description: "Architect scalable full-stack applications, clean codebases, and production microservices.",
     backplateGradient: "bg-gradient-to-b from-[#6b46c1] via-[#5233a8] to-[#24135e]",
     artworkSrc: "/courses/fullstack-3d.jpg",
-    flapBg: "#1b193a",
+    flapBg: "#121218",
     textColor: "text-white",
-    subtextColor: "text-white/45",
+    subtextColor: "text-white/50",
     arrowColor: "text-white/70 group-hover:text-white",
   },
   {
@@ -39,10 +39,10 @@ export const OFFERED_COURSES: FolderCardData[] = [
     description: "Master fundamental to advanced data structures, graph theory, and algorithmic problem solving.",
     backplateGradient: "bg-gradient-to-b from-[#e77a60] via-[#d65f49] to-[#8c2d20]",
     artworkSrc: "/courses/dsa-3d.jpg",
-    flapBg: "#e2e5ea",
-    textColor: "text-[#111827]",
-    subtextColor: "text-[#4b5563]",
-    arrowColor: "text-[#111827]/70 group-hover:text-[#111827]",
+    flapBg: "#121218",
+    textColor: "text-white",
+    subtextColor: "text-white/50",
+    arrowColor: "text-white/70 group-hover:text-white",
   },
   {
     id: "cloud-devops",
@@ -51,9 +51,9 @@ export const OFFERED_COURSES: FolderCardData[] = [
     description: "Orchestrate multi-region cloud infrastructures, Kubernetes clusters, Docker, and CI/CD automation.",
     backplateGradient: "bg-gradient-to-b from-[#9ba7be] via-[#637493] to-[#253247]",
     artworkSrc: "/courses/cloud-3d.jpg",
-    flapBg: "#14161a",
+    flapBg: "#121218",
     textColor: "text-white",
-    subtextColor: "text-white/45",
+    subtextColor: "text-white/50",
     arrowColor: "text-white/70 group-hover:text-white",
   },
   {
@@ -63,9 +63,9 @@ export const OFFERED_COURSES: FolderCardData[] = [
     description: "Build intelligent autonomous agents, fine-tuned neural models, RAG pipelines, and GenAI applications.",
     backplateGradient: "bg-gradient-to-b from-[#a855f7] via-[#7e22ce] to-[#3b0764]",
     artworkSrc: "/courses/ai-chrome.jpg",
-    flapBg: "#1a1226",
+    flapBg: "#121218",
     textColor: "text-white",
-    subtextColor: "text-white/45",
+    subtextColor: "text-white/50",
     arrowColor: "text-white/70 group-hover:text-white",
   },
   {
@@ -75,9 +75,9 @@ export const OFFERED_COURSES: FolderCardData[] = [
     description: "Defend enterprise infrastructures with penetration testing, OWASP defense, and zero-trust security.",
     backplateGradient: "bg-gradient-to-b from-[#e11d48] via-[#be123c] to-[#4c0519]",
     artworkSrc: "/courses/cyber-chrome.jpg",
-    flapBg: "#1f0f15",
+    flapBg: "#121218",
     textColor: "text-white",
-    subtextColor: "text-white/45",
+    subtextColor: "text-white/50",
     arrowColor: "text-white/70 group-hover:text-white",
   },
   {
@@ -87,9 +87,9 @@ export const OFFERED_COURSES: FolderCardData[] = [
     description: "Engineer smart contracts, consensus mechanisms, DeFi protocols, and decentralized applications.",
     backplateGradient: "bg-gradient-to-b from-[#10b981] via-[#059669] to-[#064e3b]",
     artworkSrc: "/courses/web3-chrome.jpg",
-    flapBg: "#0e1f18",
+    flapBg: "#121218",
     textColor: "text-white",
-    subtextColor: "text-white/45",
+    subtextColor: "text-white/50",
     arrowColor: "text-white/70 group-hover:text-white",
   },
   {
@@ -99,9 +99,9 @@ export const OFFERED_COURSES: FolderCardData[] = [
     description: "Transform big datasets with distributed data warehousing, pipeline engineering, and intelligence.",
     backplateGradient: "bg-gradient-to-b from-[#06b6d4] via-[#0284c7] to-[#0c4a6e]",
     artworkSrc: "/courses/distributed-3d.jpg",
-    flapBg: "#0d1b22",
+    flapBg: "#121218",
     textColor: "text-white",
-    subtextColor: "text-white/45",
+    subtextColor: "text-white/50",
     arrowColor: "text-white/70 group-hover:text-white",
   },
   {
@@ -111,10 +111,10 @@ export const OFFERED_COURSES: FolderCardData[] = [
     description: "Conquer technical coding rounds, high/low-level system design interviews, and behavioral screenings.",
     backplateGradient: "bg-gradient-to-b from-[#f59e0b] via-[#d97706] to-[#451a03]",
     artworkSrc: "/courses/chrome-arrow.jpg",
-    flapBg: "#f0f2f5",
-    textColor: "text-[#111827]",
-    subtextColor: "text-[#4b5563]",
-    arrowColor: "text-[#111827]/70 group-hover:text-[#111827]",
+    flapBg: "#121218",
+    textColor: "text-white",
+    subtextColor: "text-white/50",
+    arrowColor: "text-white/70 group-hover:text-white",
   },
 ];
 
@@ -147,11 +147,11 @@ export function CourseFolderSection() {
   };
 
   return (
-    <section id="courses" className="w-full pt-20 pb-12 sm:py-32 bg-black text-white relative">
+    <section id="courses" className="w-full pt-12 sm:pt-24 pb-8 sm:pb-24 bg-black text-white relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Heading */}
-        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-20 space-y-3">
+        <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-14 space-y-2.5">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight font-display text-white">
             Courses We Offer
           </h2>
@@ -173,7 +173,7 @@ export function CourseFolderSection() {
 
       </div>
 
-      {/* 2. MOBILE & TABLET VIEW (Exact Sticky Section Animation from User Reference) */}
+      {/* 2. MOBILE & TABLET VIEW (Exact Sticky Section Animation with Snappy Travel) */}
       <div className="block lg:hidden w-full">
         <MobileStickyCardDeck
           courses={OFFERED_COURSES}
@@ -275,7 +275,7 @@ function DesktopFolderCard({
 }
 
 // ----------------------------------------------------
-// MOBILE & TABLET VERTICAL SCROLL STICKY DECK (UI-LAYOUT REFERENCE)
+// MOBILE & TABLET VERTICAL SCROLL STICKY DECK
 // ----------------------------------------------------
 
 function MobileStickyCardDeck({
@@ -285,25 +285,14 @@ function MobileStickyCardDeck({
   courses: FolderCardData[];
   onSelectCard: (card: FolderCardData) => void;
 }) {
-  const container = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: container,
-    offset: ["start start", "end end"],
-  });
-
   return (
-    <div
-      ref={container}
-      className="relative bg-black"
-      style={{ height: `${courses.length * 100}vh` }}
-    >
+    <div className="relative w-full pb-16">
       {courses.map((card, index) => (
         <MobileCardSection
           key={card.id}
           card={card}
           index={index}
           total={courses.length}
-          scrollYProgress={scrollYProgress}
           onClick={() => onSelectCard(card)}
         />
       ))}
@@ -315,66 +304,43 @@ function MobileCardSection({
   card,
   index,
   total,
-  scrollYProgress,
   onClick,
 }: {
   card: FolderCardData;
   index: number;
   total: number;
-  scrollYProgress: any;
   onClick: () => void;
 }) {
-  const isFirst = index === 0;
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start 16px", "end 16px"],
+  });
+
   const isLast = index === total - 1;
   const tilt = index % 2 === 0 ? -4 : 4;
 
-  const prevStep = (index - 1) / total;
-  const currStep = index / total;
-  const nextStep = (index + 1) / total;
+  // Scale: smoothly scales from 1 to 0.88 as next card stacks on top
+  const scale = useTransform(scrollYProgress, [0, 1], [1, isLast ? 1 : 0.88]);
 
-  // Scale: enters from 0.88 to 1, then exits from 1 to 0.88 when next card stacks over it
-  const scale = useTransform(
-    scrollYProgress,
-    isFirst
-      ? [0, nextStep]
-      : isLast
-      ? [prevStep, 1]
-      : [prevStep, currStep, nextStep],
-    isFirst
-      ? [1, 0.88]
-      : isLast
-      ? [0.88, 1]
-      : [0.88, 1, 0.88]
-  );
-
-  // Rotate: tilts entering and exiting, upright (0deg) when active
-  const rotate = useTransform(
-    scrollYProgress,
-    isFirst
-      ? [0, nextStep]
-      : isLast
-      ? [prevStep, 1]
-      : [prevStep, currStep, nextStep],
-    isFirst
-      ? [0, -4]
-      : isLast
-      ? [tilt, 0]
-      : [tilt, 0, tilt]
-  );
+  // Rotate: smoothly tilts as next card stacks on top
+  const rotate = useTransform(scrollYProgress, [0, 1], [0, isLast ? 0 : tilt]);
 
   const [isFlapOpen, setIsFlapOpen] = useState(false);
 
   return (
-    <motion.section
-      style={{ scale, rotate }}
-      className="sticky top-0 h-screen w-full flex flex-col items-center justify-center p-4 select-none"
+    <div
+      ref={sectionRef}
+      className="sticky top-2 sm:top-4 h-[460px] sm:h-[480px] w-full flex flex-col items-center justify-start px-4 select-none mb-3"
+      style={{ zIndex: index + 10 }}
     >
-      <div
+      <motion.div
+        style={{ scale, rotate }}
         onClick={() => {
           setIsFlapOpen(!isFlapOpen);
           onClick();
         }}
-        className="group relative w-[90vw] max-w-[340px] sm:max-w-[380px] h-[460px] sm:h-[480px] rounded-[28px] overflow-hidden cursor-pointer select-none bg-black border border-white/15 shadow-[0_25px_60px_rgba(0,0,0,0.9)] transition-all duration-300 active:scale-[0.98]"
+        className="group relative w-[90vw] max-w-[340px] sm:max-w-[380px] h-[440px] sm:h-[460px] rounded-[28px] overflow-hidden cursor-pointer select-none bg-black border border-white/15 shadow-[0_25px_60px_rgba(0,0,0,0.9)] transition-all duration-300 active:scale-[0.98]"
       >
         {/* 1. Backplate Gradient */}
         <div className={`absolute inset-0 w-full h-full ${card.backplateGradient}`}>
@@ -392,7 +358,7 @@ function MobileCardSection({
 
         {/* 3. Front Folder Flap (Smooth Deep Slide-Down on Hover or Tap) */}
         <div
-          className={`absolute inset-x-0 bottom-0 h-[305px] sm:h-[320px] z-20 pointer-events-none transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`absolute inset-x-0 bottom-0 h-[300px] sm:h-[315px] z-20 pointer-events-none transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             isFlapOpen ? "translate-y-[145px]" : "group-hover:translate-y-[145px]"
           }`}
         >
@@ -444,7 +410,7 @@ function MobileCardSection({
             </div>
           </div>
         </div>
-      </div>
-    </motion.section>
+      </motion.div>
+    </div>
   );
 }
