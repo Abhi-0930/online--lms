@@ -4,6 +4,7 @@ import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSecureUrl } from "@/lib/urlParams";
 import { useAuth } from "@/hooks/useAuth";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 function CallbackHandler() {
   const router = useRouter();
@@ -26,7 +27,7 @@ function CallbackHandler() {
       }
 
       try {
-        const res = await fetch("http://localhost:4000/api/v1/auth/me", {
+        const res = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { API_BASE_URL } from "../lib/apiConfig";
 
 export interface AdminUser {
   email: string;
@@ -80,7 +81,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
     // 2. Optional backend API login attempt if connected
     try {
-      const res = await fetch("http://localhost:4000/api/v1/auth/login", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -115,7 +116,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const requestPasswordReset = async (emailInput: string): Promise<{ success: boolean; message?: string; resetToken?: string; resetUrl?: string }> => {
     const email = emailInput.trim().toLowerCase();
     try {
-      const res = await fetch("http://localhost:4000/api/v1/auth/forgot-password-link", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password-link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, portalType: "admin" }),
@@ -148,7 +149,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
     // Call backend API if available
     try {
-      const res = await fetch("http://localhost:4000/api/v1/auth/reset-password-link", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password-link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, newPassword, email: targetEmail }),

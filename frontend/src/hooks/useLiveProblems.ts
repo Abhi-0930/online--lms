@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { API_BASE_URL, WS_BASE_URL } from "@/lib/apiConfig";
 
 export interface PublicProblem {
   id: string | number;
@@ -47,7 +48,6 @@ export interface PublicProblem {
 
 const SOLVED_KEY = "lms_user_solved_problems";
 const CACHE_KEY = "lms_user_cached_problems_v3";
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 export const DEFAULT_PROBLEMS: PublicProblem[] = [
   {
@@ -386,7 +386,7 @@ export function useLiveProblems() {
       });
 
       if (!res.ok) {
-        res = await fetch(`http://localhost:4000/api/v1/admin/practice-problems?t=${Date.now()}`, {
+        res = await fetch(`${API_BASE_URL}/api/v1/admin/practice-problems?t=${Date.now()}`, {
           cache: "no-store",
           headers: { "Content-Type": "application/json" },
         });
@@ -440,9 +440,7 @@ export function useLiveProblems() {
     const connectWs = () => {
       if (!isMountedRef.current) return;
       try {
-        const wsUrl = (
-          process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:4000/ws"
-        ).replace(/^http/, "ws");
+        const wsUrl = `${WS_BASE_URL}/ws`;
         socket = new WebSocket(wsUrl);
 
         socket.onmessage = (event) => {

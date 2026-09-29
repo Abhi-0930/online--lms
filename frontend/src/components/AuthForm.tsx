@@ -23,6 +23,7 @@ import {
 import { COUNTRIES, DEFAULT_COUNTRY, type Country } from "@/lib/countries";
 import { CountryFlag } from "@/components/CountryFlag";
 import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
+import { API_BASE_URL } from "@/lib/apiConfig";
 import { useAuth } from "@/hooks/useAuth";
 
 export function AuthForm({
@@ -250,13 +251,13 @@ export function AuthForm({
     if (isOAuth) {
       const deviceId = getPersistentDeviceId();
       const deviceName = getBrowserDeviceName();
-      window.location.href = `http://localhost:4000/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}&force=true`;
+      window.location.href = `${API_BASE_URL}/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}&force=true`;
       return;
     }
 
     setIsLoading(true);
     try {
-      const endpoint = "http://localhost:4000/api/v1/auth/login";
+      const endpoint = `${API_BASE_URL}/api/v1/auth/login`;
       const payload = {
         email: formData.email,
         password: formData.password,
@@ -331,8 +332,8 @@ export function AuthForm({
 
     try {
       const endpoint = isSignUp
-        ? "http://localhost:4000/api/v1/auth/register"
-        : "http://localhost:4000/api/v1/auth/login";
+        ? `${API_BASE_URL}/api/v1/auth/register`
+        : `${API_BASE_URL}/api/v1/auth/login`;
 
       const payload = isSignUp
         ? {
@@ -428,7 +429,7 @@ export function AuthForm({
   const handleGoogleLogin = () => {
     const deviceId = getPersistentDeviceId();
     const deviceName = getBrowserDeviceName();
-    window.location.href = `http://localhost:4000/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}`;
+    window.location.href = `${API_BASE_URL}/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}`;
   };
 
   return (

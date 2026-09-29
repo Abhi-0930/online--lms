@@ -19,6 +19,7 @@ import { useUserActivity, getLocalDateString } from "@/hooks/useUserActivity";
 import StudentProblemArena from "@/components/StudentProblemArena";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 
 function getSecureHref(path: string, params?: Record<string, any>) {
@@ -6192,7 +6193,7 @@ function ProfilePage() {
 
   const fetchDevices = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/auth/devices", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/devices`, {
         credentials: "include",
       });
       if (res.ok) {
@@ -6213,7 +6214,7 @@ function ProfilePage() {
   const handleRevokeDevice = async (sessionToken: string) => {
     setRevokingToken(sessionToken);
     try {
-      const res = await fetch("http://localhost:4000/api/v1/auth/devices/revoke", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/devices/revoke`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL } from "@/lib/apiConfig";
 import {
   ArrowLeft,
   Calendar,
@@ -281,7 +282,7 @@ export default function UploadRecordingBuilder({
 
   useEffect(() => {
     if (!courses || courses.length === 0) {
-      fetch("http://localhost:4000/api/v1/admin/courses")
+      fetch(`${API_BASE_URL}/api/v1/admin/courses`)
         .then((r) => (r.ok ? r.json() : []))
         .then((apiData) => {
           if (Array.isArray(apiData) && apiData.length > 0) {

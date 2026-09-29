@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "./useAuth";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export interface DailyActivityRecord {
   date: string; // "YYYY-MM-DD"
@@ -40,7 +41,6 @@ export interface WeekDayStatus {
 
 export const REAL_ACTIVITY_STORAGE_KEY = "lms_user_real_activity_v2";
 export const TODAY_SECONDS_KEY = "lms_user_today_active_seconds_v2";
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 export function getLocalDateString(d = new Date()): string {
   const year = d.getFullYear();

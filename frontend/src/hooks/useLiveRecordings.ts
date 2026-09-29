@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export interface RecordingResource {
   id: number | string;
@@ -48,7 +49,6 @@ export interface LiveRecordingItem {
 }
 
 const CACHE_KEY = "lms_user_cached_recordings";
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 function readCache(): LiveRecordingItem[] {
   if (typeof window === "undefined") return [];

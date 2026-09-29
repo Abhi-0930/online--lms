@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./useAuth";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export interface EnrollmentItem {
   id: string;
@@ -61,7 +62,7 @@ export function useEnrollments() {
     }
 
     try {
-      const res = await fetch("http://localhost:4000/api/v1/payments/my-enrollments", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/payments/my-enrollments`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -19,6 +19,7 @@ import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
 import { resolveDisplayName } from "@/lib/nameUtils";
 import { ConfettiAnimation } from "@/components/ConfettiAnimation";
 import { useAuth } from "@/hooks/useAuth";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 interface StudyOption {
   id: string;
@@ -465,7 +466,7 @@ function OnboardingContent() {
 
     async function loadSession() {
       try {
-        const res = await fetch("http://localhost:4000/api/v1/auth/me", {
+        const res = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -583,7 +584,7 @@ function OnboardingContent() {
 
     try {
       // Save Step 1 to database table UserOnboarding via authenticated cookie
-      await fetch("http://localhost:4000/api/v1/onboarding/step-1", {
+      await fetch(`${API_BASE_URL}/api/v1/onboarding/step-1`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -607,7 +608,7 @@ function OnboardingContent() {
 
     try {
       // Save Step 2 to database table UserOnboarding via authenticated cookie
-      await fetch("http://localhost:4000/api/v1/onboarding/step-2", {
+      await fetch(`${API_BASE_URL}/api/v1/onboarding/step-2`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -631,7 +632,7 @@ function OnboardingContent() {
 
     try {
       // Save Step 3 to database table UserOnboarding via authenticated cookie
-      await fetch("http://localhost:4000/api/v1/onboarding/step-3", {
+      await fetch(`${API_BASE_URL}/api/v1/onboarding/step-3`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -668,7 +669,7 @@ function OnboardingContent() {
 
     try {
       // Save Step 4 to database table UserOnboarding & mark isCompleted = true
-      await fetch("http://localhost:4000/api/v1/onboarding/step-4", {
+      await fetch(`${API_BASE_URL}/api/v1/onboarding/step-4`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

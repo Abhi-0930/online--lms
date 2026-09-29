@@ -24,6 +24,7 @@ import CustomAlertDialog from "@/components/CustomAlertDialog";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useAdminRoute, navigateAdmin } from "@/lib/navigation";
 import { useLiveAdminData, AdminStats, StudentItem, Course, CourseStatus, ContentItem, PracticeProblem, PaymentItem, AuditLogItem } from "@/hooks/useLiveAdminData";
+import { API_BASE_URL } from "@/lib/apiConfig";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -775,7 +776,7 @@ function CoursesView({
     setLocalRows(updated);
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/courses/${course.id}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/courses/${course.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -801,7 +802,7 @@ function CoursesView({
     onToast(`Course "${targetTitle}" deleted successfully`);
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/courses/${targetId}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/courses/${targetId}`, {
         method: "DELETE",
       });
       refresh();
@@ -1262,7 +1263,7 @@ function ContentView({
 
   const handleSaveEditedContent = async (updated: ContentItem) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/admin/content/${updated.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/content/${updated.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),
@@ -1294,7 +1295,7 @@ function ContentView({
     const targetTitle = itemToDelete.title;
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/content/${encodeURIComponent(targetId)}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/content/${encodeURIComponent(targetId)}`, {
         method: "DELETE",
       });
       setLocalRows((current) => (current || []).filter((r) => String(r.id) !== targetId));
@@ -1314,7 +1315,7 @@ function ContentView({
   const handleDeleteContent = async (id: string | number) => {
     const idStr = String(id);
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/content/${encodeURIComponent(idStr)}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/content/${encodeURIComponent(idStr)}`, {
         method: "DELETE",
       });
       setLocalRows((current) => (current || []).filter((r) => String(r.id) !== idStr));
@@ -1334,7 +1335,7 @@ function ContentView({
       (current || []).map((r) => (String(r.id) === targetId ? updated : r))
     );
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/content/${encodeURIComponent(targetId)}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/content/${encodeURIComponent(targetId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -3415,7 +3416,7 @@ function AssignmentsView({
     e.stopPropagation();
     const nextStatus = item.status === "Published" ? "Draft" : "Published";
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/admin/assignments/${item.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/assignments/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: nextStatus }),
@@ -3435,7 +3436,7 @@ function AssignmentsView({
     if (!assignmentToDelete || isDeletingAssignment) return;
     setIsDeletingAssignment(true);
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/admin/assignments/${assignmentToDelete.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/assignments/${assignmentToDelete.id}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -5426,7 +5427,7 @@ export default function Home() {
   });
 
   useEffect(() => {
-    fetch("http://localhost:4000/api/v1/admin/announcements")
+    fetch(`${API_BASE_URL}/api/v1/admin/announcements`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
@@ -5453,7 +5454,7 @@ export default function Home() {
     });
 
     try {
-      await fetch("http://localhost:4000/api/v1/admin/announcements", {
+      await fetch(`${API_BASE_URL}/api/v1/admin/announcements`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(ann),
@@ -5473,7 +5474,7 @@ export default function Home() {
     onToast("Announcement deleted");
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/announcements/${id}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/announcements/${id}`, {
         method: "DELETE",
       });
     } catch {}
@@ -5582,7 +5583,7 @@ export default function Home() {
 
   const handleSaveAssignmentDraft = async (data: AssignmentData) => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/admin/assignments", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/assignments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, status: "Draft" }),
@@ -5600,7 +5601,7 @@ export default function Home() {
 
   const handlePublishAssignment = async (data: AssignmentData) => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/admin/assignments", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/assignments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, status: "Published" }),
@@ -5731,8 +5732,8 @@ export default function Home() {
       const targetId = editingProblemData?.id;
       const isExisting = Boolean(targetId);
       const url = isExisting
-        ? `http://localhost:4000/api/v1/admin/practice-problems/${targetId}`
-        : "http://localhost:4000/api/v1/admin/practice-problems";
+        ? `${API_BASE_URL}/api/v1/admin/practice-problems/${targetId}`
+        : `${API_BASE_URL}/api/v1/admin/practice-problems`;
       const method = isExisting ? "PATCH" : "POST";
 
       const res = await fetch(url, {
@@ -5761,8 +5762,8 @@ export default function Home() {
       const targetId = editingProblemData?.id;
       const isExisting = Boolean(targetId);
       const url = isExisting
-        ? `http://localhost:4000/api/v1/admin/practice-problems/${targetId}`
-        : "http://localhost:4000/api/v1/admin/practice-problems";
+        ? `${API_BASE_URL}/api/v1/admin/practice-problems/${targetId}`
+        : `${API_BASE_URL}/api/v1/admin/practice-problems`;
       const method = isExisting ? "PATCH" : "POST";
 
       const res = await fetch(url, {
@@ -5874,7 +5875,7 @@ export default function Home() {
         ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, "")) || 0
         : undefined;
 
-      const res = await fetch("http://localhost:4000/api/v1/admin/courses", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/courses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -5950,7 +5951,7 @@ export default function Home() {
         statusVal = "ARCHIVED";
       }
 
-      const res = await fetch("http://localhost:4000/api/v1/admin/courses", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/courses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

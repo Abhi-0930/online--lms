@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL } from "@/lib/apiConfig";
 import {
   ArrowLeft,
   Calendar,
@@ -900,7 +901,7 @@ export default function ScheduleSessionBuilder({
 
   useEffect(() => {
     if (!courses || courses.length === 0) {
-      fetch("http://localhost:4000/api/v1/admin/courses")
+      fetch(`${API_BASE_URL}/api/v1/admin/courses`)
         .then((r) => (r.ok ? r.json() : []))
         .then((apiData) => {
           if (Array.isArray(apiData) && apiData.length > 0) {
@@ -913,7 +914,7 @@ export default function ScheduleSessionBuilder({
 
   useEffect(() => {
     if (!instructors || instructors.length === 0) {
-      fetch("http://localhost:4000/api/v1/admin/instructors")
+      fetch(`${API_BASE_URL}/api/v1/admin/instructors`)
         .then((r) => (r.ok ? r.json() : []))
         .then((apiData) => {
           if (Array.isArray(apiData) && apiData.length > 0) {
@@ -927,10 +928,10 @@ export default function ScheduleSessionBuilder({
   const fetchRealPlatformResources = () => {
     setIsLoadingPlatformResources(true);
     Promise.allSettled([
-      fetch("http://localhost:4000/api/v1/admin/content").then((r) => (r.ok ? r.json() : [])),
-      fetch("http://localhost:4000/api/v1/admin/assignments").then((r) => (r.ok ? r.json() : [])),
-      fetch("http://localhost:4000/api/v1/admin/practice-problems").then((r) => (r.ok ? r.json() : [])),
-      fetch("http://localhost:4000/api/v1/live-sessions").then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_BASE_URL}/api/v1/admin/content`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_BASE_URL}/api/v1/admin/assignments`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_BASE_URL}/api/v1/admin/practice-problems`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_BASE_URL}/api/v1/live-sessions`).then((r) => (r.ok ? r.json() : [])),
     ])
       .then(([contentRes, assignRes, probRes, sessionsRes]) => {
         if (contentRes.status === "fulfilled" && Array.isArray(contentRes.value) && contentRes.value.length > 0) {

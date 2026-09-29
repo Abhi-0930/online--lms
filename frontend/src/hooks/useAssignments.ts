@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export interface LiveAssignmentItem {
   id: string;
@@ -56,7 +57,6 @@ export interface UserSubmissionItem {
 const DEFAULT_ASSIGNMENTS: LiveAssignmentItem[] = [];
 
 const CACHE_KEY = "lms_user_cached_assignments";
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 function readCached(): LiveAssignmentItem[] {
   if (typeof window === "undefined") return [];

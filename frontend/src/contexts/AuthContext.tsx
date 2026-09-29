@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createSecureUrl } from "@/lib/urlParams";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export interface User {
   id?: string;
@@ -168,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           "X-Session-Token": tabSessionToken,
         };
 
-        const res = await fetch("http://localhost:4000/api/v1/auth/me", {
+        const res = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
           method: "GET",
           headers,
           credentials: "include",
@@ -372,7 +373,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserState(null);
 
     try {
-      await fetch("http://localhost:4000/api/v1/auth/logout", {
+      await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
         method: "POST",
         credentials: "include",
       }).catch(() => {});

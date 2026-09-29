@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export interface LiveCourseItem {
   id: string;
@@ -242,7 +243,7 @@ export function useLiveCourses() {
 
   const fetchCourses = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/courses", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/courses`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });

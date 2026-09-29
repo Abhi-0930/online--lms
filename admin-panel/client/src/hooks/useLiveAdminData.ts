@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { LiveSessionData } from "@/components/ScheduleSessionBuilder";
 import { RecordingData } from "@/components/UploadRecordingBuilder";
+import { API_BASE_URL, WS_BASE_URL } from "@/lib/apiConfig";
 
 export interface AdminStats {
   totalStudents: number;
@@ -412,7 +413,7 @@ export function useLiveAdminData() {
     });
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/practice-problems/${id}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/practice-problems/${id}`, {
         method: "DELETE",
       });
     } catch {}
@@ -426,7 +427,7 @@ export function useLiveAdminData() {
     upsertPracticeProblem({ ...target, status: newStatus });
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/practice-problems/${id}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/practice-problems/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -436,7 +437,7 @@ export function useLiveAdminData() {
 
   const fetchCourses = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/admin/courses");
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/courses`);
       if (res.ok) {
         const data = await res.json();
         updateCourses(data);
@@ -475,7 +476,7 @@ export function useLiveAdminData() {
     });
 
     try {
-      await fetch("http://localhost:4000/api/v1/admin/live-sessions", {
+      await fetch(`${API_BASE_URL}/api/v1/admin/live-sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newSession),
@@ -494,7 +495,7 @@ export function useLiveAdminData() {
     });
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/live-sessions/${id}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/live-sessions/${id}`, {
         method: "DELETE",
       });
     } catch {}
@@ -518,7 +519,7 @@ export function useLiveAdminData() {
     });
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/live-sessions/${id}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/live-sessions/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: nextStatus }),
@@ -528,7 +529,7 @@ export function useLiveAdminData() {
 
   const fetchLiveSessions = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/admin/live-sessions");
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/live-sessions`);
       if (res.ok) {
         const data = await res.json();
         updateLiveSessions(data);
@@ -538,7 +539,7 @@ export function useLiveAdminData() {
 
   const fetchPracticeProblems = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/admin/practice-problems");
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/practice-problems`);
       if (res.ok) {
         const data = await res.json();
         updatePracticeProblems(data);
@@ -576,7 +577,7 @@ export function useLiveAdminData() {
     });
 
     try {
-      await fetch("http://localhost:4000/api/v1/admin/recordings", {
+      await fetch(`${API_BASE_URL}/api/v1/admin/recordings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newRec),
@@ -586,7 +587,7 @@ export function useLiveAdminData() {
 
   const deleteRecording = async (id: string | number) => {
     setRecordingsList((prev) => {
-      const updated = prev.filter((r) => String(r.id) !== String(id));
+      const updated = prev.filter((s) => String(s.id) !== String(id));
       writeCache(CACHE_KEYS.RECORDINGS, updated);
       try {
         window.dispatchEvent(new CustomEvent("lms_recordings_updated", { detail: updated }));
@@ -595,7 +596,7 @@ export function useLiveAdminData() {
     });
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/recordings/${id}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/recordings/${id}`, {
         method: "DELETE",
       });
     } catch {}
@@ -603,7 +604,7 @@ export function useLiveAdminData() {
 
   const fetchRecordings = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/admin/recordings");
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/recordings`);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -620,7 +621,7 @@ export function useLiveAdminData() {
 
   const fetchPayments = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/admin/payments");
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/payments`);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -637,7 +638,7 @@ export function useLiveAdminData() {
 
   const fetchInstructors = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/admin/instructors");
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/instructors`);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -654,7 +655,7 @@ export function useLiveAdminData() {
 
   const fetchAuditLogs = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/admin/audit-logs");
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/audit-logs`);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -670,52 +671,52 @@ export function useLiveAdminData() {
       fetchPracticeProblems();
       fetchInstructors();
 
-      fetch("http://localhost:4000/api/v1/admin/stats")
+      fetch(`${API_BASE_URL}/api/v1/admin/stats`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && updateStats(d))
         .catch(() => {});
 
-      fetch("http://localhost:4000/api/v1/admin/students")
+      fetch(`${API_BASE_URL}/api/v1/admin/students`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && updateStudents(d))
         .catch(() => {});
 
-      fetch("http://localhost:4000/api/v1/admin/assignments")
+      fetch(`${API_BASE_URL}/api/v1/admin/assignments`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && updateAssignments(d))
         .catch(() => {});
 
-      fetch("http://localhost:4000/api/v1/admin/submissions")
+      fetch(`${API_BASE_URL}/api/v1/admin/submissions`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && updateSubmissions(d))
         .catch(() => {});
 
-      fetch("http://localhost:4000/api/v1/admin/content")
+      fetch(`${API_BASE_URL}/api/v1/admin/content`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && updateContent(d))
         .catch(() => {});
 
-      fetch("http://localhost:4000/api/v1/admin/live-sessions")
+      fetch(`${API_BASE_URL}/api/v1/admin/live-sessions`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && updateLiveSessions(d))
         .catch(() => {});
 
-      fetch("http://localhost:4000/api/v1/admin/recordings")
+      fetch(`${API_BASE_URL}/api/v1/admin/recordings`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && Array.isArray(d) && updateRecordings(d))
         .catch(() => {});
 
-      fetch("http://localhost:4000/api/v1/admin/instructors")
+      fetch(`${API_BASE_URL}/api/v1/admin/instructors`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && Array.isArray(d) && updateInstructors(d))
         .catch(() => {});
 
-      fetch("http://localhost:4000/api/v1/admin/payments")
+      fetch(`${API_BASE_URL}/api/v1/admin/payments`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && Array.isArray(d) && updatePayments(d))
         .catch(() => {});
 
-      fetch("http://localhost:4000/api/v1/admin/audit-logs")
+      fetch(`${API_BASE_URL}/api/v1/admin/audit-logs`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d && Array.isArray(d) && updateAuditLogs(d))
         .catch(() => {});
@@ -737,9 +738,7 @@ export function useLiveAdminData() {
       if (!isMounted) return;
 
       try {
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const host = window.location.hostname || "localhost";
-        const wsUrl = `${protocol}//${host}:4000/api/v1/admin/ws`;
+        const wsUrl = `${WS_BASE_URL}/api/v1/admin/ws`;
 
         socket = new WebSocket(wsUrl);
         wsRef.current = socket;

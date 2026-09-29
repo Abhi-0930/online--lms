@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export interface LiveSessionItem {
   id: string;
@@ -74,7 +75,7 @@ export function useLiveSessions() {
 
   const fetchSessions = useCallback(async () => {
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/live-sessions?_t=${Date.now()}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/live-sessions?_t=${Date.now()}`, {
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache, no-store, must-revalidate",

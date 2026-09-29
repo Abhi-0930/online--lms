@@ -15,6 +15,7 @@ import {
   Circle,
 } from "lucide-react";
 import { createSecureUrl } from "@/lib/urlParams";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 // ==========================================
 // ILLUSTRATION COMPONENTS (Vector SVG Art)
@@ -298,7 +299,7 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:4000/api/v1/auth/forgot-password", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
@@ -362,7 +363,7 @@ export default function ForgotPasswordPage() {
     if (timer > 0) return;
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:4000/api/v1/auth/forgot-password", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
@@ -392,7 +393,7 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:4000/api/v1/auth/verify-otp", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), otp: otpCode }),
@@ -455,7 +456,7 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:4000/api/v1/auth/reset-password", {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

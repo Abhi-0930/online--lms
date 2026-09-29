@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { API_BASE_URL } from "@/lib/apiConfig";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -561,8 +562,6 @@ export default function StudentProblemArena({
     }
     return "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300 border-slate-200 dark:border-white/10";
   };
-
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   interface CommunitySolution {
     id: string;

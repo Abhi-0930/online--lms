@@ -3,6 +3,7 @@ import { X, Code2, Sparkles, CheckCircle2, AlertCircle, Plus, Trash2 } from "luc
 import { PracticeProblem } from "../hooks/useLiveAdminData";
 import { CompanySearchSelect } from "./CompanySearchSelect";
 import { saveDraft, getDraft, clearDraft } from "@/lib/draftManager";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 interface PracticeProblemModalProps {
   isOpen: boolean;
@@ -224,8 +225,8 @@ export default function PracticeProblemModal({
 
     try {
       const url = problemToEdit?.id
-        ? `http://localhost:4000/api/v1/admin/practice-problems/${problemToEdit.id}`
-        : `http://localhost:4000/api/v1/admin/practice-problems`;
+        ? `${API_BASE_URL}/api/v1/admin/practice-problems/${problemToEdit.id}`
+        : `${API_BASE_URL}/api/v1/admin/practice-problems`;
       const method = problemToEdit?.id ? "PATCH" : "POST";
 
       const res = await fetch(url, {

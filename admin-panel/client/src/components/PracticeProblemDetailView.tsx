@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { API_BASE_URL } from "@/lib/apiConfig";
 import {
   ArrowLeft,
   Edit3,
@@ -144,7 +145,7 @@ export default function PracticeProblemDetailView({
   const fetchSubmissions = async () => {
     try {
       const res = await fetch(
-        `http://localhost:4000/api/v1/admin/practice-problems/${problem.id}/submissions`,
+        `${API_BASE_URL}/api/v1/admin/practice-problems/${problem.id}/submissions`,
         { cache: "no-store" }
       );
       if (res.ok) {
@@ -210,7 +211,7 @@ export default function PracticeProblemDetailView({
   const fetchDiscussions = async () => {
     try {
       const res = await fetch(
-        `http://localhost:4000/api/v1/admin/practice-problems/${problem.id}/discussions`,
+        `${API_BASE_URL}/api/v1/admin/practice-problems/${problem.id}/discussions`,
         { cache: "no-store" }
       );
       if (res.ok) {
@@ -249,7 +250,7 @@ export default function PracticeProblemDetailView({
     );
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/practice-problems/submissions/${submissionId}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/practice-problems/submissions/${submissionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -263,7 +264,7 @@ export default function PracticeProblemDetailView({
     );
 
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/practice-problems/discussions/${discussionId}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/practice-problems/discussions/${discussionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -275,7 +276,7 @@ export default function PracticeProblemDetailView({
   const handleDeleteDiscussion = async (discussionId: string) => {
     setDiscussions((prev) => prev.filter((d) => d.id !== discussionId));
     try {
-      await fetch(`http://localhost:4000/api/v1/admin/practice-problems/discussions/${discussionId}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/practice-problems/discussions/${discussionId}`, {
         method: "DELETE",
       });
       fetchDiscussions();
@@ -285,7 +286,7 @@ export default function PracticeProblemDetailView({
   const handleSendDiscussionReply = async (discussionId: string) => {
     if (!replyText.trim()) return;
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/admin/practice-problems/discussions/${discussionId}/reply`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/practice-problems/discussions/${discussionId}/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -519,7 +520,7 @@ export default function PracticeProblemDetailView({
     if (!newDiscussionTitle.trim()) return;
 
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/admin/practice-problems/${problem.id}/discussions`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/practice-problems/${problem.id}/discussions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
