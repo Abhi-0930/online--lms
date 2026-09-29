@@ -7,7 +7,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { toast } from "sonner";
 import { createSecureUrl } from "@/lib/urlParams";
 import { resolveDisplayName, resolveFirstName, resolveEducationStatus } from "@/lib/nameUtils";
-import { initiateRazorpayCheckout } from "@/lib/razorpay";
+import { initiateRazorpayCheckout, loadRazorpayScript, preloadCheckoutOrder } from "@/lib/razorpay";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { useLiveCourses, LiveCourseItem } from "@/hooks/useLiveCourses";
 import { useAssignments, LiveAssignmentItem } from "@/hooks/useAssignments";
@@ -182,6 +182,8 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
   const { recordings } = useLiveRecordings();
   const { sessions: liveSessions } = useLiveSessions();
   const { unreadCount: unreadAnnouncements } = useAnnouncements();
+  const { getStreakData } = useUserActivity();
+  const { streak, weekDaysStatus } = getStreakData();
   const isActive = (href: string) => href === "/" ? location === "/" : location.startsWith(href);
 
   const hasEnrollments = Array.isArray(enrollments) && enrollments.length > 0;
@@ -231,9 +233,24 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
               <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#3157e8]/30 blur-2xl" />
               <Sparkles className="relative mb-3 h-5 w-5 text-[#ffca63]" />
               <p className="relative text-sm font-semibold">Small steps. Big offers.</p>
-              <p className="relative mt-1 text-xs leading-5 text-white/60">Keep your 7-day streak alive.</p>
-              <div className="relative mt-4 flex items-center gap-1.5">
-                {[1, 2, 3, 4, 5, 6, 7].map((day) => <span key={day} className={cx("h-1.5 flex-1 rounded-full", day < 7 ? "bg-[#ffca63]" : "bg-white/20")} />)}
+              <p className="relative mt-1 text-xs leading-5 text-white/60">
+                {streak === 0
+                  ? "Start your daily streak today!"
+                  : streak === 1
+                  ? "1-day streak! Keep going today."
+                  : `Keep your ${streak}-day streak alive.`}
+              </p>
+              <div className="relative mt-4 flex items-center gap-1.5" title={`${streak} day learning streak`}>
+                {weekDaysStatus.map((day) => (
+                  <span
+                    key={day.dayName}
+                    title={`${day.dayName}: ${day.isActive ? `${day.minutes}m active` : "No activity"}`}
+                    className={cx(
+                      "h-1.5 flex-1 rounded-full transition-all duration-300",
+                      day.isActive ? "bg-[#ffca63] shadow-[0_0_8px_rgba(255,202,99,0.5)]" : "bg-white/20"
+                    )}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -3036,6 +3053,23 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const course = courses.find((item) => item.id === courseId || item.slug === courseId);
+  const enrolled = isEnrolled(course?.id || "") || isEnrolled(course?.slug || "");
+  const basePriceNumber = course?.rawPrice ?? 0;
+  const platformFee = basePriceNumber > 0 ? 10 : 0;
+  const totalAmountNumber = basePriceNumber + platformFee;
+
+  // Pre-load Razorpay checkout SDK & pre-warm instance in background on page load
+  useEffect(() => {
+    loadRazorpayScript();
+    if (course && totalAmountNumber > 0 && user?.email) {
+      preloadCheckoutOrder({
+        courseId: course.id,
+        courseTitle: course.title,
+        price: totalAmountNumber,
+        user,
+      });
+    }
+  }, [course?.id, course?.title, totalAmountNumber, user]);
 
   if (loading) {
     return (
@@ -3061,11 +3095,6 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
     );
   }
 
-  const enrolled = isEnrolled(course.id) || isEnrolled(course.slug);
-  const basePriceNumber = course.rawPrice;
-  const platformFee = basePriceNumber > 0 ? 10 : 0;
-  const totalAmountNumber = basePriceNumber + platformFee;
-
   const originalPriceNumber = course.rawOriginalPrice || basePriceNumber;
   const discountSavingsNumber = course.hasDiscount && originalPriceNumber > basePriceNumber
     ? originalPriceNumber - basePriceNumber
@@ -3087,6 +3116,9 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
       setIsProcessing(true);
       toast.success("Enrolled successfully for free!");
       refreshEnrollments();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("lms:enrollments-updated"));
+      }
       setTimeout(() => {
         router.push(getSecureHref("/my-courses"));
       }, 800);
@@ -3099,9 +3131,15 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
       courseTitle: course.title,
       price: totalAmountNumber,
       user,
+      onOpen: () => {
+        setIsProcessing(false);
+      },
       onSuccess: () => {
         setIsProcessing(false);
         refreshEnrollments();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("lms:enrollments-updated"));
+        }
         setTimeout(() => {
           router.push(getSecureHref("/my-courses"));
         }, 800);
@@ -3113,6 +3151,7 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
         setIsProcessing(false);
       },
     });
+    setIsProcessing(false);
   };
 
   return (
@@ -3337,6 +3376,8 @@ function MyCoursesPage() {
   const { enrollments } = useEnrollments();
   const { courses, loading } = useLiveCourses();
   const { assignments } = useAssignments();
+  const { getStreakData } = useUserActivity();
+  const { streak } = useMemo(() => getStreakData(), [getStreakData]);
   const [filter, setFilter] = useState("All");
 
   const enrolledCourses = courses.filter((c) =>
@@ -3394,7 +3435,9 @@ function MyCoursesPage() {
             <Flame className="h-5 w-5" />
           </span>
           <div>
-            <p className="font-display text-2xl font-bold text-[#17223d] dark:text-white">07 days</p>
+            <p className="font-display text-2xl font-bold text-[#17223d] dark:text-white">
+              {String(streak).padStart(2, "0")} {streak === 1 ? "day" : "days"}
+            </p>
             <p className="text-xs text-[#9aa4bc]">Current streak</p>
           </div>
         </div>
@@ -4190,6 +4233,9 @@ function PracticePage({
     setSelectedCompany("All companies");
   };
 
+  const { getStreakData } = useUserActivity();
+  const { streak } = useMemo(() => getStreakData(), [getStreakData]);
+
   return (
     <>
       <PageHeader
@@ -4197,8 +4243,8 @@ function PracticePage({
         title="Practice problems"
         description="A focused set of interview patterns. Solve a little every day, then review what you missed."
         action={
-          <div className="flex items-center gap-2 rounded-xl bg-[#fff4db] px-3 py-2 text-xs font-bold text-[#b77917]">
-            <Flame className="h-4 w-4" /> 7 day streak
+          <div className="flex items-center gap-2 rounded-xl bg-[#fff4db] dark:bg-amber-950/40 px-3 py-2 text-xs font-bold text-[#b77917] dark:text-amber-400">
+            <Flame className="h-4 w-4 text-amber-500" /> {streak} day streak
           </div>
         }
       />
@@ -6119,6 +6165,8 @@ function ProfilePage() {
   const { user, logout } = useAuth();
   const { enrollments } = useEnrollments();
   const { problems: liveProblems } = useLiveProblems();
+  const { getStreakData } = useUserActivity();
+  const { streak } = useMemo(() => getStreakData(), [getStreakData]);
   const solvedCount = liveProblems.filter((p) => p.solved).length;
   const displayName = resolveDisplayName(user);
   const email = user?.email || "learner@example.com";
@@ -6215,7 +6263,9 @@ function ProfilePage() {
               <p className="mt-1 text-[9px] text-[#9aa4bc]">Solved</p>
             </div>
             <div className="text-center">
-              <p className="font-display text-lg font-bold text-[#17223d] dark:text-white">07</p>
+              <p className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                {String(streak).padStart(2, "0")}
+              </p>
               <p className="mt-1 text-[9px] text-[#9aa4bc]">Streak</p>
             </div>
           </div>

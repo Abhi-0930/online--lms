@@ -69,6 +69,7 @@ export const CATALOG_COURSES = [
 
 export class PaymentService {
   private razorpay: Razorpay;
+  private static courseCache = new Map<string, any>();
 
   constructor(private prisma: PrismaClient) {
     this.razorpay = new Razorpay({
@@ -78,63 +79,106 @@ export class PaymentService {
   }
 
   /**
+   * Helper to execute DB operations with automatic retry on pool/connection timeouts
+   */
+  private async withDbRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 400): Promise<T> {
+    let lastError: any;
+    for (let i = 0; i <= retries; i++) {
+      try {
+        return await fn();
+      } catch (err: any) {
+        lastError = err;
+        const msg = err?.message || '';
+        const isTimeout =
+          msg.includes('Timed out fetching a new connection') ||
+          msg.includes('connection pool') ||
+          msg.includes("Can't reach database server") ||
+          msg.includes('Connection terminated');
+        if (isTimeout && i < retries) {
+          logger.warn({ attempt: i + 1, err: msg }, 'DB connection pool busy, retrying query...');
+          await new Promise((r) => setTimeout(r, delayMs * (i + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError;
+  }
+
+  /**
    * Ensure default/catalog course exists in Neon PostgreSQL
    */
   async ensureCourse(identifier: string) {
-    // 1. Try finding by ID or Slug in DB
-    let course = await this.prisma.course.findFirst({
-      where: {
-        OR: [{ id: identifier }, { slug: identifier }],
-      },
-    });
-
-    if (course) return course;
-
-    // 2. Check if it matches known catalog
-    const catalogItem = CATALOG_COURSES.find(
-      (c) => c.id === identifier || c.slug === identifier
-    );
-
-    // 3. Find or create instructor for course creation
-    let instructor = await this.prisma.user.findFirst({
-      where: { role: { in: ['ADMIN', 'INSTRUCTOR'] } },
-    });
-
-    if (!instructor) {
-      instructor = await this.prisma.user.findFirst();
+    // 0. Fast in-memory cache lookup
+    if (PaymentService.courseCache.has(identifier)) {
+      return PaymentService.courseCache.get(identifier);
     }
 
-    if (!instructor) {
-      // Create fallback instructor
-      instructor = await this.prisma.user.create({
-        data: {
-          email: 'instructor@skillforge.io',
-          fullName: 'Maya Patel',
-          role: 'INSTRUCTOR',
-          isEmailVerified: true,
+    return this.withDbRetry(async () => {
+      // 1. Try finding by ID or Slug in DB
+      let course = await this.prisma.course.findFirst({
+        where: {
+          OR: [{ id: identifier }, { slug: identifier }],
         },
       });
-    }
 
-    const title = catalogItem?.title || identifier.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-    const price = catalogItem ? catalogItem.price : 1499;
+      if (course) {
+        PaymentService.courseCache.set(course.id, course);
+        if (course.slug) PaymentService.courseCache.set(course.slug, course);
+        return course;
+      }
 
-    course = await this.prisma.course.create({
-      data: {
-        id: catalogItem?.id || undefined,
-        slug: catalogItem?.slug || identifier,
-        title,
-        subtitle: catalogItem?.subtitle || 'Master the essential skills for modern software engineering.',
-        description: catalogItem?.description || `Complete hands-on curriculum for ${title}.`,
-        coverImageUrl: catalogItem?.coverImageUrl || 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=85',
-        price,
-        status: 'PUBLISHED',
-        level: catalogItem?.level || 'BEGINNER',
-        instructorId: instructor.id,
-      },
+      // 2. Check if it matches known catalog
+      const catalogItem = CATALOG_COURSES.find(
+        (c) => c.id === identifier || c.slug === identifier
+      );
+
+      // 3. Find or create instructor for course creation
+      let instructor = await this.prisma.user.findFirst({
+        where: { role: { in: ['ADMIN', 'INSTRUCTOR'] } },
+      });
+
+      if (!instructor) {
+        instructor = await this.prisma.user.findFirst();
+      }
+
+      if (!instructor) {
+        // Create fallback instructor
+        instructor = await this.prisma.user.create({
+          data: {
+            email: 'instructor@skillforge.io',
+            fullName: 'Maya Patel',
+            role: 'INSTRUCTOR',
+            isEmailVerified: true,
+          },
+        });
+      }
+
+      const title = catalogItem?.title || identifier.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+      const price = catalogItem ? catalogItem.price : 1499;
+
+      course = await this.prisma.course.create({
+        data: {
+          id: catalogItem?.id || undefined,
+          slug: catalogItem?.slug || identifier,
+          title,
+          subtitle: catalogItem?.subtitle || 'Master the essential skills for modern software engineering.',
+          description: catalogItem?.description || `Complete hands-on curriculum for ${title}.`,
+          coverImageUrl: catalogItem?.coverImageUrl || 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=85',
+          price,
+          status: 'PUBLISHED',
+          level: catalogItem?.level || 'BEGINNER',
+          instructorId: instructor.id,
+        },
+      });
+
+      if (course) {
+        PaymentService.courseCache.set(course.id, course);
+        if (course.slug) PaymentService.courseCache.set(course.slug, course);
+      }
+
+      return course;
     });
-
-    return course;
   }
 
   /**
@@ -147,32 +191,35 @@ export class PaymentService {
     let targetCohort: any = null;
     let finalAmount = options.amount || 0;
 
+    let enrollmentCheckPromise: Promise<any> = Promise.resolve(null);
+
     if (type === 'COURSE_ENROLLMENT' && courseId) {
       targetCourse = await this.ensureCourse(courseId);
 
-      // Check if already actively enrolled
-      const existingEnrollment = await this.prisma.enrollment.findUnique({
-        where: {
-          userId_courseId: {
-            userId,
-            courseId: targetCourse.id,
+      // Check if already actively enrolled in parallel with Razorpay call
+      enrollmentCheckPromise = this.withDbRetry(async () => {
+        return this.prisma.enrollment.findUnique({
+          where: {
+            userId_courseId: {
+              userId,
+              courseId: targetCourse.id,
+            },
           },
-        },
+        });
       });
 
-      if (existingEnrollment && existingEnrollment.status === 'ACTIVE') {
-        const error: any = new Error('You are already enrolled in this course.');
-        error.statusCode = 409;
-        error.code = 'ALREADY_ENROLLED';
-        throw error;
+      if (options.amount && options.amount > 0) {
+        finalAmount = options.amount;
+      } else {
+        const baseCoursePrice = Number(targetCourse.price) || 1499;
+        const platformFee = 10;
+        finalAmount = baseCoursePrice + platformFee;
       }
-
-      const baseCoursePrice = Number(targetCourse.price) || 1499;
-      const platformFee = 10;
-      finalAmount = baseCoursePrice + platformFee;
     } else if (type === 'COHORT_ENROLLMENT' && cohortId) {
-      targetCohort = await this.prisma.cohort.findUnique({
-        where: { id: cohortId },
+      targetCohort = await this.withDbRetry(async () => {
+        return this.prisma.cohort.findUnique({
+          where: { id: cohortId },
+        });
       });
       if (!targetCohort) {
         const error: any = new Error('Cohort not found');
@@ -189,7 +236,7 @@ export class PaymentService {
     const amountInPaise = Math.round(finalAmount * 100);
     const receipt = options.receipt || `rcpt_${Date.now()}_${userId.slice(0, 6)}`;
 
-    // Create Razorpay order via Razorpay API
+    // Configure Razorpay order parameters
     const orderNotes: Record<string, string | number> = {
       userId,
       type,
@@ -204,35 +251,52 @@ export class PaymentService {
       orderNotes.cohortId = cohortId;
     }
 
-    const order: any = await (this.razorpay.orders.create as any)({
+    // Run Razorpay order creation and Enrollment check in PARALLEL
+    const razorpayOrderPromise = (this.razorpay.orders.create as any)({
       amount: amountInPaise,
       currency,
       receipt,
       notes: orderNotes,
     });
 
-    // Create Payment record in DB (PENDING)
-    await this.prisma.payment.create({
-      data: {
-        userId,
-        razorpayOrderId: order.id,
-        amount: finalAmount,
-        currency,
-        type,
-        courseId: targetCourse?.id,
-        cohortId: targetCohort?.id,
-        status: 'PENDING',
-        metadata: {
-          receipt,
-          notes: order.notes,
+    const [existingEnrollment, order] = await Promise.all([
+      enrollmentCheckPromise,
+      razorpayOrderPromise,
+    ]);
+
+    if (existingEnrollment && existingEnrollment.status === 'ACTIVE') {
+      const error: any = new Error('You are already enrolled in this course.');
+      error.statusCode = 409;
+      error.code = 'ALREADY_ENROLLED';
+      throw error;
+    }
+
+    // Save Payment record in DB (PENDING) in background without blocking checkout popup
+    this.withDbRetry(async () => {
+      return this.prisma.payment.create({
+        data: {
+          userId,
+          razorpayOrderId: (order as any).id,
+          amount: finalAmount,
+          currency,
+          type,
+          courseId: targetCourse?.id,
+          cohortId: targetCohort?.id,
+          status: 'PENDING',
+          metadata: {
+            receipt,
+            notes: (order as any).notes,
+          },
         },
-      },
+      });
+    }).catch((err) => {
+      logger.warn({ err: err?.message, orderId: (order as any).id }, 'Pending payment log');
     });
 
     return {
-      orderId: order.id,
-      amount: order.amount, // in paise
-      currency: order.currency,
+      orderId: (order as any).id,
+      amount: (order as any).amount, // in paise
+      currency: (order as any).currency,
       keyId: env.RAZORPAY_KEY_ID,
       course: targetCourse
         ? {
@@ -279,48 +343,51 @@ export class PaymentService {
       logger.warn({ err: e.message, paymentId }, 'Could not fetch Razorpay payment');
     }
 
-    // 3. Find or update Payment record
-    let payment = await this.prisma.payment.findUnique({
-      where: { razorpayOrderId: orderId },
-      include: { course: true, cohort: true, user: true },
-    });
-
-    if (!payment) {
-      // If courseId provided, resolve course
-      let resolvedCourseId: string | undefined = undefined;
-      if (courseId) {
-        const course = await this.ensureCourse(courseId);
-        resolvedCourseId = course.id;
-      }
-
-      payment = await this.prisma.payment.create({
-        data: {
-          userId,
-          razorpayOrderId: orderId,
-          razorpayPaymentId: paymentId,
-          amount: razorpayPayment ? Number(razorpayPayment.amount) / 100 : 1499,
-          currency: razorpayPayment?.currency || 'INR',
-          type: 'COURSE_ENROLLMENT',
-          courseId: resolvedCourseId,
-          status: 'COMPLETED',
-          metadata: razorpayPayment ? { method: razorpayPayment.method } : undefined,
-        },
+    // 3. Find or update Payment record with automatic retry
+    let payment = await this.withDbRetry(async () => {
+      let p = await this.prisma.payment.findUnique({
+        where: { razorpayOrderId: orderId },
         include: { course: true, cohort: true, user: true },
       });
-    } else {
-      payment = await this.prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          razorpayPaymentId: paymentId,
-          status: 'COMPLETED',
-          metadata: {
-            ...(payment.metadata as object),
-            paymentDetails: razorpayPayment ? { method: razorpayPayment.method, email: razorpayPayment.email } : undefined,
+
+      if (!p) {
+        // If courseId provided, resolve course
+        let resolvedCourseId: string | undefined = undefined;
+        if (courseId) {
+          const course = await this.ensureCourse(courseId);
+          resolvedCourseId = course.id;
+        }
+
+        p = await this.prisma.payment.create({
+          data: {
+            userId,
+            razorpayOrderId: orderId,
+            razorpayPaymentId: paymentId,
+            amount: razorpayPayment ? Number(razorpayPayment.amount) / 100 : 1499,
+            currency: razorpayPayment?.currency || 'INR',
+            type: 'COURSE_ENROLLMENT',
+            courseId: resolvedCourseId,
+            status: 'COMPLETED',
+            metadata: razorpayPayment ? { method: razorpayPayment.method } : undefined,
           },
-        },
-        include: { course: true, cohort: true, user: true },
-      });
-    }
+          include: { course: true, cohort: true, user: true },
+        });
+      } else {
+        p = await this.prisma.payment.update({
+          where: { id: p.id },
+          data: {
+            razorpayPaymentId: paymentId,
+            status: 'COMPLETED',
+            metadata: {
+              ...(p.metadata as object),
+              paymentDetails: razorpayPayment ? { method: razorpayPayment.method, email: razorpayPayment.email } : undefined,
+            },
+          },
+          include: { course: true, cohort: true, user: true },
+        });
+      }
+      return p;
+    });
 
     // 4. Resolve course to enroll in
     let courseToEnroll = payment.course;
@@ -331,61 +398,64 @@ export class PaymentService {
     let enrollment: any = null;
 
     if (courseToEnroll) {
-      // Upsert user Enrollment in Neon DB
-      enrollment = await this.prisma.enrollment.upsert({
-        where: {
-          userId_courseId: {
+      // Upsert user Enrollment in Neon DB with retry
+      enrollment = await this.withDbRetry(async () => {
+        return this.prisma.enrollment.upsert({
+          where: {
+            userId_courseId: {
+              userId: payment.userId,
+              courseId: courseToEnroll.id,
+            },
+          },
+          update: {
+            status: 'ACTIVE',
+          },
+          create: {
             userId: payment.userId,
             courseId: courseToEnroll.id,
+            status: 'ACTIVE',
+            progressPct: 0.0,
           },
-        },
-        update: {
-          status: 'ACTIVE',
-        },
-        create: {
-          userId: payment.userId,
-          courseId: courseToEnroll.id,
-          status: 'ACTIVE',
-          progressPct: 0.0,
-        },
-        include: {
-          course: {
-            select: { id: true, title: true, slug: true, coverImageUrl: true, price: true },
+          include: {
+            course: {
+              select: { id: true, title: true, slug: true, coverImageUrl: true, price: true },
+            },
           },
-        },
+        });
       });
 
       // Link payment to course if not linked
       if (!payment.courseId) {
-        await this.prisma.payment
-          .update({
+        await this.withDbRetry(async () => {
+          return this.prisma.payment.update({
             where: { id: payment.id },
             data: { courseId: courseToEnroll.id },
-          })
-          .catch(() => {});
+          });
+        }).catch(() => {});
       }
     } else if (payment.cohortId) {
+      const cohortId = payment.cohortId;
       // Cohort enrollment
-      await this.prisma.cohortEnrollment.upsert({
-        where: {
-          cohortId_userId: {
-            cohortId: payment.cohortId,
+      await this.withDbRetry(async () => {
+        await this.prisma.cohortEnrollment.upsert({
+          where: {
+            cohortId_userId: {
+              cohortId,
+              userId: payment.userId,
+            },
+          },
+          update: {},
+          create: {
+            cohortId,
             userId: payment.userId,
           },
-        },
-        update: {},
-        create: {
-          cohortId: payment.cohortId,
-          userId: payment.userId,
-        },
-      });
+        });
 
-      await this.prisma.cohort
-        .update({
-          where: { id: payment.cohortId },
+        await this.prisma.cohort.update({
+          where: { id: cohortId },
           data: { currentStudents: { increment: 1 } },
-        })
-        .catch(() => {});
+        });
+      }).catch(() => {});
     }
 
     // 5. Create ActivityLog entry for student and admin timeline

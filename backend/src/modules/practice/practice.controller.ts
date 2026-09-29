@@ -104,5 +104,58 @@ export default async function practiceController(fastify: FastifyInstance) {
       return reply.code(400).send({ error: err.message || 'Failed to record practice submission' });
     }
   });
+
+  // Get problem discussions (Approved for community + student's own pending discussions)
+  fastify.get('/:slugOrId/discussions', async (request, reply) => {
+    reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    reply.header('Pragma', 'no-cache');
+    reply.header('Expires', '0');
+
+    const { slugOrId } = request.params as { slugOrId: string };
+    const { userId, userEmail } = request.query as { userId?: string; userEmail?: string };
+    return adminService.getPracticeDiscussions(slugOrId, { onlyApproved: true, userId, userEmail });
+  });
+
+  // Post a discussion question / thread for a practice problem (Pending review for admin approval)
+  fastify.post('/:slugOrId/discussions', async (request, reply) => {
+    const { slugOrId } = request.params as { slugOrId: string };
+    const body = request.body as any;
+    try {
+      const discussion = await adminService.savePracticeDiscussion(slugOrId, {
+        ...body,
+        status: 'Pending Review',
+        authorRole: 'student',
+      });
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(discussion);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to post practice discussion' });
+    }
+  });
+
+  // Upvote / like a discussion
+  fastify.post('/discussions/:discussionId/like', async (request, reply) => {
+    const { discussionId } = request.params as { discussionId: string };
+    const { delta, userEmail, userId } = (request.body as { delta?: number; userEmail?: string; userId?: string }) || {};
+    const updated = await adminService.likePracticeDiscussion(discussionId, { delta, userEmail, userId });
+    AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+    return reply.send(updated);
+  });
+
+  // Reply to a discussion
+  fastify.post('/discussions/:discussionId/replies', async (request, reply) => {
+    const { discussionId } = request.params as { discussionId: string };
+    const body = request.body as any;
+    try {
+      const updated = await adminService.replyToPracticeDiscussion(discussionId, {
+        ...body,
+        authorRole: body.authorRole || 'student',
+      });
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(updated);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to reply to discussion' });
+    }
+  });
 }
 

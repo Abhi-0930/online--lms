@@ -104,14 +104,36 @@ export default function PracticeProblemDetailView({
   const [newDiscussionOpen, setNewDiscussionOpen] = useState(false);
   const [newDiscussionTitle, setNewDiscussionTitle] = useState("");
   const [newDiscussionBody, setNewDiscussionBody] = useState("");
+  const [discussionFilter, setDiscussionFilter] = useState<string>("All");
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
   const [discussions, setDiscussions] = useState<Array<{
     id: string;
+    problemId?: string;
+    problemSlug?: string;
+    problemTitle?: string;
     title: string;
+    content: string;
+    snippet?: string;
     author: string;
+    authorRole?: string;
+    authorEmail?: string;
+    avatar?: string;
+    authorAvatar?: string;
+    authorDesignation?: string;
+    votes: number;
     replies: number;
+    replyList?: Array<{
+      id: string;
+      author: string;
+      authorRole?: string;
+      avatar?: string;
+      content: string;
+      createdAt?: string;
+    }>;
     status: string;
-    time: string;
-    snippet: string;
+    timestamp?: string;
+    createdAt?: string;
   }>>([]);
 
   // Submissions state
@@ -184,13 +206,37 @@ export default function PracticeProblemDetailView({
     } catch {}
   };
 
+  // Fetch real discussions for this practice problem
+  const fetchDiscussions = async () => {
+    try {
+      const res = await fetch(
+        `http://localhost:4000/api/v1/admin/practice-problems/${problem.id}/discussions`,
+        { cache: "no-store" }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setDiscussions(data);
+          return;
+        }
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     fetchSubmissions();
+    fetchDiscussions();
 
-    const handleFocus = () => fetchSubmissions();
+    const handleFocus = () => {
+      fetchSubmissions();
+      fetchDiscussions();
+    };
     window.addEventListener("focus", handleFocus);
 
-    const interval = setInterval(fetchSubmissions, 4000);
+    const interval = setInterval(() => {
+      fetchSubmissions();
+      fetchDiscussions();
+    }, 4000);
     return () => {
       window.removeEventListener("focus", handleFocus);
       clearInterval(interval);
@@ -209,6 +255,52 @@ export default function PracticeProblemDetailView({
         body: JSON.stringify({ status: newStatus }),
       });
     } catch {}
+  };
+
+  const handleUpdateDiscussionStatus = async (discussionId: string, newStatus: string) => {
+    setDiscussions((prev) =>
+      prev.map((d) => (d.id === discussionId ? { ...d, status: newStatus } : d))
+    );
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/practice-problems/discussions/${discussionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      fetchDiscussions();
+    } catch {}
+  };
+
+  const handleDeleteDiscussion = async (discussionId: string) => {
+    setDiscussions((prev) => prev.filter((d) => d.id !== discussionId));
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/practice-problems/discussions/${discussionId}`, {
+        method: "DELETE",
+      });
+      fetchDiscussions();
+    } catch {}
+  };
+
+  const handleSendDiscussionReply = async (discussionId: string) => {
+    if (!replyText.trim()) return;
+    try {
+      const res = await fetch(`http://localhost:4000/api/v1/admin/practice-problems/discussions/${discussionId}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: replyText.trim(),
+          author: "Instructor (You)",
+          authorRole: "admin",
+        }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setDiscussions((prev) => prev.map((d) => (d.id === discussionId ? updated : d)));
+      }
+    } catch {}
+    setReplyText("");
+    setReplyingToId(null);
   };
 
   // Dynamic Metric Counts from Real Submissions
@@ -422,19 +514,29 @@ export default function PracticeProblemDetailView({
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  const handleAddDiscussion = (e: React.FormEvent) => {
+  const handleAddDiscussion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDiscussionTitle.trim()) return;
-    const item = {
-      id: `disc-${Date.now()}`,
-      title: newDiscussionTitle,
-      author: "Admin (You)",
-      replies: 0,
-      status: "Open",
-      time: "Just now",
-      snippet: newDiscussionBody || "No additional description provided.",
-    };
-    setDiscussions([item, ...discussions]);
+
+    try {
+      const res = await fetch(`http://localhost:4000/api/v1/admin/practice-problems/${problem.id}/discussions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newDiscussionTitle.trim(),
+          content: newDiscussionBody.trim() || "Official discussion topic started by instructor.",
+          author: "Instructor / Admin",
+          authorRole: "admin",
+          authorDesignation: "Lead Instructor",
+          status: "Approved",
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setDiscussions((prev) => [created, ...prev]);
+      }
+    } catch {}
+
     setNewDiscussionTitle("");
     setNewDiscussionBody("");
     setNewDiscussionOpen(false);
@@ -1120,10 +1222,10 @@ export default function PracticeProblemDetailView({
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4">
                   <div>
                     <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                      Discussion
+                      Student Discussions & Moderation
                     </h2>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Help students understand the problem without giving away the solution.
+                      Review and moderate student questions. Only approved discussions will appear publicly in the student portal.
                     </p>
                   </div>
                   <button
@@ -1132,12 +1234,12 @@ export default function PracticeProblemDetailView({
                     className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    <span>New discussion</span>
+                    <span>New discussion topic</span>
                   </button>
                 </div>
 
-                {/* 3 Metric Cards */}
-                <div className="grid grid-cols-3 gap-3.5">
+                {/* 4 Metric Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
                   <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-3.5">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                       Total discussions
@@ -1147,42 +1249,112 @@ export default function PracticeProblemDetailView({
                     </p>
                   </div>
                   <div className="rounded-xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/20 p-3.5">
-                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
-                      Open discussions
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
+                        Pending Review
+                      </p>
+                      {discussions.filter((d) => (d.status || "").toLowerCase().includes("pending")).length > 0 && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500 text-white animate-pulse">
+                          Needs Action
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xl font-bold font-display text-amber-600 dark:text-amber-400 mt-1">
-                      {discussions.filter((d) => d.status === "Open").length}
+                      {discussions.filter((d) => (d.status || "").toLowerCase().includes("pending")).length}
                     </p>
                   </div>
                   <div className="rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-3.5">
                     <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
-                      Resolved
+                      Approved & Live
                     </p>
                     <p className="text-xl font-bold font-display text-emerald-600 dark:text-emerald-400 mt-1">
-                      {discussions.filter((d) => d.status === "Answered").length}
+                      {discussions.filter((d) => {
+                        const s = (d.status || "").toLowerCase();
+                        return s === "approved" || s === "open";
+                      }).length}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-blue-200/60 dark:border-blue-900/40 bg-blue-50/30 dark:bg-blue-950/20 p-3.5">
+                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+                      Answered / Resolved
+                    </p>
+                    <p className="text-xl font-bold font-display text-blue-600 dark:text-blue-400 mt-1">
+                      {discussions.filter((d) => (d.status || "").toLowerCase() === "answered").length}
                     </p>
                   </div>
                 </div>
 
-                {/* New Discussion Modal / Form */}
+                {/* Filter Pills */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {["All", "Pending Review", "Approved", "Answered", "Rejected"].map((f) => {
+                    const count =
+                      f === "All"
+                        ? discussions.length
+                        : f === "Pending Review"
+                        ? discussions.filter((d) => (d.status || "").toLowerCase().includes("pending")).length
+                        : f === "Approved"
+                        ? discussions.filter((d) => (d.status || "").toLowerCase() === "approved" || (d.status || "").toLowerCase() === "open").length
+                        : f === "Answered"
+                        ? discussions.filter((d) => (d.status || "").toLowerCase() === "answered").length
+                        : discussions.filter((d) => (d.status || "").toLowerCase() === "rejected").length;
+
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setDiscussionFilter(f)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap",
+                          discussionFilter === f
+                            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200/80 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10"
+                        )}
+                      >
+                        <span>{f}</span>
+                        <span
+                          className={cn(
+                            "px-1.5 py-0.2 rounded-full text-[10px]",
+                            discussionFilter === f
+                              ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900"
+                              : "bg-slate-200 text-slate-700 dark:bg-white/10 dark:text-slate-300"
+                          )}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* New Discussion Form */}
                 {newDiscussionOpen && (
                   <form
                     onSubmit={handleAddDiscussion}
-                    className="rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-950/30 p-4 space-y-3 animate-in fade-in"
+                    className="rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-950/30 p-4 space-y-3 animate-in fade-in shadow-sm"
                   >
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                      Start a new discussion thread
-                    </h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Sparkles className="h-4 w-4 text-indigo-500" />
+                        <span>Create Official Discussion Topic (Auto-Approved)</span>
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setNewDiscussionOpen(false)}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
                     <input
                       type="text"
-                      placeholder="Title / Question..."
+                      placeholder="Discussion topic title or question..."
                       value={newDiscussionTitle}
                       onChange={(e) => setNewDiscussionTitle(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                     />
                     <textarea
-                      rows={2}
-                      placeholder="Details or clarification context..."
+                      rows={3}
+                      placeholder="Provide full problem hints, discussion prompt, or theoretical context..."
                       value={newDiscussionBody}
                       onChange={(e) => setNewDiscussionBody(e.target.value)}
                       className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 custom-scrollbar"
@@ -1197,9 +1369,9 @@ export default function PracticeProblemDetailView({
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 cursor-pointer"
+                        className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 cursor-pointer shadow-xs"
                       >
-                        Post Discussion
+                        Publish Topic
                       </button>
                     </div>
                   </form>
@@ -1207,34 +1379,256 @@ export default function PracticeProblemDetailView({
 
                 {/* Discussion Thread Cards */}
                 <div className="space-y-3">
-                  {discussions.map((disc) => (
-                    <div
-                      key={disc.id}
-                      className="flex items-center justify-between rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4 hover:border-indigo-200 transition cursor-pointer"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-indigo-600 transition">
-                            {disc.title}
-                          </p>
-                        </div>
-                        <p className="text-[11px] text-slate-400">
-                          {disc.author} · {disc.replies} replies · {disc.time}
-                        </p>
-                      </div>
+                  {discussions
+                    .filter((disc) => {
+                      if (discussionFilter === "All") return true;
+                      const s = (disc.status || "").toLowerCase();
+                      if (discussionFilter === "Pending Review") return s.includes("pending");
+                      if (discussionFilter === "Approved") return s === "approved" || s === "open";
+                      if (discussionFilter === "Answered") return s === "answered";
+                      if (discussionFilter === "Rejected") return s === "rejected";
+                      return true;
+                    })
+                    .map((disc) => {
+                      const isPending = (disc.status || "").toLowerCase().includes("pending");
+                      const isApproved = (disc.status || "").toLowerCase() === "approved" || (disc.status || "").toLowerCase() === "open";
+                      const isAnswered = (disc.status || "").toLowerCase() === "answered";
+                      const isRejected = (disc.status || "").toLowerCase() === "rejected";
 
-                      <span
-                        className={cn(
-                          "rounded-full px-2.5 py-0.5 text-[10px] font-bold",
-                          disc.status === "Answered"
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
-                            : "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
-                        )}
-                      >
-                        {disc.status}
-                      </span>
+                      return (
+                        <div
+                          key={disc.id}
+                          className={cn(
+                            "rounded-xl border p-4.5 transition space-y-3",
+                            isPending
+                              ? "border-amber-300/80 dark:border-amber-800/60 bg-amber-50/20 dark:bg-amber-950/10 shadow-xs"
+                              : isApproved
+                              ? "border-emerald-200/60 dark:border-emerald-900/30 bg-white dark:bg-[#121620]"
+                              : isRejected
+                              ? "border-rose-200/60 dark:border-rose-900/30 bg-rose-50/10 dark:bg-rose-950/10 opacity-75"
+                              : "border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01]"
+                          )}
+                        >
+                          {/* Card Top Header */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3">
+                              <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0 uppercase shadow-xs">
+                                {disc.avatar ? (
+                                  <img
+                                    src={disc.avatar}
+                                    alt={disc.author}
+                                    className="h-full w-full rounded-full object-cover"
+                                  />
+                                ) : (
+                                  (disc.author || "ST").slice(0, 2)
+                                )}
+                              </div>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                                    {disc.title}
+                                  </h4>
+                                </div>
+                                <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {disc.author}
+                                  </span>
+                                  {disc.authorDesignation && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-slate-500">{disc.authorDesignation}</span>
+                                    </>
+                                  )}
+                                  {disc.authorEmail && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-slate-400">{disc.authorEmail}</span>
+                                    </>
+                                  )}
+                                  <span>•</span>
+                                  <span>{disc.timestamp || (disc.createdAt ? new Date(disc.createdAt).toLocaleDateString() : "Recently")}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Status Badge */}
+                            <span
+                              className={cn(
+                                "rounded-full px-2.5 py-1 text-[10px] font-bold shrink-0 border",
+                                isPending
+                                  ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+                                  : isApproved
+                                  ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                                  : isAnswered
+                                  ? "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800"
+                                  : "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
+                              )}
+                            >
+                              {isPending ? "Pending Review" : disc.status}
+                            </span>
+                          </div>
+
+                          {/* Content / Snippet */}
+                          <div className="rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 p-3 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                            {disc.content || disc.snippet || "No additional description provided."}
+                          </div>
+
+                          {/* Reply list if any */}
+                          {Array.isArray(disc.replyList) && disc.replyList.length > 0 && (
+                            <div className="pl-4 border-l-2 border-indigo-200 dark:border-indigo-900/60 space-y-2 pt-1">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                Replies ({disc.replyList.length})
+                              </p>
+                              {disc.replyList.map((rep) => (
+                                <div
+                                  key={rep.id}
+                                  className="rounded-lg bg-indigo-50/30 dark:bg-indigo-950/20 p-2.5 border border-indigo-100 dark:border-indigo-900/40 text-xs space-y-1"
+                                >
+                                  <div className="flex items-center justify-between text-[11px]">
+                                    <span className="font-bold text-indigo-700 dark:text-indigo-400">
+                                      {rep.author} {rep.authorRole === "admin" && "(Instructor)"}
+                                    </span>
+                                    <span className="text-slate-400 text-[10px]">
+                                      {rep.createdAt ? new Date(rep.createdAt).toLocaleDateString() : "Just now"}
+                                    </span>
+                                  </div>
+                                  <p className="text-slate-800 dark:text-slate-200">{rep.content}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Inline Reply Input */}
+                          {replyingToId === disc.id && (
+                            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-white/5">
+                              <textarea
+                                rows={2}
+                                placeholder="Type instructor response / answer to this student..."
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                className="w-full rounded-lg border border-indigo-200 dark:border-indigo-900 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              />
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReplyingToId(null);
+                                    setReplyText("");
+                                  }}
+                                  className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-700"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendDiscussionReply(disc.id)}
+                                  className="px-3 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold hover:bg-indigo-700 cursor-pointer"
+                                >
+                                  Send Reply
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5 flex-wrap gap-2">
+                            <div className="flex items-center gap-3 text-xs text-slate-400">
+                              <span>👍 {disc.votes || 0} upvotes</span>
+                              <span>💬 {disc.replies || disc.replyList?.length || 0} replies</span>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* If Pending: Approve & Reject buttons */}
+                              {isPending && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateDiscussionStatus(disc.id, "Approved")}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer transition"
+                                  >
+                                    <Check className="h-3.5 w-3.5" />
+                                    <span>Approve & Publish to User Panel</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateDiscussionStatus(disc.id, "Rejected")}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/40 text-xs font-semibold cursor-pointer transition"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                    <span>Reject</span>
+                                  </button>
+                                </>
+                              )}
+
+                              {/* If Approved: Mark Answered or Reject */}
+                              {isApproved && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateDiscussionStatus(disc.id, "Answered")}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-900 dark:hover:bg-blue-950/40 text-xs font-semibold cursor-pointer transition"
+                                  >
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    <span>Mark Resolved / Answered</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateDiscussionStatus(disc.id, "Rejected")}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-500 hover:text-rose-600 text-xs font-semibold cursor-pointer"
+                                  >
+                                    <span>Reject</span>
+                                  </button>
+                                </>
+                              )}
+
+                              {/* If Rejected: Re-Approve */}
+                              {isRejected && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateDiscussionStatus(disc.id, "Approved")}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer transition"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                  <span>Re-Approve</span>
+                                </button>
+                              )}
+
+                              {/* Reply button */}
+                              <button
+                                type="button"
+                                onClick={() => setReplyingToId(replyingToId === disc.id ? null : disc.id)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 text-xs font-semibold cursor-pointer"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5" />
+                                <span>{replyingToId === disc.id ? "Cancel Reply" : "Reply"}</span>
+                              </button>
+
+                              {/* Delete button */}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDiscussion(disc.id)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                title="Delete discussion thread"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                  {discussions.length === 0 && (
+                    <div className="rounded-xl border border-dashed border-slate-200 dark:border-white/10 p-8 text-center space-y-2">
+                      <MessageSquare className="h-8 w-8 text-slate-400 mx-auto" />
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        No discussion threads yet
+                      </p>
+                      <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                        Student questions and questions started by instructors will appear here for review and answering.
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}

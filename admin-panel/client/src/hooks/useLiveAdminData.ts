@@ -816,8 +816,19 @@ export function useLiveAdminData() {
 
     connectWebSocket();
 
+    const intervalTimer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: "REFRESH" }));
+        } else {
+          fetchInitialSnapshot();
+        }
+      }
+    }, 6000);
+
     return () => {
       isMounted = false;
+      clearInterval(intervalTimer);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (socket) {
         socket.onclose = null;

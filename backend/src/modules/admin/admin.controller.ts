@@ -209,6 +209,62 @@ export default async function adminController(fastify: FastifyInstance) {
     return reply.send(res);
   });
 
+  // Practice Problem Discussions management
+  fastify.get('/practice-problems/:id/discussions', async (request) => {
+    const { id } = request.params as { id: string };
+    return adminService.getPracticeDiscussions(id, { onlyApproved: false });
+  });
+
+  fastify.get('/practice-problems/discussions', async () => {
+    return adminService.getAllPracticeDiscussions();
+  });
+
+  fastify.post('/practice-problems/:id/discussions', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    try {
+      const discussion = await adminService.savePracticeDiscussion(id, {
+        ...body,
+        authorRole: 'admin',
+        status: body.status || 'Approved',
+      });
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(discussion);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to create discussion' });
+    }
+  });
+
+  fastify.patch('/practice-problems/discussions/:discussionId', async (request, reply) => {
+    const { discussionId } = request.params as { discussionId: string };
+    const { status } = request.body as { status: string };
+    const updated = await adminService.updatePracticeDiscussionStatus(discussionId, status || 'Approved');
+    AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+    return reply.send(updated);
+  });
+
+  fastify.post('/practice-problems/discussions/:discussionId/reply', async (request, reply) => {
+    const { discussionId } = request.params as { discussionId: string };
+    const body = request.body as any;
+    const updated = await adminService.replyToPracticeDiscussion(discussionId, body);
+    AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+    return reply.send(updated);
+  });
+
+  fastify.delete('/practice-problems/discussions/:discussionId', async (request, reply) => {
+    const { discussionId } = request.params as { discussionId: string };
+    const res = await adminService.deletePracticeDiscussion(discussionId);
+    AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+    return reply.send(res);
+  });
+
+  fastify.delete('/practice-problems/:id/discussions', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const res = await adminService.clearAllPracticeDiscussions(id);
+    AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+    return reply.send(res);
+  });
+
   // Live Sessions & Webinars management
   fastify.get('/live-sessions', async () => {
     return adminService.getAllLiveSessions();

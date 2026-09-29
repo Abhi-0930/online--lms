@@ -41,6 +41,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { resolveDisplayName, resolveEducationStatus } from "@/lib/nameUtils";
 import { toast } from "sonner";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { cn } from "@/lib/utils";
 
 function parseArray(val: any): any[] {
   if (!val) return [];
@@ -366,58 +367,52 @@ export default function StudentProblemArena({
     }>
   >([]);
 
-  // Community discussions
-  const [discussions, setDiscussions] = useState<
-    Array<{
+  // Community discussions interface & state
+  interface PracticeDiscussionItem {
+    id: string;
+    problemId?: string;
+    problemSlug?: string;
+    title: string;
+    content: string;
+    snippet?: string;
+    author: string;
+    authorRole?: string;
+    authorEmail?: string;
+    avatar?: string;
+    authorAvatar?: string;
+    authorDesignation?: string;
+    votes: number;
+    replies: number;
+    replyList?: Array<{
       id: string;
-      title: string;
       author: string;
-      avatar: string;
-      votes: number;
-      replies: number;
-      timestamp: string;
+      authorRole?: string;
+      avatar?: string;
       content: string;
-      isLiked?: boolean;
-    }>
-  >([
-    {
-      id: "disc-1",
-      title: "Why One-Pass Hash Map is asymptotically optimal",
-      author: "Arjun Mehta",
-      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop&q=60",
-      votes: 42,
-      replies: 7,
-      timestamp: "3 hours ago",
-      content:
-        "Instead of nested iteration O(n^2), we trade linear auxiliary memory to achieve O(1) lookup on each complement. This gives O(n) total time with a single scan.",
-    },
-    {
-      id: "disc-2",
-      title: "Can we solve this in O(1) space if the array is already sorted?",
-      author: "Priya Sharma",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&auto=format&fit=crop&q=60",
-      votes: 28,
-      replies: 4,
-      timestamp: "1 day ago",
-      content:
-        "Yes! If the array were sorted, we could use the classic Two Pointer technique (left=0, right=n-1) to find the target sum in O(n) time and O(1) space without a hash map.",
-    },
-    {
-      id: "disc-3",
-      title: "Watch out for using the same element twice!",
-      author: "Devendra Rao",
-      avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&auto=format&fit=crop&q=60",
-      votes: 19,
-      replies: 2,
-      timestamp: "2 days ago",
-      content:
-        "Make sure to check if `complement in seen` before assigning `seen[num] = i`, or verify that `seen[complement] != i`. Otherwise target=6 with num=3 could return [0, 0].",
-    },
-  ]);
+      createdAt?: string;
+    }>;
+    status?: string;
+    isLiked?: boolean;
+    likedBy?: string[];
+    timestamp?: string;
+    createdAt?: string;
+  }
 
+  const [discussions, setDiscussions] = useState<PracticeDiscussionItem[]>([]);
   const [newDiscussionTitle, setNewDiscussionTitle] = useState("");
   const [newDiscussionBody, setNewDiscussionBody] = useState("");
   const [isPostingDiscussion, setIsPostingDiscussion] = useState(false);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState<string>("");
+  const [likedDiscussions, setLikedDiscussions] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = localStorage.getItem("lms_user_liked_discussions");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   // Parse structured data safely
   const refSolutions = useMemo(() => {
@@ -647,6 +642,49 @@ export default function StudentProblemArena({
               });
 
             setCommunitySolutions(mapped);
+
+            // Synchronize and update personal submission status from "Pending Review" to "Accepted"
+            setMySubmissions((prev) => {
+              let changed = false;
+              const updated = prev.map((mySub) => {
+                const approvedMatch = data.find(
+                  (sub: any) =>
+                    (sub.id === mySub.id || sub.code?.trim() === mySub.codeSnippet?.trim()) &&
+                    (sub.status || "").toLowerCase() === "approved"
+                );
+                if (approvedMatch && mySub.status !== "Accepted") {
+                  changed = true;
+                  return {
+                    ...mySub,
+                    id: String(approvedMatch.id),
+                    status: "Accepted" as const,
+                    runtime: approvedMatch.runtime || mySub.runtime,
+                    memory: approvedMatch.memory || mySub.memory,
+                  };
+                }
+                return mySub;
+              });
+
+              // Deduplicate by codeSnippet or id so count remains exactly 1 per attempt
+              const seen = new Set<string>();
+              const deduplicated = updated.filter((item) => {
+                const key = item.id || item.codeSnippet?.trim();
+                if (!key || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+              });
+
+              if (changed || deduplicated.length !== prev.length) {
+                try {
+                  localStorage.setItem(
+                    `lms_submissions_${problem.id || problem.slug}`,
+                    JSON.stringify(deduplicated)
+                  );
+                } catch {}
+                return deduplicated;
+              }
+              return prev;
+            });
             return;
           }
         }
@@ -675,18 +713,43 @@ export default function StudentProblemArena({
       }
     };
 
-    fetchSubmissionsFromApi();
+    const fetchDiscussionsFromApi = async () => {
+      try {
+        const userEmail = user?.email ? encodeURIComponent(user.email) : "";
+        const userId = user?.id || "";
+        const res = await fetch(
+          `${API_BASE_URL}/api/v1/practice-problems/${problem.id || problem.slug}/discussions?userEmail=${userEmail}&userId=${userId}`,
+          { cache: "no-store" }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && !isCancelled) {
+            setDiscussions(data);
+            return;
+          }
+        }
+      } catch {}
+    };
 
-    const handleFocus = () => fetchSubmissionsFromApi();
+    fetchSubmissionsFromApi();
+    fetchDiscussionsFromApi();
+
+    const handleFocus = () => {
+      fetchSubmissionsFromApi();
+      fetchDiscussionsFromApi();
+    };
     window.addEventListener("focus", handleFocus);
-    const interval = setInterval(fetchSubmissionsFromApi, 4000);
+    const interval = setInterval(() => {
+      fetchSubmissionsFromApi();
+      fetchDiscussionsFromApi();
+    }, 4000);
 
     return () => {
       isCancelled = true;
       window.removeEventListener("focus", handleFocus);
       clearInterval(interval);
     };
-  }, [problem.id, problem.slug, timeComplexity, spaceComplexity]);
+  }, [problem.id, problem.slug, user?.email, user?.id, timeComplexity, spaceComplexity]);
 
   const [likedSolutions, setLikedSolutions] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
@@ -828,34 +891,15 @@ export default function StudentProblemArena({
 
     const subId = `sub-${Date.now()}`;
 
-    // Add to personal submission history with Pending Review status
-    const newSubmission = {
-      id: subId,
-      status: "Pending Review" as const,
-      runtime: `${runtime}`,
-      memory: `${memory}`,
-      language: language.toUpperCase(),
-      timestamp: "Just now",
-      codeSnippet: code,
-    };
-
-    const updatedSubs = [newSubmission, ...mySubmissions];
-    setMySubmissions(updatedSubs);
-    try {
-      localStorage.setItem(
-        `lms_submissions_${problem.id || problem.slug}`,
-        JSON.stringify(updatedSubs)
-      );
-    } catch {}
-
     // POST to backend API with Pending Review status for admin approval
     try {
-      await fetch(
+      const res = await fetch(
         `${API_BASE_URL}/api/v1/practice-problems/${problem.id || problem.slug}/submissions`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            id: subId,
             student: authorName,
             authorName: authorName,
             userId: user?.id,
@@ -873,8 +917,63 @@ export default function StudentProblemArena({
           }),
         }
       );
+
+      let finalId = subId;
+      let finalStatus: "Pending Review" | "Accepted" = "Pending Review";
+      if (res.ok) {
+        const savedSub = await res.json();
+        if (savedSub?.id) finalId = String(savedSub.id);
+        if ((savedSub?.status || "").toLowerCase() === "approved") {
+          finalStatus = "Accepted";
+        }
+      }
+
+      // Add to personal submission history and deduplicate
+      setMySubmissions((prev) => {
+        const withoutCurrent = prev.filter(
+          (s) => s.id !== subId && s.id !== finalId && s.codeSnippet?.trim() !== code.trim()
+        );
+        const newSubmission = {
+          id: finalId,
+          status: finalStatus,
+          runtime: `${runtime}`,
+          memory: `${memory}`,
+          language: language.toUpperCase(),
+          timestamp: "Just now",
+          codeSnippet: code,
+        };
+        const updatedSubs = [newSubmission, ...withoutCurrent];
+        try {
+          localStorage.setItem(
+            `lms_submissions_${problem.id || problem.slug}`,
+            JSON.stringify(updatedSubs)
+          );
+        } catch {}
+        return updatedSubs;
+      });
     } catch (err) {
       console.error("Failed to persist submission to API:", err);
+      // Fallback local addition
+      const newSubmission = {
+        id: subId,
+        status: "Pending Review" as const,
+        runtime: `${runtime}`,
+        memory: `${memory}`,
+        language: language.toUpperCase(),
+        timestamp: "Just now",
+        codeSnippet: code,
+      };
+      setMySubmissions((prev) => {
+        const withoutCurrent = prev.filter((s) => s.id !== subId && s.codeSnippet?.trim() !== code.trim());
+        const updatedSubs = [newSubmission, ...withoutCurrent];
+        try {
+          localStorage.setItem(
+            `lms_submissions_${problem.id || problem.slug}`,
+            JSON.stringify(updatedSubs)
+          );
+        } catch {}
+        return updatedSubs;
+      });
     }
 
     setIsSubmitting(false);
@@ -884,26 +983,145 @@ export default function StudentProblemArena({
   };
 
   // Handle Post Discussion
-  const handlePostDiscussion = (e: React.FormEvent) => {
+  const handlePostDiscussion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDiscussionTitle.trim()) return;
 
-    const newDisc = {
-      id: `disc-${Date.now()}`,
-      title: newDiscussionTitle,
-      author: "You (Student)",
-      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop&q=60",
-      votes: 1,
-      replies: 0,
-      timestamp: "Just now",
-      content: newDiscussionBody || "Looking for feedback and alternative approaches!",
+    const authorName = resolveDisplayName(user);
+    const rawEdu = resolveEducationStatus(user);
+    const formattedDesignation = rawEdu.toLowerCase().includes("professional")
+      ? "Working Professional"
+      : rawEdu.toLowerCase().includes("year")
+      ? `${rawEdu} student`
+      : rawEdu;
+
+    const payload = {
+      title: newDiscussionTitle.trim(),
+      content: newDiscussionBody.trim() || "Looking for feedback and alternative approaches!",
+      authorName: authorName,
+      author: authorName,
+      email: user?.email,
+      studentEmail: user?.email,
+      avatar: user?.avatarUrl,
+      authorAvatar: user?.avatarUrl,
+      designation: formattedDesignation,
+      authorDesignation: formattedDesignation,
+      userId: user?.id,
+      status: "Pending Review",
     };
 
-    setDiscussions([newDisc, ...discussions]);
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/practice-problems/${problem.id || problem.slug}/discussions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      if (res.ok) {
+        const created = await res.json();
+        setDiscussions((prev) => [created, ...prev.filter((d) => d.id !== created.id)]);
+      }
+    } catch (err) {
+      console.error("Failed to post discussion:", err);
+    }
+
     setNewDiscussionTitle("");
     setNewDiscussionBody("");
     setIsPostingDiscussion(false);
-    toast.success("Discussion posted to the community!");
+    toast.success("Discussion submitted for moderation!", {
+      description: "Your question has been sent to the instructor for review. Once approved, it will be published to the Community Discussions tab.",
+    });
+  };
+
+  const handleToggleLikeDiscussion = async (discussionId: string) => {
+    const isCurrentlyLiked = !!likedDiscussions[discussionId];
+    const newLikedState = !isCurrentlyLiked;
+    const delta = newLikedState ? 1 : -1;
+    const updatedLikes = { ...likedDiscussions, [discussionId]: newLikedState };
+    setLikedDiscussions(updatedLikes);
+
+    try {
+      localStorage.setItem("lms_user_liked_discussions", JSON.stringify(updatedLikes));
+    } catch {}
+
+    setDiscussions((prev) =>
+      prev.map((d) => {
+        if (d.id === discussionId) {
+          return {
+            ...d,
+            votes: Math.max(0, (Number(d.votes) || 0) + delta),
+            isLiked: newLikedState,
+          };
+        }
+        return d;
+      })
+    );
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/practice-problems/discussions/${discussionId}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          delta,
+          userEmail: user?.email,
+          userId: user?.id,
+        }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        if (typeof updated.votes === "number") {
+          setDiscussions((prev) =>
+            prev.map((d) => (d.id === discussionId ? { ...d, votes: updated.votes, isLiked: updated.isLiked } : d))
+          );
+        }
+      }
+    } catch {}
+
+    if (newLikedState) {
+      toast.success("Upvoted discussion!");
+    } else {
+      toast.success("Upvote removed");
+    }
+  };
+
+  const handleSendDiscussionReply = async (discussionId: string) => {
+    if (!replyContent.trim()) return;
+
+    const authorName = resolveDisplayName(user);
+    const payload = {
+      content: replyContent.trim(),
+      authorName,
+      author: authorName,
+      authorEmail: user?.email,
+      email: user?.email,
+      avatar: user?.avatarUrl,
+      authorRole: "student",
+    };
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/practice-problems/discussions/${discussionId}/replies`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      if (res.ok) {
+        const updated = await res.json();
+        setDiscussions((prev) =>
+          prev.map((d) => (d.id === discussionId ? { ...d, ...updated } : d))
+        );
+        toast.success("Reply posted!");
+      }
+    } catch (err) {
+      console.error("Failed to post reply:", err);
+    }
+
+    setReplyContent("");
+    setReplyingToId(null);
   };
 
   const handleCopyCode = () => {
@@ -1651,7 +1869,10 @@ export default function StudentProblemArena({
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                      Community Discussions ({discussions.length})
+                      Community Discussions ({discussions.filter((d) => {
+                        const s = (d.status || "").toLowerCase();
+                        return s === "approved" || s === "answered" || s === "open";
+                      }).length})
                     </h2>
                     <p className="text-xs text-slate-400">
                       Ask doubts, discuss nuances, and share learning breakthroughs.
@@ -1660,28 +1881,48 @@ export default function StudentProblemArena({
                   <button
                     type="button"
                     onClick={() => setIsPostingDiscussion(!isPostingDiscussion)}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#3157e8] hover:bg-[#2648d1] px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#3157e8] hover:bg-[#2648d1] px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer shadow-xs"
                   >
                     <MessageSquare className="h-3.5 w-3.5" />
                     <span>New Topic</span>
                   </button>
                 </div>
 
+                {/* Pending review alert for current user's submitted questions */}
+                {discussions.some((d) => (d.status || "").toLowerCase().includes("pending")) && (
+                  <div className="rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/30 p-3.5 flex items-start gap-3">
+                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="text-xs space-y-0.5">
+                      <p className="font-bold text-amber-900 dark:text-amber-300">
+                        Discussion Topic Under Review
+                      </p>
+                      <p className="text-amber-700 dark:text-amber-400 text-[11px]">
+                        Your discussion topic was submitted and is pending instructor review. Only you can see it until approved.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* New discussion form */}
                 {isPostingDiscussion && (
                   <form
                     onSubmit={handlePostDiscussion}
-                    className="rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-950/30 p-4 space-y-3 animate-in fade-in"
+                    className="rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-950/30 p-4 space-y-3 animate-in fade-in shadow-xs"
                   >
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                      Ask a Question or Share a Thought
-                    </h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        Ask a Question or Share a Thought
+                      </h4>
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                        Moderated by Instructor
+                      </span>
+                    </div>
                     <input
                       type="text"
                       placeholder="Title or summary of your question..."
                       value={newDiscussionTitle}
                       onChange={(e) => setNewDiscussionTitle(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#151926] px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                     />
                     <textarea
                       rows={3}
@@ -1694,15 +1935,15 @@ export default function StudentProblemArena({
                       <button
                         type="button"
                         onClick={() => setIsPostingDiscussion(false)}
-                        className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                        className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-1.5 rounded-lg bg-[#3157e8] text-white text-xs font-bold hover:bg-[#2648d1] cursor-pointer"
+                        className="px-4 py-1.5 rounded-lg bg-[#3157e8] text-white text-xs font-bold hover:bg-[#2648d1] cursor-pointer shadow-xs"
                       >
-                        Post Discussion
+                        Submit for Review
                       </button>
                     </div>
                   </form>
@@ -1710,43 +1951,173 @@ export default function StudentProblemArena({
 
                 {/* Discussions list */}
                 <div className="space-y-3">
-                  {discussions.map((disc) => (
-                    <div
-                      key={disc.id}
-                      className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4 space-y-2 hover:border-indigo-200 transition cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={disc.avatar}
-                            alt={disc.author}
-                            className="h-6 w-6 rounded-full object-cover"
-                          />
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            {disc.author}
+                  {discussions.map((disc) => {
+                    const isPending = (disc.status || "").toLowerCase().includes("pending");
+                    const isInstructor = disc.authorRole === "admin" || (disc.authorDesignation || "").toLowerCase().includes("instructor");
+                    const isLiked = !!likedDiscussions[disc.id];
+
+                    return (
+                      <div
+                        key={disc.id}
+                        className={cn(
+                          "rounded-xl border p-4 space-y-2.5 transition",
+                          isPending
+                            ? "border-amber-300/80 dark:border-amber-800/60 bg-amber-50/20 dark:bg-amber-950/10"
+                            : "border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] hover:border-indigo-200 dark:hover:border-indigo-900/50"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0 uppercase">
+                              {disc.avatar || disc.authorAvatar ? (
+                                <img
+                                  src={disc.avatar || disc.authorAvatar}
+                                  alt={disc.author}
+                                  className="h-full w-full rounded-full object-cover"
+                                />
+                              ) : (
+                                (disc.author || "ST").slice(0, 2)
+                              )}
+                            </div>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              {disc.author}
+                            </span>
+                            {isInstructor && (
+                              <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 px-1.5 py-0.2 rounded-md font-semibold border border-indigo-200 dark:border-indigo-800">
+                                Instructor
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-400">· {disc.timestamp || (disc.createdAt ? new Date(disc.createdAt).toLocaleDateString() : "Recently")}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {isPending && (
+                              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
+                                Pending Approval
+                              </span>
+                            )}
+                            {!isPending && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleLikeDiscussion(disc.id)}
+                                className={cn(
+                                  "flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border",
+                                  isLiked
+                                    ? "bg-indigo-50 border-indigo-300 text-indigo-600 dark:bg-indigo-950/60 dark:border-indigo-800 dark:text-indigo-400"
+                                    : "border-slate-200 dark:border-white/10 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                                )}
+                              >
+                                <ThumbsUp className={cn("h-3 w-3", isLiked ? "fill-indigo-600 text-indigo-600 dark:fill-indigo-400" : "")} />
+                                <span>{disc.votes || 0}</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                          {disc.title}
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                          {disc.content || disc.snippet}
+                        </p>
+
+                        {/* Reply list if any */}
+                        {Array.isArray(disc.replyList) && disc.replyList.length > 0 && (
+                          <div className="pl-3 border-l-2 border-indigo-300 dark:border-indigo-900 space-y-2 pt-1">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              Replies ({disc.replyList.length})
+                            </p>
+                            {disc.replyList.map((rep) => (
+                              <div
+                                key={rep.id}
+                                className="rounded-lg bg-indigo-50/40 dark:bg-indigo-950/30 p-2.5 border border-indigo-100 dark:border-indigo-900/40 text-xs space-y-1"
+                              >
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-indigo-700 dark:text-indigo-400">
+                                      {rep.author}
+                                    </span>
+                                    {rep.authorRole === "admin" && (
+                                      <span className="text-[9px] bg-indigo-200/80 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 px-1.5 py-0.2 rounded font-bold">
+                                        Instructor
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-slate-400 text-[10px]">
+                                    {rep.createdAt ? new Date(rep.createdAt).toLocaleDateString() : "Recently"}
+                                  </span>
+                                </div>
+                                <p className="text-slate-800 dark:text-slate-200 leading-relaxed">{rep.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Inline Student Reply Input */}
+                        {replyingToId === disc.id && (
+                          <div className="space-y-2 pt-2 border-t border-slate-200/80 dark:border-white/5 animate-in fade-in">
+                            <textarea
+                              rows={2}
+                              placeholder="Write your reply or followup thought..."
+                              value={replyContent}
+                              onChange={(e) => setReplyContent(e.target.value)}
+                              className="w-full rounded-lg border border-indigo-200 dark:border-indigo-900 bg-white dark:bg-[#151926] p-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReplyingToId(null);
+                                  setReplyContent("");
+                                }}
+                                className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSendDiscussionReply(disc.id)}
+                                className="px-3 py-1 bg-[#3157e8] text-white rounded-md text-xs font-bold hover:bg-[#2648d1] cursor-pointer shadow-xs"
+                              >
+                                Post Reply
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400 font-medium border-t border-slate-100 dark:border-white/5">
+                          <span className="flex items-center gap-1">
+                            <MessageSquare className="h-3 w-3 text-indigo-500" /> {disc.replyList?.length || disc.replies || 0} replies
                           </span>
-                          <span className="text-[10px] text-slate-400">· {disc.timestamp}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                          <ThumbsUp className="h-3 w-3 text-indigo-500" />
-                          <span>{disc.votes}</span>
+
+                          {!isPending && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReplyingToId(replyingToId === disc.id ? null : disc.id);
+                                setReplyContent("");
+                              }}
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                            >
+                              <span>{replyingToId === disc.id ? "Cancel Reply" : "Reply to thread"}</span>
+                            </button>
+                          )}
                         </div>
                       </div>
+                    );
+                  })}
 
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                        {disc.title}
-                      </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2">
-                        {disc.content}
+                  {discussions.length === 0 && (
+                    <div className="rounded-xl border border-dashed border-slate-200 dark:border-white/10 p-8 text-center space-y-2">
+                      <MessageSquare className="h-8 w-8 text-slate-400 mx-auto" />
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        No community discussions yet
                       </p>
-
-                      <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-400 font-medium">
-                        <span className="flex items-center gap-1">
-                          <MessageSquare className="h-3 w-3" /> {disc.replies} replies
-                        </span>
-                      </div>
+                      <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                        Be the first to ask a question, share an optimization insight, or discuss problem edge cases!
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}

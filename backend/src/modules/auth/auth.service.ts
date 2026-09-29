@@ -81,17 +81,18 @@ export class AuthService {
   private async findUser(email: string, googleId?: string): Promise<any | null> {
     const normalizedEmail = email.toLowerCase().trim();
     try {
-      const user = await this.prisma.user.findFirst({
-        where: {
-          OR: [
-            ...(googleId ? [{ googleId }] : []),
-            { email: normalizedEmail },
-          ],
-        },
-        include: {
-          onboarding: true,
-        },
-      });
+      let user: any = null;
+      if (googleId) {
+        user = await this.prisma.user.findFirst({
+          where: { googleId },
+          include: { onboarding: true },
+        });
+      } else {
+        user = await this.prisma.user.findUnique({
+          where: { email: normalizedEmail },
+          include: { onboarding: true },
+        });
+      }
       if (user) {
         AuthService.fallbackUsers.set(normalizedEmail, user);
         return user;
@@ -362,7 +363,7 @@ export class AuthService {
     AuthService.trackSession(sessionRecord);
 
     try {
-      await this.prisma.userDevice.upsert({
+      const deviceUpsertPromise = this.prisma.userDevice.upsert({
         where: { userId_deviceId: { userId: user.id, deviceId: sessionRecord.deviceId } },
         update: {
           sessionToken,
@@ -380,7 +381,7 @@ export class AuthService {
         },
       });
 
-      await this.prisma.activityLog.create({
+      const activityLogPromise = this.prisma.activityLog.create({
         data: {
           userId: user.id,
           action: 'AUTH_LOGIN',
@@ -388,6 +389,8 @@ export class AuthService {
           metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
         },
       }).catch(() => {});
+
+      await Promise.all([deviceUpsertPromise, activityLogPromise]);
     } catch (err: any) {
       logger.warn({ err: err.message }, 'Database device tracking deferred, session active in memory');
     }

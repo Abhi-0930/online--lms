@@ -1,0 +1,47 @@
+[
+  {
+    "id": "disc-1790675084008-h9wk",
+    "problemId": "520d3d43-c421-4a4b-a9ed-db50c924e9db",
+    "problemSlug": "two-sum",
+    "problemTitle": "Two Sum",
+    "userId": "4c757530-b594-478d-982b-12f4060913b8",
+    "title": "Why use O(n)",
+    "content": "We use it because it is very very fast",
+    "snippet": "We use it because it is very very fast",
+    "author": "Abhishek",
+    "authorRole": "student",
+    "authorEmail": "abhishek.j3094@gmail.com",
+    "avatar": null,
+    "authorAvatar": null,
+    "authorDesignation": "3rd year student",
+    "likedBy": [
+      "abhishek.j3094@gmail.com"
+    ],
+    "votes": 1,
+    "replies": 2,
+    "replyList": [
+      {
+        "id": "reply-1790675108728-ioaq",
+        "author": "Abhishek",
+        "authorRole": "student",
+        "authorEmail": "abhishek.j3094@gmail.com",
+        "avatar": null,
+        "content": "okay that is good",
+        "createdAt": "2026-09-29T09:45:08.728Z"
+      },
+      {
+        "id": "reply-1790675189838-mr8o",
+        "author": "Instructor (You)",
+        "authorRole": "admin",
+        "authorEmail": null,
+        "avatar": null,
+        "content": "thank you that is good one",
+        "createdAt": "2026-09-29T09:46:29.838Z"
+      }
+    ],
+    "status": "Approved",
+    "timestamp": "Just now",
+    "createdAt": "2026-09-29T09:44:44.008Z",
+    "updatedAt": "2026-09-29T09:46:39.069Z"
+  }
+]

@@ -33,8 +33,8 @@ export const env = {
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
 
   // Razorpay
-  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || 'rzp_test_TdCqxAwhikrJPk',
-  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || '4L30FLeehkJlmTAaxDkxNw6R',
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || 'rzp_test_Thps7CWrssiC66',
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || 'tQMXtxO3hztpK9LI0Bju9J6h',
 };
 
 // Validate required environment variables

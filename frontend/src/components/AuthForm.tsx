@@ -75,14 +75,15 @@ export function AuthForm({
 
   // If this tab already has an active valid session and no errorParam, redirect to dashboard
   useEffect(() => {
+    router.prefetch("/dashboard");
     if (typeof window !== "undefined") {
       const myTabToken = sessionStorage.getItem("lms_session_token");
       const activeToken = localStorage.getItem("lms_active_session_token");
       if (myTabToken && activeToken && myTabToken === activeToken && !errorParam) {
-        window.location.href = createSecureUrl("/dashboard", { v: "dashboard" });
+        router.push(createSecureUrl("/dashboard", { v: "dashboard" }));
       }
     }
-  }, [errorParam]);
+  }, [errorParam, router]);
 
   // Ensure login URL is ALWAYS completely encrypted with tamper-resistant query params
   useEffect(() => {
@@ -297,7 +298,7 @@ export function AuthForm({
 
         setUser(userObj, resData?.sessionToken);
         toast.success("Signed in successfully! Other device disconnected.");
-        window.location.href = createSecureUrl("/dashboard", { v: "dashboard" });
+        router.push(createSecureUrl("/dashboard", { v: "dashboard" }));
         return;
       }
 
@@ -385,9 +386,11 @@ export function AuthForm({
         toast.success(
           isSignUp ? "Account created successfully!" : "Welcome back!"
         );
-        window.location.href = isSignUp
-          ? createSecureUrl("/onboarding", { step: 1 })
-          : createSecureUrl("/dashboard", { v: "dashboard" });
+        router.push(
+          isSignUp
+            ? createSecureUrl("/onboarding", { step: 1 })
+            : createSecureUrl("/dashboard", { v: "dashboard" })
+        );
         return;
       }
 

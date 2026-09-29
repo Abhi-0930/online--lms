@@ -14,6 +14,41 @@ export class AdminService {
   private static contentOverridesFilePath = path.resolve(process.cwd(), 'data', 'content_overrides.json');
   private static deletedContentFilePath = path.resolve(process.cwd(), 'data', 'deleted_content.json');
   private static practiceSubmissionsFilePath = path.resolve(process.cwd(), 'data', 'practice_submissions.json');
+  private static practiceDiscussionsFilePath = path.resolve(process.cwd(), 'data', 'practice_discussions.json');
+
+  private static loadPracticeDiscussionsFromFile(): Map<string, any> {
+    try {
+      if (fs.existsSync(AdminService.practiceDiscussionsFilePath)) {
+        const raw = fs.readFileSync(AdminService.practiceDiscussionsFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const map = new Map<string, any>();
+          for (const item of parsed) {
+            if (item && item.id) {
+              map.set(String(item.id), item);
+            }
+          }
+          return map;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load practice discussions from file:', err);
+    }
+    return new Map<string, any>();
+  }
+
+  public static savePracticeDiscussionsToFile(): void {
+    try {
+      const dir = path.dirname(AdminService.practiceDiscussionsFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = Array.from(AdminService.fallbackPracticeDiscussions.values());
+      fs.writeFileSync(AdminService.practiceDiscussionsFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save practice discussions to file:', err);
+    }
+  }
 
   private static loadPracticeSubmissionsFromFile(): Map<string, any> {
     try {
@@ -326,6 +361,7 @@ export class AdminService {
   public static deletedContentIds = AdminService.loadDeletedContentFromFile();
   public static fallbackSubmissions = new Map<string, any>();
   public static fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
+  public static fallbackPracticeDiscussions = AdminService.loadPracticeDiscussionsFromFile();
 
   constructor(private prisma: PrismaClient) {}
 
@@ -569,11 +605,12 @@ export class AdminService {
       let status = 'Not enrolled';
 
       if (hasEnrollments) {
-        const firstEnrollment = u.enrollments[0];
-        courseName =
-          firstEnrollment?.course?.title ||
-          (typeof firstEnrollment === 'string' ? firstEnrollment : 'Enrolled Course');
+        const enrolledTitles = u.enrollments
+          .map((e: any) => e.course?.title || e.courseTitle || '')
+          .filter(Boolean);
+        courseName = enrolledTitles.join(', ') || (u.enrollments[0]?.course?.title || 'Enrolled Course');
 
+        const firstEnrollment = u.enrollments[0];
         if (typeof firstEnrollment?.progress === 'number') {
           progress = firstEnrollment.progress;
         } else if (onboarding?.isCompleted) {
@@ -629,6 +666,8 @@ export class AdminService {
         targetDomain,
         primaryGoal,
         course: courseName,
+        rawEnrollments: u.enrollments || [],
+        enrollmentsCount: Array.isArray(u.enrollments) ? u.enrollments.length : 0,
         progress,
         activity: activityStr,
         lastActiveAt: lastActiveIso,
@@ -682,16 +721,27 @@ export class AdminService {
     const students = await this.getAllStudents();
 
     return allCoursesList.map((course) => {
-      const courseStudents = students.filter((s) => {
+      const courseIdStr = String(course.id).toLowerCase();
+      const courseSlugStr = String(course.slug || '').toLowerCase();
+      const courseTitleStr = (course.title || '').toLowerCase().trim();
+
+      const directEnrollmentsCount = Array.isArray(course.enrollments) ? course.enrollments.length : 0;
+
+      const courseStudents = students.filter((s: any) => {
         const cName = (s.course || '').toLowerCase();
-        const title = (course.title || '').toLowerCase();
-        return cName.includes(title) || title.includes(cName);
+        const rawEnrollments = Array.isArray(s.rawEnrollments) ? s.rawEnrollments : [];
+        const hasEnrollmentMatch = rawEnrollments.some((e: any) => {
+          const eCourseId = String(e.courseId || e.course?.id || '').toLowerCase();
+          const eSlug = String(e.course?.slug || '').toLowerCase();
+          return eCourseId === courseIdStr || (courseSlugStr && eSlug === courseSlugStr);
+        });
+        return hasEnrollmentMatch || cName.includes(courseTitleStr) || (courseTitleStr && courseTitleStr.includes(cName));
       });
 
-      const count = courseStudents.length;
+      const count = Math.max(directEnrollmentsCount, courseStudents.length);
       const avgProgress =
-        count > 0
-          ? Math.round(courseStudents.reduce((sum, s) => sum + (s.progress || 0), 0) / count)
+        courseStudents.length > 0
+          ? Math.round(courseStudents.reduce((sum, s) => sum + (s.progress || 0), 0) / courseStudents.length)
           : 0;
 
       const mappedModules = (course.modules || []).map((mod: any, mIdx: number) => {
@@ -718,7 +768,10 @@ export class AdminService {
         };
       });
 
-      const priceStr = course.price !== undefined && course.price !== null ? String(course.price) : '0';
+      const priceNum = Number(course.price) || 0;
+      const priceStr = priceNum > 0 ? String(priceNum) : '0';
+      const totalRevenueNum = priceNum * count;
+      const revenueStr = totalRevenueNum > 0 ? `₹${totalRevenueNum.toLocaleString('en-IN')}` : '₹0';
 
       return {
         id: course.id,
@@ -749,7 +802,7 @@ export class AdminService {
         instructorName: course.instructor?.fullName || course.instructorName || 'Platform Admin',
         students: count,
         completion: avgProgress,
-        revenue: Number(priceStr) > 0 ? `₹${priceStr}` : '₹0',
+        revenue: revenueStr,
         status:
           course.status === 'PUBLISHED' || course.status === 'Published'
             ? 'Published'
@@ -2486,6 +2539,265 @@ export class AdminService {
       AdminService.fallbackPracticeSubmissions.clear();
     }
     AdminService.savePracticeSubmissionsToFile();
+    return { success: true };
+  }
+
+  // ==========================================
+  // PRACTICE DISCUSSIONS CRUD OPERATIONS
+  // ==========================================
+  async savePracticeDiscussion(problemIdOrSlug: string, data: any) {
+    AdminService.fallbackPracticeDiscussions = AdminService.loadPracticeDiscussionsFromFile();
+    AdminService.fallbackProblems = AdminService.loadProblemsFromFile();
+
+    const normKey = String(problemIdOrSlug || '').toLowerCase().trim();
+    let targetProblem: any = null;
+    for (const p of AdminService.fallbackProblems.values()) {
+      if (
+        String(p.id).toLowerCase() === normKey ||
+        (p.slug && p.slug.toLowerCase() === normKey) ||
+        (p.title && p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === normKey)
+      ) {
+        targetProblem = p;
+        break;
+      }
+    }
+
+    const discId = data.id || `disc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const author = data.authorName || data.author || 'Learner';
+    const authorRole = data.authorRole || data.role || (data.isAdmin ? 'admin' : 'student');
+    const authorEmail = data.email || data.authorEmail || data.studentEmail || null;
+    const authorAvatar = data.avatar || data.authorAvatar || null;
+    const authorDesignation = data.designation || data.authorDesignation || (authorRole === 'admin' ? 'Instructor / Admin' : 'Student');
+
+    // Admin created discussions are auto-approved. Student discussions default to 'Pending Review'
+    const status = data.status || (authorRole === 'admin' ? 'Approved' : 'Pending Review');
+
+    const discussion = {
+      id: discId,
+      problemId: targetProblem ? String(targetProblem.id) : String(problemIdOrSlug),
+      problemSlug: targetProblem?.slug || String(problemIdOrSlug),
+      problemTitle: targetProblem?.title || 'Practice Problem',
+      userId: data.userId || null,
+      title: data.title || 'Discussion Question',
+      content: data.content || data.snippet || data.body || '',
+      snippet: data.content || data.snippet || data.body || '',
+      author,
+      authorRole,
+      authorEmail,
+      avatar: authorAvatar,
+      authorAvatar,
+      authorDesignation,
+      likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
+      votes: typeof data.votes === 'number' ? data.votes : (Array.isArray(data.likedBy) ? data.likedBy.length : 0),
+      replies: Array.isArray(data.replyList) ? data.replyList.length : 0,
+      replyList: Array.isArray(data.replyList) ? data.replyList : [],
+      status,
+      timestamp: 'Just now',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    AdminService.fallbackPracticeDiscussions.set(discId, discussion);
+    AdminService.savePracticeDiscussionsToFile();
+    return discussion;
+  }
+
+  async getPracticeDiscussions(problemIdOrSlug: string, options?: { onlyApproved?: boolean; userId?: string; userEmail?: string }) {
+    AdminService.fallbackPracticeDiscussions = AdminService.loadPracticeDiscussionsFromFile();
+    AdminService.fallbackProblems = AdminService.loadProblemsFromFile();
+
+    const normKey = String(problemIdOrSlug || '').toLowerCase().trim();
+    let targetProblem: any = null;
+    for (const p of AdminService.fallbackProblems.values()) {
+      if (
+        String(p.id).toLowerCase() === normKey ||
+        (p.slug && p.slug.toLowerCase() === normKey) ||
+        (p.title && p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === normKey)
+      ) {
+        targetProblem = p;
+        break;
+      }
+    }
+
+    const matches: any[] = [];
+    const onlyApproved = options?.onlyApproved ?? false;
+    const currentUserId = options?.userId ? String(options.userId).toLowerCase().trim() : null;
+    const currentUserEmail = options?.userEmail ? String(options.userEmail).toLowerCase().trim() : null;
+
+    for (const rawDisc of AdminService.fallbackPracticeDiscussions.values()) {
+      const dProbId = String(rawDisc.problemId || '').toLowerCase();
+      const dProbSlug = String(rawDisc.problemSlug || '').toLowerCase();
+
+      if (
+        dProbId === normKey ||
+        dProbSlug === normKey ||
+        (targetProblem && (dProbId === String(targetProblem.id).toLowerCase() || dProbSlug === String(targetProblem.slug || '').toLowerCase()))
+      ) {
+        const dStatus = (rawDisc.status || 'Pending Review').toLowerCase();
+        const isApproved = dStatus === 'approved' || dStatus === 'answered' || dStatus === 'open';
+
+        // Real counts calculation
+        const replyList = Array.isArray(rawDisc.replyList) ? rawDisc.replyList : [];
+        const likedBy = Array.isArray(rawDisc.likedBy) ? rawDisc.likedBy : [];
+        const votes = likedBy.length > 0 ? likedBy.length : (typeof rawDisc.votes === 'number' ? rawDisc.votes : 0);
+        const isLiked =
+          likedBy.some(
+            (id: string) =>
+              (currentUserEmail && id.toLowerCase() === currentUserEmail) ||
+              (currentUserId && id.toLowerCase() === currentUserId)
+          );
+
+        const disc = {
+          ...rawDisc,
+          likedBy,
+          votes,
+          replies: replyList.length,
+          replyList,
+          isLiked,
+        };
+
+        if (!onlyApproved) {
+          matches.push(disc);
+        } else {
+          // If onlyApproved is requested, include approved items, PLUS student's own discussions so they see their review status
+          const isAuthor =
+            (currentUserId && String(disc.userId).toLowerCase() === currentUserId) ||
+            (currentUserEmail && String(disc.authorEmail).toLowerCase() === currentUserEmail);
+
+          if (isApproved || isAuthor) {
+            matches.push(disc);
+          }
+        }
+      }
+    }
+
+    // Sort newest first
+    matches.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return matches;
+  }
+
+  async getAllPracticeDiscussions() {
+    AdminService.fallbackPracticeDiscussions = AdminService.loadPracticeDiscussionsFromFile();
+    const all = Array.from(AdminService.fallbackPracticeDiscussions.values()).map((rawDisc) => {
+      const replyList = Array.isArray(rawDisc.replyList) ? rawDisc.replyList : [];
+      const likedBy = Array.isArray(rawDisc.likedBy) ? rawDisc.likedBy : [];
+      const votes = likedBy.length > 0 ? likedBy.length : (typeof rawDisc.votes === 'number' ? rawDisc.votes : 0);
+      return {
+        ...rawDisc,
+        likedBy,
+        votes,
+        replies: replyList.length,
+        replyList,
+      };
+    });
+    all.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return all;
+  }
+
+  async updatePracticeDiscussionStatus(discussionId: string, status: string) {
+    AdminService.fallbackPracticeDiscussions = AdminService.loadPracticeDiscussionsFromFile();
+    const existing = AdminService.fallbackPracticeDiscussions.get(String(discussionId));
+    if (existing) {
+      existing.status = status;
+      existing.updatedAt = new Date().toISOString();
+      AdminService.fallbackPracticeDiscussions.set(String(discussionId), existing);
+      AdminService.savePracticeDiscussionsToFile();
+      return existing;
+    }
+    return { success: false, error: 'Discussion not found' };
+  }
+
+  async replyToPracticeDiscussion(discussionId: string, replyData: any) {
+    AdminService.fallbackPracticeDiscussions = AdminService.loadPracticeDiscussionsFromFile();
+    const existing = AdminService.fallbackPracticeDiscussions.get(String(discussionId));
+    if (existing) {
+      if (!Array.isArray(existing.replyList)) {
+        existing.replyList = [];
+      }
+      const replyObj = {
+        id: `reply-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        author: replyData.author || replyData.authorName || (replyData.authorRole === 'admin' ? 'Instructor' : 'Student'),
+        authorRole: replyData.authorRole || 'student',
+        authorEmail: replyData.authorEmail || replyData.email || null,
+        avatar: replyData.avatar || null,
+        content: replyData.content || replyData.body || '',
+        createdAt: new Date().toISOString(),
+      };
+      existing.replyList.push(replyObj);
+      existing.replies = existing.replyList.length;
+      if (replyData.authorRole === 'admin' && existing.status !== 'Approved') {
+        existing.status = 'Approved';
+      }
+      existing.updatedAt = new Date().toISOString();
+      AdminService.fallbackPracticeDiscussions.set(String(discussionId), existing);
+      AdminService.savePracticeDiscussionsToFile();
+      return existing;
+    }
+    return { success: false, error: 'Discussion not found' };
+  }
+
+  async likePracticeDiscussion(discussionId: string, options?: { delta?: number; userEmail?: string; userId?: string }) {
+    AdminService.fallbackPracticeDiscussions = AdminService.loadPracticeDiscussionsFromFile();
+    const existing = AdminService.fallbackPracticeDiscussions.get(String(discussionId));
+    if (existing) {
+      if (!Array.isArray(existing.likedBy)) {
+        existing.likedBy = [];
+      }
+
+      const userIdentifier = (options?.userEmail || options?.userId || '').toLowerCase().trim();
+
+      if (userIdentifier) {
+        const idx = existing.likedBy.findIndex((id: string) => id.toLowerCase() === userIdentifier);
+        if (idx >= 0) {
+          // Already liked -> unlike
+          existing.likedBy.splice(idx, 1);
+        } else {
+          // Like
+          existing.likedBy.push(userIdentifier);
+        }
+        existing.votes = existing.likedBy.length;
+      } else {
+        const delta = options?.delta ?? 1;
+        const currentVotes = typeof existing.votes === 'number' ? existing.votes : existing.likedBy.length;
+        existing.votes = Math.max(0, currentVotes + delta);
+      }
+
+      existing.updatedAt = new Date().toISOString();
+      AdminService.fallbackPracticeDiscussions.set(String(discussionId), existing);
+      AdminService.savePracticeDiscussionsToFile();
+
+      const isLiked = userIdentifier ? existing.likedBy.some((id: string) => id.toLowerCase() === userIdentifier) : false;
+      return {
+        ...existing,
+        isLiked,
+        votes: existing.votes,
+      };
+    }
+    return { success: false, error: 'Discussion not found' };
+  }
+
+  async deletePracticeDiscussion(discussionId: string) {
+    AdminService.fallbackPracticeDiscussions = AdminService.loadPracticeDiscussionsFromFile();
+    const existed = AdminService.fallbackPracticeDiscussions.delete(String(discussionId));
+    AdminService.savePracticeDiscussionsToFile();
+    return { success: existed };
+  }
+
+  async clearAllPracticeDiscussions(problemIdOrSlug?: string) {
+    AdminService.fallbackPracticeDiscussions = AdminService.loadPracticeDiscussionsFromFile();
+    if (problemIdOrSlug) {
+      const normKey = String(problemIdOrSlug).toLowerCase().trim();
+      for (const [key, disc] of AdminService.fallbackPracticeDiscussions.entries()) {
+        const pId = String(disc.problemId || '').toLowerCase();
+        const pSlug = String(disc.problemSlug || '').toLowerCase();
+        if (pId === normKey || pSlug === normKey) {
+          AdminService.fallbackPracticeDiscussions.delete(key);
+        }
+      }
+    } else {
+      AdminService.fallbackPracticeDiscussions.clear();
+    }
+    AdminService.savePracticeDiscussionsToFile();
     return { success: true };
   }
 
