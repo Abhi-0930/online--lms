@@ -29,8 +29,8 @@ export const env = {
   // Google OAuth 2.0
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
-  GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:4000/api/v1/auth/google/callback',
-  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
+  GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || (process.env.NODE_ENV === 'production' ? 'https://online-lms-v11c.onrender.com/api/v1/auth/google/callback' : 'http://localhost:4000/api/v1/auth/google/callback'),
+  FRONTEND_URL: process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://prep-path-six.vercel.app' : 'http://localhost:3000'),
 
   // Razorpay
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || 'rzp_test_Thps7CWrssiC66',
