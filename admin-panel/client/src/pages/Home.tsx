@@ -2170,45 +2170,37 @@ function PaymentsView({
   const [filter, setFilter] = useState("All");
   const [selectedTx, setSelectedTx] = useState<PaymentItem | null>(null);
 
-  const rows = payments || [];
+  const rows = useMemo(() => {
+    return (payments || []).filter(
+      (p) => p.status?.toLowerCase() === "paid" || p.status?.toLowerCase() === "completed"
+    );
+  }, [payments]);
 
   const metrics = useMemo(() => {
     let totalRev = 0;
     let thisMonthRev = 0;
     let paidCount = 0;
-    let refundCount = 0;
-    let pendingCount = 0;
 
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
     rows.forEach((p) => {
-      const isPaid = p.status?.toLowerCase() === "paid" || p.status?.toLowerCase() === "completed";
-      const isRefund = p.status?.toLowerCase().includes("refund");
-      const isPending = p.status?.toLowerCase() === "pending";
-
       const numAmount =
         typeof p.rawAmount === "number"
           ? p.rawAmount
           : parseFloat(String(p.amount || "").replace(/[^0-9.]/g, "")) || 0;
 
-      if (isPaid) {
-        totalRev += numAmount;
-        paidCount++;
+      totalRev += numAmount;
+      paidCount++;
 
-        if (p.createdAt) {
-          const d = new Date(p.createdAt);
-          if (!isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-            thisMonthRev += numAmount;
-          }
-        } else {
+      if (p.createdAt) {
+        const d = new Date(p.createdAt);
+        if (!isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
           thisMonthRev += numAmount;
         }
-      } else if (isRefund) {
-        refundCount++;
-      } else if (isPending) {
-        pendingCount++;
+      } else {
+        thisMonthRev += numAmount;
       }
     });
 
@@ -2216,31 +2208,20 @@ function PaymentsView({
       totalRev,
       thisMonthRev,
       paidCount,
-      refundCount,
-      pendingCount,
+      refundCount: 0,
+      pendingCount: 0,
     };
   }, [rows]);
 
   const filtered = useMemo(() => {
     return rows.filter((item) => {
-      const isPaid = item.status?.toLowerCase() === "paid" || item.status?.toLowerCase() === "completed";
-      const isPending = item.status?.toLowerCase() === "pending";
-      const isRefund = item.status?.toLowerCase().includes("refund") || item.status === "Refund requested";
-      const isFailed = item.status?.toLowerCase() === "failed";
-
-      let matchesFilter = true;
-      if (filter === "Paid") matchesFilter = isPaid;
-      else if (filter === "Pending") matchesFilter = isPending;
-      else if (filter === "Refund requested") matchesFilter = isRefund;
-      else if (filter === "Failed") matchesFilter = isFailed;
-
       const q = query.toLowerCase().trim();
-      if (!q) return matchesFilter;
+      if (!q) return true;
 
       const searchableText = `${item.id || ""} ${item.paymentId || ""} ${item.student || ""} ${item.email || ""} ${item.course || ""} ${item.method || ""} ${item.razorpayOrderId || ""} ${item.razorpayPaymentId || ""}`.toLowerCase();
-      return matchesFilter && searchableText.includes(q);
+      return searchableText.includes(q);
     });
-  }, [rows, filter, query]);
+  }, [rows, query]);
 
   const handleExportCSV = () => {
     if (rows.length === 0) {
@@ -2256,7 +2237,7 @@ function PaymentsView({
       `"${r.amount || ""}"`,
       `"${r.currency || "INR"}"`,
       `"${r.method || ""}"`,
-      `"${r.status || ""}"`,
+      `"${r.status || "Paid"}"`,
       `"${r.date || ""}"`,
       `"${r.razorpayOrderId || ""}"`,
       `"${r.razorpayPaymentId || ""}"`,
@@ -2298,19 +2279,19 @@ function PaymentsView({
           {
             label: "Total revenue",
             value: `₹${metrics.totalRev.toLocaleString("en-IN")}`,
-            change: metrics.paidCount > 0 ? `↗ ${metrics.paidCount} paid transactions` : "₹0 lifetime",
+            change: metrics.paidCount > 0 ? `↗ ${metrics.paidCount} paid transaction${metrics.paidCount === 1 ? "" : "s"}` : "₹0 lifetime",
           },
           {
             label: "Paid transactions",
             value: `${metrics.paidCount}`,
-            change: rows.length > 0 ? `${((metrics.paidCount / rows.length) * 100).toFixed(0)}% completion rate` : "0 transactions",
+            change: `${metrics.paidCount} completed payment${metrics.paidCount === 1 ? "" : "s"}`,
             tone: "text-emerald-600",
           },
           {
-            label: "Refunds / Pending",
-            value: `${metrics.refundCount + metrics.pendingCount}`,
-            change: `${metrics.refundCount} refunds · ${metrics.pendingCount} pending`,
-            tone: metrics.refundCount > 0 ? "text-amber-600" : "text-slate-500",
+            label: "Payment Status",
+            value: "100% Paid",
+            change: `${metrics.paidCount} active captured`,
+            tone: "text-emerald-600",
           },
         ]}
       />
@@ -2324,7 +2305,7 @@ function PaymentsView({
             setQuery={setQuery}
             filter={filter}
             setFilter={setFilter}
-            filters={["All", "Paid", "Pending", "Refund requested", "Failed"]}
+            filters={["All", "Paid"]}
           />
         }
       >

@@ -3312,6 +3312,9 @@ export class AdminService {
   async getAllPayments() {
     try {
       const payments = await this.prisma.payment.findMany({
+        where: {
+          status: 'COMPLETED',
+        },
         include: {
           user: {
             select: {
