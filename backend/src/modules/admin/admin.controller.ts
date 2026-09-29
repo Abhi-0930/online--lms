@@ -169,6 +169,32 @@ export default async function adminController(fastify: FastifyInstance) {
     }
   });
 
+  // Practice Problem Submissions management
+  fastify.get('/practice-problems/:id/submissions', async (request) => {
+    const { id } = request.params as { id: string };
+    return adminService.getPracticeProblemSubmissions(id);
+  });
+
+  fastify.post('/practice-problems/:id/submissions', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    try {
+      const submission = await adminService.savePracticeProblemSubmission(id, body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(submission);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to create submission' });
+    }
+  });
+
+  fastify.patch('/practice-problems/submissions/:submissionId', async (request, reply) => {
+    const { submissionId } = request.params as { submissionId: string };
+    const { status } = request.body as { status: string };
+    const updated = await adminService.updatePracticeProblemSubmissionStatus(submissionId, status || 'Approved');
+    AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+    return reply.send(updated);
+  });
+
   // Live Sessions & Webinars management
   fastify.get('/live-sessions', async () => {
     return adminService.getAllLiveSessions();

@@ -2,10 +2,10 @@
   {
     "id": "520d3d43-c421-4a4b-a9ed-db50c924e9db",
     "title": "Two Sum",
-    "category": "Arrays",
+    "category": "Binary Search",
     "difficulty": "Easy",
     "acceptance": "0.0%",
-    "submissions": 0,
+    "submissions": 1,
     "testCases": 0,
     "status": "Live",
     "description": "Given an array of integers nums and an integer target, return the indices of the two numbers such that they add up to the target.\nYou may assume that each input has exactly one solution, and you may not use the same element twice.\nReturn the answer in any order.",
@@ -31,7 +31,7 @@
       "Lookup",
       "Optimization"
     ],
-    "companies": "Google, Amazon, Microsoft, Meta, Netflix, Adobe, Uber, Airbnb",
+    "companies": "Google, Amazon, Microsoft, Meta, Netflix, Adobe, Airbnb",
     "examples": [
       {
         "id": "ex-1",
@@ -60,8 +60,8 @@
     },
     "estimatedSolveTime": "15 minutes",
     "visibility": "Public",
-    "slug": "two-sum-9653",
+    "slug": "two-sum",
     "createdAt": "2026-09-28T19:22:29.654Z",
-    "updatedAt": "2026-09-28T19:22:29.654Z"
+    "updatedAt": "2026-09-29T04:03:25.040Z"
   }
 ]

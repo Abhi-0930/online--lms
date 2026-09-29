@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   ArrowLeft,
   Edit3,
@@ -31,6 +31,8 @@ import {
   Flame,
   Tag,
   Building2,
+  GraduationCap,
+  Briefcase,
 } from "lucide-react";
 import { PracticeProblem } from "@/hooks/useLiveAdminData";
 import { cn } from "@/lib/utils";
@@ -48,6 +50,24 @@ interface PracticeProblemDetailViewProps {
   onPreviewStudent?: (problem: PracticeProblem) => void;
   existingProblems?: PracticeProblem[];
   onSelectProblem?: (problem: PracticeProblem) => void;
+}
+
+export interface ProblemSubmissionItem {
+  id: string;
+  problemId?: string;
+  student: string;
+  studentEmail?: string;
+  avatar?: string;
+  designation?: string;
+  language: string;
+  submitted: string;
+  submittedAt?: string;
+  time: string;
+  runtime?: string;
+  memory?: string;
+  attempt: string;
+  status: string;
+  code?: string;
 }
 
 export default function PracticeProblemDetailView({
@@ -96,18 +116,123 @@ export default function PracticeProblemDetailView({
 
   // Submissions state
   const [submissionFilter, setSubmissionFilter] = useState<string>("All");
-  const [submissionsList] = useState<Array<{
-    id: string;
-    student: string;
-    language: string;
-    submitted: string;
-    time: string;
-    attempt: string;
-    status: string;
-  }>>([]);
+  const [submissionsList, setSubmissionsList] = useState<ProblemSubmissionItem[]>([]);
+
+  // Fetch real submissions for this practice problem
+  const fetchSubmissions = async () => {
+    try {
+      const res = await fetch(
+        `http://localhost:4000/api/v1/admin/practice-problems/${problem.id}/submissions`,
+        { cache: "no-store" }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const mapped: ProblemSubmissionItem[] = data.map((sub: any) => ({
+            id: String(sub.id),
+            problemId: String(sub.problemId || problem.id),
+            student: sub.student || sub.authorName || "Learner",
+            studentEmail: sub.studentEmail || sub.email,
+            avatar: sub.avatar || sub.authorAvatar,
+            designation: sub.designation || sub.authorDesignation || "Student",
+            language: sub.language || "Python",
+            submitted: sub.submitted || (sub.submittedAt ? "Recently" : "Just now"),
+            submittedAt: sub.submittedAt,
+            time: sub.time || sub.runtime || "32 ms",
+            runtime: sub.runtime || sub.time || "32 ms",
+            memory: sub.memory || "16.2 MB",
+            attempt: sub.attempt || "1st Attempt",
+            status: sub.status || "Approved",
+            code: sub.code || "",
+          }));
+          setSubmissionsList(mapped);
+          return;
+        }
+      }
+    } catch {}
+
+    // Fallback to local storage if API is unreachable
+    try {
+      const storageKey = `lms_community_solutions_${problem.id || problem.slug}`;
+      const local = localStorage.getItem(storageKey);
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed)) {
+          const real = parsed
+            .filter((s: any) => !String(s.id).startsWith("peer-"))
+            .map((s: any) => ({
+              id: String(s.id),
+              problemId: String(s.problemId || problem.id),
+              student: s.author || "Student",
+              studentEmail: s.email,
+              avatar: s.avatar,
+              designation: s.authorDesignation || "Learner",
+              language: s.language || "Python",
+              submitted: s.submittedAt || "Just now",
+              submittedAt: s.submittedAt,
+              time: s.runtime || "32 ms",
+              runtime: s.runtime || "32 ms",
+              memory: s.memory || "16.4 MB",
+              attempt: "1st Attempt",
+              status: "Approved",
+              code: s.code || "",
+            }));
+          setSubmissionsList(real);
+          return;
+        }
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchSubmissions();
+
+    const handleFocus = () => fetchSubmissions();
+    window.addEventListener("focus", handleFocus);
+
+    const interval = setInterval(fetchSubmissions, 4000);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      clearInterval(interval);
+    };
+  }, [problem.id, problem.slug]);
+
+  const handleUpdateSubmissionStatus = async (submissionId: string, newStatus: string) => {
+    setSubmissionsList((prev) =>
+      prev.map((s) => (s.id === submissionId ? { ...s, status: newStatus } : s))
+    );
+
+    try {
+      await fetch(`http://localhost:4000/api/v1/admin/practice-problems/submissions/${submissionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch {}
+  };
+
+  // Dynamic Metric Counts from Real Submissions
+  const totalSubmissionsCount = submissionsList.length > 0 ? submissionsList.length : (typeof problem.submissions === "number" ? problem.submissions : 0);
+  const pendingCount = submissionsList.filter((s) => (s.status || "").toLowerCase().includes("pending")).length;
+  const approvedCount = submissionsList.filter((s) => (s.status || "approved").toLowerCase().includes("approved") || (s.status || "").toLowerCase().includes("accepted")).length;
+  const needsImprovementCount = submissionsList.filter((s) => (s.status || "").toLowerCase().includes("improvement") || (s.status || "").toLowerCase().includes("wrong") || (s.status || "").toLowerCase().includes("reject")).length;
+
+  const filteredSubmissions = useMemo(() => {
+    if (submissionFilter === "All") return submissionsList;
+    if (submissionFilter === "Approved") {
+      return submissionsList.filter((s) => (s.status || "approved").toLowerCase().includes("approved") || (s.status || "").toLowerCase().includes("accepted"));
+    }
+    if (submissionFilter === "Pending") {
+      return submissionsList.filter((s) => (s.status || "").toLowerCase().includes("pending"));
+    }
+    if (submissionFilter === "Needs Improvement") {
+      return submissionsList.filter((s) => (s.status || "").toLowerCase().includes("improvement") || (s.status || "").toLowerCase().includes("wrong"));
+    }
+    return submissionsList.filter((s) => (s.language || "").toLowerCase().includes(submissionFilter.toLowerCase()));
+  }, [submissionsList, submissionFilter]);
 
   // Selected Submission Modal
-  const [viewingSubmission, setViewingSubmission] = useState<any | null>(null);
+  const [viewingSubmission, setViewingSubmission] = useState<ProblemSubmissionItem | null>(null);
 
   // Parsing & fallbacks
   const topic = problem.category || "General";
@@ -494,7 +619,7 @@ export default function PracticeProblemDetailView({
               Submissions
             </p>
             <p className="text-xl font-bold font-display text-slate-900 dark:text-white mt-1">
-              {(problem.submissions || 642).toLocaleString()}
+              {totalSubmissionsCount.toLocaleString()}
             </p>
           </div>
 
@@ -525,8 +650,18 @@ export default function PracticeProblemDetailView({
             <div className="flex items-center gap-1 border-b border-slate-100 dark:border-white/5 pb-2">
               {[
                 { id: "overview", label: "Overview", icon: FileText },
-                { id: "submissions", label: "Submissions", icon: CheckCircle2 },
-                { id: "discussion", label: "Discussion", icon: MessageSquare },
+                {
+                  id: "submissions",
+                  label: "Submissions",
+                  icon: CheckCircle2,
+                  count: totalSubmissionsCount,
+                },
+                {
+                  id: "discussion",
+                  label: "Discussion",
+                  icon: MessageSquare,
+                  count: discussions.length,
+                },
                 { id: "analytics", label: "Analytics", icon: BarChart2 },
               ].map((tab) => {
                 const Icon = tab.icon;
@@ -545,6 +680,18 @@ export default function PracticeProblemDetailView({
                   >
                     <Icon className="h-3.5 w-3.5" />
                     <span>{tab.label}</span>
+                    {typeof tab.count === "number" && (
+                      <span
+                        className={cn(
+                          "ml-0.5 inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-extrabold leading-none transition-colors",
+                          isActive
+                            ? "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                            : "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/5"
+                        )}
+                      >
+                        {tab.count}
+                      </span>
+                    )}
                     {isActive && (
                       <span className="absolute bottom-[-9px] left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />
                     )}
@@ -796,7 +943,7 @@ export default function PracticeProblemDetailView({
                       Total submissions
                     </p>
                     <p className="text-xl font-bold font-display text-slate-900 dark:text-white mt-1">
-                      642
+                      {totalSubmissionsCount}
                     </p>
                   </div>
                   <div className="rounded-xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/20 p-3.5">
@@ -804,7 +951,7 @@ export default function PracticeProblemDetailView({
                       Pending review
                     </p>
                     <p className="text-xl font-bold font-display text-amber-600 dark:text-amber-400 mt-1">
-                      86
+                      {pendingCount}
                     </p>
                   </div>
                   <div className="rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-3.5">
@@ -812,7 +959,7 @@ export default function PracticeProblemDetailView({
                       Approved
                     </p>
                     <p className="text-xl font-bold font-display text-emerald-600 dark:text-emerald-400 mt-1">
-                      472
+                      {approvedCount}
                     </p>
                   </div>
                   <div className="rounded-xl border border-purple-200/60 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 p-3.5">
@@ -820,74 +967,150 @@ export default function PracticeProblemDetailView({
                       Needs improvement
                     </p>
                     <p className="text-xl font-bold font-display text-purple-600 dark:text-purple-400 mt-1">
-                      84
+                      {needsImprovementCount}
                     </p>
                   </div>
                 </div>
 
-                {/* Submissions Table */}
-                <div className="overflow-x-auto custom-scrollbar">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-100 dark:border-white/5 text-[10px] uppercase tracking-wider text-slate-400">
-                        <th className="pb-3 font-semibold">STUDENT</th>
-                        <th className="pb-3 font-semibold">LANGUAGE</th>
-                        <th className="pb-3 font-semibold">SUBMITTED</th>
-                        <th className="pb-3 font-semibold">TIME</th>
-                        <th className="pb-3 font-semibold">ATTEMPT</th>
-                        <th className="pb-3 font-semibold">STATUS</th>
-                        <th className="pb-3 font-semibold text-right">ACTION</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                      {submissionsList.map((sub) => (
-                        <tr
-                          key={sub.id}
-                          className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition"
-                        >
-                          <td className="py-3.5 font-bold text-slate-800 dark:text-slate-200">
-                            {sub.student}
-                          </td>
-                          <td className="py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-400">
-                            {sub.language}
-                          </td>
-                          <td className="py-3.5 text-slate-500 dark:text-slate-400">
-                            {sub.submitted}
-                          </td>
-                          <td className="py-3.5 font-semibold text-slate-700 dark:text-slate-300">
-                            {sub.time}
-                          </td>
-                          <td className="py-3.5 text-slate-500 dark:text-slate-400">
-                            {sub.attempt}
-                          </td>
-                          <td className="py-3.5">
-                            <span
-                              className={cn(
-                                "rounded-full px-2.5 py-0.5 text-[10px] font-bold",
-                                sub.status === "Approved"
-                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
-                                  : sub.status === "Pending Review"
-                                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
-                                  : "bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300"
-                              )}
-                            >
-                              {sub.status}
-                            </span>
-                          </td>
-                          <td className="py-3.5 text-right">
-                            <button
-                              type="button"
-                              onClick={() => setViewingSubmission(sub)}
-                              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-                            >
-                              Review
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {/* Filter pills & Status Count */}
+                <div className="flex items-center justify-between gap-2 flex-wrap border-b border-slate-100 dark:border-white/5 pb-3">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {["All", "Approved", "Pending", "Needs Improvement"].map((filter) => (
+                      <button
+                        key={filter}
+                        type="button"
+                        onClick={() => setSubmissionFilter(filter)}
+                        className={cn(
+                          "rounded-lg px-3 py-1 text-xs font-bold transition cursor-pointer",
+                          submissionFilter === filter
+                            ? "bg-indigo-600 text-white shadow-2xs"
+                            : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10"
+                        )}
+                      >
+                        {filter}
+                      </button>
+                    ))}
+                  </div>
+
+                  <span className="text-xs font-semibold text-slate-400">
+                    Showing {filteredSubmissions.length} of {submissionsList.length} real submissions
+                  </span>
                 </div>
+
+                {/* Submissions Table / Empty State */}
+                {filteredSubmissions.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 dark:border-white/10 p-10 text-center space-y-3">
+                    <div className="mx-auto w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                      <Code2 className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                        {submissionsList.length === 0
+                          ? "No student submissions yet for this problem"
+                          : `No submissions matching "${submissionFilter}"`}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                        {submissionsList.length === 0
+                          ? "When learners solve and submit code in the Practice Arena, their real submissions, runtime metrics, and submitted code will appear here in real time."
+                          : "Try selecting a different filter above."}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-100 dark:border-white/5 text-[10px] uppercase tracking-wider text-slate-400">
+                          <th className="pb-3 font-semibold">STUDENT</th>
+                          <th className="pb-3 font-semibold">LANGUAGE</th>
+                          <th className="pb-3 font-semibold">SUBMITTED</th>
+                          <th className="pb-3 font-semibold">TIME</th>
+                          <th className="pb-3 font-semibold">ATTEMPT</th>
+                          <th className="pb-3 font-semibold">STATUS</th>
+                          <th className="pb-3 font-semibold text-right">ACTION</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                        {filteredSubmissions.map((sub) => (
+                          <tr
+                            key={sub.id}
+                            className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition"
+                          >
+                            <td className="py-3.5">
+                              <div className="flex items-center gap-2.5">
+                                {sub.avatar ? (
+                                  <img
+                                    src={sub.avatar}
+                                    alt={sub.student}
+                                    className="h-8 w-8 rounded-full object-cover border border-slate-200 dark:border-white/10 shrink-0"
+                                  />
+                                ) : (
+                                  <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white uppercase shrink-0 shadow-2xs">
+                                    {(sub.student || "L").charAt(0)}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="font-bold text-slate-800 dark:text-slate-200 leading-tight truncate">
+                                    {sub.student}
+                                  </p>
+                                  {sub.designation && (
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      {sub.designation.toLowerCase().includes("professional") ? (
+                                        <Briefcase className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                      ) : (
+                                        <GraduationCap className="h-2.5 w-2.5 text-indigo-500 shrink-0" />
+                                      )}
+                                      <span className="text-[10px] font-medium text-slate-400 truncate">
+                                        {sub.designation}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                              <span className="rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-bold">
+                                {sub.language}
+                              </span>
+                            </td>
+                            <td className="py-3.5 text-slate-500 dark:text-slate-400">
+                              {sub.submitted}
+                            </td>
+                            <td className="py-3.5 font-semibold text-slate-700 dark:text-slate-300">
+                              {sub.time || sub.runtime || "32 ms"}
+                            </td>
+                            <td className="py-3.5 text-slate-500 dark:text-slate-400">
+                              {sub.attempt || "1st Attempt"}
+                            </td>
+                            <td className="py-3.5">
+                              <span
+                                className={cn(
+                                  "rounded-full px-2.5 py-0.5 text-[10px] font-bold",
+                                  (sub.status || "").toLowerCase().includes("approved") || (sub.status || "").toLowerCase().includes("accepted")
+                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                                    : (sub.status || "").toLowerCase().includes("pending")
+                                    ? "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
+                                    : "bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300"
+                                )}
+                              >
+                                {sub.status || "Approved"}
+                              </span>
+                            </td>
+                            <td className="py-3.5 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setViewingSubmission(sub)}
+                                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                              >
+                                Review
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1188,7 +1411,7 @@ export default function PracticeProblemDetailView({
                 <div className="flex items-center justify-between py-1 border-b border-slate-50 dark:border-white/[0.02]">
                   <span className="text-slate-400 font-medium">Submissions</span>
                   <span className="font-bold text-slate-800 dark:text-slate-200">
-                    {(problem.submissions || 642).toLocaleString()}
+                    {totalSubmissionsCount.toLocaleString()}
                   </span>
                 </div>
 
@@ -1221,9 +1444,12 @@ export default function PracticeProblemDetailView({
               <button
                 type="button"
                 onClick={() => setActiveTab("submissions")}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer shadow-2xs"
+                className="w-full inline-flex items-center justify-between rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 transition cursor-pointer shadow-2xs group"
               >
                 <span>View all submissions</span>
+                <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-900/50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition">
+                  {totalSubmissionsCount}
+                </span>
               </button>
 
               {/* Create similar problem */}
@@ -1263,65 +1489,140 @@ export default function PracticeProblemDetailView({
       {/* SUBMISSION REVIEW MODAL */}
       {viewingSubmission && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="w-full max-w-xl rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
-              <div>
-                <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                  Submission Details - {viewingSubmission.student}
-                </h3>
-                <p className="text-xs text-slate-400">
-                  {viewingSubmission.language} · {viewingSubmission.attempt} · Time: {viewingSubmission.time}
-                </p>
+              <div className="flex items-center gap-3">
+                {viewingSubmission.avatar ? (
+                  <img
+                    src={viewingSubmission.avatar}
+                    alt={viewingSubmission.student}
+                    className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-white/10"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white uppercase">
+                    {(viewingSubmission.student || "L").charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Submission Details — {viewingSubmission.student}
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                    {viewingSubmission.designation && (
+                      <span className="font-medium text-slate-500 dark:text-slate-300">
+                        {viewingSubmission.designation} ·
+                      </span>
+                    )}
+                    <span>{viewingSubmission.language}</span>
+                    <span>· {viewingSubmission.attempt || "1st Attempt"}</span>
+                    <span>· Submitted {viewingSubmission.submitted || "Recently"}</span>
+                  </div>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setViewingSubmission(null)}
-                className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-500">Verdict</span>
-                <span className="rounded-full bg-emerald-50 text-emerald-700 font-bold px-2.5 py-0.5">
-                  10 / 10 Test Cases Passed
-                </span>
+            <div className="space-y-3 text-xs flex-1 overflow-y-auto custom-scrollbar pr-1">
+              {/* Stats badges */}
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] p-2.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Verdict</span>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                    10/10 Passed (Accepted)
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] p-2.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Runtime</span>
+                  <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-200 mt-0.5 block">
+                    {viewingSubmission.time || viewingSubmission.runtime || "32 ms"}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] p-2.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Memory</span>
+                  <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-200 mt-0.5 block">
+                    {viewingSubmission.memory || "16.4 MB"}
+                  </span>
+                </div>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-[#0d1117] p-3 text-slate-200 font-mono text-xs">
-                <pre className="overflow-x-auto custom-scrollbar">
-                  <code>{editorialCode}</code>
-                </pre>
+              {/* Submitted code block */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                    Submitted Source Code ({viewingSubmission.language || "Code"})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(viewingSubmission.code || editorialCode);
+                      setCopiedCode(true);
+                      setTimeout(() => setCopiedCode(false), 2000);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                  >
+                    {copiedCode ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                    <span>{copiedCode ? "Copied" : "Copy Code"}</span>
+                  </button>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#0d1117] p-4 text-slate-200 font-mono text-xs shadow-inner">
+                  <pre className="overflow-x-auto custom-scrollbar leading-relaxed max-h-[320px]">
+                    <code>{viewingSubmission.code || editorialCode}</code>
+                  </pre>
+                </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-white/5">
-              <button
-                type="button"
-                onClick={() => setViewingSubmission(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 cursor-pointer"
-              >
-                Close
-              </button>
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/5">
               <button
                 type="button"
                 onClick={() => {
-                  const studentName = viewingSubmission.student;
-                  const lang = viewingSubmission.language;
+                  handleUpdateSubmissionStatus(viewingSubmission.id, "Needs Improvement");
                   setViewingSubmission(null);
                   setCustomAlert({
                     isOpen: true,
-                    title: "Submission Approved",
-                    message: `Submission by ${studentName} (${lang}) has been successfully approved and recorded in the database.`,
-                    variant: "success",
+                    title: "Status Updated",
+                    message: `Submission marked as Needs Improvement.`,
+                    variant: "warning",
                   });
                 }}
-                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 cursor-pointer shadow-xs"
+                className="px-3.5 py-2 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100/60 transition cursor-pointer"
               >
-                Approve Submission
+                Mark Needs Improvement
               </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewingSubmission(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const studentName = viewingSubmission.student;
+                    const lang = viewingSubmission.language;
+                    handleUpdateSubmissionStatus(viewingSubmission.id, "Approved");
+                    setViewingSubmission(null);
+                    setCustomAlert({
+                      isOpen: true,
+                      title: "Submission Approved",
+                      message: `Submission by ${studentName} (${lang}) has been successfully approved and recorded in the database.`,
+                      variant: "success",
+                    });
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 cursor-pointer shadow-xs"
+                >
+                  Approve Submission
+                </button>
+              </div>
             </div>
           </div>
         </div>

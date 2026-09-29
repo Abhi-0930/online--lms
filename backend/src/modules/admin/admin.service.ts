@@ -13,6 +13,41 @@ export class AdminService {
   private static recordingsFilePath = path.resolve(process.cwd(), 'data', 'recordings.json');
   private static contentOverridesFilePath = path.resolve(process.cwd(), 'data', 'content_overrides.json');
   private static deletedContentFilePath = path.resolve(process.cwd(), 'data', 'deleted_content.json');
+  private static practiceSubmissionsFilePath = path.resolve(process.cwd(), 'data', 'practice_submissions.json');
+
+  private static loadPracticeSubmissionsFromFile(): Map<string, any> {
+    try {
+      if (fs.existsSync(AdminService.practiceSubmissionsFilePath)) {
+        const raw = fs.readFileSync(AdminService.practiceSubmissionsFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const map = new Map<string, any>();
+          for (const item of parsed) {
+            if (item && item.id) {
+              map.set(String(item.id), item);
+            }
+          }
+          return map;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load practice submissions from file:', err);
+    }
+    return new Map<string, any>();
+  }
+
+  public static savePracticeSubmissionsToFile(): void {
+    try {
+      const dir = path.dirname(AdminService.practiceSubmissionsFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = Array.from(AdminService.fallbackPracticeSubmissions.values());
+      fs.writeFileSync(AdminService.practiceSubmissionsFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save practice submissions to file:', err);
+    }
+  }
 
   private static loadDeletedContentFromFile(): Set<string> {
     try {
@@ -290,6 +325,7 @@ export class AdminService {
   public static fallbackContentOverrides = AdminService.loadContentOverridesFromFile();
   public static deletedContentIds = AdminService.loadDeletedContentFromFile();
   public static fallbackSubmissions = new Map<string, any>();
+  public static fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
 
   constructor(private prisma: PrismaClient) {}
 
@@ -2286,6 +2322,144 @@ export class AdminService {
     AdminService.fallbackProblems.delete(String(id));
     AdminService.saveProblemsToFile();
     return { success: true, id };
+  }
+
+  async savePracticeProblemSubmission(problemIdOrSlug: string, data: {
+    id?: string;
+    userId?: string;
+    authorName?: string;
+    student?: string;
+    email?: string;
+    studentEmail?: string;
+    authorAvatar?: string;
+    avatar?: string;
+    authorDesignation?: string;
+    designation?: string;
+    language: string;
+    code: string;
+    runtime?: string;
+    memory?: string;
+    status?: string;
+    time?: string;
+  }) {
+    AdminService.fallbackProblems = AdminService.loadProblemsFromFile();
+    AdminService.fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
+
+    const normKey = String(problemIdOrSlug || '').toLowerCase().trim();
+    let targetProblem: any = null;
+    for (const p of AdminService.fallbackProblems.values()) {
+      if (
+        String(p.id).toLowerCase() === normKey ||
+        (p.slug && p.slug.toLowerCase() === normKey) ||
+        (p.title && p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === normKey)
+      ) {
+        targetProblem = p;
+        break;
+      }
+    }
+
+    const subId = data.id || `psub-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const student = data.authorName || data.student || 'Learner';
+    const designation = data.authorDesignation || data.designation || 'Student';
+    const runtime = data.runtime || data.time || `${Math.floor(Math.random() * 25) + 28} ms`;
+    const memory = data.memory || `${(Math.random() * 2 + 15.2).toFixed(1)} MB`;
+
+    const submission = {
+      id: subId,
+      problemId: targetProblem ? String(targetProblem.id) : String(problemIdOrSlug),
+      problemSlug: targetProblem?.slug || String(problemIdOrSlug),
+      problemTitle: targetProblem?.title || 'Practice Problem',
+      userId: data.userId || null,
+      student,
+      studentEmail: data.email || data.studentEmail || null,
+      avatar: data.authorAvatar || data.avatar || null,
+      designation,
+      language: data.language || 'Python',
+      code: data.code || '',
+      runtime,
+      memory,
+      time: runtime,
+      attempt: '1st Attempt',
+      status: data.status || 'Approved',
+      submitted: 'Just now',
+      submittedAt: new Date().toISOString(),
+    };
+
+    AdminService.fallbackPracticeSubmissions.set(subId, submission);
+    AdminService.savePracticeSubmissionsToFile();
+
+    // Increment submissions count on problem
+    if (targetProblem) {
+      const currentSubs = typeof targetProblem.submissions === 'number' ? targetProblem.submissions : 0;
+      targetProblem.submissions = currentSubs + 1;
+      targetProblem.updatedAt = new Date().toISOString();
+      AdminService.fallbackProblems.set(String(targetProblem.id), targetProblem);
+      AdminService.saveProblemsToFile();
+
+      try {
+        await (this.prisma as any).practiceProblem.update({
+          where: { id: String(targetProblem.id) },
+          data: { submissions: { increment: 1 } },
+        });
+      } catch {}
+    }
+
+    return submission;
+  }
+
+  async getPracticeProblemSubmissions(problemIdOrSlug: string) {
+    AdminService.fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
+    AdminService.fallbackProblems = AdminService.loadProblemsFromFile();
+
+    const normKey = String(problemIdOrSlug || '').toLowerCase().trim();
+    let targetProblem: any = null;
+    for (const p of AdminService.fallbackProblems.values()) {
+      if (
+        String(p.id).toLowerCase() === normKey ||
+        (p.slug && p.slug.toLowerCase() === normKey) ||
+        (p.title && p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === normKey)
+      ) {
+        targetProblem = p;
+        break;
+      }
+    }
+
+    const matches: any[] = [];
+    for (const sub of AdminService.fallbackPracticeSubmissions.values()) {
+      const subProbId = String(sub.problemId || '').toLowerCase();
+      const subProbSlug = String(sub.problemSlug || '').toLowerCase();
+
+      if (
+        subProbId === normKey ||
+        subProbSlug === normKey ||
+        (targetProblem && (subProbId === String(targetProblem.id).toLowerCase() || subProbSlug === String(targetProblem.slug || '').toLowerCase()))
+      ) {
+        matches.push(sub);
+      }
+    }
+
+    // Sort newest first
+    matches.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+    return matches;
+  }
+
+  async getAllPracticeProblemSubmissions() {
+    AdminService.fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
+    const all = Array.from(AdminService.fallbackPracticeSubmissions.values());
+    all.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+    return all;
+  }
+
+  async updatePracticeProblemSubmissionStatus(submissionId: string, status: string) {
+    AdminService.fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
+    const existing = AdminService.fallbackPracticeSubmissions.get(String(submissionId));
+    if (existing) {
+      existing.status = status;
+      AdminService.fallbackPracticeSubmissions.set(String(submissionId), existing);
+      AdminService.savePracticeSubmissionsToFile();
+      return existing;
+    }
+    return { success: false, error: 'Submission not found' };
   }
 
   // ==========================================

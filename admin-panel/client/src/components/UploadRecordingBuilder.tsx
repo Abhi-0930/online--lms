@@ -67,6 +67,7 @@ export interface RecordingData {
   enableComments: boolean;
   status: "Published" | "Draft" | "Processing";
   releaseDate: string;
+  views?: number;
 }
 
 export interface ContentLibraryItem {

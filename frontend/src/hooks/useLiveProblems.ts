@@ -95,10 +95,14 @@ export function useLiveProblems() {
   }, []);
 
   const fetchProblems = useCallback(async () => {
-    setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/practice-problems`, {
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch(`${API_BASE_URL}/api/v1/practice-problems?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
       });
       if (res.ok) {
         const data = await res.json();
@@ -150,6 +154,17 @@ export function useLiveProblems() {
     isMountedRef.current = true;
     fetchProblems();
 
+    // Auto-refresh when tab gains focus (e.g. after adding/editing problem in Admin Panel tab)
+    const handleFocus = () => {
+      fetchProblems();
+    };
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        fetchProblems();
+      }
+    });
+
     // Setup WebSocket live sync with backend
     let socket: WebSocket | null = null;
     let reconnectTimer: any = null;
@@ -166,10 +181,13 @@ export function useLiveProblems() {
           try {
             const msg = JSON.parse(event.data);
             if (
+              msg.type === "DATA_UPDATE" ||
+              msg.type === "INITIAL_DATA" ||
               msg.type === "PRACTICE_PROBLEM_CREATED" ||
               msg.type === "PRACTICE_PROBLEM_UPDATED" ||
               msg.type === "PRACTICE_PROBLEM_DELETED" ||
-              msg.type === "PRACTICE_PROBLEMS_SYNC"
+              msg.type === "PRACTICE_PROBLEMS_SYNC" ||
+              msg.data?.practiceProblems
             ) {
               fetchProblems();
             }
@@ -178,7 +196,7 @@ export function useLiveProblems() {
 
         socket.onclose = () => {
           if (isMountedRef.current) {
-            reconnectTimer = setTimeout(connectWs, 5000);
+            reconnectTimer = setTimeout(connectWs, 3000);
           }
         };
       } catch {}
@@ -188,6 +206,7 @@ export function useLiveProblems() {
 
     return () => {
       isMountedRef.current = false;
+      window.removeEventListener("focus", handleFocus);
       if (socket) {
         socket.close();
       }

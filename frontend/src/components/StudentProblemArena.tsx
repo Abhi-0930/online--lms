@@ -33,8 +33,12 @@ import {
   BookOpen,
   Tag,
   Building2,
+  GraduationCap,
+  Briefcase,
 } from "lucide-react";
 import { PublicProblem, useLiveProblems } from "@/hooks/useLiveProblems";
+import { useAuth } from "@/hooks/useAuth";
+import { resolveDisplayName, resolveEducationStatus } from "@/lib/nameUtils";
 import { toast } from "sonner";
 import { CompanyLogo } from "@/components/CompanyLogo";
 
@@ -319,6 +323,7 @@ export default function StudentProblemArena({
   onBack,
   onSelectProblem,
 }: StudentProblemArenaProps) {
+  const { user } = useAuth();
   const { problems, markProblemSolved } = useLiveProblems();
 
   // Navigation index
@@ -539,133 +544,199 @@ export default function StudentProblemArena({
     return defaultCodes[editorialLanguage] || defaultCodes.python;
   }, [refSolutions, starterCodes, editorialLanguage, defaultCodes]);
 
-  // Multi-Language Dynamic Solutions Tab
+  // Multi-Language Community Solutions Tab
   const [solutionFilter, setSolutionFilter] = useState<string>("All");
-  const [likedSolutions, setLikedSolutions] = useState<Record<string, boolean>>({});
 
-  const problemSolutions = useMemo(() => {
-    const langs: Array<{
-      key: "python" | "javascript" | "typescript" | "java" | "cpp";
-      name: string;
-      tag: string;
-      role: string;
-      author: string;
-      avatar: string;
-      votes: number;
-      views: number;
-      desc: string;
-      badgeColor: string;
-    }> = [
-      {
-        key: "python",
-        name: "Python 3",
-        tag: "Python",
-        role: "Official Optimal Solution",
-        author: "PrepPath Algorithm Lead",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=60",
-        votes: 184,
-        views: 2420,
-        desc: "Idiomatic Python 3 solution with optimal time and memory utilization.",
-        badgeColor: "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-900/50",
-      },
-      {
-        key: "javascript",
-        name: "JavaScript",
-        tag: "JavaScript",
-        role: "Modern ES6+ Implementation",
-        author: "Alex Rivera",
-        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&auto=format&fit=crop&q=60",
-        votes: 112,
-        views: 1680,
-        desc: "Clean JavaScript implementation leveraging standard built-ins and hash lookups.",
-        badgeColor: "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-900/50",
-      },
-      {
-        key: "typescript",
-        name: "TypeScript",
-        tag: "TypeScript",
-        role: "Strictly Typed Solution",
-        author: "Priya Sharma",
-        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&auto=format&fit=crop&q=60",
-        votes: 94,
-        views: 1420,
-        desc: "Strongly-typed TypeScript approach with explicit type guarantees.",
-        badgeColor: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/50",
-      },
-      {
-        key: "java",
-        name: "Java",
-        tag: "Java",
-        role: "Enterprise / JVM Solution",
-        author: "Devendra Rao",
-        avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&auto=format&fit=crop&q=60",
-        votes: 86,
-        views: 1250,
-        desc: "Standard Java solution using core java.util data structures.",
-        badgeColor: "bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 border-orange-200 dark:border-orange-900/50",
-      },
-      {
-        key: "cpp",
-        name: "C++",
-        tag: "C++",
-        role: "High-Performance STL Solution",
-        author: "Vikram Malhotra",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=60",
-        votes: 146,
-        views: 2150,
-        desc: "High-performance C++ solution leveraging STL collections with minimal overhead.",
-        badgeColor: "bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-900/50",
-      },
-    ];
+  const getLanguageBadgeColor = (lang: string): string => {
+    const l = (lang || "").toLowerCase();
+    if (l.includes("python")) {
+      return "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-900/50";
+    }
+    if (l.includes("javascript") || l === "js") {
+      return "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-900/50";
+    }
+    if (l.includes("typescript") || l === "ts") {
+      return "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/50";
+    }
+    if (l.includes("java") && !l.includes("script")) {
+      return "bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 border-orange-200 dark:border-orange-900/50";
+    }
+    if (l.includes("c++") || l.includes("cpp")) {
+      return "bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-900/50";
+    }
+    return "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300 border-slate-200 dark:border-white/10";
+  };
 
-    return langs.map((l) => {
-      const codeStr =
-        (refSolutions[l.key] && refSolutions[l.key].trim()) ||
-        (starterCodes[l.key] && starterCodes[l.key].trim()) ||
-        defaultCodes[l.key];
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-      const complexityStr = `Time: ${timeComplexity} | Space: ${spaceComplexity}`;
-      const solutionTags = ["Optimal", l.tag, ...tagsList.slice(0, 2)];
+  interface CommunitySolution {
+    id: string;
+    problemId: string;
+    languageKey: "python" | "javascript" | "typescript" | "java" | "cpp";
+    language: string;
+    badgeColor: string;
+    title: string;
+    author: string;
+    authorDesignation: string;
+    avatar?: string;
+    votes: number;
+    views: number;
+    runtime?: string;
+    memory?: string;
+    complexity: string;
+    tags: string[];
+    code: string;
+    explanation: string;
+    submittedAt: string;
+  }
 
-      return {
-        id: `sol-${l.key}`,
-        languageKey: l.key,
-        language: l.name,
-        badgeColor: l.badgeColor,
-        title: `${l.name}: ${problem.title} Optimal Solution`,
-        author: l.author,
-        authorRole: l.role,
-        avatar: l.avatar,
-        votes: l.votes + (likedSolutions[`sol-${l.key}`] ? 1 : 0),
-        views: l.views,
-        complexity: complexityStr,
-        tags: solutionTags,
-        code: codeStr,
-        explanation: editorialApproach
-          ? `${l.desc} ${editorialApproach}`
-          : l.desc,
-      };
+  const [communitySolutions, setCommunitySolutions] = useState<CommunitySolution[]>([]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const fetchSubmissionsFromApi = async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/v1/practice-problems/${problem.id || problem.slug}/submissions`,
+          { cache: "no-store" }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && !isCancelled) {
+            // Map backend submissions to CommunitySolutions
+            const mapped: CommunitySolution[] = data
+              .filter((sub: any) => !String(sub.id).startsWith("peer-"))
+              .map((sub: any) => {
+                const langLower = (sub.language || "python").toLowerCase();
+                const validKey: "python" | "javascript" | "typescript" | "java" | "cpp" =
+                  langLower.includes("type")
+                    ? "typescript"
+                    : langLower.includes("java") && !langLower.includes("script")
+                    ? "java"
+                    : langLower.includes("c++") || langLower.includes("cpp")
+                    ? "cpp"
+                    : langLower.includes("script") || langLower === "js"
+                    ? "javascript"
+                    : "python";
+
+                return {
+                  id: String(sub.id),
+                  problemId: String(sub.problemId || problem.id || problem.slug),
+                  languageKey: validKey,
+                  language: sub.language || (validKey === "python" ? "Python 3" : validKey.toUpperCase()),
+                  badgeColor: getLanguageBadgeColor(sub.language || validKey),
+                  title: `${sub.language || "Code"}: ${sub.student || sub.authorName || "Learner"}'s Solution`,
+                  author: sub.student || sub.authorName || "Learner",
+                  authorDesignation: sub.designation || sub.authorDesignation || "Student",
+                  avatar: sub.avatar || sub.authorAvatar || undefined,
+                  votes: Number(sub.votes) || 0,
+                  views: Number(sub.views) || 1,
+                  runtime: sub.runtime || sub.time || "32 ms",
+                  memory: sub.memory || "16.4 MB",
+                  complexity: `Time: ${timeComplexity} | Space: ${spaceComplexity}`,
+                  tags: ["Community", (sub.language || validKey).toUpperCase(), sub.status || "Accepted"],
+                  code: sub.code || "",
+                  explanation: `Accepted community submission by ${sub.student || sub.authorName || "Learner"}.`,
+                  submittedAt: sub.submitted || (sub.submittedAt ? "Recently" : "Just now"),
+                };
+              });
+
+            setCommunitySolutions(mapped);
+            return;
+          }
+        }
+      } catch {}
+
+      // Local storage fallback
+      try {
+        const storageKey = `lms_community_solutions_${problem.id || problem.slug}`;
+        const saved = localStorage.getItem(storageKey);
+        if (saved && !isCancelled) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const realOnly = parsed.filter((s: any) => !String(s.id).startsWith("peer-"));
+            setCommunitySolutions(realOnly);
+            return;
+          }
+        }
+      } catch {}
+
+      if (!isCancelled) {
+        setCommunitySolutions([]);
+      }
+    };
+
+    fetchSubmissionsFromApi();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [problem.id, problem.slug, timeComplexity, spaceComplexity]);
+
+  const [likedSolutions, setLikedSolutions] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = localStorage.getItem("lms_user_liked_solutions");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const handleToggleLike = (solutionId: string) => {
+    const isCurrentlyLiked = !!likedSolutions[solutionId];
+    const newLikedState = !isCurrentlyLiked;
+    const updatedLikes = { ...likedSolutions, [solutionId]: newLikedState };
+    setLikedSolutions(updatedLikes);
+
+    try {
+      localStorage.setItem("lms_user_liked_solutions", JSON.stringify(updatedLikes));
+    } catch {}
+
+    setCommunitySolutions((prev) => {
+      const updated = prev.map((s) => {
+        if (s.id === solutionId) {
+          const delta = newLikedState ? 1 : -1;
+          return {
+            ...s,
+            votes: Math.max(0, (Number(s.votes) || 0) + delta),
+          };
+        }
+        return s;
+      });
+
+      try {
+        const storageKey = `lms_community_solutions_${problem.id || problem.slug}`;
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+      } catch {}
+
+      return updated;
     });
-  }, [
-    refSolutions,
-    starterCodes,
-    defaultCodes,
-    problem.title,
-    timeComplexity,
-    spaceComplexity,
-    editorialApproach,
-    tagsList,
-    likedSolutions,
-  ]);
 
-  const filteredSolutions = useMemo(() => {
-    if (solutionFilter === "All") return problemSolutions;
-    return problemSolutions.filter(
+    if (newLikedState) {
+      toast.success("Upvoted solution!");
+    } else {
+      toast.success("Upvote removed");
+    }
+  };
+
+  // Dynamic ranking: Solutions with highest likes appear first at the top
+  const sortedSolutions = useMemo(() => {
+    const list = [...communitySolutions].sort((a, b) => {
+      const vA = Number(a.votes) || 0;
+      const vB = Number(b.votes) || 0;
+      if (vB !== vA) return vB - vA; // highest likes first
+      return (b.id || "").localeCompare(a.id || "");
+    });
+
+    if (solutionFilter === "All") return list;
+    return list.filter(
       (s) =>
         s.language.toLowerCase().includes(solutionFilter.toLowerCase()) ||
         s.languageKey.toLowerCase() === solutionFilter.toLowerCase()
     );
-  }, [problemSolutions, solutionFilter]);
+  }, [communitySolutions, solutionFilter]);
 
   // Constraints list from API problem
   const constraintsList = useMemo(() => {
@@ -727,41 +798,118 @@ export default function StudentProblemArena({
   }, [testCasesParsed, exampleCases, problem.sampleInput, problem.sampleOutput, problem.title]);
 
   // Handle Submit Code
-  const handleSubmitCode = () => {
+  const handleSubmitCode = async () => {
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      const runtime = `${Math.floor(Math.random() * 25) + 28} ms`;
-      const memory = `${(Math.random() * 2 + 15.2).toFixed(1)} MB`;
+    const runtime = `${Math.floor(Math.random() * 25) + 28} ms`;
+    const memory = `${(Math.random() * 2 + 15.2).toFixed(1)} MB`;
 
-      // Mark solved in global live state
-      markProblemSolved(String(problem.id));
-      if (problem.slug) markProblemSolved(problem.slug);
+    // Mark solved in global live state
+    markProblemSolved(String(problem.id));
+    if (problem.slug) markProblemSolved(problem.slug);
 
-      // Add to submission history
-      const newSubmission = {
-        id: `sub-${Date.now()}`,
-        status: "Accepted" as const,
-        runtime: `${runtime} (Beats 96.4%)`,
-        memory: `${memory} (Beats 91.8%)`,
-        language: language.toUpperCase(),
-        timestamp: "Just now",
-        codeSnippet: code,
-      };
+    // Submitter profile info
+    const authorName = resolveDisplayName(user);
+    const rawEdu = resolveEducationStatus(user);
+    const formattedDesignation = rawEdu.toLowerCase().includes("professional")
+      ? "Working Professional"
+      : rawEdu.toLowerCase().includes("year")
+      ? `${rawEdu} student`
+      : rawEdu;
 
-      const updatedSubs = [newSubmission, ...mySubmissions];
-      setMySubmissions(updatedSubs);
+    const subId = `sub-${Date.now()}`;
+
+    // Add to personal submission history
+    const newSubmission = {
+      id: subId,
+      status: "Accepted" as const,
+      runtime: `${runtime} (Beats 96.4%)`,
+      memory: `${memory} (Beats 91.8%)`,
+      language: language.toUpperCase(),
+      timestamp: "Just now",
+      codeSnippet: code,
+    };
+
+    const updatedSubs = [newSubmission, ...mySubmissions];
+    setMySubmissions(updatedSubs);
+    try {
+      localStorage.setItem(
+        `lms_submissions_${problem.id || problem.slug}`,
+        JSON.stringify(updatedSubs)
+      );
+    } catch {}
+
+    const userCommunitySol: CommunitySolution = {
+      id: `sol-user-${Date.now()}`,
+      problemId: String(problem.id || problem.slug),
+      languageKey: language,
+      language:
+        language === "python"
+          ? "Python 3"
+          : language === "javascript"
+          ? "JavaScript"
+          : language === "typescript"
+          ? "TypeScript"
+          : language === "java"
+          ? "Java"
+          : "C++",
+      badgeColor: getLanguageBadgeColor(language),
+      title: `${language === "python" ? "Python 3" : language.toUpperCase()}: ${authorName}'s Solution`,
+      author: authorName,
+      authorDesignation: formattedDesignation,
+      avatar: user?.avatarUrl || undefined,
+      votes: 0,
+      views: 1,
+      runtime: `${runtime} (Beats 96.4%)`,
+      memory: `${memory} (Beats 91.8%)`,
+      complexity: `Time: ${timeComplexity} | Space: ${spaceComplexity}`,
+      tags: ["Community", language.toUpperCase(), "Accepted"],
+      code: code,
+      explanation: `Accepted community submission by ${authorName} with ${runtime} execution runtime.`,
+      submittedAt: "Just now",
+    };
+
+    setCommunitySolutions((prev) => {
+      const updated = [userCommunitySol, ...prev.filter((p) => p.id !== userCommunitySol.id)];
       try {
-        localStorage.setItem(
-          `lms_submissions_${problem.id || problem.slug}`,
-          JSON.stringify(updatedSubs)
-        );
+        const storageKey = `lms_community_solutions_${problem.id || problem.slug}`;
+        localStorage.setItem(storageKey, JSON.stringify(updated));
       } catch {}
+      return updated;
+    });
 
-      toast.success("Solution submitted successfully!", {
-        description: `Verdict: Accepted | Runtime: ${runtime}`,
-      });
-    }, 600);
+    // POST to backend API so Admin Panel and other peers see real data immediately!
+    try {
+      await fetch(
+        `${API_BASE_URL}/api/v1/practice-problems/${problem.id || problem.slug}/submissions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            student: authorName,
+            authorName: authorName,
+            userId: user?.id,
+            email: user?.email,
+            studentEmail: user?.email,
+            avatar: user?.avatarUrl,
+            authorAvatar: user?.avatarUrl,
+            designation: formattedDesignation,
+            authorDesignation: formattedDesignation,
+            language: language === "python" ? "Python" : language.toUpperCase(),
+            code: code,
+            runtime: runtime,
+            memory: memory,
+            status: "Approved",
+          }),
+        }
+      );
+    } catch (err) {
+      console.error("Failed to persist submission to API:", err);
+    }
+
+    setIsSubmitting(false);
+    toast.success("Solution submitted successfully!", {
+      description: `Verdict: Accepted | Runtime: ${runtime}`,
+    });
   };
 
   // Handle Post Discussion
@@ -904,7 +1052,7 @@ export default function StudentProblemArena({
             {[
               { id: "description", label: "Description", icon: FileText },
               { id: "editorial", label: "Editorial", icon: BookOpen },
-              { id: "solutions", label: "Solutions", icon: Code2, badge: String(problemSolutions.length) },
+              { id: "solutions", label: "Solutions", icon: Code2, badge: String(communitySolutions.length) },
               { id: "submissions", label: "Submissions", icon: CheckCircle2, badge: mySubmissions.length ? String(mySubmissions.length) : undefined },
               { id: "discussion", label: "Discussion", icon: MessageSquare, badge: String(discussions.length) },
             ].map((tab) => {
@@ -1260,16 +1408,16 @@ export default function StudentProblemArena({
               </div>
             )}
 
-            {/* ================= TAB 3: SOLUTIONS (ALL PROGRAMMING LANGUAGES) ================= */}
+            {/* ================= TAB 3: SOLUTIONS (COMMUNITY SUBMISSIONS) ================= */}
             {activeTab === "solutions" && (
               <div className="space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <h2 className="font-display text-base font-bold text-slate-900 dark:text-white">
-                      Reference & Community Solutions ({filteredSolutions.length})
+                      Community Solutions ({sortedSolutions.length})
                     </h2>
                     <p className="text-xs text-slate-400">
-                      Explore official optimal approaches and language-specific idioms across all platforms.
+                      Explore accepted solutions submitted by peers, ranked by most upvoted approaches.
                     </p>
                   </div>
                 </div>
@@ -1287,125 +1435,162 @@ export default function StudentProblemArena({
                           : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10"
                       }`}
                     >
-                      {item === "All" ? `All (${problemSolutions.length})` : item}
+                      {item === "All" ? `All (${communitySolutions.length})` : item}
                     </button>
                   ))}
                 </div>
 
                 {/* Solutions List */}
                 <div className="space-y-4">
-                  {filteredSolutions.map((sol) => (
-                    <div
-                      key={sol.id}
-                      className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4 space-y-3.5 shadow-2xs"
-                    >
-                      {/* Author row */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <img
-                            src={sol.avatar}
-                            alt={sol.author}
-                            className="h-8 w-8 rounded-full object-cover border border-slate-200 dark:border-white/10"
-                          />
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-xs font-bold text-slate-900 dark:text-white">
-                                {sol.author}
-                              </p>
-                              <Award className="h-3.5 w-3.5 text-[#3157e8]" />
-                            </div>
-                            <p className="text-[10px] text-slate-400">{sol.authorRole}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${sol.badgeColor}`}>
-                            {sol.language}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setLikedSolutions((prev) => ({
-                                ...prev,
-                                [sol.id]: !prev[sol.id],
-                              }));
-                              toast.success(
-                                likedSolutions[sol.id] ? "Upvote removed" : "Upvoted solution!"
-                              );
-                            }}
-                            className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg border transition cursor-pointer ${
-                              likedSolutions[sol.id]
-                                ? "bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400"
-                                : "border-slate-200 dark:border-white/10 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                            }`}
-                          >
-                            <ThumbsUp className={`h-3 w-3 ${likedSolutions[sol.id] ? "fill-current" : ""}`} />
-                            <span>{sol.votes}</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Title & metadata */}
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                        {sol.title}
-                      </h4>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-mono text-slate-600 dark:text-slate-300">
-                          {sol.complexity}
-                        </span>
-                        {sol.tags.map((t) => (
-                          <span
-                            key={t}
-                            className="rounded bg-white dark:bg-white/5 border border-slate-200/60 dark:border-white/5 px-2 py-0.5 text-[10px] text-slate-500"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-
-                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                        {sol.explanation}
+                  {sortedSolutions.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 dark:border-white/10 p-8 text-center space-y-2">
+                      <Code2 className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto" />
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        {solutionFilter === "All"
+                          ? "No community solutions submitted yet."
+                          : `No community solutions found for ${solutionFilter}.`}
                       </p>
+                      <p className="text-[11px] text-slate-400">
+                        Be the first to solve this problem in the code editor and share your solution with peers!
+                      </p>
+                    </div>
+                  ) : (
+                    sortedSolutions.map((sol) => (
+                      <div
+                        key={sol.id}
+                        className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4 space-y-3.5 shadow-2xs"
+                      >
+                        {/* Author row */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {sol.avatar ? (
+                              <img
+                                src={sol.avatar}
+                                alt={sol.author}
+                                className="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-white/10 shrink-0"
+                              />
+                            ) : (
+                              <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#3157e8] to-indigo-600 text-white font-bold text-xs flex items-center justify-center border border-white/20 shrink-0 shadow-xs">
+                                {sol.author.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                  {sol.author}
+                                </p>
+                                {sol.submittedAt && (
+                                  <span className="text-[10px] text-slate-400 shrink-0">
+                                    · {sol.submittedAt}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                {sol.authorDesignation?.toLowerCase().includes("professional") ? (
+                                  <Briefcase className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                ) : (
+                                  <GraduationCap className="h-3 w-3 text-[#3157e8] dark:text-[#5d7bff] shrink-0" />
+                                )}
+                                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 capitalize truncate">
+                                  {sol.authorDesignation}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
 
-                      {/* Code Snippet Box */}
-                      <div className="rounded-lg border border-slate-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#0f131f] p-3 text-slate-900 dark:text-slate-100 font-mono text-xs relative group">
-                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-white/5 mb-2 font-sans">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            {sol.language} Implementation
-                          </span>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span
+                              className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${sol.badgeColor}`}
+                            >
+                              {sol.language}
+                            </span>
                             <button
                               type="button"
-                              onClick={() => {
-                                setLanguage(sol.languageKey);
-                                setCode(sol.code);
-                                toast.success(`Loaded ${sol.language} solution into code editor!`);
-                              }}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#3157e8]/10 text-[#3157e8] hover:bg-[#3157e8] hover:text-white transition cursor-pointer"
+                              onClick={() => handleToggleLike(sol.id)}
+                              className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg border transition cursor-pointer active:scale-95 ${
+                                likedSolutions[sol.id]
+                                  ? "bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400"
+                                  : "border-slate-200 dark:border-white/10 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 bg-white dark:bg-white/5"
+                              }`}
+                              title={likedSolutions[sol.id] ? "Remove upvote" : "Upvote this solution"}
                             >
-                              <Code2 className="h-3 w-3" />
-                              <span>Load in Editor</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                navigator.clipboard.writeText(sol.code);
-                                toast.success(`Copied ${sol.author}'s solution!`);
-                              }}
-                              className="p-1 rounded bg-slate-200/80 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-600 dark:text-slate-300 transition cursor-pointer"
-                              title="Copy solution"
-                            >
-                              <Copy className="h-3 w-3" />
+                              <ThumbsUp
+                                className={`h-3 w-3 transition-transform ${
+                                  likedSolutions[sol.id] ? "fill-current scale-110" : ""
+                                }`}
+                              />
+                              <span>{sol.votes}</span>
                             </button>
                           </div>
                         </div>
-                        <pre className="overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden text-[11px] leading-relaxed">
-                          <code>{sol.code}</code>
-                        </pre>
+
+                        {/* Title & metadata */}
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
+                          {sol.title}
+                        </h4>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-mono text-slate-600 dark:text-slate-300">
+                            {sol.complexity}
+                          </span>
+                          {sol.runtime && (
+                            <span className="rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 px-2 py-0.5 text-[10px] font-mono text-emerald-700 dark:text-emerald-300">
+                              {sol.runtime}
+                            </span>
+                          )}
+                          {sol.tags.map((t) => (
+                            <span
+                              key={t}
+                              className="rounded bg-white dark:bg-white/5 border border-slate-200/60 dark:border-white/5 px-2 py-0.5 text-[10px] text-slate-500"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+
+                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                          {sol.explanation}
+                        </p>
+
+                        {/* Code Snippet Box */}
+                        <div className="rounded-lg border border-slate-200 dark:border-white/10 bg-[#f8fafc] dark:bg-[#0f131f] p-3 text-slate-900 dark:text-slate-100 font-mono text-xs relative group">
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-white/5 mb-2 font-sans">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              {sol.language} Implementation
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLanguage(sol.languageKey);
+                                  setCode(sol.code);
+                                  toast.success(`Loaded ${sol.author}'s ${sol.language} solution into code editor!`);
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#3157e8]/10 text-[#3157e8] hover:bg-[#3157e8] hover:text-white transition cursor-pointer"
+                              >
+                                <Code2 className="h-3 w-3" />
+                                <span>Load in Editor</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(sol.code);
+                                  toast.success(`Copied ${sol.author}'s solution!`);
+                                }}
+                                className="p-1 rounded bg-slate-200/80 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                                title="Copy solution"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                          <pre className="overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden text-[11px] leading-relaxed">
+                            <code>{sol.code}</code>
+                          </pre>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             )}
