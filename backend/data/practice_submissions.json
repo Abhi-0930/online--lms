@@ -1,22 +1,22 @@
 [
   {
-    "id": "psub-1790654605038-8xdp",
+    "id": "psub-1790663134141-0het",
     "problemId": "520d3d43-c421-4a4b-a9ed-db50c924e9db",
     "problemSlug": "two-sum",
     "problemTitle": "Two Sum",
-    "userId": null,
-    "student": "Abhishek Sharma",
-    "studentEmail": null,
+    "userId": "4c757530-b594-478d-982b-12f4060913b8",
+    "student": "Abhishek",
+    "studentEmail": "abhishek.j3094@gmail.com",
     "avatar": null,
-    "designation": "1st year student",
+    "designation": "3rd year student",
     "language": "Python",
-    "code": "class Solution:\\n    def twoSum(self, nums, target):\\n        seen = {}\\n        for i, num in enumerate(nums):\\n            comp = target - num\\n            if comp in seen:\\n                return [seen[comp], i]\\n            seen[num] = i",
-    "runtime": "34 ms",
-    "memory": "16.1 MB",
-    "time": "34 ms",
+    "code": "class Solution:\n    def twoSum(self, nums, target):\n        seen = {}\n\n        for i, num in enumerate(nums):\n            complement = target - num\n\n            if complement in seen:\n                return [seen[complement], i]\n\n            seen[num] = i",
+    "runtime": "51 ms",
+    "memory": "17.1 MB",
+    "time": "51 ms",
     "attempt": "1st Attempt",
     "status": "Approved",
     "submitted": "Just now",
-    "submittedAt": "2026-09-29T04:03:25.038Z"
+    "submittedAt": "2026-09-29T06:25:34.141Z"
   }
 ]

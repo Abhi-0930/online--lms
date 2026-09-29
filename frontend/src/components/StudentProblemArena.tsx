@@ -357,7 +357,7 @@ export default function StudentProblemArena({
   const [mySubmissions, setMySubmissions] = useState<
     Array<{
       id: string;
-      status: "Accepted" | "Wrong Answer";
+      status: "Accepted" | "Pending Review" | "Needs Improvement" | "Rejected" | "Wrong Answer";
       runtime: string;
       memory: string;
       language: string;
@@ -604,9 +604,13 @@ export default function StudentProblemArena({
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && !isCancelled) {
-            // Map backend submissions to CommunitySolutions
+            // Map backend approved submissions to CommunitySolutions
             const mapped: CommunitySolution[] = data
-              .filter((sub: any) => !String(sub.id).startsWith("peer-"))
+              .filter(
+                (sub: any) =>
+                  !String(sub.id).startsWith("peer-") &&
+                  (sub.status || "Approved").toLowerCase() === "approved"
+              )
               .map((sub: any) => {
                 const langLower = (sub.language || "python").toLowerCase();
                 const validKey: "python" | "javascript" | "typescript" | "java" | "cpp" =
@@ -635,9 +639,9 @@ export default function StudentProblemArena({
                   runtime: sub.runtime || sub.time || "32 ms",
                   memory: sub.memory || "16.4 MB",
                   complexity: `Time: ${timeComplexity} | Space: ${spaceComplexity}`,
-                  tags: ["Community", (sub.language || validKey).toUpperCase(), sub.status || "Accepted"],
+                  tags: ["Community", (sub.language || validKey).toUpperCase(), "Approved"],
                   code: sub.code || "",
-                  explanation: `Accepted community submission by ${sub.student || sub.authorName || "Learner"}.`,
+                  explanation: `Approved community submission by ${sub.student || sub.authorName || "Learner"}.`,
                   submittedAt: sub.submitted || (sub.submittedAt ? "Recently" : "Just now"),
                 };
               });
@@ -648,14 +652,18 @@ export default function StudentProblemArena({
         }
       } catch {}
 
-      // Local storage fallback
+      // Local storage fallback (only approved)
       try {
         const storageKey = `lms_community_solutions_${problem.id || problem.slug}`;
         const saved = localStorage.getItem(storageKey);
         if (saved && !isCancelled) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-            const realOnly = parsed.filter((s: any) => !String(s.id).startsWith("peer-"));
+            const realOnly = parsed.filter(
+              (s: any) =>
+                !String(s.id).startsWith("peer-") &&
+                (s.status || "Approved").toLowerCase() === "approved"
+            );
             setCommunitySolutions(realOnly);
             return;
           }
@@ -669,8 +677,14 @@ export default function StudentProblemArena({
 
     fetchSubmissionsFromApi();
 
+    const handleFocus = () => fetchSubmissionsFromApi();
+    window.addEventListener("focus", handleFocus);
+    const interval = setInterval(fetchSubmissionsFromApi, 4000);
+
     return () => {
       isCancelled = true;
+      window.removeEventListener("focus", handleFocus);
+      clearInterval(interval);
     };
   }, [problem.id, problem.slug, timeComplexity, spaceComplexity]);
 
@@ -803,10 +817,6 @@ export default function StudentProblemArena({
     const runtime = `${Math.floor(Math.random() * 25) + 28} ms`;
     const memory = `${(Math.random() * 2 + 15.2).toFixed(1)} MB`;
 
-    // Mark solved in global live state
-    markProblemSolved(String(problem.id));
-    if (problem.slug) markProblemSolved(problem.slug);
-
     // Submitter profile info
     const authorName = resolveDisplayName(user);
     const rawEdu = resolveEducationStatus(user);
@@ -818,12 +828,12 @@ export default function StudentProblemArena({
 
     const subId = `sub-${Date.now()}`;
 
-    // Add to personal submission history
+    // Add to personal submission history with Pending Review status
     const newSubmission = {
       id: subId,
-      status: "Accepted" as const,
-      runtime: `${runtime} (Beats 96.4%)`,
-      memory: `${memory} (Beats 91.8%)`,
+      status: "Pending Review" as const,
+      runtime: `${runtime}`,
+      memory: `${memory}`,
       language: language.toUpperCase(),
       timestamp: "Just now",
       codeSnippet: code,
@@ -838,46 +848,7 @@ export default function StudentProblemArena({
       );
     } catch {}
 
-    const userCommunitySol: CommunitySolution = {
-      id: `sol-user-${Date.now()}`,
-      problemId: String(problem.id || problem.slug),
-      languageKey: language,
-      language:
-        language === "python"
-          ? "Python 3"
-          : language === "javascript"
-          ? "JavaScript"
-          : language === "typescript"
-          ? "TypeScript"
-          : language === "java"
-          ? "Java"
-          : "C++",
-      badgeColor: getLanguageBadgeColor(language),
-      title: `${language === "python" ? "Python 3" : language.toUpperCase()}: ${authorName}'s Solution`,
-      author: authorName,
-      authorDesignation: formattedDesignation,
-      avatar: user?.avatarUrl || undefined,
-      votes: 0,
-      views: 1,
-      runtime: `${runtime} (Beats 96.4%)`,
-      memory: `${memory} (Beats 91.8%)`,
-      complexity: `Time: ${timeComplexity} | Space: ${spaceComplexity}`,
-      tags: ["Community", language.toUpperCase(), "Accepted"],
-      code: code,
-      explanation: `Accepted community submission by ${authorName} with ${runtime} execution runtime.`,
-      submittedAt: "Just now",
-    };
-
-    setCommunitySolutions((prev) => {
-      const updated = [userCommunitySol, ...prev.filter((p) => p.id !== userCommunitySol.id)];
-      try {
-        const storageKey = `lms_community_solutions_${problem.id || problem.slug}`;
-        localStorage.setItem(storageKey, JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-
-    // POST to backend API so Admin Panel and other peers see real data immediately!
+    // POST to backend API with Pending Review status for admin approval
     try {
       await fetch(
         `${API_BASE_URL}/api/v1/practice-problems/${problem.id || problem.slug}/submissions`,
@@ -898,7 +869,7 @@ export default function StudentProblemArena({
             code: code,
             runtime: runtime,
             memory: memory,
-            status: "Approved",
+            status: "Pending Review",
           }),
         }
       );
@@ -907,8 +878,8 @@ export default function StudentProblemArena({
     }
 
     setIsSubmitting(false);
-    toast.success("Solution submitted successfully!", {
-      description: `Verdict: Accepted | Runtime: ${runtime}`,
+    toast.success("Solution submitted for review!", {
+      description: "Your code has been sent to the instructor/admin for review. Once approved, it will be published to the Community Solutions tab.",
     });
   };
 
@@ -1628,12 +1599,18 @@ export default function StudentProblemArena({
                             <span
                               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
                                 sub.status === "Accepted"
-                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
-                                    : "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
+                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                                  : sub.status === "Pending Review"
+                                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
+                                  : sub.status === "Needs Improvement"
+                                  ? "bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300"
+                                  : "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
                               }`}
                             >
                               {sub.status === "Accepted" ? (
                                 <CircleCheck className="h-3.5 w-3.5" />
+                              ) : sub.status === "Pending Review" ? (
+                                <Clock className="h-3.5 w-3.5" />
                               ) : (
                                 <XCircle className="h-3.5 w-3.5" />
                               )}

@@ -15,10 +15,30 @@ function PracticeContent() {
   const searchParams = useSearchParams();
   const data = searchParams.get("data");
   const q = searchParams.get("q");
-  const slugParam = searchParams.get("slug");
-  const problemIdParam = searchParams.get("problemId");
-  const decoded = decodeDataParam<{ slug?: string; problemId?: string; v?: string }>(data || q);
-  const targetSlug = slugParam || problemIdParam || decoded?.slug || decoded?.problemId;
+  const slugParam =
+    searchParams.get("slug") ||
+    searchParams.get("id") ||
+    searchParams.get("problem") ||
+    searchParams.get("problemSlug") ||
+    searchParams.get("problemId");
+
+  const decoded = decodeDataParam<{
+    slug?: string;
+    id?: string;
+    problemId?: string;
+    problem?: string;
+    problemSlug?: string;
+    v?: string;
+  }>(data || q);
+
+  const targetSlug =
+    slugParam ||
+    decoded?.slug ||
+    decoded?.id ||
+    decoded?.problemId ||
+    decoded?.problem ||
+    decoded?.problemSlug ||
+    undefined;
 
   return <Home page="practice" problemSlug={targetSlug} />;
 }
@@ -30,5 +50,3 @@ export default function PracticePage() {
     </Suspense>
   );
 }
-
-

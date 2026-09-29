@@ -2380,7 +2380,7 @@ export class AdminService {
       memory,
       time: runtime,
       attempt: '1st Attempt',
-      status: data.status || 'Approved',
+      status: data.status || 'Pending Review',
       submitted: 'Just now',
       submittedAt: new Date().toISOString(),
     };
@@ -2407,7 +2407,7 @@ export class AdminService {
     return submission;
   }
 
-  async getPracticeProblemSubmissions(problemIdOrSlug: string) {
+  async getPracticeProblemSubmissions(problemIdOrSlug: string, onlyApproved = false) {
     AdminService.fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
     AdminService.fallbackProblems = AdminService.loadProblemsFromFile();
 
@@ -2434,7 +2434,9 @@ export class AdminService {
         subProbSlug === normKey ||
         (targetProblem && (subProbId === String(targetProblem.id).toLowerCase() || subProbSlug === String(targetProblem.slug || '').toLowerCase()))
       ) {
-        matches.push(sub);
+        if (!onlyApproved || (sub.status && sub.status.toLowerCase() === 'approved')) {
+          matches.push(sub);
+        }
       }
     }
 
@@ -2460,6 +2462,31 @@ export class AdminService {
       return existing;
     }
     return { success: false, error: 'Submission not found' };
+  }
+
+  async deletePracticeProblemSubmission(submissionId: string) {
+    AdminService.fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
+    const existed = AdminService.fallbackPracticeSubmissions.delete(String(submissionId));
+    AdminService.savePracticeSubmissionsToFile();
+    return { success: existed };
+  }
+
+  async clearAllPracticeProblemSubmissions(problemIdOrSlug?: string) {
+    AdminService.fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
+    if (problemIdOrSlug) {
+      const normKey = String(problemIdOrSlug).toLowerCase().trim();
+      for (const [key, sub] of AdminService.fallbackPracticeSubmissions.entries()) {
+        const pId = String(sub.problemId || '').toLowerCase();
+        const pSlug = String(sub.problemSlug || '').toLowerCase();
+        if (pId === normKey || pSlug === normKey) {
+          AdminService.fallbackPracticeSubmissions.delete(key);
+        }
+      }
+    } else {
+      AdminService.fallbackPracticeSubmissions.clear();
+    }
+    AdminService.savePracticeSubmissionsToFile();
+    return { success: true };
   }
 
   // ==========================================

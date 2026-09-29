@@ -912,6 +912,58 @@ function Dashboard() {
           </section>
         </div>
       )}
+
+      {/* Practice Arena: Live DSA Challenges Section */}
+      <div className="mt-8 min-w-0 max-w-full w-full">
+        <section className="min-w-0 max-w-full w-full">
+          <SectionTitle
+            title="Daily practice challenges"
+            link={liveProblems.length > 0 ? "Open practice arena" : undefined}
+            href={getSecureHref("/practice")}
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {liveProblems.slice(0, 6).map((problem) => (
+              <Link
+                key={String(problem.id)}
+                href={getSecureHref("/practice", { slug: problem.slug || String(problem.id) })}
+                className="card-surface group flex flex-col justify-between p-5 transition-all duration-200 hover:border-[#3157e8]/40 hover:shadow-md cursor-pointer"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-md bg-blue-50 dark:bg-blue-950/50 border border-blue-100/80 dark:border-blue-900/40 px-2 py-0.5 text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                      {problem.category || problem.topic}
+                    </span>
+                    <span
+                      className={cx(
+                        "rounded px-2 py-0.5 text-[10px] font-bold",
+                        problem.difficulty === "Easy"
+                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          : problem.difficulty === "Hard"
+                          ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                          : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                      )}
+                    >
+                      {problem.difficulty}
+                    </span>
+                  </div>
+                  <h3 className="mt-3 font-display text-sm font-bold text-[#17223d] dark:text-white group-hover:text-[#3157e8] transition-colors">
+                    {problem.title}
+                  </h3>
+                  <p className="mt-1 text-xs text-[#9aa4bc] line-clamp-2">
+                    {problem.description || "Solve standard interview algorithms and optimize for time and space complexity."}
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between border-t border-[#edf0f6] pt-3 text-[11px] font-semibold text-[#7c87a4] dark:border-white/10">
+                  <span>{problem.acceptance || "75.0%"} acceptance</span>
+                  <span className="font-bold text-[#3157e8] inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                    {problem.solved ? "Review" : "Solve"} <ArrowRight className="h-3 w-3" />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
     </>
   );
 }
@@ -3526,6 +3578,7 @@ function MyCourseCard({ course }: { course: LiveCourseItem }) {
 
 function PlayerPage() {
   const { assignments } = useAssignments();
+  const { problems: liveProblems } = useLiveProblems();
   const [tab, setTab] = useState("Notes");
   const [completed, setCompleted] = useState(false);
   const [moduleOpen, setModuleOpen] = useState(1);
@@ -3701,7 +3754,86 @@ function PlayerPage() {
                 </div>
               </div>
             )}
-            {tab !== "Notes" && tab !== "Assignments" && (
+            {tab === "Practice problems" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                      Curated Practice Challenges ({liveProblems.length})
+                    </h2>
+                    <p className="text-xs text-[#9aa4bc]">
+                      Hands-on coding problems mapped to this module's algorithmic patterns.
+                    </p>
+                  </div>
+                  <Link
+                    href={getSecureHref("/practice")}
+                    className="text-xs font-bold text-[#3157e8] hover:underline inline-flex items-center gap-1"
+                  >
+                    All Problems <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+                <div className="space-y-3">
+                  {liveProblems.slice(0, 6).map((prob) => (
+                    <div
+                      key={String(prob.id)}
+                      className="rounded-2xl border border-[#edf0f6] bg-white p-4.5 dark:border-white/10 dark:bg-white/5 flex items-center justify-between gap-4 transition hover:border-[#3157e8]/30"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span
+                          className={cx(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold",
+                            prob.solved
+                              ? "bg-[#e4f8ee] text-[#23a26d]"
+                              : "bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white"
+                          )}
+                        >
+                          <Code2 className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
+                              {prob.title}
+                            </p>
+                            {prob.solved && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                                <CheckCircle2 className="h-3 w-3" /> Solved
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs text-[#9aa4bc]">
+                            <span>{prob.category || prob.topic}</span>
+                            <span>·</span>
+                            <span
+                              className={cx(
+                                "font-bold",
+                                prob.difficulty === "Easy"
+                                  ? "text-emerald-600"
+                                  : prob.difficulty === "Medium"
+                                  ? "text-amber-600"
+                                  : "text-rose-600"
+                              )}
+                            >
+                              {prob.difficulty}
+                            </span>
+                            <span>·</span>
+                            <span>{prob.acceptance || "80%"} acceptance</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Link
+                        href={getSecureHref("/practice", {
+                          slug: prob.slug || String(prob.id),
+                        })}
+                        className="button-primary !py-1.5 !px-3.5 !text-xs shrink-0 inline-flex items-center gap-1.5"
+                      >
+                        {prob.solved ? "Review Arena" : "Solve in Arena"} <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {tab !== "Notes" && tab !== "Assignments" && tab !== "Practice problems" && (
               <div className="rounded-2xl bg-[#f7f9fc] p-8 text-center dark:bg-white/5">
                 <FolderOpen className="mx-auto h-8 w-8 text-[#c4cada]" />
                 <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">{tab} for this lesson</h3>
@@ -3995,14 +4127,48 @@ function PracticePage({
         difficulty === "All" ||
         (p.difficulty || "").toLowerCase() === difficulty.toLowerCase();
 
-      const topicMatch =
-        topic === "All topics" ||
-        (p.topic || p.category || "").toLowerCase() === topic.toLowerCase();
+      let topicMatch = topic === "All topics";
+      if (!topicMatch) {
+        const sel = topic.toLowerCase().trim();
+        const pTopic = (p.topic || "").toLowerCase().trim();
+        const pCategory = (p.category || "").toLowerCase().trim();
+        const tags: string[] = Array.isArray(p.tags) ? p.tags.map((t: any) => String(t).toLowerCase()) : [];
 
-      const compMatch =
-        selectedCompany === "All companies" ||
-        (typeof p.companies === "string" &&
-          p.companies.toLowerCase().includes(selectedCompany.toLowerCase()));
+        topicMatch =
+          pTopic === sel ||
+          pCategory === sel ||
+          pTopic.includes(sel) ||
+          pCategory.includes(sel) ||
+          sel.includes(pTopic) ||
+          sel.includes(pCategory) ||
+          tags.includes(sel) ||
+          tags.some((t: string) => t.includes(sel) || sel.includes(t));
+
+        if (!topicMatch) {
+          if (sel === "arrays" && (pCategory.includes("array") || tags.some((t: string) => t.includes("array")))) topicMatch = true;
+          if (sel === "strings" && (pCategory.includes("string") || tags.some((t: string) => t.includes("string")))) topicMatch = true;
+          if (sel === "linked list" && (pCategory.includes("link") || pCategory.includes("list") || tags.some((t: string) => t.includes("list")))) topicMatch = true;
+          if (sel === "trees" && (pCategory.includes("tree") || tags.some((t: string) => t.includes("tree")))) topicMatch = true;
+          if (sel === "graphs" && (pCategory.includes("graph") || tags.some((t: string) => t.includes("graph")))) topicMatch = true;
+          if (sel === "stack" && (pCategory.includes("stack") || tags.some((t: string) => t.includes("stack")))) topicMatch = true;
+          if (sel === "queue" && (pCategory.includes("queue") || tags.some((t: string) => t.includes("queue")))) topicMatch = true;
+          if (sel === "dynamic programming" && (pCategory.includes("dynamic") || pCategory.includes("dp") || tags.some((t: string) => t.includes("dp")))) topicMatch = true;
+          if (sel === "binary search" && (pCategory.includes("binary search") || tags.some((t: string) => t.includes("binary search")))) topicMatch = true;
+          if (sel === "two pointers" && (pCategory.includes("pointer") || tags.some((t: string) => t.includes("pointer")))) topicMatch = true;
+          if (sel === "sliding window" && (pCategory.includes("window") || tags.some((t: string) => t.includes("window")))) topicMatch = true;
+        }
+      }
+
+      let compMatch = selectedCompany === "All companies";
+      if (!compMatch) {
+        const comp = selectedCompany.toLowerCase().trim();
+        if (typeof p.companies === "string") {
+          compMatch = p.companies.toLowerCase().includes(comp);
+        } else if (Array.isArray(p.companies as any)) {
+          const compArr: string[] = (p.companies as any).map((c: any) => String(c).toLowerCase());
+          compMatch = compArr.some((c: string) => c.includes(comp));
+        }
+      }
 
       return diffMatch && topicMatch && compMatch;
     });
@@ -4160,7 +4326,21 @@ function PracticePage({
           <span>Status</span>
           <span />
         </div>
-        {filtered.length === 0 ? (
+        {isLoading && liveProblems.length === 0 ? (
+          <div className="p-8 space-y-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex items-center gap-4 animate-pulse">
+                <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-white/10 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-1/3 rounded bg-slate-200 dark:bg-white/10" />
+                  <div className="h-3 w-1/4 rounded bg-slate-100 dark:bg-white/5" />
+                </div>
+                <div className="h-6 w-16 rounded-md bg-slate-200 dark:bg-white/10" />
+                <div className="h-4 w-12 rounded bg-slate-100 dark:bg-white/5" />
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="p-12 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#3157e8] dark:bg-white/5 dark:text-white">
               <SlidersHorizontal className="h-6 w-6" />
@@ -6227,9 +6407,7 @@ export default function Home({
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (problemSlug) {
-      setActiveProblemSlug(problemSlug);
-    }
+    setActiveProblemSlug(problemSlug || null);
   }, [problemSlug]);
 
   useEffect(() => {

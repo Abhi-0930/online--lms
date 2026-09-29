@@ -195,6 +195,20 @@ export default async function adminController(fastify: FastifyInstance) {
     return reply.send(updated);
   });
 
+  fastify.delete('/practice-problems/submissions/:submissionId', async (request, reply) => {
+    const { submissionId } = request.params as { submissionId: string };
+    const res = await adminService.deletePracticeProblemSubmission(submissionId);
+    AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+    return reply.send(res);
+  });
+
+  fastify.delete('/practice-problems/:id/submissions', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const res = await adminService.clearAllPracticeProblemSubmissions(id);
+    AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+    return reply.send(res);
+  });
+
   // Live Sessions & Webinars management
   fastify.get('/live-sessions', async () => {
     return adminService.getAllLiveSessions();

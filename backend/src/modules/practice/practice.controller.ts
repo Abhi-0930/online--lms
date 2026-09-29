@@ -20,22 +20,38 @@ export default async function practiceController(fastify: FastifyInstance) {
 
     const all = await adminService.getAllPracticeProblems();
     
-    // Filter only Live problems for public practice view (case-insensitive)
-    let problems = all.filter((p) => (p.status || 'Live').toLowerCase() === 'live');
+    // Filter all active/live practice problems (exclude drafts and archived)
+    let problems = all.filter((p) => {
+      const st = (p.status || 'Live').toLowerCase();
+      return st !== 'draft' && st !== 'archived';
+    });
 
     if (difficulty && difficulty !== 'All') {
-      problems = problems.filter((p) => p.difficulty.toLowerCase() === difficulty.toLowerCase());
+      problems = problems.filter((p) => (p.difficulty || '').toLowerCase() === difficulty.toLowerCase());
     }
 
     const targetCategory = topic || category;
     if (targetCategory && targetCategory !== 'All' && targetCategory !== 'All topics') {
-      problems = problems.filter((p) => p.category.toLowerCase() === targetCategory.toLowerCase());
+      const cat = targetCategory.toLowerCase().trim();
+      problems = problems.filter((p) => {
+        const pCat = (p.category || '').toLowerCase();
+        const pTopic = ((p as any).topic || '').toLowerCase();
+        const tags = Array.isArray(p.tags) ? p.tags.map((t: string) => String(t).toLowerCase()) : [];
+        return (
+          pCat === cat ||
+          pTopic === cat ||
+          pCat.includes(cat) ||
+          cat.includes(pCat) ||
+          tags.includes(cat) ||
+          tags.some((t: string) => t.includes(cat) || cat.includes(t))
+        );
+      });
     }
 
     if (search && search.trim()) {
       const q = search.toLowerCase().trim();
       problems = problems.filter((p) =>
-        `${p.title} ${p.category} ${p.difficulty} ${p.description || ''}`.toLowerCase().includes(q)
+        `${p.title || ''} ${p.category || ''} ${p.difficulty || ''} ${p.description || ''} ${Array.isArray(p.tags) ? p.tags.join(' ') : ''}`.toLowerCase().includes(q)
       );
     }
 
@@ -50,10 +66,14 @@ export default async function practiceController(fastify: FastifyInstance) {
 
     const { slugOrId } = request.params as { slugOrId: string };
     const all = await adminService.getAllPracticeProblems();
+    const query = (slugOrId || '').toLowerCase().trim();
     
-    const problem = all.find(
-      (p) => String(p.id) === slugOrId || p.slug === slugOrId || p.slug === slugOrId.toLowerCase()
-    );
+    const problem = all.find((p) => {
+      const idStr = String(p.id).toLowerCase();
+      const slugStr = (p.slug || '').toLowerCase();
+      const titleSlug = (p.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      return idStr === query || slugStr === query || titleSlug === query;
+    });
 
     if (!problem) {
       return reply.code(404).send({ error: 'Practice problem not found' });
@@ -62,14 +82,14 @@ export default async function practiceController(fastify: FastifyInstance) {
     return problem;
   });
 
-  // Get problem submissions (Real student submissions)
+  // Get problem submissions (Real student submissions - Approved only for Community Solutions)
   fastify.get('/:slugOrId/submissions', async (request, reply) => {
     reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
     reply.header('Pragma', 'no-cache');
     reply.header('Expires', '0');
 
     const { slugOrId } = request.params as { slugOrId: string };
-    return adminService.getPracticeProblemSubmissions(slugOrId);
+    return adminService.getPracticeProblemSubmissions(slugOrId, true);
   });
 
   // Submit code for a practice problem

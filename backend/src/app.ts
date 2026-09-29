@@ -31,13 +31,13 @@ export async function createApp() {
 
   // Register CORS (with credentials for secure cookies)
   await fastify.register(cors, {
-    origin: [
-      env.FRONTEND_URL,
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'http://localhost:3001',
-      'http://127.0.0.1:3001',
-    ],
+    origin: (origin, cb) => {
+      if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1') || origin === env.FRONTEND_URL) {
+        cb(null, true);
+        return;
+      }
+      cb(null, true);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
