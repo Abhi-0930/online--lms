@@ -142,12 +142,15 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 function Logo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href={getSecureHref("/dashboard")} className="flex items-center gap-3 min-w-0 group">
-      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-[#3157e8] text-white shadow-[0_8px_18px_rgba(49,87,232,0.3)] transition-transform duration-200 group-hover:-rotate-3">
-        <span className="absolute h-4 w-4 rounded-[5px] border-[2px] border-white/90" />
-        <span className="absolute h-1.5 w-1.5 rounded-full bg-white" />
+    <Link href={getSecureHref("/dashboard")} className="flex items-center gap-2.5 min-w-0 group">
+      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#2563eb] text-white shadow-[0_4px_14px_rgba(37,99,235,0.3)] transition-transform duration-200 group-hover:scale-105 overflow-hidden p-1.5">
+        <img src="/icon.svg" alt="PrepPath" className="h-full w-full object-contain" />
       </span>
-      {!compact && <span className="font-display text-[17px] font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">codepath<span className="text-[#3157e8]">.</span></span>}
+      {!compact && (
+        <span className="font-display text-[18px] font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">
+          preppath<span className="text-[#2563eb]">.</span>
+        </span>
+      )}
     </Link>
   );
 }
@@ -1803,7 +1806,7 @@ function LiveSessionPage({ initialSessionId }: { initialSessionId?: string }) {
               </div>
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
-                <span>Open attached problem sets to solve along with the instructor in CodePath Arena.</span>
+                <span>Open attached problem sets to solve along with the instructor in PrepPath Arena.</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
@@ -6437,7 +6440,7 @@ function FeedbackPage() { const [rating, setRating] = useState(0); return <><Pag
 
 function NotesPage() { return <><PageHeader eyebrow="Capture your thinking" title="Notes" description="Your private course notes, collected in one calm place." action={<button onClick={() => toast.success("New note created")} className="button-primary"><Plus className="h-4 w-4" /> New note</button>} /><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{["Sliding Window Patterns", "The anatomy of a good interview answer", "Trees: recursive vs iterative"].map((title, i) => <article key={title} className="card-surface p-5"><div className="flex items-start justify-between"><span className={cx("flex h-9 w-9 items-center justify-center rounded-xl", i === 0 ? "bg-[#eaf0ff] text-[#3157e8]" : i === 1 ? "bg-[#f0eaff] text-[#7f5af0]" : "bg-[#e4f8ee] text-[#23a26d]")}><FileText className="h-4 w-4" /></span><button onClick={() => toast.info("Note actions opened")} className="text-[#9aa4bc]"><MoreHorizontal className="h-4 w-4" /></button></div><h2 className="mt-5 font-display text-lg font-bold tracking-[-0.03em] text-[#17223d] dark:text-white">{title}</h2><p className="mt-2 line-clamp-3 text-sm leading-6 text-[#7c87a4]">A short, memorable way to frame the idea before writing code. Capture the invariant first, then test it on a tiny example.</p><div className="mt-5 flex items-center justify-between text-[10px] font-semibold text-[#9aa4bc]"><span>Updated {i + 1} day{i ? "s" : ""} ago</span><span className="flex items-center gap-1"><Bookmark className="h-3 w-3 fill-current text-[#3157e8]" /> Saved</span></div></article>)}</div></>; }
 
-function NotFoundLike() { return <div className="card-surface mx-auto max-w-lg p-10 text-center"><CircleHelp className="mx-auto h-10 w-10 text-[#3157e8]" /><h1 className="mt-4 font-display text-2xl font-bold text-[#17223d] dark:text-white">This space is being prepared</h1><p className="mt-2 text-sm leading-6 text-[#7c87a4]">The learning path is ready to grow here. Use the navigation to explore the rest of CodePath.</p><Link href={getSecureHref("/dashboard")} className="mt-6 inline-flex button-primary">Back to dashboard</Link></div>; }
+function NotFoundLike() { return <div className="card-surface mx-auto max-w-lg p-10 text-center"><CircleHelp className="mx-auto h-10 w-10 text-[#3157e8]" /><h1 className="mt-4 font-display text-2xl font-bold text-[#17223d] dark:text-white">This space is being prepared</h1><p className="mt-2 text-sm leading-6 text-[#7c87a4]">The learning path is ready to grow here. Use the navigation to explore the rest of PrepPath.</p><Link href={getSecureHref("/dashboard")} className="mt-6 inline-flex button-primary">Back to dashboard</Link></div>; }
 
 export default function Home({
   page = "dashboard",
