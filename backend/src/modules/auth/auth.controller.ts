@@ -18,13 +18,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 export default async function authController(fastify: FastifyInstance) {
   const authService = new AuthService(fastify.prisma);
-
+  const isProd = env.NODE_ENV === 'production' || process.env.RENDER === 'true';
   const setAuthCookie = (reply: any, token: string) => {
     reply.setCookie('access_token', token, {
       path: '/',
       httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
   };
@@ -33,8 +33,8 @@ export default async function authController(fastify: FastifyInstance) {
     reply.clearCookie('access_token', {
       path: '/',
       httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
     });
   };
 
@@ -96,6 +96,8 @@ export default async function authController(fastify: FastifyInstance) {
       if (result.isNewUser) {
         redirectUrl.searchParams.set('isNewUser', 'true');
       }
+      redirectUrl.searchParams.set('token', accessToken);
+      redirectUrl.searchParams.set('sessionToken', result.sessionToken);
 
       return reply.redirect(redirectUrl.toString());
     } catch (err: any) {

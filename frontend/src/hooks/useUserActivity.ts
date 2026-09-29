@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "./useAuth";
-import { API_BASE_URL } from "@/lib/apiConfig";
+import { API_BASE_URL, getAuthHeaders } from "@/lib/apiConfig";
 
 export interface DailyActivityRecord {
   date: string; // "YYYY-MM-DD"
@@ -125,7 +125,7 @@ export function useUserActivity() {
     if (!isAuthenticated) return;
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         credentials: "include",
       });
       if (res.ok) {
@@ -231,7 +231,7 @@ export function useUserActivity() {
           if (nextSec % 60 === 0 && isAuthenticated) {
             fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: getAuthHeaders(),
               credentials: "include",
               body: JSON.stringify({
                 action: "ACTIVE_SESSION_PRESENCE",
@@ -290,7 +290,7 @@ export function useUserActivity() {
       if (isAuthenticated) {
         fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           credentials: "include",
           body: JSON.stringify({
             action: reason,
@@ -346,7 +346,7 @@ export function useUserActivity() {
       if (isAuthenticated) {
         fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           credentials: "include",
           body: JSON.stringify({
             action: "PROBLEM_SOLVED",
@@ -402,7 +402,7 @@ export function useUserActivity() {
       if (isAuthenticated) {
         fetch(`${API_BASE_URL}/api/v1/progress/activity`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           credentials: "include",
           body: JSON.stringify({
             action: "LESSON_COMPLETE",

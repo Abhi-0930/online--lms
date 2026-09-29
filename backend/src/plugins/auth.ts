@@ -79,11 +79,12 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
       }
 
       if (!sessionExists) {
+        const isProd = env.NODE_ENV === 'production' || process.env.RENDER === 'true';
         reply.clearCookie('access_token', {
           path: '/',
           httpOnly: true,
-          secure: env.NODE_ENV === 'production',
-          sameSite: 'lax',
+          secure: isProd,
+          sameSite: isProd ? 'none' : 'lax',
         });
         return reply.status(401).send({
           error: 'Unauthorized',

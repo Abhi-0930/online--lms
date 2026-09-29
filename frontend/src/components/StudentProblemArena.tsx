@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { API_BASE_URL } from "@/lib/apiConfig";
+import { API_BASE_URL, getAuthHeaders } from "@/lib/apiConfig";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -896,7 +896,8 @@ export default function StudentProblemArena({
         `${API_BASE_URL}/api/v1/practice-problems/${problem.id || problem.slug}/submissions`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
+          credentials: "include",
           body: JSON.stringify({
             id: subId,
             student: authorName,
@@ -1061,7 +1062,8 @@ export default function StudentProblemArena({
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/practice-problems/discussions/${discussionId}/like`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
+        credentials: "include",
         body: JSON.stringify({
           delta,
           userEmail: user?.email,
@@ -1104,7 +1106,8 @@ export default function StudentProblemArena({
         `${API_BASE_URL}/api/v1/practice-problems/discussions/${discussionId}/replies`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
+          credentials: "include",
           body: JSON.stringify(payload),
         }
       );

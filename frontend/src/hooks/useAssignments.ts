@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { API_BASE_URL } from "@/lib/apiConfig";
+import { API_BASE_URL, getAuthHeaders } from "@/lib/apiConfig";
 
 export interface LiveAssignmentItem {
   id: string;
@@ -89,11 +89,13 @@ export function useAssignments() {
       const [asgRes, subRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/v1/assignments`, {
           method: "GET",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
+          credentials: "include",
         }),
         fetch(`${API_BASE_URL}/api/v1/assignments/my-submissions`, {
           method: "GET",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
+          credentials: "include",
         }),
       ]);
 
@@ -130,7 +132,8 @@ export function useAssignments() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/assignments/${assignmentId}/submit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
+        credentials: "include",
         body: JSON.stringify(data),
       });
 

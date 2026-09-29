@@ -19,7 +19,7 @@ import { createSecureUrl, decodeDataParam } from "@/lib/urlParams";
 import { resolveDisplayName } from "@/lib/nameUtils";
 import { ConfettiAnimation } from "@/components/ConfettiAnimation";
 import { useAuth } from "@/hooks/useAuth";
-import { API_BASE_URL } from "@/lib/apiConfig";
+import { API_BASE_URL, getAuthHeaders } from "@/lib/apiConfig";
 
 interface StudyOption {
   id: string;
@@ -468,7 +468,7 @@ function OnboardingContent() {
       try {
         const res = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
           method: "GET",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           credentials: "include",
         });
         if (res.ok) {
@@ -586,7 +586,7 @@ function OnboardingContent() {
       // Save Step 1 to database table UserOnboarding via authenticated cookie
       await fetch(`${API_BASE_URL}/api/v1/onboarding/step-1`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         credentials: "include",
         body: JSON.stringify({
           educationStatus: selectedStudyOption,
@@ -610,7 +610,7 @@ function OnboardingContent() {
       // Save Step 2 to database table UserOnboarding via authenticated cookie
       await fetch(`${API_BASE_URL}/api/v1/onboarding/step-2`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         credentials: "include",
         body: JSON.stringify({
           targetRoles: selectedRoles,
@@ -634,7 +634,7 @@ function OnboardingContent() {
       // Save Step 3 to database table UserOnboarding via authenticated cookie
       await fetch(`${API_BASE_URL}/api/v1/onboarding/step-3`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         credentials: "include",
         body: JSON.stringify({
           targetCompanies: selectedCompanies,
@@ -671,7 +671,7 @@ function OnboardingContent() {
       // Save Step 4 to database table UserOnboarding & mark isCompleted = true
       await fetch(`${API_BASE_URL}/api/v1/onboarding/step-4`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         credentials: "include",
         body: JSON.stringify({
           name: cleanName,

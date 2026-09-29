@@ -26,23 +26,37 @@ function CallbackHandler() {
         return;
       }
 
+      const tokenParam = searchParams.get("token");
+      const sessionTokenParam = searchParams.get("sessionToken");
+
       try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (tokenParam) {
+          headers["Authorization"] = `Bearer ${tokenParam}`;
+        }
+        if (sessionTokenParam) {
+          headers["X-Session-Token"] = sessionTokenParam;
+        }
+
         const res = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
           method: "GET",
-          headers: { "Content-Type": "application/json" },
+          headers,
           credentials: "include",
         });
 
         if (res.ok) {
           const data = await res.json();
           const user = data?.user;
+          const resolvedSessionToken = sessionTokenParam || data?.sessionToken;
           if (user) {
             const resolvedUser = {
               ...user,
               name: user.fullName || user.name,
               fullName: user.fullName || user.name,
             };
-            setUser(resolvedUser, data?.sessionToken);
+            setUser(resolvedUser, resolvedSessionToken, tokenParam);
           }
 
           if (isNewUser || !user?.onboarding?.isCompleted) {

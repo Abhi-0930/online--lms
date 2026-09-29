@@ -19,7 +19,7 @@ import { useUserActivity, getLocalDateString } from "@/hooks/useUserActivity";
 import StudentProblemArena from "@/components/StudentProblemArena";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
-import { API_BASE_URL } from "@/lib/apiConfig";
+import { API_BASE_URL, getAuthHeaders } from "@/lib/apiConfig";
 
 
 function getSecureHref(path: string, params?: Record<string, any>) {
@@ -6194,6 +6194,7 @@ function ProfilePage() {
   const fetchDevices = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/auth/devices`, {
+        headers: getAuthHeaders(),
         credentials: "include",
       });
       if (res.ok) {
@@ -6216,7 +6217,7 @@ function ProfilePage() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/auth/devices/revoke`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         credentials: "include",
         body: JSON.stringify({ sessionToken }),
       });

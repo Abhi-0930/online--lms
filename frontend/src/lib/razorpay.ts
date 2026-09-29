@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { API_BASE_URL } from "./apiConfig";
+import { API_BASE_URL, getAuthHeaders } from "./apiConfig";
 
 export interface RazorpayCheckoutOptions {
   courseId: string;
@@ -126,7 +126,7 @@ function createRazorpayOptions({
       try {
         const verifyRes = await fetch(`${API_BASE_URL}/api/v1/payments/verify`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           credentials: "include",
           body: JSON.stringify({
             orderId: response.razorpay_order_id,
@@ -191,7 +191,7 @@ export function preloadCheckoutOrder({
   const scriptPromise = loadRazorpayScript();
   const orderPromise = fetch(`${API_BASE_URL}/api/v1/payments/create-order`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     credentials: "include",
     body: JSON.stringify({
       courseId,
@@ -326,7 +326,7 @@ export async function initiateRazorpayCheckout({
   const scriptPromise = loadRazorpayScript();
   const orderPromise = fetch(`${API_BASE_URL}/api/v1/payments/create-order`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     credentials: "include",
     body: JSON.stringify({
       courseId,

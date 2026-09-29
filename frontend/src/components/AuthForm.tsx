@@ -297,7 +297,7 @@ export function AuthForm({
           } catch {}
         }
 
-        setUser(userObj, resData?.sessionToken);
+        setUser(userObj, resData?.sessionToken, resData?.accessToken);
         toast.success("Signed in successfully! Other device disconnected.");
         router.push(createSecureUrl("/dashboard", { v: "dashboard" }));
         return;
@@ -382,7 +382,7 @@ export function AuthForm({
           } catch {}
         }
 
-        setUser(userObj, resData?.sessionToken);
+        setUser(userObj, resData?.sessionToken, resData?.accessToken);
 
         toast.success(
           isSignUp ? "Account created successfully!" : "Welcome back!"
