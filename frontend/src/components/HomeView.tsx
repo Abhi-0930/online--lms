@@ -673,7 +673,8 @@ function Dashboard() {
   const { user } = useAuth();
   const { courses, loading: coursesLoading } = useLiveCourses();
   const { enrollments, isEnrolled } = useEnrollments();
-  const { submissions: mySubmissions } = useAssignments();
+  const { assignments, submissions: mySubmissions } = useAssignments();
+  const { upcomingSessions } = useLiveSessions();
   const { problems: liveProblems } = useLiveProblems();
   const { getActivityBars, getStreakData, formatMinutes, liveSecondsToday, activityMap } = useUserActivity();
   const { streak } = useMemo(() => getStreakData(), [getStreakData]);
@@ -861,41 +862,54 @@ function Dashboard() {
 
       {/* Main Content Area */}
       {enrolledCourses.length > 0 ? (
-        <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)] min-w-0 max-w-full w-full">
-          <section className="min-w-0 max-w-full w-full">
-            <SectionTitle
-              title="Continue your learning"
-              link={courses.length > 0 ? "Browse all" : undefined}
-              href={getSecureHref("/courses")}
-            />
-            <div className="flex w-full max-w-full min-w-0 gap-4 overflow-x-auto pb-1 pt-1 scroll-smooth snap-x snap-mandatory overscroll-x-contain no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {coursesLoading ? (
-                [1, 2, 3].map((n) => (
-                  <div
-                    key={n}
-                    className="card-surface h-52 w-[270px] sm:w-[300px] shrink-0 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5"
-                  />
-                ))
-              ) : activeDisplayCourses.length > 0 ? (
-                activeDisplayCourses.map((c) => (
-                  <div key={c.id} className="w-[270px] sm:w-[300px] shrink-0 snap-start">
-                    <CourseProgressCard key={c.id} course={c} />
-                  </div>
-                ))
-              ) : (
-                <div className="card-surface w-full p-8 text-center">
-                  <Library className="mx-auto h-8 w-8 text-[#9aa4bc]" />
-                  <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No courses available yet</p>
-                  <p className="mt-1 text-xs text-[#9aa4bc]">Courses added via the Admin Panel will appear here live.</p>
+        (() => {
+          const hasSessions = upcomingSessions.length > 0;
+          const hasAssignments = assignments.length > 0;
+          const showAside = hasSessions || hasAssignments;
+
+          return (
+            <div className={cx(
+              "w-full min-w-0 max-w-full",
+              showAside ? "grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(310px,0.75fr)]" : "block"
+            )}>
+              <section className="min-w-0 max-w-full w-full">
+                <SectionTitle
+                  title="Continue your learning"
+                  link={courses.length > 0 ? "Browse all" : undefined}
+                  href={getSecureHref("/courses")}
+                />
+                <div className="flex w-full max-w-full min-w-0 gap-4 overflow-x-auto pb-1 pt-1 scroll-smooth snap-x snap-mandatory overscroll-x-contain no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {coursesLoading ? (
+                    [1, 2, 3].map((n) => (
+                      <div
+                        key={n}
+                        className="card-surface h-52 w-[270px] sm:w-[300px] shrink-0 animate-pulse rounded-2xl bg-slate-200/50 dark:bg-white/5"
+                      />
+                    ))
+                  ) : activeDisplayCourses.length > 0 ? (
+                    activeDisplayCourses.map((c) => (
+                      <div key={c.id} className="w-[270px] sm:w-[300px] shrink-0 snap-start">
+                        <CourseProgressCard key={c.id} course={c} />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="card-surface w-full p-8 text-center">
+                      <Library className="mx-auto h-8 w-8 text-[#9aa4bc]" />
+                      <p className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No courses available yet</p>
+                      <p className="mt-1 text-xs text-[#9aa4bc]">Courses added via the Admin Panel will appear here live.</p>
+                    </div>
+                  )}
                 </div>
+              </section>
+              {showAside && (
+                <aside className="space-y-8 mt-8 xl:mt-0">
+                  {hasSessions && <UpcomingSessions />}
+                  {hasAssignments && <AssignmentsWidget />}
+                </aside>
               )}
             </div>
-          </section>
-          <aside className="space-y-8">
-            <UpcomingSessions />
-            <AssignmentsWidget />
-          </aside>
-        </div>
+          );
+        })()
       ) : (
         <div className="min-w-0 max-w-full w-full">
           <section className="min-w-0 max-w-full w-full">
@@ -1061,52 +1075,46 @@ function parseSessionDate(dStr?: string) {
 function UpcomingSessions() {
   const { upcomingSessions } = useLiveSessions();
 
+  if (upcomingSessions.length === 0) {
+    return null;
+  }
+
   return (
     <section>
       <SectionTitle
         title="Upcoming sessions"
-        link={upcomingSessions.length > 0 ? "View all" : undefined}
+        link="View all"
         href={getSecureHref("/live-session")}
       />
       <div className="card-surface divide-y divide-[#edf0f6] px-5 dark:divide-white/10">
-        {upcomingSessions.length === 0 ? (
-          <div className="py-7 text-center">
-            <div className="mx-auto mb-2 grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
-              <Video className="h-5 w-5" />
-            </div>
-            <p className="text-xs font-semibold text-[#17223d] dark:text-white">No live sessions scheduled</p>
-            <p className="mt-0.5 text-[11px] text-[#9aa4bc]">New live classes and workshops will appear here.</p>
-          </div>
-        ) : (
-          upcomingSessions.slice(0, 4).map((session, idx) => {
-            const tones: Array<"blue" | "violet" | "amber"> = ["blue", "violet", "amber"];
-            const tone = tones[idx % tones.length];
-            const { dayStr, monthStr } = parseSessionDate(session.date);
-            const metaStr = `${session.course || "Live Class"}${session.startTime ? ` · ${session.startTime}` : ""}`;
-            const isLive = session.status === "Live";
+        {upcomingSessions.slice(0, 4).map((session, idx) => {
+          const tones: Array<"blue" | "violet" | "amber"> = ["blue", "violet", "amber"];
+          const tone = tones[idx % tones.length];
+          const { dayStr, monthStr } = parseSessionDate(session.date);
+          const metaStr = `${session.course || "Live Class"}${session.startTime ? ` · ${session.startTime}` : ""}`;
+          const isLive = session.status === "Live";
 
-            return (
-              <Link
-                key={session.id || idx}
-                href={getSecureHref("/live-session", { id: session.id })}
-                className={cx(
-                  "group block cursor-pointer transition-all duration-150 hover:bg-slate-50/70 dark:hover:bg-white/[0.02] -mx-5 px-5 first:rounded-t-2xl last:rounded-b-2xl"
-                )}
-              >
-                <SessionRow
-                  day={dayStr}
-                  month={monthStr}
-                  title={session.title || "Live Lecture"}
-                  meta={metaStr}
-                  tone={tone}
-                  isLive={isLive}
-                  platform={session.platform}
-                  hasLink={Boolean(session.meetingLink)}
-                />
-              </Link>
-            );
-          })
-        )}
+          return (
+            <Link
+              key={session.id || idx}
+              href={getSecureHref("/live-session", { id: session.id })}
+              className={cx(
+                "group block cursor-pointer transition-all duration-150 hover:bg-slate-50/70 dark:hover:bg-white/[0.02] -mx-5 px-5 first:rounded-t-2xl last:rounded-b-2xl"
+              )}
+            >
+              <SessionRow
+                day={dayStr}
+                month={monthStr}
+                title={session.title || "Live Lecture"}
+                meta={metaStr}
+                tone={tone}
+                isLive={isLive}
+                platform={session.platform}
+                hasLink={Boolean(session.meetingLink)}
+              />
+            </Link>
+          );
+        })}
       </div>
     </section>
   );
@@ -2332,18 +2340,19 @@ function RecordingsPage({ initialRecordingId }: { initialRecordingId?: string })
 
 function AssignmentsWidget() {
   const { assignments, loading } = useAssignments();
+
+  if (assignments.length === 0) {
+    return null;
+  }
+
   return (
     <section>
-      <SectionTitle title="Pending assignments" link={assignments.length > 0 ? "See all" : undefined} href={getSecureHref("/assignments")} />
+      <SectionTitle title="Pending assignments" link="See all" href={getSecureHref("/assignments")} />
       <div className="card-surface px-5">
         {loading ? (
           <div className="py-6 space-y-3">
             <div className="h-4 bg-slate-200/60 dark:bg-white/5 rounded animate-pulse w-3/4" />
             <div className="h-4 bg-slate-200/60 dark:bg-white/5 rounded animate-pulse w-1/2" />
-          </div>
-        ) : assignments.length === 0 ? (
-          <div className="py-6 text-center text-xs text-[#9aa4bc]">
-            No pending assignments. All caught up!
           </div>
         ) : (
           assignments.slice(0, 3).map((a) => (
