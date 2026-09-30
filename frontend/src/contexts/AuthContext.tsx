@@ -221,14 +221,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const isManualLogout =
             isLoggingOutRef.current ||
             (typeof window !== "undefined" && sessionStorage.getItem("lms_manual_logout") === "true");
-          if (isManualLogout) {
+          if (isManualLogout || !resolvedSessionToken) {
+            setUserState(null);
             return null;
           }
 
           const errData = await res.json().catch(() => ({}));
           const wasRevoked = errData?.code === "SESSION_REVOKED";
 
-          if (wasRevoked) {
+          if (wasRevoked && resolvedSessionToken) {
             setUserState(null);
             if (typeof window !== "undefined") {
               try {
@@ -240,7 +241,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
               } catch {}
 
-              if (window.location.pathname !== "/login") {
+              const currentPath = window.location.pathname;
+              const isProtected =
+                currentPath !== "/" &&
+                !currentPath.startsWith("/login") &&
+                !currentPath.startsWith("/register") &&
+                !currentPath.startsWith("/forgot-password") &&
+                !currentPath.startsWith("/auth") &&
+                !currentPath.startsWith("/velorah");
+
+              if (isProtected) {
                 window.location.href = createSecureUrl("/login", {
                   mode: "login",
                   error: "SESSION_REVOKED",
@@ -278,8 +288,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
         }
         setUserState(null);
-        if (typeof window !== "undefined" && window.location.pathname !== "/login" && window.location.pathname !== "/") {
-          window.location.href = createSecureUrl("/login", { error: "SESSION_REVOKED" });
+        if (typeof window !== "undefined") {
+          const currentPath = window.location.pathname;
+          const isProtected =
+            currentPath !== "/" &&
+            !currentPath.startsWith("/login") &&
+            !currentPath.startsWith("/register") &&
+            !currentPath.startsWith("/forgot-password") &&
+            !currentPath.startsWith("/auth") &&
+            !currentPath.startsWith("/velorah");
+
+          if (isProtected) {
+            window.location.href = createSecureUrl("/login", { error: "SESSION_REVOKED" });
+          }
         }
         return;
       }
@@ -326,7 +347,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
               setUserState(null);
               if (typeof window !== "undefined") {
-                window.location.href = createSecureUrl("/login", { error: "SESSION_REVOKED" });
+                const currentPath = window.location.pathname;
+                const isProtected =
+                  currentPath !== "/" &&
+                  !currentPath.startsWith("/login") &&
+                  !currentPath.startsWith("/register") &&
+                  !currentPath.startsWith("/forgot-password") &&
+                  !currentPath.startsWith("/auth") &&
+                  !currentPath.startsWith("/velorah");
+
+                if (isProtected) {
+                  window.location.href = createSecureUrl("/login", { error: "SESSION_REVOKED" });
+                }
               }
             }
           } else if (data?.type === "LOGOUT") {
