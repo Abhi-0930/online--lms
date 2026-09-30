@@ -252,7 +252,10 @@ export function AuthForm({
     if (isOAuth) {
       const deviceId = getPersistentDeviceId();
       const deviceName = getBrowserDeviceName();
-      const frontendUrl = typeof window !== "undefined" ? window.location.origin : "";
+      const frontendUrl =
+        typeof window !== "undefined" && window.location.origin
+          ? window.location.origin
+          : "https://www.preppath.net";
       window.location.href = `${API_BASE_URL}/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}&frontendUrl=${encodeURIComponent(frontendUrl)}&force=true`;
       return;
     }
@@ -437,7 +440,10 @@ export function AuthForm({
     }
     const deviceId = getPersistentDeviceId();
     const deviceName = getBrowserDeviceName();
-    const frontendUrl = typeof window !== "undefined" ? window.location.origin : "";
+    const frontendUrl =
+      typeof window !== "undefined" && window.location.origin
+        ? window.location.origin
+        : "https://www.preppath.net";
     window.location.href = `${API_BASE_URL}/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}&frontendUrl=${encodeURIComponent(frontendUrl)}`;
   };
 

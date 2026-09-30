@@ -495,14 +495,16 @@ export class AuthService {
     return { success: true };
   }
 
-  getGoogleAuthUrl(state?: string): string {
+  getGoogleAuthUrl(state?: string, customCallbackUrl?: string): string {
     if (!env.GOOGLE_CLIENT_ID) {
       throw new Error('GOOGLE_CLIENT_ID is not configured');
     }
 
+    const callbackUrl = customCallbackUrl || env.GOOGLE_CALLBACK_URL;
+
     const params = new URLSearchParams({
       client_id: env.GOOGLE_CLIENT_ID,
-      redirect_uri: env.GOOGLE_CALLBACK_URL,
+      redirect_uri: callbackUrl,
       response_type: 'code',
       scope: 'openid email profile',
       access_type: 'offline',
@@ -524,10 +526,13 @@ export class AuthService {
     ip: string;
     userAgent: string;
     force?: boolean;
+    callbackUrl?: string;
   }) {
     if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
       throw new Error('Google OAuth is not configured');
     }
+
+    const callbackUrl = payload.callbackUrl || env.GOOGLE_CALLBACK_URL;
 
     // Exchange authorization code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -537,7 +542,7 @@ export class AuthService {
         code: payload.code,
         client_id: env.GOOGLE_CLIENT_ID,
         client_secret: env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: env.GOOGLE_CALLBACK_URL,
+        redirect_uri: callbackUrl,
         grant_type: 'authorization_code',
       }),
     });

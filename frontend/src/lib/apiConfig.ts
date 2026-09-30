@@ -1,6 +1,16 @@
-export const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "https://online-lms-v11c.onrender.com"
-).replace(/\/$/, "");
+export const API_BASE_URL = (() => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+    if (!isLocal) {
+      if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
+        return "https://online-lms-v11c.onrender.com";
+      }
+    }
+  }
+  return (envUrl || "https://online-lms-v11c.onrender.com").replace(/\/$/, "");
+})();
 
 export const WS_BASE_URL = (
   process.env.NEXT_PUBLIC_WS_URL ||

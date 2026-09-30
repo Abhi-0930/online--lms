@@ -47,6 +47,50 @@ export default async function authController(fastify: FastifyInstance) {
     });
   };
 
+  const resolveGoogleCallbackUrl = (request: any, parsedState?: any): string => {
+    if (parsedState?.callbackUrl && typeof parsedState.callbackUrl === 'string' && !parsedState.callbackUrl.includes('localhost')) {
+      return parsedState.callbackUrl;
+    }
+    if (request) {
+      const host = (request.headers['x-forwarded-host'] || request.headers.host || '').toString();
+      const proto = (request.headers['x-forwarded-proto'] || (request.socket?.encrypted ? 'https' : 'http')).toString();
+      if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+        return `${proto}://${host}/api/v1/auth/google/callback`;
+      }
+    }
+    if (env.GOOGLE_CALLBACK_URL && !env.GOOGLE_CALLBACK_URL.includes('localhost')) {
+      return env.GOOGLE_CALLBACK_URL;
+    }
+    if (isProd || process.env.RENDER === 'true') {
+      return 'https://online-lms-v11c.onrender.com/api/v1/auth/google/callback';
+    }
+    return env.GOOGLE_CALLBACK_URL || 'http://localhost:4000/api/v1/auth/google/callback';
+  };
+
+  const resolveTargetFrontendUrl = (request: any, parsedState?: any): string => {
+    if (parsedState?.frontendUrl && typeof parsedState.frontendUrl === 'string' && !parsedState.frontendUrl.includes('localhost')) {
+      return parsedState.frontendUrl;
+    }
+    if (request?.headers?.referer) {
+      try {
+        const origin = new URL(request.headers.referer).origin;
+        if (origin && !origin.includes('localhost')) {
+          return origin;
+        }
+      } catch {}
+    }
+    if (parsedState?.frontendUrl && typeof parsedState.frontendUrl === 'string') {
+      return parsedState.frontendUrl;
+    }
+    if (env.FRONTEND_URL && !env.FRONTEND_URL.includes('localhost')) {
+      return env.FRONTEND_URL;
+    }
+    if (isProd || process.env.RENDER === 'true') {
+      return 'https://www.preppath.net';
+    }
+    return env.FRONTEND_URL || 'http://localhost:3000';
+  };
+
   const handleGoogleCallback = async (request: any, reply: any) => {
     const query = request.query as any;
 
@@ -64,7 +108,8 @@ export default async function authController(fastify: FastifyInstance) {
       }
     }
 
-    const targetFrontendUrl = parsedState.frontendUrl || env.FRONTEND_URL || 'http://localhost:3000';
+    const callbackUrl = resolveGoogleCallbackUrl(request, parsedState);
+    const targetFrontendUrl = resolveTargetFrontendUrl(request, parsedState);
 
     if (query?.error) {
       const frontendErrorUrl = `${targetFrontendUrl}/login?error=${encodeURIComponent(query.error)}`;
@@ -90,6 +135,7 @@ export default async function authController(fastify: FastifyInstance) {
         ip,
         userAgent,
         force: parsedState.force === true,
+        callbackUrl,
       });
 
       const accessToken = fastify.jwt.sign({
@@ -142,16 +188,20 @@ export default async function authController(fastify: FastifyInstance) {
       } catch {}
     }
 
+    const callbackUrl = resolveGoogleCallbackUrl(request);
+    const targetFrontendUrl = resolveTargetFrontendUrl(request, { frontendUrl: detectedFrontendUrl });
+
     const statePayload = {
       mode: query?.state || 'login',
       deviceId: query?.deviceId || '',
       deviceName: query?.deviceName || '',
       force: query?.force === 'true' || query?.force === true,
-      frontendUrl: detectedFrontendUrl || env.FRONTEND_URL,
+      frontendUrl: targetFrontendUrl,
+      callbackUrl,
     };
     const stateStr = Buffer.from(JSON.stringify(statePayload)).toString('base64url');
 
-    const authUrl = authService.getGoogleAuthUrl(stateStr);
+    const authUrl = authService.getGoogleAuthUrl(stateStr, callbackUrl);
 
     if (query?.json === 'true') {
       return reply.send({ url: authUrl });
