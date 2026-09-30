@@ -50,8 +50,8 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
       if (!clientSessionToken) {
         return reply.status(401).send({
           error: 'Unauthorized',
-          code: 'SESSION_REVOKED',
-          message: 'Your session has ended because your account was logged into on another device.',
+          code: 'UNAUTHORIZED',
+          message: 'Missing authentication session token',
         });
       }
 
@@ -88,8 +88,8 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
         });
         return reply.status(401).send({
           error: 'Unauthorized',
-          code: 'SESSION_REVOKED',
-          message: 'Your session has ended because your account was logged into on another device.',
+          code: 'UNAUTHORIZED',
+          message: 'Session expired or invalid',
         });
       }
 

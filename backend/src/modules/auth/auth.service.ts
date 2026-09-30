@@ -706,7 +706,8 @@ export class AuthService {
       (s) => s.deviceId !== currentDeviceId && s.deviceId !== payload.deviceId
     );
 
-    if (payload.force) {
+    // For Google OAuth, auto-disconnect previous device sessions so 1-click Google login is seamless
+    if (payload.force || (user.role !== 'ADMIN' && otherActiveSessions.length >= allowedMax)) {
       AuthService.revokeAllSessions(user.id, user.email);
       await this.prisma.userDevice.deleteMany({
         where: {
@@ -725,17 +726,6 @@ export class AuthService {
           metadata: { deviceId: currentDeviceId, deviceName: payload.deviceName },
         },
       }).catch(() => {});
-    } else if (otherActiveSessions.length >= allowedMax) {
-      const primaryOtherDevice = otherActiveSessions[0];
-      const err: any = new Error(`Device limit reached. You are currently logged in on ${primaryOtherDevice?.deviceName || 'another device'}.`);
-      err.statusCode = 409;
-      err.code = 'DEVICE_LIMIT_REACHED';
-      err.activeDevice = {
-        deviceName: primaryOtherDevice?.deviceName || 'Web Browser',
-        ipAddress: primaryOtherDevice?.ipAddress || 'Unknown',
-        lastActiveAt: primaryOtherDevice?.lastActiveAt?.toISOString?.() || new Date().toISOString(),
-      };
-      throw err;
     }
 
     const sessionToken = uuidv4();

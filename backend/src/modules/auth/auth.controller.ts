@@ -144,7 +144,7 @@ export default async function authController(fastify: FastifyInstance) {
 
     const authUrl = authService.getGoogleAuthUrl(stateStr);
 
-    if (query?.json === 'true' || request.headers.accept?.includes('application/json')) {
+    if (query?.json === 'true') {
       return reply.send({ url: authUrl });
     }
 
