@@ -34,10 +34,21 @@ export function HeroSection({ onStartLearning }: { onStartLearning?: () => void 
   const handleAction = () => {
     if (onStartLearning) {
       onStartLearning();
-    } else if (isAuthenticated || user) {
-      router.push("/dashboard");
     } else {
-      router.push("/login");
+      const hasToken =
+        typeof window !== "undefined" &&
+        Boolean(
+          localStorage.getItem("lms_access_token") ||
+          localStorage.getItem("lms_active_session_token") ||
+          sessionStorage.getItem("lms_session_token") ||
+          localStorage.getItem("lms_user_profile")
+        );
+
+      if ((isAuthenticated || user) && hasToken) {
+        router.push("/dashboard");
+      } else {
+        router.push("/login");
+      }
     }
   };
 

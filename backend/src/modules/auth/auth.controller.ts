@@ -30,15 +30,20 @@ export default async function authController(fastify: FastifyInstance) {
   };
 
   const clearAuthCookie = (reply: any) => {
+    const isProd = env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+    reply.setCookie('access_token', '', {
+      path: '/',
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+      expires: new Date(0),
+      maxAge: 0,
+    });
     reply.clearCookie('access_token', {
       path: '/',
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
-    });
-    reply.clearCookie('access_token', {
-      path: '/',
-      httpOnly: true,
     });
   };
 
@@ -387,6 +392,13 @@ export default async function authController(fastify: FastifyInstance) {
     let userId: string | undefined;
     let sessionToken: string | undefined;
 
+    const body = (request.body as any) || {};
+    if (body.sessionToken) sessionToken = body.sessionToken;
+    if (body.userId) userId = body.userId;
+
+    const headerSession = request.headers['x-session-token'] as string;
+    if (headerSession && !sessionToken) sessionToken = headerSession;
+
     try {
       const cookieToken = (request as any).cookies?.access_token;
       let token = cookieToken;
@@ -398,8 +410,8 @@ export default async function authController(fastify: FastifyInstance) {
       }
       if (token) {
         const decoded = fastify.jwt.verify<any>(token);
-        userId = decoded?.id;
-        sessionToken = decoded?.sessionToken;
+        if (!userId && decoded?.id) userId = decoded.id;
+        if (!sessionToken && decoded?.sessionToken) sessionToken = decoded.sessionToken;
       }
     } catch {}
 

@@ -80,6 +80,14 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
 
       if (!sessionExists) {
         const isProd = env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+        reply.setCookie('access_token', '', {
+          path: '/',
+          httpOnly: true,
+          secure: isProd,
+          sameSite: isProd ? 'none' : 'lax',
+          expires: new Date(0),
+          maxAge: 0,
+        });
         reply.clearCookie('access_token', {
           path: '/',
           httpOnly: true,

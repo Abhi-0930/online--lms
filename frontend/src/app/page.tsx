@@ -37,7 +37,16 @@ export default function RootHomePage() {
   }, [router]);
 
   const handleBeginJourney = () => {
-    if (isAuthenticated || user) {
+    const hasToken =
+      typeof window !== "undefined" &&
+      Boolean(
+        localStorage.getItem("lms_access_token") ||
+        localStorage.getItem("lms_active_session_token") ||
+        sessionStorage.getItem("lms_session_token") ||
+        localStorage.getItem("lms_user_profile")
+      );
+
+    if ((isAuthenticated || user) && hasToken) {
       router.push("/dashboard");
     } else {
       router.push("/login");

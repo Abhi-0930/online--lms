@@ -49,11 +49,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = useState<User | null>(() => {
     if (typeof window === "undefined") return null;
     try {
+      if (sessionStorage.getItem("lms_manual_logout") === "true") return null;
       const tabStored = sessionStorage.getItem("lms_user");
       if (tabStored) {
         const parsed = JSON.parse(tabStored);
         if (parsed && typeof parsed === "object") {
-          sessionStorage.removeItem("lms_manual_logout");
           return parsed;
         }
       }
@@ -61,11 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && typeof parsed === "object") {
-          sessionStorage.removeItem("lms_manual_logout");
           return parsed;
         }
       }
-      if (sessionStorage.getItem("lms_manual_logout") === "true") return null;
     } catch {
       // ignore JSON parse errors
     }
@@ -75,8 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     try {
-      if (sessionStorage.getItem("lms_user") || localStorage.getItem(USER_STORAGE_KEY)) return false;
       if (sessionStorage.getItem("lms_manual_logout") === "true") return false;
+      if (sessionStorage.getItem("lms_user") || localStorage.getItem(USER_STORAGE_KEY)) return false;
     } catch {}
     return true;
   });
@@ -174,6 +172,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const accessToken = typeof window !== "undefined"
       ? (sessionStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) || localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY))
       : null;
+
+    // If completely logged out with zero stored credentials, avoid ghost re-authentication
+    const hasAnyLocalCreds =
+      resolvedSessionToken ||
+      accessToken ||
+      (typeof window !== "undefined" &&
+        (localStorage.getItem(USER_STORAGE_KEY) || sessionStorage.getItem("lms_user")));
+
+    if (!hasAnyLocalCreds) {
+      setUserState(null);
+      setLoading(false);
+      return null;
+    }
 
     if (resolvedSessionToken && typeof window !== "undefined" && !myToken) {
       sessionStorage.setItem("lms_session_token", resolvedSessionToken);
@@ -413,8 +424,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     isLoggingOutRef.current = true;
     inFlightPromiseRef.current = null;
+
+    let tokenToClear: string | null = null;
+    let sessionTokenToClear: string | null = null;
+    let currentUserId: string | undefined = user?.id;
+
     if (typeof window !== "undefined") {
       try {
+        tokenToClear =
+          sessionStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) ||
+          localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) ||
+          localStorage.getItem("lms_token");
+        sessionTokenToClear =
+          sessionStorage.getItem("lms_session_token") ||
+          localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
+
         sessionStorage.setItem("lms_manual_logout", "true");
         localStorage.removeItem(USER_STORAGE_KEY);
         localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
@@ -432,6 +456,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sessionStorage.removeItem("lms_access_token");
         sessionStorage.removeItem("lms_session_token");
         sessionStorage.removeItem("lms_user");
+
+        // Clear cookies client-side if accessible
+        document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+        document.cookie = "lms_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+
         if ("BroadcastChannel" in window) {
           const bc = new BroadcastChannel("lms_auth_sync");
           bc.postMessage({ type: "LOGOUT" });
@@ -442,8 +471,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserState(null);
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (tokenToClear) {
+        headers["Authorization"] = `Bearer ${tokenToClear}`;
+      }
+      if (sessionTokenToClear) {
+        headers["X-Session-Token"] = sessionTokenToClear;
+      }
       await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
         method: "POST",
+        headers,
+        body: JSON.stringify({
+          sessionToken: sessionTokenToClear,
+          userId: currentUserId,
+        }),
         credentials: "include",
       }).catch(() => {});
     } finally {
@@ -451,7 +494,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.location.href = "/";
       }
     }
-  }, []);
+  }, [user]);
 
   return (
     <AuthContext.Provider
