@@ -77,6 +77,30 @@ function CallbackHandler() {
           return;
         }
 
+        // Fallback: If token exists but /me returned an error, decode JWT and log in
+        if (tokenParam) {
+          try {
+            const base64Payload = tokenParam.split(".")[1];
+            if (base64Payload) {
+              const decodedStr = atob(base64Payload.replace(/-/g, "+").replace(/_/g, "/"));
+              const payload = JSON.parse(decodedStr);
+              if (payload?.id || payload?.email) {
+                const fallbackName = payload.email ? payload.email.split("@")[0] : "Learner";
+                const fallbackUser = {
+                  id: payload.id,
+                  email: payload.email,
+                  name: fallbackName,
+                  fullName: fallbackName,
+                  role: payload.role || "STUDENT",
+                };
+                setUser(fallbackUser, sessionTokenParam || payload.sessionToken, tokenParam);
+                router.replace(createSecureUrl("/dashboard", { v: "dashboard" }));
+                return;
+              }
+            }
+          } catch {}
+        }
+
         // If not authenticated or error, redirect to login
         router.replace(
           createSecureUrl("/login", {
@@ -85,6 +109,29 @@ function CallbackHandler() {
           })
         );
       } catch {
+        // Network fallback with token
+        if (tokenParam) {
+          try {
+            const base64Payload = tokenParam.split(".")[1];
+            if (base64Payload) {
+              const decodedStr = atob(base64Payload.replace(/-/g, "+").replace(/_/g, "/"));
+              const payload = JSON.parse(decodedStr);
+              if (payload?.id || payload?.email) {
+                const fallbackName = payload.email ? payload.email.split("@")[0] : "Learner";
+                const fallbackUser = {
+                  id: payload.id,
+                  email: payload.email,
+                  name: fallbackName,
+                  fullName: fallbackName,
+                  role: payload.role || "STUDENT",
+                };
+                setUser(fallbackUser, sessionTokenParam || payload.sessionToken, tokenParam);
+                router.replace(createSecureUrl("/dashboard", { v: "dashboard" }));
+                return;
+              }
+            }
+          } catch {}
+        }
         router.replace(
           createSecureUrl("/login", {
             mode: "login",

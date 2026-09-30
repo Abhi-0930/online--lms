@@ -41,15 +41,6 @@ export default async function authController(fastify: FastifyInstance) {
   const handleGoogleCallback = async (request: any, reply: any) => {
     const query = request.query as any;
 
-    if (query?.error) {
-      const frontendErrorUrl = `${env.FRONTEND_URL}/login?error=${encodeURIComponent(query.error)}`;
-      return reply.redirect(frontendErrorUrl);
-    }
-
-    if (!query?.code) {
-      return reply.status(400).send({ error: 'BadRequest', message: 'Missing authorization code' });
-    }
-
     let parsedState: any = {};
     if (query?.state) {
       try {
@@ -62,6 +53,17 @@ export default async function authController(fastify: FastifyInstance) {
       } catch {
         parsedState = { mode: query.state };
       }
+    }
+
+    const targetFrontendUrl = parsedState.frontendUrl || env.FRONTEND_URL || 'http://localhost:3000';
+
+    if (query?.error) {
+      const frontendErrorUrl = `${targetFrontendUrl}/login?error=${encodeURIComponent(query.error)}`;
+      return reply.redirect(frontendErrorUrl);
+    }
+
+    if (!query?.code) {
+      return reply.status(400).send({ error: 'BadRequest', message: 'Missing authorization code' });
     }
 
     const ip = getClientIp(request.headers);
@@ -92,7 +94,7 @@ export default async function authController(fastify: FastifyInstance) {
       setAuthCookie(reply, accessToken);
 
       // Redirect to frontend callback
-      const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
+      const redirectUrl = new URL(`${targetFrontendUrl}/auth/callback`);
       if (result.isNewUser) {
         redirectUrl.searchParams.set('isNewUser', 'true');
       }
@@ -103,15 +105,15 @@ export default async function authController(fastify: FastifyInstance) {
     } catch (err: any) {
       logger.error({ err, message: err.message, code: err.code, statusCode: err.statusCode }, 'Google OAuth error handled');
       if (err.code === 'ACCOUNT_NOT_FOUND' || err.statusCode === 404) {
-        const redirectUrl = new URL(`${env.FRONTEND_URL}/register`);
+        const redirectUrl = new URL(`${targetFrontendUrl}/register`);
         redirectUrl.searchParams.set('error', 'ACCOUNT_NOT_FOUND');
         if (err.email) redirectUrl.searchParams.set('email', err.email);
         return reply.redirect(redirectUrl.toString());
       }
       if (err.code === 'DEVICE_LIMIT_REACHED' || err.statusCode === 409) {
-        return reply.redirect(`${env.FRONTEND_URL}/login?error=DEVICE_LIMIT_REACHED`);
+        return reply.redirect(`${targetFrontendUrl}/login?error=DEVICE_LIMIT_REACHED`);
       }
-      return reply.redirect(`${env.FRONTEND_URL}/login?error=AUTH_FAILED`);
+      return reply.redirect(`${targetFrontendUrl}/login?error=AUTH_FAILED`);
     }
   };
 
@@ -124,11 +126,19 @@ export default async function authController(fastify: FastifyInstance) {
       return handleGoogleCallback(request, reply);
     }
 
+    let detectedFrontendUrl = query?.frontendUrl;
+    if (!detectedFrontendUrl && request.headers.referer) {
+      try {
+        detectedFrontendUrl = new URL(request.headers.referer).origin;
+      } catch {}
+    }
+
     const statePayload = {
       mode: query?.state || 'login',
       deviceId: query?.deviceId || '',
       deviceName: query?.deviceName || '',
       force: query?.force === 'true' || query?.force === true,
+      frontendUrl: detectedFrontendUrl || env.FRONTEND_URL,
     };
     const stateStr = Buffer.from(JSON.stringify(statePayload)).toString('base64url');
 

@@ -251,7 +251,8 @@ export function AuthForm({
     if (isOAuth) {
       const deviceId = getPersistentDeviceId();
       const deviceName = getBrowserDeviceName();
-      window.location.href = `${API_BASE_URL}/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}&force=true`;
+      const frontendUrl = typeof window !== "undefined" ? window.location.origin : "";
+      window.location.href = `${API_BASE_URL}/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}&frontendUrl=${encodeURIComponent(frontendUrl)}&force=true`;
       return;
     }
 
@@ -429,7 +430,8 @@ export function AuthForm({
   const handleGoogleLogin = () => {
     const deviceId = getPersistentDeviceId();
     const deviceName = getBrowserDeviceName();
-    window.location.href = `${API_BASE_URL}/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}`;
+    const frontendUrl = typeof window !== "undefined" ? window.location.origin : "";
+    window.location.href = `${API_BASE_URL}/api/v1/auth/google?state=${isSignUp ? "register" : "login"}&deviceId=${encodeURIComponent(deviceId)}&deviceName=${encodeURIComponent(deviceName)}&frontendUrl=${encodeURIComponent(frontendUrl)}`;
   };
 
   return (
