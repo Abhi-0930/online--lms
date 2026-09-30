@@ -316,6 +316,10 @@ export class AuthService {
     }
 
     const activeSessions = AuthService.getActiveSessions(user.id, 30000);
+    const currentDeviceId = payload.deviceId || `web-${uuidv4().substring(0, 12)}`;
+    const otherActiveSessions = activeSessions.filter(
+      (s) => s.deviceId !== currentDeviceId && s.deviceId !== payload.deviceId
+    );
 
     if (payload.force) {
       AuthService.revokeAllSessions(user.id, user.email);
@@ -333,11 +337,11 @@ export class AuthService {
           userId: user.id,
           action: 'AUTH_FORCE_LOGIN_DISCONNECTED_OTHER_DEVICES',
           ipAddress: payload.ip,
-          metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
+          metadata: { deviceId: currentDeviceId, deviceName: payload.deviceName },
         },
       }).catch(() => {});
-    } else if (activeSessions.length >= allowedMax) {
-      const primaryOtherDevice = activeSessions[0];
+    } else if (otherActiveSessions.length >= allowedMax) {
+      const primaryOtherDevice = otherActiveSessions[0];
       const err: any = new Error(`Device limit reached. You are currently logged in on ${primaryOtherDevice?.deviceName || 'another device'}.`);
       err.statusCode = 409;
       err.code = 'DEVICE_LIMIT_REACHED';
@@ -625,16 +629,7 @@ export class AuthService {
     const isNewUser = !user;
 
     if (!user) {
-      // If the user attempted to login and does not have an account, require registration
-      if (payload.mode !== 'register') {
-        const err: any = new Error('No account found with this Google account. Please register first.');
-        err.code = 'ACCOUNT_NOT_FOUND';
-        err.statusCode = 404;
-        err.email = normalizedEmail;
-        throw err;
-      }
-
-      // If mode is register, create new user
+      // Seamlessly create new user for 1-click Google sign-in
       const newUserData = {
         id: uuidv4(),
         email: normalizedEmail,
@@ -706,6 +701,10 @@ export class AuthService {
     }
 
     const activeSessions = AuthService.getActiveSessions(user.id, 30000);
+    const currentDeviceId = payload.deviceId || `web-${uuidv4().substring(0, 12)}`;
+    const otherActiveSessions = activeSessions.filter(
+      (s) => s.deviceId !== currentDeviceId && s.deviceId !== payload.deviceId
+    );
 
     if (payload.force) {
       AuthService.revokeAllSessions(user.id, user.email);
@@ -723,11 +722,11 @@ export class AuthService {
           userId: user.id,
           action: 'AUTH_FORCE_LOGIN_GOOGLE_DISCONNECTED_OTHER_DEVICES',
           ipAddress: payload.ip,
-          metadata: { deviceId: payload.deviceId, deviceName: payload.deviceName },
+          metadata: { deviceId: currentDeviceId, deviceName: payload.deviceName },
         },
       }).catch(() => {});
-    } else if (activeSessions.length >= allowedMax) {
-      const primaryOtherDevice = activeSessions[0];
+    } else if (otherActiveSessions.length >= allowedMax) {
+      const primaryOtherDevice = otherActiveSessions[0];
       const err: any = new Error(`Device limit reached. You are currently logged in on ${primaryOtherDevice?.deviceName || 'another device'}.`);
       err.statusCode = 409;
       err.code = 'DEVICE_LIMIT_REACHED';
