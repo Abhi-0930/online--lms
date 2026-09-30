@@ -97,13 +97,13 @@ function createRazorpayOptions({
   const keyId =
     orderData.keyId ||
     process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
-    "rzp_test_Thps7CWrssiC66";
+    "rzp_test_TdCqxAwhikrJPk";
 
   return {
     key: keyId,
     amount: orderData.amount, // in paise
     currency: orderData.currency || "INR",
-    name: "Skillforge LMS",
+    name: "PrepPath",
     description: `Course Enrollment: ${orderData.course?.title || courseTitle}`,
     order_id: orderData.orderId,
     prefill: {
