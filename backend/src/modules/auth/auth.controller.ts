@@ -36,6 +36,10 @@ export default async function authController(fastify: FastifyInstance) {
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
     });
+    reply.clearCookie('access_token', {
+      path: '/',
+      httpOnly: true,
+    });
   };
 
   const handleGoogleCallback = async (request: any, reply: any) => {

@@ -418,8 +418,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sessionStorage.setItem("lms_manual_logout", "true");
         localStorage.removeItem(USER_STORAGE_KEY);
         localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+        localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+        localStorage.removeItem("lms_user_profile");
+        localStorage.removeItem("lms_active_session_token");
+        localStorage.removeItem("lms_access_token");
         localStorage.removeItem("lms_token");
         localStorage.removeItem("lms_user");
+        sessionStorage.removeItem(USER_STORAGE_KEY);
+        sessionStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+        sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+        sessionStorage.removeItem("lms_user_profile");
+        sessionStorage.removeItem("lms_active_session_token");
+        sessionStorage.removeItem("lms_access_token");
         sessionStorage.removeItem("lms_session_token");
         sessionStorage.removeItem("lms_user");
         if ("BroadcastChannel" in window) {
