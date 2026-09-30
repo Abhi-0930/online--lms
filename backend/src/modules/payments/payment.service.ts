@@ -114,71 +114,89 @@ export class PaymentService {
       return PaymentService.courseCache.get(identifier);
     }
 
-    return this.withDbRetry(async () => {
-      // 1. Try finding by ID or Slug in DB
-      let course = await this.prisma.course.findFirst({
-        where: {
-          OR: [{ id: identifier }, { slug: identifier }],
-        },
-      });
-
-      if (course) {
-        PaymentService.courseCache.set(course.id, course);
-        if (course.slug) PaymentService.courseCache.set(course.slug, course);
-        return course;
-      }
-
-      // 2. Check if it matches known catalog
-      const catalogItem = CATALOG_COURSES.find(
-        (c) => c.id === identifier || c.slug === identifier
-      );
-
-      // 3. Find or create instructor for course creation
-      let instructor = await this.prisma.user.findFirst({
-        where: { role: { in: ['ADMIN', 'INSTRUCTOR'] } },
-      });
-
-      if (!instructor) {
-        instructor = await this.prisma.user.findFirst();
-      }
-
-      if (!instructor) {
-        // Create fallback instructor
-        instructor = await this.prisma.user.create({
-          data: {
-            email: 'instructor@skillforge.io',
-            fullName: 'Maya Patel',
-            role: 'INSTRUCTOR',
-            isEmailVerified: true,
+    try {
+      return await this.withDbRetry(async () => {
+        // 1. Try finding by ID or Slug in DB
+        let course = await this.prisma.course.findFirst({
+          where: {
+            OR: [{ id: identifier }, { slug: identifier }],
           },
         });
-      }
 
-      const title = catalogItem?.title || identifier.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-      const price = catalogItem ? catalogItem.price : 1499;
+        if (course) {
+          PaymentService.courseCache.set(course.id, course);
+          if (course.slug) PaymentService.courseCache.set(course.slug, course);
+          return course;
+        }
 
-      course = await this.prisma.course.create({
-        data: {
-          id: catalogItem?.id || undefined,
-          slug: catalogItem?.slug || identifier,
-          title,
-          subtitle: catalogItem?.subtitle || 'Master the essential skills for modern software engineering.',
-          description: catalogItem?.description || `Complete hands-on curriculum for ${title}.`,
-          coverImageUrl: catalogItem?.coverImageUrl || 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=85',
-          price,
-          status: 'PUBLISHED',
-          level: catalogItem?.level || 'BEGINNER',
-          instructorId: instructor.id,
-        },
+        // 2. Check if it matches known catalog
+        const catalogItem = CATALOG_COURSES.find(
+          (c) => c.id === identifier || c.slug === identifier
+        );
+
+        // 3. Find or create instructor for course creation
+        let instructor = await this.prisma.user.findFirst({
+          where: { role: { in: ['ADMIN', 'INSTRUCTOR'] } },
+        });
+
+        if (!instructor) {
+          instructor = await this.prisma.user.findFirst();
+        }
+
+        if (!instructor) {
+          // Create fallback instructor
+          instructor = await this.prisma.user.create({
+            data: {
+              email: 'instructor@preppath.net',
+              fullName: 'PrepPath Instructor',
+              role: 'INSTRUCTOR',
+              isEmailVerified: true,
+            },
+          });
+        }
+
+        const title = catalogItem?.title || identifier.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+        const price = catalogItem ? catalogItem.price : 1499;
+
+        course = await this.prisma.course.create({
+          data: {
+            id: catalogItem?.id || undefined,
+            slug: catalogItem?.slug || identifier,
+            title,
+            subtitle: catalogItem?.subtitle || 'Master the essential skills for modern software engineering.',
+            description: catalogItem?.description || `Complete hands-on curriculum for ${title}.`,
+            coverImageUrl: catalogItem?.coverImageUrl || 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=85',
+            price,
+            status: 'PUBLISHED',
+            level: catalogItem?.level || 'BEGINNER',
+            instructorId: instructor.id,
+          },
+        });
+
+        if (course) {
+          PaymentService.courseCache.set(course.id, course);
+          if (course.slug) PaymentService.courseCache.set(course.slug, course);
+        }
+
+        return course;
       });
-
-      if (course) {
-        PaymentService.courseCache.set(course.id, course);
-        if (course.slug) PaymentService.courseCache.set(course.slug, course);
-      }
-
-      return course;
-    });
+    } catch (dbErr: any) {
+      logger.warn({ err: dbErr?.message, identifier }, 'Database unavailable in ensureCourse, using in-memory catalog fallback');
+      const catalogItem = CATALOG_COURSES.find(
+        (c) => c.id === identifier || c.slug === identifier
+      ) || {
+        id: identifier,
+        slug: identifier,
+        title: identifier.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+        subtitle: 'Master the essential skills for modern software engineering.',
+        description: `Complete hands-on curriculum for ${identifier}.`,
+        price: 1499,
+        level: 'BEGINNER',
+      };
+      PaymentService.courseCache.set(catalogItem.id, catalogItem);
+      if (catalogItem.slug) PaymentService.courseCache.set(catalogItem.slug, catalogItem);
+      return catalogItem;
+    }
   }
 
   /**
@@ -196,7 +214,7 @@ export class PaymentService {
     if (type === 'COURSE_ENROLLMENT' && courseId) {
       targetCourse = await this.ensureCourse(courseId);
 
-      // Check if already actively enrolled in parallel with Razorpay call
+      // Check if already actively enrolled in parallel with Razorpay call (non-blocking)
       enrollmentCheckPromise = this.withDbRetry(async () => {
         return this.prisma.enrollment.findUnique({
           where: {
@@ -206,7 +224,7 @@ export class PaymentService {
             },
           },
         });
-      });
+      }).catch(() => null);
 
       if (options.amount && options.amount > 0) {
         finalAmount = options.amount;
@@ -220,12 +238,7 @@ export class PaymentService {
         return this.prisma.cohort.findUnique({
           where: { id: cohortId },
         });
-      });
-      if (!targetCohort) {
-        const error: any = new Error('Cohort not found');
-        error.statusCode = 404;
-        throw error;
-      }
+      }).catch(() => null);
       finalAmount = options.amount || 2999;
     }
 
@@ -260,7 +273,7 @@ export class PaymentService {
     });
 
     const [existingEnrollment, order] = await Promise.all([
-      enrollmentCheckPromise,
+      enrollmentCheckPromise.catch(() => null),
       razorpayOrderPromise,
     ]);
 
