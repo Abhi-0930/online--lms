@@ -31,6 +31,21 @@ function CallbackHandler() {
       const tokenParam = searchParams.get("token");
       const sessionTokenParam = searchParams.get("sessionToken");
 
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.removeItem("lms_manual_logout");
+          sessionStorage.removeItem("lms_session_revoked");
+          if (tokenParam) {
+            sessionStorage.setItem("lms_access_token", tokenParam);
+            localStorage.setItem("lms_access_token", tokenParam);
+          }
+          if (sessionTokenParam) {
+            sessionStorage.setItem("lms_session_token", sessionTokenParam);
+            localStorage.setItem("lms_active_session_token", sessionTokenParam);
+          }
+        } catch {}
+      }
+
       try {
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
@@ -61,7 +76,7 @@ function CallbackHandler() {
             setUser(resolvedUser, resolvedSessionToken, tokenParam);
           }
 
-          if (isNewUser || !user?.onboarding?.isCompleted) {
+          if (isNewUser || (user && user.onboarding && !user.onboarding.isCompleted)) {
             router.replace(
               createSecureUrl("/onboarding", {
                 step: user?.onboarding?.completedStep || 1,

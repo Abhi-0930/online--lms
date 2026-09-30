@@ -429,6 +429,12 @@ export function AuthForm({
   };
 
   const handleGoogleLogin = () => {
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.removeItem("lms_manual_logout");
+        sessionStorage.removeItem("lms_session_revoked");
+      } catch {}
+    }
     const deviceId = getPersistentDeviceId();
     const deviceName = getBrowserDeviceName();
     const frontendUrl = typeof window !== "undefined" ? window.location.origin : "";

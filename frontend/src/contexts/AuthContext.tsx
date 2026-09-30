@@ -49,18 +49,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = useState<User | null>(() => {
     if (typeof window === "undefined") return null;
     try {
-      if (sessionStorage.getItem("lms_manual_logout") === "true") return null;
-
       const tabStored = sessionStorage.getItem("lms_user");
       if (tabStored) {
         const parsed = JSON.parse(tabStored);
-        if (parsed && typeof parsed === "object") return parsed;
+        if (parsed && typeof parsed === "object") {
+          sessionStorage.removeItem("lms_manual_logout");
+          return parsed;
+        }
       }
       const stored = localStorage.getItem(USER_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed && typeof parsed === "object") return parsed;
+        if (parsed && typeof parsed === "object") {
+          sessionStorage.removeItem("lms_manual_logout");
+          return parsed;
+        }
       }
+      if (sessionStorage.getItem("lms_manual_logout") === "true") return null;
     } catch {
       // ignore JSON parse errors
     }
@@ -70,8 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     try {
-      if (sessionStorage.getItem("lms_manual_logout") === "true") return false;
       if (sessionStorage.getItem("lms_user") || localStorage.getItem(USER_STORAGE_KEY)) return false;
+      if (sessionStorage.getItem("lms_manual_logout") === "true") return false;
     } catch {}
     return true;
   });

@@ -30,10 +30,8 @@ export default function RootHomePage() {
     if (typeof window !== "undefined") {
       const isManual = sessionStorage.getItem("lms_manual_logout");
       if (isManual === "true") {
+        sessionStorage.removeItem("lms_manual_logout");
         toast.success("You have been signed out successfully.");
-        setTimeout(() => {
-          sessionStorage.removeItem("lms_manual_logout");
-        }, 1500);
       }
     }
   }, [router]);
