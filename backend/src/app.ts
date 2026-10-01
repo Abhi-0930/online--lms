@@ -20,7 +20,7 @@ import paymentRoutes from './modules/payments/payment.routes';
 import onboardingRoutes from './modules/onboarding/onboarding.routes';
 import assignmentsRoutes from './modules/assignments/assignments.routes';
 import practiceRoutes from './modules/practice/practice.routes';
-
+import contactRoutes from './modules/contact/contact.routes';
 import adminRoutes from './modules/admin/admin.routes';
 
 export async function createApp() {
@@ -89,6 +89,7 @@ export async function createApp() {
   await fastify.register(onboardingRoutes);
   await fastify.register(assignmentsRoutes);
   await fastify.register(practiceRoutes);
+  await fastify.register(contactRoutes);
   await fastify.register(adminRoutes);
 
   // Health Check
