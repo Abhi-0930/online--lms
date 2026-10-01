@@ -44,9 +44,9 @@ export default function ContactPage() {
               <Mail className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-slate-900 text-base">Direct Email</h3>
-            <p className="text-xs text-slate-500 mt-1 mb-3">For admissions, billing & general queries</p>
-            <a href="mailto:support@preppath.net" className="text-sm font-semibold text-blue-600 hover:underline">
-              support@preppath.net
+            <p className="text-xs text-slate-500 mt-1 mb-3">Admissions, billing & partnerships</p>
+            <a href="mailto:hello@preppath.net" className="text-sm font-semibold text-blue-600 hover:underline">
+              hello@preppath.net
             </a>
           </div>
 
@@ -54,20 +54,22 @@ export default function ContactPage() {
             <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
               <Clock className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-slate-900 text-base">Response Time</h3>
-            <p className="text-xs text-slate-500 mt-1 mb-3">Operating 7 days a week</p>
-            <span className="text-sm font-semibold text-slate-800">Under 2 to 4 Hours</span>
+            <h3 className="font-bold text-slate-900 text-base">Phone & Support</h3>
+            <p className="text-xs text-slate-500 mt-1 mb-3">Mon - Sat (9:00 AM - 7:00 PM IST)</p>
+            <a href="tel:+916302160783" className="text-sm font-semibold text-slate-800 hover:text-emerald-600 transition-colors">
+              +91 6302160783
+            </a>
           </div>
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center">
             <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4">
-              <MessageSquare className="w-6 h-6" />
+              <MapPin className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-slate-900 text-base">Community Chat</h3>
-            <p className="text-xs text-slate-500 mt-1 mb-3">Real-time doubt resolution</p>
-            <Link href="/community" className="text-sm font-semibold text-purple-600 hover:underline">
-              Join Discord / Forum &rarr;
-            </Link>
+            <h3 className="font-bold text-slate-900 text-base">Where We Are</h3>
+            <p className="text-xs text-slate-500 mt-1 mb-3">Headquarters</p>
+            <span className="text-sm font-semibold text-slate-800">
+              Hyderabad, Telangana, India
+            </span>
           </div>
         </div>
 

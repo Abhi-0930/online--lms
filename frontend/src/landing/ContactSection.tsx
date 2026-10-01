@@ -246,7 +246,7 @@ export function ContactSection() {
         {/* Bottom 3 Cards with Subtle Top Rim Glows */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mt-12 sm:mt-16">
           
-          {/* Card 1: Call the studio */}
+          {/* Card 1: Call our team */}
           <div className="rounded-2xl border border-white/10 bg-[#0f1114]/85 p-5 sm:p-6 relative overflow-hidden backdrop-blur-sm shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] group hover:border-white/20 transition">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
             <div className="flex items-start justify-between mb-5">
@@ -255,12 +255,12 @@ export function ContactSection() {
               </div>
               <div className="h-6 w-px bg-white/10" />
             </div>
-            <h4 className="text-sm font-semibold text-white">Call the studio</h4>
+            <h4 className="text-sm font-semibold text-white">Call our team</h4>
             <a
-              href="tel:2127740195"
+              href="tel:+916302160783"
               className="mt-1 text-xs text-neutral-400 hover:text-white transition block"
             >
-              (212) 774 0195
+              +91 6302160783
             </a>
           </div>
 
@@ -275,7 +275,7 @@ export function ContactSection() {
             </div>
             <h4 className="text-sm font-semibold text-white">Where we are</h4>
             <p className="mt-1 text-xs text-neutral-400">
-              Greenpoint Ave, Brooklyn, NY
+              Hyderabad, Telangana, India
             </p>
           </div>
 
@@ -290,10 +290,10 @@ export function ContactSection() {
             </div>
             <h4 className="text-sm font-semibold text-white">Email us</h4>
             <a
-              href="mailto:hi@wrenlix.com"
+              href="mailto:hello@preppath.net"
               className="mt-1 text-xs text-neutral-400 hover:text-white transition block"
             >
-              hi@wrenlix.com
+              hello@preppath.net
             </a>
           </div>
 

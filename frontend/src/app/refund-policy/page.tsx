@@ -72,7 +72,9 @@ export default function RefundPolicyPage() {
               </p>
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-2 text-sm">
                 <p className="font-semibold text-slate-900">PrepPath Billing & Refunds</p>
-                <p className="text-slate-600 mt-1">Email: <a href="mailto:support@preppath.net" className="text-blue-600 hover:underline">support@preppath.net</a></p>
+                <p className="text-slate-600 mt-1">Email: <a href="mailto:hello@preppath.net" className="text-blue-600 hover:underline">hello@preppath.net</a></p>
+                <p className="text-slate-600">Phone: <a href="tel:+916302160783" className="text-blue-600 hover:underline">+91 6302160783</a></p>
+                <p className="text-slate-600">Location: Hyderabad, Telangana, India</p>
                 <p className="text-slate-600">Subject: <em>Refund Request - [Your Order ID]</em></p>
                 <p className="text-slate-600 mt-1">Support Response Time: Within 24 hours</p>
               </div>

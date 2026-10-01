@@ -85,7 +85,9 @@ export default function TermsOfServicePage() {
               </p>
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-2 text-sm">
                 <p className="font-semibold text-slate-900">PrepPath Legal Team</p>
-                <p className="text-slate-600 mt-1">Email: <a href="mailto:support@preppath.net" className="text-blue-600 hover:underline">support@preppath.net</a></p>
+                <p className="text-slate-600 mt-1">Email: <a href="mailto:hello@preppath.net" className="text-blue-600 hover:underline">hello@preppath.net</a></p>
+                <p className="text-slate-600">Phone: <a href="tel:+916302160783" className="text-blue-600 hover:underline">+91 6302160783</a></p>
+                <p className="text-slate-600">Location: Hyderabad, Telangana, India</p>
                 <p className="text-slate-600">Platform: <a href="https://preppath.net" className="text-blue-600 hover:underline">https://preppath.net</a></p>
               </div>
             </section>
