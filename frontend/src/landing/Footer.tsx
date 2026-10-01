@@ -107,24 +107,29 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Col 4: Legal */}
+          {/* Col 4: Legal & Policies */}
           <div className="space-y-3.5">
             <h4 className="text-sm font-bold text-slate-950">Legal</h4>
             <ul className="space-y-2.5 text-xs sm:text-sm text-slate-600">
               <li>
-                <a href="#" className="hover:text-slate-950 transition-colors">
+                <Link href="/privacy" className="hover:text-slate-950 transition-colors">
                   Privacy Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-slate-950 transition-colors">
+                <Link href="/terms" className="hover:text-slate-950 transition-colors">
                   Terms of Service
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-slate-950 transition-colors">
-                  Cookie Policy
-                </a>
+                <Link href="/refund-policy" className="hover:text-slate-950 transition-colors">
+                  Refund Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="hover:text-slate-950 transition-colors">
+                  Contact Support
+                </Link>
               </li>
             </ul>
           </div>

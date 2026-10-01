@@ -107,26 +107,82 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "EducationalOrganization",
-              name: "PrepPath",
-              url: "https://preppath.net",
-              logo: "https://preppath.net/icon.svg",
-              description:
-                "Structured software engineering placement preparation, curated DSA patterns, live interactive cohorts, and 1:1 mentorship.",
-              sameAs: [
-                "https://twitter.com/preppath",
-                "https://linkedin.com/company/preppath",
-                "https://instagram.com/preppath",
-              ],
-              offers: {
-                "@type": "Offer",
-                category: "Education / Technical Placement Preparation",
-                availability: "https://schema.org/InStock",
-                priceCurrency: "INR",
+            __html: JSON.stringify([
+              {
+                "@context": "https://schema.org",
+                "@type": "EducationalOrganization",
+                name: "PrepPath",
+                url: "https://preppath.net",
+                logo: "https://preppath.net/icon.svg",
+                description:
+                  "Structured software engineering placement preparation, curated DSA patterns, live interactive cohorts, and 1:1 mentorship.",
+                sameAs: [
+                  "https://twitter.com/preppath",
+                  "https://linkedin.com/company/preppath",
+                  "https://instagram.com/preppath",
+                ],
+                offers: {
+                  "@type": "Offer",
+                  category: "Education / Technical Placement Preparation",
+                  availability: "https://schema.org/InStock",
+                  priceCurrency: "INR",
+                },
               },
-            }),
+              {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                mainEntity: [
+                  {
+                    "@type": "Question",
+                    name: "Are the sessions live or recorded?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "Yes. Programs include live sessions, and recordings are provided for revision and flexible learning.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "Do I need prior experience to join?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "No. We offer learning paths suitable for beginners, intermediate learners, and professionals.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "Are assignments and projects included?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "Yes. Every program includes hands-on assignments, coding challenges, and real-world projects.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "Is mentorship included?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "Yes. Learners receive guidance through mentorship, doubt-solving sessions, and project reviews.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "Will I receive a certificate?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "Yes. A certificate of completion is provided after successfully meeting the course requirements.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "Do you provide placement support?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "We help with resume building, mock interviews, portfolio development, and interview preparation.",
+                    },
+                  },
+                ],
+              },
+            ]),
           }}
         />
         {/* Google Analytics (gtag.js) */}
