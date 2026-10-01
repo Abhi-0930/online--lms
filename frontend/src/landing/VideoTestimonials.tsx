@@ -157,7 +157,7 @@ export function VideoTestimonials() {
   };
 
   return (
-    <section id="video-testimonials" className="py-20 sm:py-28 bg-[#f8fafc] border-t border-slate-200/60 overflow-hidden select-none">
+    <section id="testimonials" className="py-20 sm:py-28 bg-[#f8fafc] border-t border-slate-200/60 overflow-hidden select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header with Heading, Supporting Text, and Navigation Arrows */}
