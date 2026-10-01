@@ -20,7 +20,8 @@ export const env = {
 
   // Email (Resend)
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
-  EMAIL_FROM: process.env.EMAIL_FROM || 'LMS Admin <noreply@yourdomain.com>',
+  EMAIL_FROM: process.env.EMAIL_FROM || 'PrepPath <onboarding@resend.dev>',
+  CONTACT_NOTIFICATION_EMAIL: process.env.CONTACT_NOTIFICATION_EMAIL || 'hello@preppath.net',
 
   // BetterStack (Log ingestion)
   BETTERSTACK_INGESTION_KEY: process.env.BETTERSTACK_INGESTION_KEY || '',
