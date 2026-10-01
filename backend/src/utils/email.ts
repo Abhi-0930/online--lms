@@ -214,7 +214,7 @@ export async function sendContactFormEmail(params: {
     const { data, error } = await resend.emails.send({
       from: env.EMAIL_FROM || 'PrepPath <noreply@resend.dev>',
       to: ['hello@preppath.net'],
-      replyTo: email,
+      reply_to: email,
       subject: `New Contact Inquiry from ${name} - PrepPath`,
       html: `
         <!DOCTYPE html>
