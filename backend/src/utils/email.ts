@@ -192,3 +192,93 @@ export async function sendWelcomeEmail(params: {
     return false;
   }
 }
+
+export async function sendContactFormEmail(params: {
+  name: string;
+  email: string;
+  message: string;
+  phone?: string;
+}): Promise<boolean> {
+  const { name, email, message, phone } = params;
+  logger.info({ name, email }, 'Processing contact form submission email for hello@preppath.net');
+
+  if (!resend || !env.RESEND_API_KEY || env.RESEND_API_KEY.startsWith('re_123456789')) {
+    logger.info(
+      { name, email, message, phone },
+      'Contact form submission recorded (Resend API key is placeholder/not configured)'
+    );
+    return true;
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: env.EMAIL_FROM || 'PrepPath <noreply@resend.dev>',
+      to: ['hello@preppath.net'],
+      replyTo: email,
+      subject: `New Contact Inquiry from ${name} - PrepPath`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #0f172a; padding: 24px; margin: 0; }
+            .container { max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+            .badge { display: inline-block; background: #f0fdf4; color: #166534; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 12px; }
+            .title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 16px 0; }
+            .field { margin-bottom: 14px; }
+            .label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+            .value { font-size: 14px; color: #0f172a; margin-top: 4px; font-weight: 500; }
+            .message-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-top: 6px; white-space: pre-wrap; font-size: 14px; line-height: 1.6; color: #334155; }
+            .footer { font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 16px; margin-top: 24px; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="badge">New Website Inquiry</div>
+            <h1 class="title">PrepPath Contact Form Submission</h1>
+            
+            <div class="field">
+              <div class="label">Sender Name</div>
+              <div class="value">${name}</div>
+            </div>
+
+            <div class="field">
+              <div class="label">Sender Email</div>
+              <div class="value"><a href="mailto:${email}" style="color: #2563eb;">${email}</a></div>
+            </div>
+
+            ${phone ? `
+            <div class="field">
+              <div class="label">Phone Number</div>
+              <div class="value"><a href="tel:${phone}" style="color: #2563eb;">${phone}</a></div>
+            </div>
+            ` : ''}
+
+            <div class="field">
+              <div class="label">Message</div>
+              <div class="message-box">${message}</div>
+            </div>
+
+            <div class="footer">
+              This message was submitted via the contact form on <a href="https://preppath.net" style="color: #2563eb;">preppath.net</a>. Click reply to respond directly to ${name}.
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      logger.error({ error }, 'Resend failed to deliver contact form email to hello@preppath.net');
+      return false;
+    }
+
+    logger.info({ id: data?.id }, 'Contact form email delivered successfully to hello@preppath.net');
+    return true;
+  } catch (err) {
+    logger.error({ err }, 'Error sending contact form email with Resend');
+    return false;
+  }
+}
+
