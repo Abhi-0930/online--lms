@@ -4,6 +4,13 @@ import logger from './logger';
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
+function getSenderEmail(): string {
+  if (env.EMAIL_FROM && !env.EMAIL_FROM.includes('yourdomain.com')) {
+    return env.EMAIL_FROM;
+  }
+  return 'PrepPath <onboarding@resend.dev>';
+}
+
 export async function sendPasswordResetLinkEmail(params: {
   to: string;
   resetUrl: string;
@@ -23,9 +30,9 @@ export async function sendPasswordResetLinkEmail(params: {
   }
 
   try {
-    const portalName = portalType === 'admin' ? 'LearnHub Admin Portal' : 'LearnHub';
+    const portalName = portalType === 'admin' ? 'PrepPath Admin Portal' : 'PrepPath';
     const { data, error } = await resend.emails.send({
-      from: env.EMAIL_FROM || 'LearnHub <onboarding@resend.dev>',
+      from: getSenderEmail(),
       to: [to],
       subject: `Reset your password - ${portalName}`,
       html: `
@@ -109,7 +116,7 @@ export async function sendPasswordResetOtpEmail(params: {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: env.EMAIL_FROM || 'PrepPath <noreply@resend.dev>',
+      from: getSenderEmail(),
       to: [to],
       subject: 'Your Password Reset Verification Code - PrepPath',
       html: `
@@ -168,7 +175,7 @@ export async function sendWelcomeEmail(params: {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: env.EMAIL_FROM || 'PrepPath <noreply@resend.dev>',
+      from: getSenderEmail(),
       to: [to],
       subject: 'Welcome to PrepPath!',
       html: `
@@ -200,7 +207,8 @@ export async function sendContactFormEmail(params: {
   phone?: string;
 }): Promise<boolean> {
   const { name, email, message, phone } = params;
-  logger.info({ name, email }, 'Processing contact form submission email for hello@preppath.net');
+  const recipient = env.CONTACT_NOTIFICATION_EMAIL || 'hello@preppath.net';
+  logger.info({ name, email, recipient }, `Processing contact form submission email for ${recipient}`);
 
   if (!resend || !env.RESEND_API_KEY || env.RESEND_API_KEY.startsWith('re_123456789')) {
     logger.info(
@@ -212,8 +220,8 @@ export async function sendContactFormEmail(params: {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: env.EMAIL_FROM || 'PrepPath <noreply@resend.dev>',
-      to: ['hello@preppath.net'],
+      from: getSenderEmail(),
+      to: [recipient],
       reply_to: email,
       subject: `New Contact Inquiry from ${name} - PrepPath`,
       html: `
