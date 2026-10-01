@@ -133,6 +133,110 @@ export default function RootLayout({
                   },
                 },
                 {
+                  "@type": "WebSite",
+                  "@id": "https://preppath.net/#website",
+                  url: "https://preppath.net",
+                  name: "PrepPath",
+                  description:
+                    "India's premier software engineering and technical placement preparation platform.",
+                  publisher: {
+                    "@id": "https://preppath.net/#organization",
+                  },
+                },
+                {
+                  "@type": "Course",
+                  "@id": "https://preppath.net/courses#dsa",
+                  name: "Data Structures & Algorithms Masterclass",
+                  description:
+                    "Master algorithmic problem solving, LeetCode patterns, trees, graphs, and dynamic programming for top-tier tech placements.",
+                  provider: {
+                    "@type": "Organization",
+                    name: "PrepPath",
+                    sameAs: "https://preppath.net",
+                  },
+                  offers: {
+                    "@type": "Offer",
+                    category: "Paid",
+                    priceCurrency: "INR",
+                    availability: "https://schema.org/InStock",
+                  },
+                  hasCourseInstance: {
+                    "@type": "CourseInstance",
+                    courseMode: "Online",
+                    courseWorkload: "PT16W",
+                  },
+                },
+                {
+                  "@type": "Course",
+                  "@id": "https://preppath.net/courses#fullstack",
+                  name: "Full Stack & Distributed SaaS Engineering",
+                  description:
+                    "Modern full-stack web architecture with Next.js 15, TypeScript, React 19, Node.js, PostgreSQL, Prisma, and Docker microservices.",
+                  provider: {
+                    "@type": "Organization",
+                    name: "PrepPath",
+                    sameAs: "https://preppath.net",
+                  },
+                  offers: {
+                    "@type": "Offer",
+                    category: "Paid",
+                    priceCurrency: "INR",
+                    availability: "https://schema.org/InStock",
+                  },
+                  hasCourseInstance: {
+                    "@type": "CourseInstance",
+                    courseMode: "Online",
+                    courseWorkload: "PT20W",
+                  },
+                },
+                {
+                  "@type": "Course",
+                  "@id": "https://preppath.net/courses#aiml",
+                  name: "Generative AI & Autonomous Agent Systems",
+                  description:
+                    "From foundational ML to LLM fine-tuning, RAG pipelines, vector databases, and production PyTorch deployments.",
+                  provider: {
+                    "@type": "Organization",
+                    name: "PrepPath",
+                    sameAs: "https://preppath.net",
+                  },
+                  offers: {
+                    "@type": "Offer",
+                    category: "Paid",
+                    priceCurrency: "INR",
+                    availability: "https://schema.org/InStock",
+                  },
+                  hasCourseInstance: {
+                    "@type": "CourseInstance",
+                    courseMode: "Online",
+                    courseWorkload: "PT16W",
+                  },
+                },
+                {
+                  "@type": "BreadcrumbList",
+                  "@id": "https://preppath.net/#breadcrumbs",
+                  itemListElement: [
+                    {
+                      "@type": "ListItem",
+                      position: 1,
+                      name: "Home",
+                      item: "https://preppath.net",
+                    },
+                    {
+                      "@type": "ListItem",
+                      position: 2,
+                      name: "Courses",
+                      item: "https://preppath.net/courses",
+                    },
+                    {
+                      "@type": "ListItem",
+                      position: 3,
+                      name: "Practice",
+                      item: "https://preppath.net/practice",
+                    },
+                  ],
+                },
+                {
                   "@type": "FAQPage",
                   "@id": "https://preppath.net/#faq",
                   mainEntity: [
