@@ -24,7 +24,7 @@ export function Footer() {
             </Link>
 
             <p className="text-xs sm:text-sm text-slate-500 max-w-xs leading-relaxed pt-1">
-              © copyright PrepPath 2026. All rights reserved.
+              © 2026 PrepPath. All rights reserved.
             </p>
           </div>
 
