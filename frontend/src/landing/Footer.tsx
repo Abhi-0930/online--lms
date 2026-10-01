@@ -48,8 +48,8 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#pricing" className="hover:text-slate-950 transition-colors">
-                  Pricing
+                <a href="#testimonials" className="hover:text-slate-950 transition-colors">
+                  Testimonials
                 </a>
               </li>
               <li>
