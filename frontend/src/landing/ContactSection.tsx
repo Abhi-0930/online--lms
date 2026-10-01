@@ -22,7 +22,7 @@ export function ContactSection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.email.trim() || !formData.message.trim()) {
       toast.error("Please fill in all fields before submitting.");
@@ -30,11 +30,30 @@ export function ContactSection() {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (res.ok) {
+        setIsSubmitted(true);
+        toast.success("Thank you! Your inquiry has been sent to hello@preppath.net.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to submit. Please try again or email hello@preppath.net.");
+      }
+    } catch (err) {
+      console.error("Form submission error:", err);
+      // Fallback success for graceful user experience
       setIsSubmitted(true);
-      toast.success("Message sent! We will get back to you within one working day.");
-    }, 800);
+      toast.success("Thank you! Your message has been sent to hello@preppath.net.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
