@@ -43,7 +43,7 @@ export default function RootHomePage() {
         localStorage.getItem("lms_access_token") ||
         localStorage.getItem("lms_active_session_token") ||
         sessionStorage.getItem("lms_session_token") ||
-        localStorage.getItem("lms_user_profile")
+        localStorage.getItem("lms_user_profile")  
       );
 
     if ((isAuthenticated || user) && hasToken) {
