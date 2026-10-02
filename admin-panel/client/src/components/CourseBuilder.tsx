@@ -357,7 +357,7 @@ function CategoryDropdown({
                 className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span>+ Create Custom Category...</span>
+                <span>Create Custom Category...</span>
               </button>
             )}
           </div>
