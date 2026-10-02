@@ -1,58 +1,31 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import {
+  Menu,
+  X,
+  ArrowRight,
+  Sparkles,
+  GraduationCap
+} from "lucide-react";
 
 export function Navbar({ onEnrollClick }: { onEnrollClick?: () => void }) {
   const router = useRouter();
-  const [isVisible, setIsVisible] = useState(true);
-  const lastScrollY = useRef(0);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    let ticking = false;
-
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      // Always show when near the very top of the page
-      if (currentScrollY <= 50) {
-        setIsVisible(true);
-        lastScrollY.current = currentScrollY <= 0 ? 0 : currentScrollY;
-        ticking = false;
-        return;
-      }
-
-      const diff = currentScrollY - lastScrollY.current;
-
-      // Threshold of 6px to avoid micro-jitter
-      if (Math.abs(diff) > 6) {
-        if (diff > 0) {
-          // Scrolling down -> hide dynamic island
-          setIsVisible(false);
-        } else {
-          // Scrolling up -> show dynamic island
-          setIsVisible(true);
-        }
-        lastScrollY.current = currentScrollY;
-      }
-
-      ticking = false;
+      setIsScrolled(window.scrollY > 20);
     };
-
-    const onScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(handleScroll);
-        ticking = true;
-      }
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const navLinks = [
+    { name: "Home", href: "#overview" },
     { name: "Courses", href: "#courses" },
     { name: "Success Stories", href: "#stories" },
     { name: "Testimonials", href: "#testimonials" },
@@ -60,7 +33,8 @@ export function Navbar({ onEnrollClick }: { onEnrollClick?: () => void }) {
   ];
 
   const scrollTo = (href: string) => {
-    if (href === "#overview" || href === "#") {
+    setMobileMenuOpen(false);
+    if (href === "#overview") {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
@@ -70,76 +44,102 @@ export function Navbar({ onEnrollClick }: { onEnrollClick?: () => void }) {
     }
   };
 
-  const handleStartLearning = () => {
-    if (onEnrollClick) {
-      onEnrollClick();
-    } else {
-      router.push("/login");
-    }
-  };
-
   return (
-    <header
-      className={`fixed top-4 sm:top-5 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        isVisible
-          ? "translate-y-0 opacity-100 scale-100 pointer-events-auto"
-          : "-translate-y-28 opacity-0 scale-95 pointer-events-none"
-      }`}
-    >
-      <div className="flex items-center justify-between gap-2.5 sm:gap-6 px-3.5 sm:px-5 py-2 rounded-full bg-slate-950/85 text-white backdrop-blur-2xl border border-white/15 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.6)] ring-1 ring-white/10 select-none">
-        
-        {/* Brand Logo with Serif Styling & Pulse Dot */}
-        <Link
-          href="/"
-          onClick={(e) => {
-            if (typeof window !== "undefined" && window.location.pathname === "/") {
-              e.preventDefault();
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }
-          }}
-          className="flex items-center gap-1.5 group cursor-pointer pl-1 pr-1.5"
-        >
-          <span
-            className="text-xl sm:text-2xl font-normal tracking-tight text-white group-hover:text-lime-400 transition-colors"
-            style={{ fontFamily: "'Instrument Serif', serif" }}
-          >
-            preppath
-          </span>
-          <span className="w-1.5 h-1.5 rounded-full bg-lime-400 inline-block shadow-[0_0_8px_rgba(163,230,53,0.9)] animate-pulse" />
-        </Link>
-
-        {/* Center: Desktop Nav Links (Hidden on mobile) */}
-        <nav className="hidden md:flex items-center gap-0.5">
-          {navLinks.map((link) => (
-            <button
-              key={link.name}
-              onClick={() => scrollTo(link.href)}
-              className="px-3 py-1 rounded-full text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
-            >
-              {link.name}
-            </button>
-          ))}
-        </nav>
-
-        {/* Right: Sign in + Start Learning Action */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Link
-            href="/login"
-            className="hidden sm:inline-flex px-3 py-1.5 rounded-full text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            Sign in
+    <>
+      <header className="fixed top-0 left-0 right-0 z-50 py-4 sm:py-5 px-4 sm:px-6 lg:px-8 transition-all duration-300">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          
+          {/* Brand Logo with Editorial Serif Vibe */}
+          <Link href="/landing" className="flex items-center gap-2 group select-none">
+            <span className="text-2xl sm:text-2xl font-normal tracking-tight font-serif italic text-slate-900 group-hover:text-lime-600 transition-colors">
+              preppath
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-lime-500 mb-2 inline-block" />
           </Link>
 
-          <button
-            onClick={handleStartLearning}
-            className="liquid-glass group inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-semibold text-white hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 cursor-pointer shadow-md"
-          >
-            <span>Start Learning</span>
-            <ArrowRight className="w-3.5 h-3.5 text-lime-400 group-hover:translate-x-0.5 transition-transform" />
-          </button>
-        </div>
+          {/* Centered Floating Frosted Glass Pill Navigation Bar */}
+          <nav className="hidden md:flex items-center gap-1 px-4 py-2 rounded-full bg-white/75 backdrop-blur-xl border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+            {navLinks.map((link) => (
+              <button
+                key={link.name}
+                onClick={() => scrollTo(link.href)}
+                className="px-3.5 py-1.5 rounded-full text-[13px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all cursor-pointer"
+              >
+                {link.name}
+              </button>
+            ))}
+          </nav>
 
-      </div>
-    </header>
+          {/* Right Action Buttons */}
+          <div className="hidden sm:flex items-center gap-2.5">
+            <Link
+              href="/login"
+              className="px-4 py-2 rounded-full text-[13px] font-semibold text-slate-700 hover:text-slate-900 transition-colors"
+            >
+              Sign in
+            </Link>
+
+            <button
+              onClick={onEnrollClick || (() => scrollTo("#courses"))}
+              className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-950 text-white hover:bg-slate-900 text-[13px] font-bold shadow-md shadow-slate-950/15 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+            >
+              <span>Start Learning</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform text-lime-400" />
+            </button>
+          </div>
+
+          {/* Mobile Hamburger Menu */}
+          <div className="flex md:hidden items-center gap-2">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+              className="p-2 rounded-full bg-white/90 border border-slate-200 text-slate-700 hover:bg-slate-100 shadow-xs transition-colors"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+
+        </div>
+      </header>
+
+      {/* Mobile Menu Drawer */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-40 bg-white/95 backdrop-blur-2xl pt-24 px-6 pb-8 flex flex-col justify-between md:hidden animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="space-y-2">
+            {navLinks.map((link) => (
+              <button
+                key={link.name}
+                onClick={() => scrollTo(link.href)}
+                className="w-full flex items-center justify-between p-3.5 rounded-xl text-left text-base font-semibold text-slate-800 hover:bg-slate-100 transition-colors"
+              >
+                <span>{link.name}</span>
+                <ArrowRight className="w-4 h-4 text-slate-400" />
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-3 pt-6 border-t border-slate-200">
+            <Link
+              href="/login"
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full flex items-center justify-center py-3 rounded-full text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+            >
+              Student Portal Sign In
+            </Link>
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                if (onEnrollClick) onEnrollClick();
+                else scrollTo("#courses");
+              }}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-full bg-slate-950 text-white text-sm font-bold shadow-lg"
+            >
+              <span>Explore All Tracks</span>
+              <ArrowRight className="w-4 h-4 text-lime-400" />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
