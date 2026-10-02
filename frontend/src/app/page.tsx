@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  Navbar,
   VelorahHero,
   HeroScrollDemo,
   CompaniesMarquee,
@@ -55,6 +56,7 @@ export default function RootHomePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#f8fafc] overflow-x-clip">
+      <Navbar onEnrollClick={handleBeginJourney} />
       <VelorahHero onBeginJourney={handleBeginJourney} />
       <HeroScrollDemo />
       <CompaniesMarquee />
