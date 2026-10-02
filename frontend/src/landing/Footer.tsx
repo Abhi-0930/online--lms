@@ -34,7 +34,7 @@ export function Footer() {
             <ul className="space-y-2.5 text-xs sm:text-sm text-slate-600">
               <li>
                 <Link href="/about" className="hover:text-slate-950 transition-colors font-medium text-slate-900">
-                  About Us & Mentors
+                  About Us
                 </Link>
               </li>
               <li>
