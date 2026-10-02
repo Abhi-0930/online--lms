@@ -1,25 +1,24 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About Us & Mentors - PrepPath | Next-Gen Computer Science Education",
+  title: "About Us - PrepPath | Computer Science & Engineering Education",
   description:
-    "Learn about PrepPath's mission to empower software engineers with world-class Data Structures, System Design, and AI curriculum taught by industry leaders from Google, Meta, and Amazon.",
+    "Learn about PrepPath's mission to empower software engineers with production-grade Data Structures, System Design, and hands-on coding curriculum.",
   keywords: [
     "About PrepPath",
-    "PrepPath Instructors",
-    "DSA Mentors",
-    "Ex-FAANG Engineers",
-    "System Design Course Instructors",
-    "Coding Bootcamp Mentors",
-    "Software Engineering Career Prep"
+    "PrepPath Story",
+    "Computer Science Learning",
+    "DSA Problem Solving",
+    "Software Engineering Education",
+    "Hyderabad EdTech"
   ],
   alternates: {
     canonical: "https://www.preppath.net/about",
   },
   openGraph: {
-    title: "About PrepPath - Elite Engineering Mentorship & Programs",
+    title: "About PrepPath - Next-Gen Engineering Education",
     description:
-      "Bridging the gap between university theory and high-scale production engineering. Meet our world-class mentors and explore our learning philosophy.",
+      "Bridging the gap between university theory and high-scale production engineering. Discover our founding vision and learning methodology.",
     url: "https://www.preppath.net/about",
     siteName: "PrepPath",
     locale: "en_US",
@@ -27,9 +26,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "About PrepPath - Elite Engineering Mentorship",
+    title: "About PrepPath - Next-Gen Engineering Education",
     description:
-      "Bridging the gap between university theory and high-scale production engineering. Meet our mentors from Google, Meta, and Amazon.",
+      "Bridging the gap between university theory and high-scale production engineering. Discover our founding vision and learning methodology.",
   },
 };
 
