@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
+import { motion, useInView } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,6 +22,64 @@ import {
   Phone
 } from "lucide-react";
 import { Footer } from "@/landing/Footer";
+
+function RollingCounter({
+  target,
+  decimals = 0,
+  prefix = "",
+  suffix = "",
+  duration = 2,
+}: {
+  target: number;
+  decimals?: number;
+  prefix?: string;
+  suffix?: string;
+  duration?: number;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-40px" });
+  const [currentValue, setCurrentValue] = useState(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    let startTime: number | null = null;
+    let animationFrameId: number;
+
+    const easeOutExpo = (t: number) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
+
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / (duration * 1000), 1);
+      const easedProgress = easeOutExpo(progress);
+
+      const nextVal = easedProgress * target;
+      setCurrentValue(nextVal);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      } else {
+        setCurrentValue(target);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [isInView, target, duration]);
+
+  const formatted =
+    decimals > 0
+      ? currentValue.toFixed(decimals)
+      : Math.floor(currentValue).toLocaleString();
+
+  return (
+    <span ref={ref} className="tabular-nums inline-flex items-baseline">
+      {prefix && <span>{prefix}</span>}
+      <span>{formatted}</span>
+      {suffix && <span>{suffix}</span>}
+    </span>
+  );
+}
 
 export default function AboutPage() {
   const coreValues = [
@@ -52,22 +111,27 @@ export default function AboutPage() {
 
   const milestones = [
     {
-      number: "10,000+",
+      target: 10000,
+      suffix: "+",
       label: "Problems Solved in Arena",
       detail: "Across DSA, Dynamic Programming & Graphs"
     },
     {
-      number: "94.8%",
+      target: 94.8,
+      decimals: 1,
+      suffix: "%",
       label: "Career Transition Rate",
       detail: "Graduates placed in top product companies"
     },
     {
-      number: "45+ LPA",
+      target: 45,
+      suffix: "+ LPA",
       label: "Highest Compensation",
       detail: "Offered to alumni in recent cohorts"
     },
     {
-      number: "1 : 15",
+      prefix: "1 : ",
+      target: 15,
       label: "Mentor-to-Student Ratio",
       detail: "Ensuring personal attention & doubt resolution"
     }
@@ -157,16 +221,25 @@ export default function AboutPage() {
           </p>
         </section>
 
-        {/* 2. Key Metrics */}
+        {/* 2. Key Metrics with Rolling Counting Animation */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
           {milestones.map((item, idx) => (
-            <div
+            <motion.div
               key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.4, delay: idx * 0.1 }}
               className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/90 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
             >
               <div>
                 <span className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight font-display block">
-                  {item.number}
+                  <RollingCounter
+                    target={item.target}
+                    decimals={item.decimals}
+                    prefix={item.prefix}
+                    suffix={item.suffix}
+                  />
                 </span>
                 <span className="text-sm font-bold text-slate-800 mt-1 block">
                   {item.label}
@@ -175,7 +248,7 @@ export default function AboutPage() {
               <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-100 leading-snug">
                 {item.detail}
               </p>
-            </div>
+            </motion.div>
           ))}
         </section>
 
