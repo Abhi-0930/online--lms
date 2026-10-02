@@ -33,6 +33,11 @@ export function Footer() {
             <h4 className="text-sm font-bold text-slate-950">Pages</h4>
             <ul className="space-y-2.5 text-xs sm:text-sm text-slate-600">
               <li>
+                <Link href="/about" className="hover:text-slate-950 transition-colors font-medium text-slate-900">
+                  About Us & Mentors
+                </Link>
+              </li>
+              <li>
                 <a href="#courses" className="hover:text-slate-950 transition-colors">
                   All Courses
                 </a>
