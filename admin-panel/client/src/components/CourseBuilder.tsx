@@ -157,7 +157,7 @@ interface CourseBuilderProps {
   initialStep?: number;
 }
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   "Web Development",
   "Data Structures & Algorithms",
   "System Design",
@@ -167,6 +167,207 @@ const CATEGORIES = [
   "Cybersecurity",
   "Database & Backend",
 ];
+
+const CUSTOM_CATEGORIES_STORAGE_KEY = "lms_custom_course_categories";
+
+function getSavedCustomCategories(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_CATEGORIES_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map((s) => String(s).trim()).filter(Boolean);
+    }
+  } catch {}
+  return [];
+}
+
+function saveCustomCategory(newCat: string): string[] {
+  if (typeof window === "undefined" || !newCat.trim()) return [];
+  try {
+    const current = getSavedCustomCategories();
+    const clean = newCat.trim();
+    if (!current.includes(clean) && !DEFAULT_CATEGORIES.includes(clean)) {
+      const updated = [...current, clean];
+      localStorage.setItem(CUSTOM_CATEGORIES_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    }
+    return current;
+  } catch {}
+  return [];
+}
+
+function CategoryDropdown({
+  value,
+  onChange,
+  categories,
+  onAddCategory,
+  error,
+  className,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  categories: string[];
+  onAddCategory: (newCategory: string) => void;
+  error?: boolean;
+  className?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isCreatingCustom, setIsCreatingCustom] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    const handleOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setIsCreatingCustom(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    if (isCreatingCustom) {
+      setTimeout(() => inputRef.current?.focus(), 60);
+    }
+  }, [isCreatingCustom]);
+
+  const handleCreateNew = () => {
+    const trimmed = customInput.trim();
+    if (!trimmed) return;
+    onAddCategory(trimmed);
+    onChange(trimmed);
+    setCustomInput("");
+    setIsCreatingCustom(false);
+    setIsOpen(false);
+  };
+
+  const displayLabel = value || "Select category";
+  const isSelected = !!value;
+
+  return (
+    <div ref={dropdownRef} className={cn("relative w-full", className)}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={cn(
+          "flex w-full items-center justify-between rounded-xl border bg-white px-4 py-3 text-left text-xs sm:text-[13px] font-medium transition-all duration-150 select-none shadow-xs cursor-pointer",
+          isOpen
+            ? "border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs"
+            : error
+            ? "border-rose-400 bg-rose-50/20"
+            : "border-slate-200 hover:border-slate-300 text-slate-900"
+        )}
+      >
+        <span
+          className={cn(
+            "truncate",
+            isSelected ? "text-slate-800 font-semibold" : "text-slate-400"
+          )}
+        >
+          {displayLabel}
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2",
+            isOpen && "rotate-180 text-indigo-600"
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in-0 zoom-in-95 duration-100">
+          <div className="space-y-0.5 max-h-48 overflow-y-auto pr-0.5">
+            {categories.map((opt) => {
+              const active = opt.toLowerCase() === value.toLowerCase();
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt);
+                    setIsOpen(false);
+                    setIsCreatingCustom(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs sm:text-[13px] font-medium transition-colors cursor-pointer",
+                    active
+                      ? "bg-indigo-50 font-bold text-indigo-700"
+                      : "text-slate-700 hover:bg-slate-50"
+                  )}
+                >
+                  <span className="truncate">{opt}</span>
+                  {active && (
+                    <Check className="h-4 w-4 shrink-0 text-indigo-600" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-1 pt-1.5 border-t border-slate-100">
+            {isCreatingCustom ? (
+              <div className="p-2 space-y-2 bg-slate-50 rounded-lg border border-slate-200">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCreateNew();
+                    } else if (e.key === "Escape") {
+                      setIsCreatingCustom(false);
+                    }
+                  }}
+                  placeholder="Enter custom category name..."
+                  className="w-full px-2.5 py-1.5 text-xs bg-white rounded-md border border-slate-300 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-800"
+                />
+                <div className="flex items-center justify-end gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreatingCustom(false);
+                      setCustomInput("");
+                    }}
+                    className="px-2.5 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-200 rounded-md transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!customInput.trim()}
+                    onClick={handleCreateNew}
+                    className="px-3 py-1 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-md transition-colors shadow-xs cursor-pointer"
+                  >
+                    Add & Select
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsCreatingCustom(true)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>+ Create Custom Category...</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const CATEGORIES = DEFAULT_CATEGORIES;
 
 const LEVELS = ["Beginner", "Intermediate", "Advanced", "All Levels"];
 
@@ -1034,6 +1235,31 @@ export default function CourseBuilder({
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Custom categories state initialized from localStorage
+  const [customCategories, setCustomCategories] = useState<string[]>(() => getSavedCustomCategories());
+
+  const allCategoryOptions = useMemo(() => {
+    const combined = Array.from(new Set([...DEFAULT_CATEGORIES, ...customCategories]));
+    if (formData.category && !combined.includes(formData.category)) {
+      combined.push(formData.category);
+    }
+    if (initialData?.category && !combined.includes(initialData.category)) {
+      combined.push(initialData.category);
+    }
+    return combined;
+  }, [customCategories, formData.category, initialData?.category]);
+
+  const handleAddCustomCategory = (newCat: string) => {
+    const clean = newCat.trim();
+    if (!clean) return;
+    saveCustomCategory(clean);
+    setCustomCategories((prev) => Array.from(new Set([...prev, clean])));
+    setFormData((prev) => ({ ...prev, category: clean }));
+    if (errors.category) {
+      setErrors((prev) => ({ ...prev, category: false }));
+    }
+  };
 
   // Curriculum modal state
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
@@ -2016,15 +2242,15 @@ export default function CourseBuilder({
                       <label className="block text-xs sm:text-[13px] font-bold text-slate-800 mb-2">
                         Course Category <span className="text-rose-500">*</span>
                       </label>
-                      <BuilderDropdown
+                      <CategoryDropdown
                         value={formData.category}
                         onChange={(val) => {
                           setFormData((prev) => ({ ...prev, category: val }));
                           if (errors.category)
                             setErrors((prev) => ({ ...prev, category: false }));
                         }}
-                        options={CATEGORIES}
-                        placeholder="Select category"
+                        categories={allCategoryOptions}
+                        onAddCategory={handleAddCustomCategory}
                         error={errors.category}
                       />
                       {errors.category && (
