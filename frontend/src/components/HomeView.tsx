@@ -1015,6 +1015,11 @@ function CourseProgressCard({ course }: { course: LiveCourseItem }) {
           alt={course.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
+        {course.hasDiscount && course.discountPercentage ? (
+          <div className="absolute top-2.5 left-2.5 rounded-full bg-emerald-500/90 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-bold text-white shadow">
+            {course.discountPercentage}% OFF
+          </div>
+        ) : null}
         {course.progress !== undefined && course.progress > 0 && (
           <div className="absolute top-2.5 right-2.5 rounded-full bg-[#17223d]/80 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-bold text-white shadow">
             {course.progress}% done
@@ -1038,7 +1043,19 @@ function CourseProgressCard({ course }: { course: LiveCourseItem }) {
         </p>
         <div className="flex items-center justify-between border-t border-[#edf0f6] pt-3 text-[10px] font-bold text-[#7c87a4] dark:border-white/10">
           <span>{course.lessons}</span>
-          <span className="text-[#3157e8] font-extrabold">{course.price}</span>
+          <div className="flex items-baseline gap-1.5">
+            {course.hasDiscount && course.originalPrice && (
+              <span className="text-[10px] text-[#9aa4bc] line-through font-semibold">
+                {course.originalPrice}
+              </span>
+            )}
+            <span className="text-[#3157e8] font-extrabold">{course.price}</span>
+            {course.hasDiscount && course.discountPercentage ? (
+              <span className="rounded bg-emerald-500/10 px-1 py-0.2 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                {course.discountPercentage}% OFF
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
     </Link>
@@ -2569,7 +2586,7 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
               </span>
               {course.hasDiscount && course.discountPercentage ? (
                 <span className="rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-900/40 px-2 py-0.5 text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400">
-                  {course.discountPercentage}% OFF
+                  Save {course.discountPercentage}% OFF
                 </span>
               ) : null}
               {enrolled && (
@@ -2612,7 +2629,7 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
         </div>
       </Link>
       <div className="mt-auto flex items-center justify-between border-t border-[#edf0f6] p-4 pt-3 dark:border-white/10">
-        <div className="flex items-baseline gap-2">
+        <div className="flex flex-wrap items-baseline gap-2">
           <span className="font-display text-lg font-bold text-[#17223d] dark:text-white">
             {course.price}
           </span>
@@ -2621,6 +2638,11 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
               {course.originalPrice}
             </span>
           )}
+          {course.hasDiscount && course.discountPercentage ? (
+            <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+              Save {course.discountPercentage}%
+            </span>
+          ) : null}
         </div>
         <button
           onClick={handleEnrollClick}
@@ -2762,13 +2784,25 @@ function CourseDetail({ courseId }: { courseId: string }) {
                 <Play className="h-4 w-4 fill-current" /> Continue learning
               </Link>
             ) : (
-              <Link
-                href={createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
-                className="button-primary flex items-center gap-2 shadow-[0_10px_25px_rgba(49,87,232,0.35)] transition-all hover:scale-[1.02] active:scale-95"
-              >
-                <CreditCard className="h-4 w-4" />
-                Enroll now · {course.price}
-              </Link>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href={createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
+                  className="button-primary flex items-center gap-2 shadow-[0_10px_25px_rgba(49,87,232,0.35)] transition-all hover:scale-[1.02] active:scale-95"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Enroll now · {course.price}
+                </Link>
+                {course.hasDiscount && course.originalPrice && (
+                  <span className="text-sm font-semibold text-white/60 line-through">
+                    {course.originalPrice}
+                  </span>
+                )}
+                {course.hasDiscount && course.discountPercentage ? (
+                  <span className="rounded-md bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-1 text-xs font-bold text-emerald-300">
+                    Save {course.discountPercentage}% OFF
+                  </span>
+                ) : null}
+              </div>
             )}
           </div>
         </div>
@@ -2959,7 +2993,7 @@ function CourseDetail({ courseId }: { courseId: string }) {
                 </span>
                 {course.hasDiscount && course.discountPercentage ? (
                   <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                    Save {course.discountPercentage}%
+                    Save {course.discountPercentage}% OFF
                   </span>
                 ) : (
                   <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-bold text-[#3157e8] dark:text-blue-400">
@@ -2967,15 +3001,20 @@ function CourseDetail({ courseId }: { courseId: string }) {
                   </span>
                 )}
               </div>
-              <div className="mt-3 flex items-baseline gap-2">
+              <div className="mt-3 flex flex-wrap items-baseline gap-2">
                 <span className="font-display text-4xl font-bold tracking-tight text-[#17223d] dark:text-white">
                   {course.price}
                 </span>
                 {course.hasDiscount && course.originalPrice && (
-                  <span className="text-sm text-[#9aa4bc] line-through font-semibold">
+                  <span className="text-base text-[#9aa4bc] line-through font-semibold">
                     {course.originalPrice}
                   </span>
                 )}
+                {course.hasDiscount && course.discountPercentage ? (
+                  <span className="rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    Save {course.discountPercentage}%
+                  </span>
+                ) : null}
               </div>
               <p className="mt-2 text-xs leading-5 text-[#7c87a4]">
                 Get full access to this course, curriculum modules, assignments, and verified completion certificate.
@@ -3298,12 +3337,21 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
           {/* Pricing Breakdown Lines */}
           <div className="space-y-3 text-sm">
             <div className="flex items-center justify-between text-[#64748b] dark:text-slate-400">
-              <span>Course Price</span>
-              <span className="font-semibold text-[#0f172a] dark:text-white">{formattedOriginalPrice}</span>
+              <span>Course Original Price</span>
+              <span className={cx(
+                "font-semibold",
+                discountSavingsNumber > 0
+                  ? "text-[#94a3b8] line-through"
+                  : "text-[#0f172a] dark:text-white"
+              )}>
+                {formattedOriginalPrice}
+              </span>
             </div>
             {discountSavingsNumber > 0 && (
               <div className="flex items-center justify-between text-[#64748b] dark:text-slate-400">
-                <span>Discount Savings</span>
+                <span className="flex items-center gap-1.5 text-[#059669] dark:text-emerald-400 font-medium">
+                  <Tag className="h-3.5 w-3.5" /> Discount Savings ({course.discountPercentage}% OFF)
+                </span>
                 <span className="font-semibold text-[#059669] dark:text-emerald-400">{formattedDiscountSavings}</span>
               </div>
             )}
