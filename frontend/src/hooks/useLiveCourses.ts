@@ -79,35 +79,64 @@ function inferCategory(title: string = "", description: string = ""): string {
   return "Development";
 }
 
+function parsePriceNumber(val: any): number {
+  if (val === undefined || val === null || val === "") return 0;
+  if (typeof val === "number") return isNaN(val) ? 0 : val;
+  const clean = String(val).replace(/[^0-9.]/g, "");
+  return parseFloat(clean) || 0;
+}
+
 function transformDbCourse(c: any): LiveCourseItem {
-  const origPriceNum = typeof c.price === "number"
-    ? c.price
-    : (parseFloat(String(c.price || "0").replace(/[^0-9.]/g, "")) || 0);
+  const p1 = parsePriceNumber(c.price);
+  const p2 = parsePriceNumber(c.discountPrice);
+  const p3 = parsePriceNumber(c.originalPrice || c.rawOriginalPrice || c.mrp);
 
-  const discPriceNum = c.discountPrice !== undefined && c.discountPrice !== null && String(c.discountPrice).trim() !== ""
-    ? (typeof c.discountPrice === "number"
-        ? c.discountPrice
-        : (parseFloat(String(c.discountPrice).replace(/[^0-9.]/g, "")) || 0))
-    : 0;
-
-  let rawPrice = origPriceNum;
-  let formattedPrice = `₹ ${origPriceNum.toLocaleString("en-IN")}`;
+  let rawPrice = 0;
+  let formattedPrice = "Free";
   let originalPriceStr: string | undefined = undefined;
   let hasDiscount = false;
   let discountPercentage = 0;
+  let rawOriginalPrice = 0;
+  let rawDiscountPrice = 0;
 
-  if (c.courseType === "Free" || (origPriceNum === 0 && discPriceNum === 0)) {
+  if (c.courseType === "Free" || (p1 === 0 && p2 === 0 && p3 === 0)) {
     rawPrice = 0;
     formattedPrice = "Free";
-  } else if (discPriceNum > 0 && discPriceNum < origPriceNum) {
-    rawPrice = discPriceNum;
-    formattedPrice = `₹ ${discPriceNum.toLocaleString("en-IN")}`;
-    originalPriceStr = `₹ ${origPriceNum.toLocaleString("en-IN")}`;
-    hasDiscount = true;
-    discountPercentage = Math.round(((origPriceNum - discPriceNum) / origPriceNum) * 100);
-  } else if (origPriceNum > 0) {
-    rawPrice = origPriceNum;
-    formattedPrice = `₹ ${origPriceNum.toLocaleString("en-IN")}`;
+    hasDiscount = false;
+  } else {
+    // Determine selling price (what user actually pays) and original/MRP price (what is struck through)
+    let sellingPrice = 0;
+    let originalPrice = 0;
+
+    if (p1 > 0 && p2 > 0 && p1 !== p2) {
+      // Both base price and discountPrice are present and different
+      originalPrice = Math.max(p1, p2);
+      sellingPrice = Math.min(p1, p2);
+    } else if (p3 > 0 && p1 > 0 && p3 !== p1) {
+      // Explicit originalPrice / MRP provided and different from price
+      originalPrice = Math.max(p1, p3);
+      sellingPrice = Math.min(p1, p3);
+    } else if (p1 > 0) {
+      sellingPrice = p1;
+      originalPrice = p1;
+    } else if (p2 > 0) {
+      sellingPrice = p2;
+      originalPrice = p2;
+    }
+
+    rawPrice = sellingPrice;
+    formattedPrice = `₹ ${sellingPrice.toLocaleString("en-IN")}`;
+
+    if (originalPrice > sellingPrice && sellingPrice > 0) {
+      hasDiscount = true;
+      originalPriceStr = `₹ ${originalPrice.toLocaleString("en-IN")}`;
+      discountPercentage = Math.round(((originalPrice - sellingPrice) / originalPrice) * 100);
+      rawOriginalPrice = originalPrice;
+      rawDiscountPrice = sellingPrice;
+    } else {
+      rawOriginalPrice = sellingPrice;
+      rawDiscountPrice = sellingPrice;
+    }
   }
 
   const levelStr = c.level
@@ -206,7 +235,7 @@ function transformDbCourse(c: any): LiveCourseItem {
     rating: "4.9",
     price: formattedPrice,
     originalPrice: originalPriceStr,
-    discountPrice: hasDiscount ? `₹ ${discPriceNum.toLocaleString("en-IN")}` : undefined,
+    discountPrice: hasDiscount ? `₹ ${rawDiscountPrice.toLocaleString("en-IN")}` : undefined,
     hasDiscount,
     discountPercentage,
     currency: c.currency || "INR ₹",
@@ -217,8 +246,8 @@ function transformDbCourse(c: any): LiveCourseItem {
     progress: 0,
     accent,
     rawPrice,
-    rawOriginalPrice: origPriceNum,
-    rawDiscountPrice: discPriceNum,
+    rawOriginalPrice,
+    rawDiscountPrice,
     modules,
     learningOutcomes,
     prerequisites,
