@@ -5,24 +5,22 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
-  GraduationCap,
   Sparkles,
   Code2,
-  Cpu,
   Users,
-  Award,
-  CheckCircle2,
-  ShieldCheck,
   Target,
   Zap,
-  Globe,
-  Star,
-  BookOpen,
-  HelpCircle,
-  Briefcase
+  CheckCircle2,
+  ShieldCheck,
+  Compass,
+  Layers,
+  Terminal,
+  Cpu,
+  Mail,
+  MapPin,
+  Phone
 } from "lucide-react";
 import { Footer } from "@/landing/Footer";
-import { INSTRUCTORS } from "@/landing/landingData";
 
 export default function AboutPage() {
   const coreValues = [
@@ -33,22 +31,22 @@ export default function AboutPage() {
         "No trivial toy problems. Every data structure, concurrency model, and system design pattern is taught using real-world architectures running at modern tech companies."
     },
     {
-      icon: Users,
-      title: "Direct Access to Elite Mentors",
-      description:
-        "Learn directly from Staff & Principal engineers from Google, Meta, and Amazon. Get unhindered 1-on-1 code reviews, architectural advice, and career roadmaps."
-    },
-    {
       icon: Zap,
       title: "Hands-On Problem Arena",
       description:
-        "Knowledge without practice is incomplete. Our built-in code runner lets you test edge cases, analyze time/space bottlenecks, and build algorithmic intuition."
+        "Knowledge without rigorous practice is incomplete. Our built-in code runner lets learners test edge cases, analyze runtime bottlenecks, and build intuitive problem-solving skills."
+    },
+    {
+      icon: Layers,
+      title: "Full-Stack System Depth",
+      description:
+        "From low-level memory efficiency and algorithmic complexity to distributed caching, message queues, and cloud deployments — we cover the full engineering spectrum."
     },
     {
       icon: Target,
-      title: "Outcome & Placement Driven",
+      title: "Outcome & Career Driven",
       description:
-        "From technical mock interviews and resume refactoring to salary negotiation strategies, we prepare you end-to-end to secure high-tier tech offers."
+        "From technical mock interviews and resume refactoring to salary negotiation strategies, we prepare engineers end-to-end to secure high-tier tech offers."
     }
   ];
 
@@ -75,10 +73,37 @@ export default function AboutPage() {
     }
   ];
 
+  const teachingMethodology = [
+    {
+      step: "01",
+      title: "First-Principles Conceptual Deep Dive",
+      description:
+        "We dissect core computer science fundamentals from ground up — explaining why an algorithm exists, its mathematical bounds, and where it fails in production."
+    },
+    {
+      step: "02",
+      title: "Active Live Coding & Real-Time Walkthroughs",
+      description:
+        "No passive video watching. Students actively write code, debug failing test suites, and refactor sub-optimal implementations during live cohort sessions."
+    },
+    {
+      step: "03",
+      title: "Automated Arena Submissions & Benchmarking",
+      description:
+        "Solve curated problems directly in our online code editor. Benchmark time & space complexity against optimal reference solutions with hidden test cases."
+    },
+    {
+      step: "04",
+      title: "Interview Readiness & System Architecture",
+      description:
+        "Simulate high-pressure technical interviews with live mock rounds, high-level system design (HLD) defenses, and low-level schema modeling."
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col justify-between selection:bg-lime-400 selection:text-slate-950">
       
-      {/* Top Floating Glass Header */}
+      {/* Top Floating Header */}
       <header className="border-b border-slate-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link
@@ -117,7 +142,7 @@ export default function AboutPage() {
         <section className="text-center max-w-3xl mx-auto space-y-5">
           <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-lime-100 text-lime-900 border border-lime-200 shadow-xs">
             <Sparkles className="w-3.5 h-3.5 text-lime-700" />
-            <span>Transforming Computer Science Education</span>
+            <span>About PrepPath</span>
           </div>
 
           <h1
@@ -128,11 +153,11 @@ export default function AboutPage() {
           </h1>
 
           <p className="text-slate-600 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto font-normal">
-            PrepPath was founded with a singular conviction: Traditional college curricula and generic recorded bootcamps are disconnected from high-scale engineering reality. We bridge that divide through live mentorship, deep problem solving, and production architectures.
+            PrepPath is an advanced computer science learning ecosystem designed to bridge the gap between academic theory and the high-performance engineering standards required by modern product companies.
           </p>
         </section>
 
-        {/* 2. Platform Metrics */}
+        {/* 2. Key Metrics */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
           {milestones.map((item, idx) => (
             <div
@@ -159,26 +184,27 @@ export default function AboutPage() {
           <div className="absolute top-0 right-0 w-96 h-96 bg-lime-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10 max-w-3xl space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-lime-400 text-xs font-semibold tracking-wide border border-white/10">
-              <span>The PrepPath Story</span>
+              <Compass className="w-3.5 h-3.5 text-lime-400" />
+              <span>Our Founding Vision</span>
             </div>
             <h2
               className="text-3xl sm:text-4xl font-normal tracking-tight text-white leading-tight"
               style={{ fontFamily: "'Instrument Serif', serif" }}
             >
-              Built by engineers, for engineers who want to excel.
+              Built to transform passive learners into exceptional builders.
             </h2>
-            <div className="space-y-4 text-slate-300 text-sm sm:text-base leading-relaxed">
+            <div className="space-y-4 text-slate-300 text-sm sm:text-base leading-relaxed font-normal">
               <p>
-                Every year, thousands of brilliant aspiring developers get stuck in a frustrating cycle: watching endless passive video tutorials without truly grasping how algorithms behave under extreme constraints or how microservices scale to millions of concurrent users.
+                Every year, thousands of aspiring software engineers get trapped in an endless loop of passive video tutorials. They memorize code snippets without understanding how algorithms behave under heavy constraints or how distributed databases scale to millions of requests per second.
               </p>
               <p>
-                At PrepPath, we replaced passive lectures with <strong>interactive live cohorts</strong>, continuous code execution, and comprehensive architectural dissections. Our students don&apos;t just memorize syntax — they write optimal solutions, defend their design decisions, and develop true engineering taste.
+                PrepPath was engineered to replace passive lectures with <strong>rigorous practice</strong>, live technical mentorship, continuous test-case verification, and real-world system architecture breakdowns.
               </p>
             </div>
           </div>
         </section>
 
-        {/* 4. Core Pillars / Values */}
+        {/* 4. Core Educational Pillars */}
         <section className="space-y-10">
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <h2
@@ -188,7 +214,7 @@ export default function AboutPage() {
               Our Core Educational Pillars
             </h2>
             <p className="text-slate-600 text-sm sm:text-base">
-              The four foundational principles guiding every course, problem, and cohort at PrepPath.
+              The foundational principles that guide our curriculum, coding problems, and student cohorts.
             </p>
           </div>
 
@@ -215,116 +241,74 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* 5. World-Class Mentors & Instructors */}
-        <section className="space-y-10 pt-4">
+        {/* 5. How PrepPath Works (Methodology) */}
+        <section className="space-y-10">
           <div className="text-center max-w-2xl mx-auto space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider border border-blue-200">
-              <GraduationCap className="w-3.5 h-3.5" />
-              <span>Industry Leadership</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold uppercase tracking-wider">
+              <Terminal className="w-3.5 h-3.5" />
+              <span>Learning Roadmap</span>
             </div>
             <h2
               className="text-3xl sm:text-4xl font-normal tracking-tight text-slate-950"
               style={{ fontFamily: "'Instrument Serif', serif" }}
             >
-              Learn from Engineers Who Have Built at Scale
+              The PrepPath Learning System
             </h2>
             <p className="text-slate-600 text-sm sm:text-base">
-              Our mentors have designed search engines, distributed storage, and foundation AI models at the world&apos;s leading technology companies.
+              A structured, step-by-step framework engineered for long-term algorithmic intuition and real system mastery.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-            {INSTRUCTORS.map((instructor) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {teachingMethodology.map((item, idx) => (
               <div
-                key={instructor.id}
-                className="bg-white rounded-3xl border border-slate-200/90 p-7 shadow-xs hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 flex flex-col justify-between"
+                key={idx}
+                className="bg-white p-7 rounded-3xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-4"
               >
-                <div>
-                  {/* Photo & Company Logo */}
-                  <div className="flex items-start justify-between mb-5">
-                    <img
-                      src={instructor.avatar}
-                      alt={instructor.name}
-                      className="w-20 h-20 rounded-2xl object-cover ring-4 ring-slate-100 shadow-sm"
-                    />
-                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center">
-                      <img
-                        src={instructor.companyLogo}
-                        alt={instructor.currentCompany}
-                        className="h-5 w-auto max-w-[70px] object-contain"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Name & Credentials */}
-                  <h3 className="text-lg font-bold text-slate-950">{instructor.name}</h3>
-                  <p className="text-xs font-bold text-blue-600 mb-1">
-                    {instructor.role} @ {instructor.currentCompany}
-                  </p>
-                  <p className="text-xs text-slate-500 mb-4 font-medium">
-                    {instructor.experience} Industry Experience
-                  </p>
-
-                  {/* Bio */}
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-5">
-                    {instructor.bio}
-                  </p>
-
-                  {/* Specialties */}
-                  <div className="space-y-2 mb-6">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Core Domains
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {instructor.specialties.map((spec, i) => (
-                        <span
-                          key={i}
-                          className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-[11px] font-semibold"
-                        >
-                          {spec}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Rating Footer */}
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-800">
-                  <div className="flex items-center gap-1 text-amber-500">
-                    <Star className="w-4 h-4 fill-current" />
-                    <span>{instructor.rating} Rating</span>
-                  </div>
-                  <span className="text-slate-500 font-medium">
-                    {instructor.studentsTaught} Mentored
+                <div className="space-y-3">
+                  <span className="text-xs font-black text-slate-400 tracking-widest uppercase">
+                    Step {item.step}
                   </span>
+                  <h3 className="text-base font-bold text-slate-900 leading-snug">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    {item.description}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* 6. Contact & Physical Presence */}
+        {/* 6. Headquarters & Physical Presence */}
         <section className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-10 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2 text-center md:text-left">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 mb-1">
+              <MapPin className="w-3.5 h-3.5" />
+              <span>Headquartered in Hyderabad</span>
+            </div>
             <h3 className="text-xl font-bold text-slate-950">
-              Have Questions or Want to Partner?
+              Need Assistance or Have Questions?
             </h3>
-            <p className="text-sm text-slate-600 max-w-xl">
-              Our engineering advisory team is based out of Hyderabad, Telangana, India. Reach out for corporate training, cohort enrollment inquiries, or campus partnerships.
+            <p className="text-sm text-slate-600 max-w-xl leading-relaxed">
+              Our operations and student advisory team are based in Hyderabad, Telangana, India. Connect with us for program inquiries, corporate upskilling, or partnership opportunities.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/contact"
-              className="px-6 py-3 rounded-full bg-slate-950 text-white font-semibold text-sm hover:bg-slate-800 transition-colors shadow-sm"
+              className="px-6 py-3 rounded-full bg-slate-950 text-white font-semibold text-sm hover:bg-slate-800 transition-colors shadow-sm inline-flex items-center gap-2"
             >
-              Contact Advisory
+              <span>Contact Team</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
             <a
               href="mailto:hello@preppath.net"
-              className="px-6 py-3 rounded-full bg-slate-100 text-slate-800 font-semibold text-sm hover:bg-slate-200 transition-colors"
+              className="px-6 py-3 rounded-full bg-slate-100 text-slate-800 font-semibold text-sm hover:bg-slate-200 transition-colors inline-flex items-center gap-2"
             >
-              hello@preppath.net
+              <Mail className="w-4 h-4 text-slate-500" />
+              <span>hello@preppath.net</span>
             </a>
           </div>
         </section>
@@ -335,10 +319,10 @@ export default function AboutPage() {
             className="text-3xl sm:text-5xl font-normal tracking-tight text-white max-w-2xl mx-auto"
             style={{ fontFamily: "'Instrument Serif', serif" }}
           >
-            Start your journey toward engineering excellence today.
+            Start your journey toward engineering excellence.
           </h2>
           <p className="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
-            Join thousands of developers mastering Data Structures, Algorithms, Distributed Systems, and AI under top mentors.
+            Explore our curriculum, test your problem-solving skills in the arena, and join a driven community of software engineers.
           </p>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-4">
             <Link
@@ -359,7 +343,7 @@ export default function AboutPage() {
 
       </main>
 
-      {/* Footer with About Us link */}
+      {/* Footer */}
       <Footer />
     </div>
   );
