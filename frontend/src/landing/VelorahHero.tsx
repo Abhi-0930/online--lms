@@ -54,6 +54,61 @@ export function VelorahHero({ onBeginJourney }: { onBeginJourney?: () => void })
         src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4"
       />
 
+      {/* 2. Glassmorphic Navigation Bar */}
+      <header className="relative z-10 w-full">
+        <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
+          {/* Logo */}
+          <Link
+            href="/"
+            className="text-3xl tracking-tight text-white cursor-pointer hover:opacity-90 transition-opacity"
+            style={{ fontFamily: "'Instrument Serif', serif" }}
+          >
+            preppath
+          </Link>
+
+          {/* Navigation Links (Hidden on Mobile, md:flex) */}
+          <div className="hidden md:flex items-center gap-8">
+            <Link
+              href="/"
+              className="text-sm text-white font-medium transition-colors"
+            >
+              Home
+            </Link>
+            <Link
+              href="#courses"
+              className="text-sm text-[#a1a1aa] hover:text-white transition-colors"
+            >
+              Courses
+            </Link>
+            <Link
+              href="#stories"
+              className="text-sm text-[#a1a1aa] hover:text-white transition-colors"
+            >
+              Success Stories
+            </Link>
+            <Link
+              href="#testimonials"
+              className="text-sm text-[#a1a1aa] hover:text-white transition-colors"
+            >
+              Testimonials
+            </Link>
+            <Link
+              href="#contact"
+              className="text-sm text-[#a1a1aa] hover:text-white transition-colors"
+            >
+              Contact
+            </Link>
+          </div>
+
+          {/* Top Right Liquid Glass CTA Button */}
+          <button
+            onClick={handleAction}
+            className="liquid-glass rounded-full px-6 py-2.5 text-sm text-white font-medium hover:scale-[1.03] transition-transform duration-200 cursor-pointer"
+          >
+            Start Learning
+          </button>
+        </nav>
+      </header>
 
       {/* 3. Cinematic Vertically Centered Hero Section */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 pt-32 pb-40 py-[90px] max-w-7xl mx-auto">
