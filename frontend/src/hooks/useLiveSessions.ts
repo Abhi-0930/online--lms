@@ -200,14 +200,10 @@ export function useLiveSessions() {
     window.addEventListener("storage", handleLocalSync);
     window.addEventListener("lms_live_sessions_updated", handleLocalSync);
 
-    // Periodic background sync fallback
-    const pollInterval = setInterval(fetchSessions, 4000);
-
     return () => {
       isMountedRef.current = false;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (pingInterval) clearInterval(pingInterval);
-      if (pollInterval) clearInterval(pollInterval);
       window.removeEventListener("storage", handleLocalSync);
       window.removeEventListener("lms_live_sessions_updated", handleLocalSync);
       if (socket) {
