@@ -184,15 +184,10 @@ export function useAnnouncements() {
 
     window.addEventListener("storage", handleLocalSync);
     window.addEventListener("lms_announcements_updated", handleLocalSync);
-    window.addEventListener("lms_live_sessions_updated", handleLocalSync);
-
-    const pollInterval = setInterval(fetchAnnouncements, 4000);
-
     return () => {
       isMountedRef.current = false;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (pingInterval) clearInterval(pingInterval);
-      if (pollInterval) clearInterval(pollInterval);
       window.removeEventListener("storage", handleLocalSync);
       window.removeEventListener("lms_announcements_updated", handleLocalSync);
       window.removeEventListener("lms_live_sessions_updated", handleLocalSync);
