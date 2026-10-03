@@ -20,6 +20,29 @@ export default async function adminController(fastify: FastifyInstance) {
     return adminService.getAllStudents();
   });
 
+  // Student course progress & curriculum checklist
+  fastify.get('/students/:userId/courses/:courseId/progress', async (request, reply) => {
+    const { userId, courseId } = request.params as { userId: string; courseId: string };
+    try {
+      const data = await adminService.getStudentCourseProgress(userId, courseId);
+      return reply.send(data);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to fetch student progress' });
+    }
+  });
+
+  fastify.post('/students/:userId/courses/:courseId/progress', async (request, reply) => {
+    const { userId, courseId } = request.params as { userId: string; courseId: string };
+    const body = request.body as any;
+    try {
+      const res = await adminService.updateStudentCourseProgress(userId, courseId, body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(res);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to update student progress' });
+    }
+  });
+
   fastify.get('/courses', async () => {
     return adminService.getAllCourses();
   });
