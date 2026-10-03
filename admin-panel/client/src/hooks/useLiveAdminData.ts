@@ -85,6 +85,9 @@ export interface ContentItem {
   title: string;
   type: string;
   parent: string;
+  courseId?: string;
+  courseTitle?: string;
+  moduleTitle?: string;
   owner: string;
   status: string;
   updated: string;
