@@ -164,7 +164,7 @@ export class AdminService {
     return new Map<string, any>();
   }
 
-  private static loadCoursesMetaFromFile(): Map<string, any> {
+  public static loadCoursesMetaFromFile(): Map<string, any> {
     try {
       if (fs.existsSync(AdminService.metaFilePath)) {
         const raw = fs.readFileSync(AdminService.metaFilePath, 'utf-8');
@@ -739,11 +739,28 @@ export class AdminService {
     const courseMap = new Map<string, any>();
     for (const course of dbCourses) {
       const fallback = AdminService.fallbackCourses.get(String(course.id)) || {};
-      courseMap.set(String(course.id), {
-        ...fallback,
+      const merged = {
         ...course,
-        modules: (fallback.modules && fallback.modules.length > 0) ? fallback.modules : course.modules,
-      });
+        ...fallback,
+        id: String(course.id),
+        title: fallback.title || course.title,
+        subtitle: fallback.subtitle !== undefined ? fallback.subtitle : (course.subtitle || ''),
+        description: fallback.description || course.description || '',
+        price: fallback.price !== undefined && fallback.price !== null ? Number(fallback.price) : (course.price !== undefined ? Number(course.price) : 0),
+        discountPrice: fallback.discountPrice !== undefined && fallback.discountPrice !== null ? Number(fallback.discountPrice) : 0,
+        currency: fallback.currency || 'INR ₹',
+        coverImageUrl: fallback.coverImageUrl || fallback.thumbnailPreview || course.coverImageUrl || null,
+        thumbnailPreview: fallback.thumbnailPreview || fallback.coverImageUrl || course.coverImageUrl || null,
+        level: fallback.level || (course.level ? String(course.level).charAt(0) + String(course.level).slice(1).toLowerCase().replace(/_/g, ' ') : 'Beginner'),
+        status: fallback.status || (course.status === 'PUBLISHED' ? 'Published' : course.status === 'DRAFT' ? 'Draft' : 'Review'),
+        category: fallback.category || 'Development',
+        language: fallback.language || 'English',
+        modules: (fallback.modules && fallback.modules.length > 0) ? fallback.modules : (course.modules || []),
+        instructor: fallback.instructor || { fullName: course.instructor?.fullName || 'Platform Admin', email: course.instructor?.email || 'admin@learnhub.com' },
+        instructorName: fallback.instructorName || course.instructor?.fullName || 'Platform Admin',
+        updatedAt: fallback.updatedAt || course.updatedAt || new Date().toISOString(),
+      };
+      courseMap.set(String(course.id), merged);
     }
     for (const fallback of AdminService.fallbackCourses.values()) {
       if (!courseMap.has(String(fallback.id))) {
