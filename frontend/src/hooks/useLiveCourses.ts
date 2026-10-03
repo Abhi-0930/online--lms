@@ -51,13 +51,34 @@ const DEFAULT_COVER =
 
 const USER_COURSES_CACHE_KEY = "lms_user_cached_courses";
 
+function deduplicateCourses(items: LiveCourseItem[]): LiveCourseItem[] {
+  const seenIds = new Set<string>();
+  const seenSlugs = new Set<string>();
+  const unique: LiveCourseItem[] = [];
+
+  for (const item of items) {
+    if (!item) continue;
+    const id = String(item.id || "").trim();
+    const slug = String(item.slug || "").trim();
+
+    if (id && seenIds.has(id)) continue;
+    if (slug && seenSlugs.has(slug)) continue;
+
+    if (id) seenIds.add(id);
+    if (slug) seenSlugs.add(slug);
+    unique.push(item);
+  }
+
+  return unique;
+}
+
 function readCachedCourses(): LiveCourseItem[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(USER_COURSES_CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) return deduplicateCourses(parsed);
     }
   } catch {}
   return [];
@@ -66,7 +87,8 @@ function readCachedCourses(): LiveCourseItem[] {
 function writeCachedCourses(items: LiveCourseItem[]) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(USER_COURSES_CACHE_KEY, JSON.stringify(items));
+    const deduped = deduplicateCourses(items);
+    localStorage.setItem(USER_COURSES_CACHE_KEY, JSON.stringify(deduped));
   } catch {}
 }
 
@@ -280,7 +302,7 @@ export function useLiveCourses() {
       if (res.ok) {
         const data = await res.json();
         const rawList = Array.isArray(data) ? data : data.courses || [];
-        const transformed = rawList.map(transformDbCourse);
+        const transformed = deduplicateCourses(rawList.map(transformDbCourse));
         if (isMountedRef.current) {
           setCourses(transformed);
           writeCachedCourses(transformed);
