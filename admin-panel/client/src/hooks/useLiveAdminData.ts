@@ -589,19 +589,26 @@ export function useLiveAdminData() {
   };
 
   const deleteRecording = async (id: string | number) => {
+    const targetId = String(id).trim();
     setRecordingsList((prev) => {
-      const updated = prev.filter((s) => String(s.id) !== String(id));
+      const updated = prev.filter(
+        (s) =>
+          String(s.id).trim() !== targetId &&
+          String(s.id).replace(/^rec_/, "") !== targetId.replace(/^rec_/, "")
+      );
       writeCache(CACHE_KEYS.RECORDINGS, updated);
       try {
         window.dispatchEvent(new CustomEvent("lms_recordings_updated", { detail: updated }));
+        window.dispatchEvent(new CustomEvent("lms:recordings-updated", { detail: updated }));
       } catch {}
       return updated;
     });
 
     try {
-      await fetch(`${API_BASE_URL}/api/v1/admin/recordings/${id}`, {
+      await fetch(`${API_BASE_URL}/api/v1/admin/recordings/${encodeURIComponent(targetId)}`, {
         method: "DELETE",
       });
+      await fetchRecordings();
     } catch {}
   };
 
