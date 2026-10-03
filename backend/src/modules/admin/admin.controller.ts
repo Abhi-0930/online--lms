@@ -130,6 +130,17 @@ export default async function adminController(fastify: FastifyInstance) {
     return adminService.getAllContent();
   });
 
+  fastify.post('/content', async (request, reply) => {
+    const body = request.body as any;
+    try {
+      const created = await adminService.saveContentItem(body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(created);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to create content item' });
+    }
+  });
+
   fastify.patch('/content/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as any;
