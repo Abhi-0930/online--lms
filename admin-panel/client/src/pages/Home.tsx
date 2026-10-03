@@ -1260,7 +1260,14 @@ function ContentView({
   content?: ContentItem[];
   onRefresh?: () => void;
 }) {
-  const { content: liveContent, courses: liveCourses, instructors: liveInstructors, refresh } = useLiveAdminData();
+  const {
+    content: liveContent,
+    courses: liveCourses,
+    instructors: liveInstructors,
+    addContent,
+    deleteContentItem: hookDeleteContent,
+    refresh,
+  } = useLiveAdminData();
   const rawContent = propContent !== undefined ? propContent : liveContent;
   const [localRows, setLocalRows] = useState<ContentItem[] | null>(null);
   const rows = localRows || rawContent;
@@ -1332,9 +1339,13 @@ function ContentView({
     const targetTitle = itemToDelete.title;
 
     try {
-      await fetch(`${API_BASE_URL}/api/v1/admin/content/${encodeURIComponent(targetId)}`, {
-        method: "DELETE",
-      });
+      if (hookDeleteContent) {
+        await hookDeleteContent(targetId);
+      } else {
+        await fetch(`${API_BASE_URL}/api/v1/admin/content/${encodeURIComponent(targetId)}`, {
+          method: "DELETE",
+        });
+      }
       setLocalRows((current) => (current || []).filter((r) => String(r.id) !== targetId));
       onToast(`"${targetTitle}" deleted from library`);
       if (onRefresh) onRefresh();
@@ -1352,9 +1363,13 @@ function ContentView({
   const handleDeleteContent = async (id: string | number) => {
     const idStr = String(id);
     try {
-      await fetch(`${API_BASE_URL}/api/v1/admin/content/${encodeURIComponent(idStr)}`, {
-        method: "DELETE",
-      });
+      if (hookDeleteContent) {
+        await hookDeleteContent(idStr);
+      } else {
+        await fetch(`${API_BASE_URL}/api/v1/admin/content/${encodeURIComponent(idStr)}`, {
+          method: "DELETE",
+        });
+      }
       setLocalRows((current) => (current || []).filter((r) => String(r.id) !== idStr));
       onToast("Content item removed from library");
       if (onRefresh) onRefresh();
@@ -1480,10 +1495,10 @@ function ContentView({
     (c) => c.id === selectedCourseTab || c.title === selectedCourseTab
   );
 
-  const handleContinueAddContent = (
+  const handleContinueAddContent = async (
     selectedType: string,
     typeInfo: ContentTypeOption,
-    details?: { title: string; type: string; parent: string; description: string }
+    details?: any
   ) => {
     if (selectedType === "course" && onCreateCourse) {
       setIsAddContentOpen(false);
@@ -1512,6 +1527,16 @@ function ContentView({
       title,
       type: typeName,
       parent,
+      courseId: details?.courseId,
+      courseTitle: details?.courseTitle,
+      moduleId: details?.moduleId,
+      moduleTitle: details?.moduleTitle,
+      lessonId: details?.lessonId,
+      lessonTitle: details?.lessonTitle,
+      description: details?.description,
+      resourceUrl: details?.resourceUrl,
+      resourceFile: details?.resourceFile,
+      notesContent: details?.notesContent,
       owner: "Admin Team",
       status: "Published",
       updated: "Just now",
@@ -1519,7 +1544,12 @@ function ContentView({
 
     setLocalRows((current) => [newItem, ...(current || [])]);
     setIsAddContentOpen(false);
+
+    if (addContent) {
+      await addContent(newItem);
+    }
     onToast(`${title} created and published to content library!`);
+    if (onRefresh) onRefresh();
   };
 
   return (
@@ -1896,6 +1926,7 @@ function ContentView({
         onContinue={handleContinueAddContent}
         onOpenCourseBuilder={onCreateCourse}
         onOpenPracticeProblemBuilder={onOpenPracticeProblemBuilder}
+        courses={liveCourses}
         availableCourses={
           liveCourses && liveCourses.length > 0
             ? liveCourses.map((c) => c.title)
