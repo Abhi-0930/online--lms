@@ -2255,6 +2255,127 @@ export class AdminService {
     return updated;
   }
 
+  async saveContentItem(data: any) {
+    const id = data.id ? String(data.id) : `content_${Date.now()}`;
+    const type = data.type || 'Resource';
+    const title = (data.title || 'Untitled Content').trim();
+    const courseTarget = data.courseId || data.courseTitle || data.parent || data.course || '';
+    const moduleTarget = data.moduleId || data.moduleTitle || data.module || '';
+    const lessonTarget = data.lessonId || data.lessonTitle || data.lesson || '';
+    const description = data.description || '';
+    const resourceUrl = data.resourceUrl || data.resourceFile || data.url || '';
+    const owner = data.owner || 'Admin Team';
+    const status = data.status || 'Published';
+
+    const parentDisplay = lessonTarget
+      ? `${courseTarget ? courseTarget + ' › ' : ''}${moduleTarget ? moduleTarget + ' › ' : ''}${lessonTarget}`
+      : moduleTarget
+      ? `${courseTarget ? courseTarget + ' › ' : ''}${moduleTarget}`
+      : courseTarget || 'General Library';
+
+    const contentItem = {
+      id,
+      title,
+      type,
+      parent: parentDisplay,
+      courseId: data.courseId ? String(data.courseId) : undefined,
+      courseTitle: data.courseTitle || (typeof courseTarget === 'string' ? courseTarget : undefined),
+      moduleId: data.moduleId ? String(data.moduleId) : undefined,
+      moduleTitle: data.moduleTitle || (typeof moduleTarget === 'string' ? moduleTarget : undefined),
+      lessonId: data.lessonId ? String(data.lessonId) : undefined,
+      lessonTitle: data.lessonTitle || (typeof lessonTarget === 'string' ? lessonTarget : undefined),
+      description,
+      resourceUrl,
+      notesContent: data.notesContent,
+      owner,
+      status,
+      updated: 'Just now',
+      updatedAt: new Date().toISOString(),
+    };
+
+    AdminService.fallbackContentOverrides.set(id, contentItem);
+    AdminService.saveContentOverridesToFile();
+
+    // 1. If attaching to a Course / Module / Lesson in fallbackCourses, reflect directly in course structure
+    for (const [, course] of AdminService.fallbackCourses.entries()) {
+      const isTargetCourse =
+        (data.courseId && String(course.id) === String(data.courseId)) ||
+        (courseTarget && typeof courseTarget === 'string' && (
+          String(course.title || '').toLowerCase().trim() === String(courseTarget).toLowerCase().trim() ||
+          String(course.slug || '').toLowerCase().trim() === String(courseTarget).toLowerCase().trim() ||
+          String(course.id || '') === String(courseTarget)
+        ));
+
+      if (isTargetCourse) {
+        if (!Array.isArray(course.modules)) course.modules = [];
+
+        // Case A: Creating a new Module
+        if (type.toLowerCase() === 'module') {
+          const newModId = data.moduleId ? String(data.moduleId) : `mod_${Date.now()}`;
+          const existingMod = course.modules.find((m: any) => String(m.id) === newModId || String(m.title || '').toLowerCase() === title.toLowerCase());
+          if (!existingMod) {
+            course.modules.push({
+              id: newModId,
+              title,
+              description,
+              lessons: [],
+            });
+            AdminService.saveMetaToFile();
+          }
+        }
+        // Case B: Creating a new Lesson
+        else if (type.toLowerCase() === 'lesson' || type.toLowerCase() === 'video') {
+          let targetMod = course.modules.find((m: any) =>
+            (data.moduleId && String(m.id) === String(data.moduleId)) ||
+            (moduleTarget && String(m.title || '').toLowerCase().trim() === String(moduleTarget).toLowerCase().trim())
+          );
+          if (!targetMod && course.modules.length > 0) {
+            targetMod = course.modules[0];
+          }
+          if (targetMod) {
+            if (!Array.isArray(targetMod.lessons)) targetMod.lessons = [];
+            const newLesId = data.lessonId ? String(data.lessonId) : `les_${Date.now()}`;
+            targetMod.lessons.push({
+              id: newLesId,
+              title,
+              duration: data.duration || '15m',
+              type: type.toLowerCase() === 'video' ? 'Video' : 'Text',
+              videoUrl: resourceUrl,
+              description,
+              resources: [],
+            });
+            AdminService.saveMetaToFile();
+          }
+        }
+        // Case C: Attaching Notes / PDF / Resource to a Lesson
+        else if (type.toLowerCase().includes('pdf') || type.toLowerCase().includes('notes') || type.toLowerCase().includes('resource')) {
+          for (const mod of course.modules) {
+            if (Array.isArray(mod.lessons)) {
+              for (const les of mod.lessons) {
+                const isTargetLesson =
+                  (data.lessonId && String(les.id) === String(data.lessonId)) ||
+                  (lessonTarget && String(les.title || '').toLowerCase().trim() === String(lessonTarget).toLowerCase().trim());
+                if (isTargetLesson) {
+                  if (!Array.isArray(les.resources)) les.resources = [];
+                  les.resources.push({
+                    name: title,
+                    url: resourceUrl,
+                    size: data.fileSize || '2.4 MB',
+                    type: type.toLowerCase().includes('pdf') ? 'PDF' : 'Document',
+                  });
+                  if (description) les.notes = description;
+                  AdminService.saveMetaToFile();
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return contentItem;
+  }
+
   async deleteContentItem(id: string | number) {
     const idStr = String(id);
     AdminService.deletedContentIds.add(idStr);
