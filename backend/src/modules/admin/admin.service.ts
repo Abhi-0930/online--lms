@@ -32,6 +32,7 @@ export class AdminService {
   private static liveSessionsFilePath = AdminService.resolveDataFile('live_sessions.json');
   private static announcementsFilePath = AdminService.resolveDataFile('announcements.json');
   private static recordingsFilePath = AdminService.resolveDataFile('recordings.json');
+  private static deletedRecordingsFilePath = AdminService.resolveDataFile('deleted_recordings.json');
   private static contentOverridesFilePath = AdminService.resolveDataFile('content_overrides.json');
   private static deletedContentFilePath = AdminService.resolveDataFile('deleted_content.json');
   private static practiceSubmissionsFilePath = AdminService.resolveDataFile('practice_submissions.json');
@@ -3405,6 +3406,35 @@ export class AdminService {
   // ==================== RECORDINGS MANAGEMENT ====================
 
   private static fallbackRecordings = AdminService.loadRecordingsFromFile();
+  private static deletedRecordingsIds = AdminService.loadDeletedRecordingsFromFile();
+
+  private static loadDeletedRecordingsFromFile(): Set<string> {
+    try {
+      if (fs.existsSync(AdminService.deletedRecordingsFilePath)) {
+        const raw = fs.readFileSync(AdminService.deletedRecordingsFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return new Set<string>(parsed.map((id) => String(id).trim()));
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load deleted recordings from file:', err);
+    }
+    return new Set<string>();
+  }
+
+  private static saveDeletedRecordingsToFile(): void {
+    try {
+      const dir = path.dirname(AdminService.deletedRecordingsFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = Array.from(AdminService.deletedRecordingsIds.values());
+      fs.writeFileSync(AdminService.deletedRecordingsFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save deleted recordings to file:', err);
+    }
+  }
 
   private static loadRecordingsFromFile(): Map<string, any> {
     try {
@@ -3442,7 +3472,17 @@ export class AdminService {
 
   async getAllRecordings() {
     AdminService.fallbackRecordings = AdminService.loadRecordingsFromFile();
-    const list = Array.from(AdminService.fallbackRecordings.values());
+    AdminService.deletedRecordingsIds = AdminService.loadDeletedRecordingsFromFile();
+
+    const list = Array.from(AdminService.fallbackRecordings.values()).filter((r) => {
+      if (!r) return false;
+      const idStr = String(r.id || '').trim();
+      if (AdminService.deletedRecordingsIds.has(idStr)) return false;
+      if (idStr.startsWith('rec_') && AdminService.deletedRecordingsIds.has(idStr.replace(/^rec_/, ''))) return false;
+      if (!idStr.startsWith('rec_') && AdminService.deletedRecordingsIds.has(`rec_${idStr}`)) return false;
+      return true;
+    });
+
     return list.sort((a, b) => {
       const timeA = new Date(a.createdAt || a.date || 0).getTime();
       const timeB = new Date(b.createdAt || b.date || 0).getTime();
@@ -3452,7 +3492,19 @@ export class AdminService {
 
   async saveRecording(data: any) {
     AdminService.fallbackRecordings = AdminService.loadRecordingsFromFile();
+    AdminService.deletedRecordingsIds = AdminService.loadDeletedRecordingsFromFile();
+
     const id = data.id ? String(data.id) : `rec_${Date.now()}`;
+    const idStr = String(id).trim();
+
+    // If re-uploaded or created, remove from deleted list
+    if (AdminService.deletedRecordingsIds.has(idStr)) {
+      AdminService.deletedRecordingsIds.delete(idStr);
+      AdminService.deletedRecordingsIds.delete(idStr.replace(/^rec_/, ''));
+      AdminService.deletedRecordingsIds.delete(`rec_${idStr}`);
+      AdminService.saveDeletedRecordingsToFile();
+    }
+
     const existing = AdminService.fallbackRecordings.get(id) || {};
 
     const recordingObj = {
@@ -3509,10 +3561,46 @@ export class AdminService {
   }
 
   async deleteRecording(id: string) {
+    const rawId = String(id || '').trim();
+    const decodedId = decodeURIComponent(rawId).trim();
     AdminService.fallbackRecordings = AdminService.loadRecordingsFromFile();
-    const deleted = AdminService.fallbackRecordings.delete(String(id));
+    AdminService.deletedRecordingsIds = AdminService.loadDeletedRecordingsFromFile();
+
+    // 1. Mark in deleted IDs set for permanent tombstoning
+    AdminService.deletedRecordingsIds.add(rawId);
+    AdminService.deletedRecordingsIds.add(decodedId);
+    if (rawId.startsWith('rec_')) {
+      AdminService.deletedRecordingsIds.add(rawId.replace(/^rec_/, ''));
+    } else {
+      AdminService.deletedRecordingsIds.add(`rec_${rawId}`);
+    }
+    if (decodedId.startsWith('rec_')) {
+      AdminService.deletedRecordingsIds.add(decodedId.replace(/^rec_/, ''));
+    } else {
+      AdminService.deletedRecordingsIds.add(`rec_${decodedId}`);
+    }
+    AdminService.saveDeletedRecordingsToFile();
+
+    // 2. Delete all matching keys from fallbackRecordings map
+    const keysToDelete: string[] = [];
+    for (const key of Array.from(AdminService.fallbackRecordings.keys())) {
+      const keyStr = String(key).trim();
+      if (
+        keyStr === rawId ||
+        keyStr === decodedId ||
+        keyStr.replace(/^rec_/, '') === rawId.replace(/^rec_/, '') ||
+        keyStr.replace(/^rec_/, '') === decodedId.replace(/^rec_/, '')
+      ) {
+        keysToDelete.push(key);
+      }
+    }
+
+    for (const k of keysToDelete) {
+      AdminService.fallbackRecordings.delete(k);
+    }
     AdminService.saveRecordingsToFile();
-    return { success: deleted, id: String(id) };
+
+    return { success: true, id: rawId, deletedCount: keysToDelete.length };
   }
 
   async getAllPayments() {
