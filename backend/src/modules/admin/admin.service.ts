@@ -784,8 +784,12 @@ export class AdminService {
       courseMap.set(String(course.id), merged);
     }
     for (const fallback of AdminService.fallbackCourses.values()) {
-      if (!courseMap.has(String(fallback.id))) {
-        courseMap.set(String(fallback.id), fallback);
+      const canonicalId = String(fallback.id || '');
+      const fallbackSlug = String(fallback.slug || '');
+      const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
+        (fallbackSlug && Array.from(courseMap.values()).some((c: any) => c.slug === fallbackSlug || c.id === canonicalId));
+      if (!alreadyExists && canonicalId) {
+        courseMap.set(canonicalId, fallback);
       }
     }
 
@@ -1110,9 +1114,6 @@ export class AdminService {
             updatedAt: new Date(),
           };
           AdminService.fallbackCourses.set(String(updated.id), fullUpdated);
-          if (updated.slug) {
-            AdminService.fallbackCourses.set(String(updated.slug), fullUpdated);
-          }
           AdminService.saveMetaToFile();
           return fullUpdated;
         } catch (updateErr) {
@@ -1171,9 +1172,6 @@ export class AdminService {
           updatedAt: new Date(),
         };
         AdminService.fallbackCourses.set(String(data.id), fullUpdated);
-        if ((data as any).slug || fullUpdated.slug) {
-          AdminService.fallbackCourses.set(String((data as any).slug || fullUpdated.slug), fullUpdated);
-        }
         AdminService.saveMetaToFile();
         return fullUpdated;
       }
@@ -1275,9 +1273,6 @@ export class AdminService {
         instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
       };
       AdminService.fallbackCourses.set(String(course.id), fullCourse);
-      if (course.slug) {
-        AdminService.fallbackCourses.set(String(course.slug), fullCourse);
-      }
       AdminService.saveMetaToFile();
       return fullCourse;
     } catch (dbErr) {
@@ -1327,9 +1322,6 @@ export class AdminService {
         updatedAt: new Date(),
       };
       AdminService.fallbackCourses.set(String(fallbackId), fallbackCourse);
-      if (fallbackCourse.slug) {
-        AdminService.fallbackCourses.set(String(fallbackCourse.slug), fallbackCourse);
-      }
       AdminService.saveMetaToFile();
       return fallbackCourse;
     }
@@ -1392,9 +1384,6 @@ export class AdminService {
         updatedAt: new Date(),
       };
       AdminService.fallbackCourses.set(String(id), full);
-      if (full.slug || updated.slug) {
-        AdminService.fallbackCourses.set(String(full.slug || updated.slug), full);
-      }
       AdminService.saveMetaToFile();
       return full;
     } catch {
@@ -1417,9 +1406,6 @@ export class AdminService {
         updatedAt: new Date(),
       };
       AdminService.fallbackCourses.set(String(id), updated);
-      if (updated.slug || existing.slug) {
-        AdminService.fallbackCourses.set(String(updated.slug || existing.slug), updated);
-      }
       AdminService.saveMetaToFile();
       return updated;
     }
