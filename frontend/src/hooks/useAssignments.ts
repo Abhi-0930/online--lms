@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { API_BASE_URL, getAuthHeaders } from "@/lib/apiConfig";
+import { API_BASE_URL, WS_BASE_URL, getAuthHeaders } from "@/lib/apiConfig";
 
 export interface LiveAssignmentItem {
   id: string;
@@ -178,9 +178,7 @@ export function useAssignments() {
     const connectWs = () => {
       if (!isMountedRef.current) return;
       try {
-        const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsHost = window.location.hostname || "localhost";
-        const wsUrl = `${wsProtocol}//${wsHost}:4000/api/v1/admin/ws`;
+        const wsUrl = `${WS_BASE_URL}/api/v1/admin/ws`;
 
         socket = new WebSocket(wsUrl);
 
