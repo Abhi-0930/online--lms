@@ -154,13 +154,8 @@ export function useLiveRecordings() {
 
     connectWs();
 
-    const pollInterval = setInterval(() => {
-      fetchRecordings();
-    }, 4000);
-
     return () => {
       isMountedRef.current = false;
-      clearInterval(pollInterval);
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("lms:recordings-updated", handleCustom);
       window.removeEventListener("lms_recordings_updated", handleCustom);
