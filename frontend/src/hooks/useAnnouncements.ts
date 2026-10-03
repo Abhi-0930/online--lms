@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { API_BASE_URL, WS_BASE_URL } from "@/lib/apiConfig";
+import { sharedWs } from "@/lib/sharedWebSocket";
 
 export interface AnnouncementItem {
   id: string;
@@ -104,77 +105,26 @@ export function useAnnouncements() {
     isMountedRef.current = true;
     fetchAnnouncements();
 
-    // WebSocket real-time connection
-    let socket: WebSocket | null = null;
-    let reconnectTimer: any = null;
-    let pingInterval: any = null;
-
-    const connectWs = () => {
-      if (!isMountedRef.current) return;
-      try {
-        const wsUrl = `${WS_BASE_URL}/api/v1/admin/ws`;
-
-        socket = new WebSocket(wsUrl);
-
-        socket.onopen = () => {
-          if (!isMountedRef.current) return;
-          socket?.send(JSON.stringify({ type: "REFRESH" }));
-
-          if (pingInterval) clearInterval(pingInterval);
-          pingInterval = setInterval(() => {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({ type: "PING" }));
-            }
-          }, 25000);
-        };
-
-        socket.onmessage = (event) => {
-          if (!isMountedRef.current) return;
-          try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === "INITIAL_DATA" || msg.type === "DATA_UPDATE") {
-              if (msg.data?.announcements && Array.isArray(msg.data.announcements)) {
-                const publicAnnouncements = msg.data.announcements.filter(
-                  (a: any) => a.status !== "Draft"
-                );
-                setAnnouncements(publicAnnouncements);
-                writeCachedAnnouncements(publicAnnouncements);
-              } else {
-                fetchAnnouncements();
-              }
-            } else if (
-              msg.type === "ANNOUNCEMENTS_UPDATED" ||
-              msg.type === "ANNOUNCEMENT_CREATED" ||
-              msg.type === "ANNOUNCEMENT_DELETED" ||
-              msg.type === "LIVE_SESSIONS_UPDATED"
-            ) {
-              fetchAnnouncements();
-            }
-          } catch {
-            // Ignore non-json frames
-          }
-        };
-
-        socket.onclose = () => {
-          if (pingInterval) clearInterval(pingInterval);
-          if (isMountedRef.current) {
-            reconnectTimer = setTimeout(connectWs, 3000);
-          }
-        };
-
-        socket.onerror = () => {
-          if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.close();
-          }
-        };
-      } catch {
-        if (isMountedRef.current) {
-          reconnectTimer = setTimeout(connectWs, 5000);
+    const unsubscribe = sharedWs.subscribe((msg) => {
+      if (
+        msg?.type === "INITIAL_DATA" ||
+        msg?.type === "DATA_UPDATE" ||
+        msg?.type === "ANNOUNCEMENTS_UPDATED" ||
+        msg?.type === "ANNOUNCEMENT_CREATED" ||
+        msg?.type === "ANNOUNCEMENT_DELETED" ||
+        msg?.type === "LIVE_SESSIONS_UPDATED"
+      ) {
+        if (msg.data?.announcements && Array.isArray(msg.data.announcements)) {
+          const publicAnnouncements = msg.data.announcements.filter(
+            (a: any) => a.status !== "Draft"
+          );
+          setAnnouncements(publicAnnouncements);
+          writeCachedAnnouncements(publicAnnouncements);
+        } else {
+          fetchAnnouncements();
         }
       }
-    };
-
-    connectWs();
+    });
 
     const handleLocalSync = () => {
       fetchAnnouncements();
@@ -182,17 +132,14 @@ export function useAnnouncements() {
 
     window.addEventListener("storage", handleLocalSync);
     window.addEventListener("lms_announcements_updated", handleLocalSync);
+    window.addEventListener("lms_live_sessions_updated", handleLocalSync);
+
     return () => {
       isMountedRef.current = false;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (pingInterval) clearInterval(pingInterval);
+      unsubscribe();
       window.removeEventListener("storage", handleLocalSync);
       window.removeEventListener("lms_announcements_updated", handleLocalSync);
       window.removeEventListener("lms_live_sessions_updated", handleLocalSync);
-      if (socket) {
-        socket.onclose = null;
-        socket.close();
-      }
     };
   }, [fetchAnnouncements]);
 
