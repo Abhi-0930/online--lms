@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { API_BASE_URL, WS_BASE_URL } from "@/lib/apiConfig";
+import { sharedWs } from "@/lib/sharedWebSocket";
 
 export interface RecordingResource {
   id: number | string;
@@ -121,47 +122,24 @@ export function useLiveRecordings() {
     window.addEventListener("lms:recordings-updated", handleCustom);
     window.addEventListener("lms_recordings_updated", handleCustom);
 
-    // Live WebSocket connection for instant updates
-    let ws: WebSocket | null = null;
-    let reconnectTimer: any = null;
-
-    const connectWs = () => {
-      try {
-        ws = new WebSocket(`${WS_BASE_URL}/api/v1/admin/ws`);
-
-        ws.onmessage = (event) => {
-          try {
-            const payload = JSON.parse(event.data);
-            if (payload.type === "INITIAL_DATA" || payload.type === "DATA_UPDATE") {
-              if (payload.data?.recordings && Array.isArray(payload.data.recordings)) {
-                const pub = payload.data.recordings.filter((r: any) => r && r.status !== "Draft");
-                setRecordings(pub);
-                writeCache(pub);
-              }
-            }
-          } catch {}
-        };
-
-        ws.onclose = () => {
-          if (isMountedRef.current) {
-            reconnectTimer = setTimeout(connectWs, 4000);
-          }
-        };
-      } catch {}
-    };
-
-    connectWs();
+    const unsubscribe = sharedWs.subscribe((payload) => {
+      if (payload?.type === "INITIAL_DATA" || payload?.type === "DATA_UPDATE") {
+        if (payload.data?.recordings && Array.isArray(payload.data.recordings)) {
+          const pub = payload.data.recordings.filter((r: any) => r && r.status !== "Draft");
+          setRecordings(pub);
+          writeCache(pub);
+        } else {
+          fetchRecordings();
+        }
+      }
+    });
 
     return () => {
       isMountedRef.current = false;
+      unsubscribe();
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("lms:recordings-updated", handleCustom);
       window.removeEventListener("lms_recordings_updated", handleCustom);
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (ws) {
-        ws.onclose = null;
-        ws.close();
-      }
     };
   }, [fetchRecordings]);
 
