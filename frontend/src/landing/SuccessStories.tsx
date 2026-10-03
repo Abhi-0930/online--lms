@@ -170,9 +170,101 @@ interface LightArcCardProps {
   isCenter: boolean;
 }
 
+function getCompanyDomain(name: string): string {
+  if (!name) return "";
+  const normalized = name.toLowerCase().trim();
+  const map: Record<string, string> = {
+    google: "google.com",
+    microsoft: "microsoft.com",
+    amazon: "amazon.com",
+    apple: "apple.com",
+    meta: "meta.com",
+    netflix: "netflix.com",
+    adobe: "adobe.com",
+    accenture: "accenture.com",
+    tcs: "tcs.com",
+    "tata consultancy services": "tcs.com",
+    cognizant: "cognizant.com",
+    virtusa: "virtusa.com",
+    "cdk global": "cdkglobal.com",
+    cdk: "cdkglobal.com",
+    cloudbridge: "cloudbridge.com",
+    "standard group companies": "standardgroup.com",
+    "standard group": "standardgroup.com",
+    uber: "uber.com",
+    razorpay: "razorpay.com",
+    swiggy: "swiggy.com",
+    atlassian: "atlassian.com",
+    deloitte: "deloitte.com",
+    capgemini: "capgemini.com",
+    infosys: "infosys.com",
+    wipro: "wipro.com",
+  };
+  if (map[normalized]) return map[normalized];
+  const clean = normalized.replace(/[^a-z0-9]/g, "");
+  return clean ? `${clean}.com` : "";
+}
+
+function SuccessCompanyLogo({
+  company,
+  companyLogo,
+}: {
+  company: string;
+  companyLogo?: string;
+}) {
+  const domain = getCompanyDomain(company);
+  const [stage, setStage] = useState(0);
+
+  useEffect(() => {
+    setStage(0);
+  }, [company, companyLogo]);
+
+  const handleNextStage = () => {
+    setStage((prev) => prev + 1);
+  };
+
+  const getSrc = () => {
+    switch (stage) {
+      case 0:
+        return companyLogo || (domain ? `https://logo.clearbit.com/${domain}` : null);
+      case 1:
+        return domain ? `https://logo.clearbit.com/${domain}` : null;
+      case 2:
+        return domain ? `https://unavatar.io/${domain}` : null;
+      case 3:
+        return domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null;
+      default:
+        return null;
+    }
+  };
+
+  const currentSrc = getSrc();
+
+  if (currentSrc && stage < 4) {
+    return (
+      <div className="h-6 max-w-[110px] flex items-center justify-end">
+        <img
+          draggable={false}
+          src={currentSrc}
+          alt={company}
+          className="max-h-5 max-w-[100px] object-contain shrink-0"
+          onError={handleNextStage}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-6 max-w-[110px] flex items-center justify-end">
+      <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md truncate max-w-[110px]">
+        {company}
+      </span>
+    </div>
+  );
+}
+
 function LightArcCard({ story, isCenter }: LightArcCardProps) {
   const [imgError, setImgError] = useState(false);
-  const [logoError, setLogoError] = useState(false);
 
   return (
     <div
@@ -182,7 +274,7 @@ function LightArcCard({ story, isCenter }: LightArcCardProps) {
           : "border-slate-200/90 hover:border-slate-300 shadow-sm"
       }`}
     >
-      {/* Header: Avatar + Verified Dot + Company Logo */}
+      {/* Header: Avatar + Verified Dot + Company Logo with Multi-Stage Clearbit Fallback */}
       <div className="flex items-center justify-between gap-2">
         <div className="relative">
           {!imgError ? (
@@ -201,22 +293,11 @@ function LightArcCard({ story, isCenter }: LightArcCardProps) {
           <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
         </div>
 
-        {/* Company Logo Image or Fallback Badge */}
-        <div className="h-6 max-w-[105px] flex items-center justify-end">
-          {story.companyLogo && !logoError ? (
-            <img
-              draggable={false}
-              src={story.companyLogo}
-              alt={story.company}
-              className="max-h-5 max-w-full object-contain"
-              onError={() => setLogoError(true)}
-            />
-          ) : (
-            <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md truncate max-w-[105px]">
-              {story.company}
-            </span>
-          )}
-        </div>
+        {/* Company Logo with Fallback Cascade */}
+        <SuccessCompanyLogo
+          company={story.company}
+          companyLogo={story.companyLogo}
+        />
       </div>
 
       {/* Center Details: Name & Role */}
