@@ -1734,6 +1734,9 @@ export class AdminService {
       title: string;
       type: string;
       parent: string;
+      courseId?: string;
+      courseTitle?: string;
+      moduleTitle?: string;
       owner: string;
       status: string;
       updated: string;
@@ -1763,6 +1766,9 @@ export class AdminService {
                 title: les.title || `Lesson ${lIdx + 1}`,
                 type: les.type || 'Video',
                 parent: `${course.title} · ${mod.title || 'Curriculum'}`,
+                courseId: String(course.id),
+                courseTitle: course.title,
+                moduleTitle: mod.title || 'Curriculum',
                 owner,
                 status: override?.status || les.status || (les.isCompleted ? 'Completed' : status),
                 updated,
@@ -1784,6 +1790,9 @@ export class AdminService {
                     title: sub.title || top.title || `Lesson ${sIdx + 1}`,
                     type: sub.type || 'Video',
                     parent: `${course.title} · ${mod.title || 'Curriculum'}`,
+                    courseId: String(course.id),
+                    courseTitle: course.title,
+                    moduleTitle: mod.title || 'Curriculum',
                     owner,
                     status: override?.status || sub.status || (sub.isCompleted ? 'Completed' : status),
                     updated,
@@ -1800,6 +1809,9 @@ export class AdminService {
                   title: top.title || `Topic ${tIdx + 1}`,
                   type: top.type || 'Video',
                   parent: `${course.title} · ${mod.title || 'Curriculum'}`,
+                  courseId: String(course.id),
+                  courseTitle: course.title,
+                  moduleTitle: mod.title || 'Curriculum',
                   owner,
                   status: override?.status || top.status || (top.isCompleted ? 'Completed' : status),
                   updated,
@@ -1829,6 +1841,8 @@ export class AdminService {
           title: res.title,
           type: typeName,
           parent: res.course?.title || (res.lesson ? res.lesson.title : 'General Resources'),
+          courseId: res.courseId ? String(res.courseId) : undefined,
+          courseTitle: res.course?.title || 'General Resources',
           owner: 'Admin',
           status: 'Published',
           updated: this.formatLastActive(res.createdAt).label,
@@ -1847,6 +1861,7 @@ export class AdminService {
           title: prob.title,
           type: 'Practice problem',
           parent: `DSA & Practice · ${prob.category || 'Problem Solving'}`,
+          courseTitle: 'DSA & Practice Problems',
           owner: 'Admin',
           status: prob.status === 'Live' ? 'Published' : 'Draft',
           updated: prob.updatedAt ? this.formatLastActive(prob.updatedAt).label : 'Recently',
@@ -1860,11 +1875,13 @@ export class AdminService {
       for (const a of assignments) {
         const uniqueId = String(a.id);
         if (AdminService.deletedContentIds.has(uniqueId)) continue;
+        const parentTitle = (a as any).courseName || (a as any).course?.title || (a as any).course || 'Assignments & Challenges';
         items.push({
           id: uniqueId,
           title: a.title,
           type: 'Assignment',
-          parent: (a as any).courseName || (a as any).course?.title || (a as any).course || 'Assignments & Challenges',
+          parent: parentTitle,
+          courseTitle: parentTitle,
           owner: 'Admin',
           status: a.status === 'Published' || a.status === 'PUBLISHED' ? 'Published' : 'Draft',
           updated: a.dueDate || 'Recently',
