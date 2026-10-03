@@ -18,6 +18,8 @@ import {
   ChevronDown,
   Upload,
   Sparkles,
+  Layers,
+  Link2,
 } from "lucide-react";
 import {
   saveDraft,
@@ -25,6 +27,7 @@ import {
   clearDraft,
   formatTimeAgo,
 } from "@/lib/draftManager";
+import { Course } from "@/hooks/useLiveAdminData";
 
 export interface ContentTypeOption {
   id: string;
@@ -41,6 +44,15 @@ export interface CreatedContentPayload {
   type: string;
   parent: string;
   description: string;
+  courseId?: string | number;
+  courseTitle?: string;
+  moduleId?: string | number;
+  moduleTitle?: string;
+  lessonId?: string | number;
+  lessonTitle?: string;
+  resourceFile?: string;
+  resourceUrl?: string;
+  notesContent?: string;
 }
 
 const CONTENT_TYPES: ContentTypeOption[] = [
@@ -221,6 +233,7 @@ interface AddContentModalProps {
   onOpenCourseBuilder?: () => void;
   onOpenPracticeProblemBuilder?: () => void;
   availableCourses?: string[];
+  courses?: Course[];
   recentItems?: RecentContentItem[];
 }
 
@@ -231,6 +244,7 @@ export default function AddContentModal({
   onOpenCourseBuilder,
   onOpenPracticeProblemBuilder,
   availableCourses = DEFAULT_COURSES,
+  courses = [],
   recentItems = [],
 }: AddContentModalProps) {
   const [step, setStep] = useState<"select_type" | "create_form">("select_type");
@@ -240,16 +254,91 @@ export default function AddContentModal({
   // Step 2 Form States
   const [formTitle, setFormTitle] = useState("");
   const [formContentType, setFormContentType] = useState<string>("module");
-  const [formAttachTo, setFormAttachTo] = useState<string>(availableCourses[0] || "General Library");
+  const [formCourseId, setFormCourseId] = useState<string>("");
+  const [formModuleId, setFormModuleId] = useState<string>("");
+  const [formLessonId, setFormLessonId] = useState<string>("");
+  const [formResourceUrl, setFormResourceUrl] = useState<string>("");
+  const [formNotesContent, setFormNotesContent] = useState<string>("");
   const [formDescription, setFormDescription] = useState("");
   const [isRestoredDraft, setIsRestoredDraft] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState<number | null>(null);
 
-  React.useEffect(() => {
-    if (availableCourses.length > 0 && (!formAttachTo || formAttachTo === "General Library" || !availableCourses.includes(formAttachTo))) {
-      setFormAttachTo(availableCourses[0]);
+  // Fallback course list
+  const effectiveCourseList = useMemo(() => {
+    if (courses && courses.length > 0) {
+      return courses.map((c) => ({
+        id: String(c.id),
+        title: c.title || "Untitled Course",
+        raw: c,
+      }));
     }
-  }, [availableCourses]);
+    return availableCourses.map((c, i) => ({
+      id: String(i + 1),
+      title: c,
+      raw: null,
+    }));
+  }, [courses, availableCourses]);
+
+  // Resolved Course Object
+  const selectedCourseObj = useMemo(() => {
+    if (effectiveCourseList.length === 0) return null;
+    const found = effectiveCourseList.find(
+      (c) => String(c.id) === String(formCourseId) || c.title === formCourseId
+    );
+    return found ? found.raw : effectiveCourseList[0]?.raw || null;
+  }, [effectiveCourseList, formCourseId]);
+
+  // Available Modules for the selected course
+  const availableModules = useMemo(() => {
+    if (!selectedCourseObj || !Array.isArray(selectedCourseObj.modules)) return [];
+    return selectedCourseObj.modules;
+  }, [selectedCourseObj]);
+
+  // Resolved Module Object
+  const selectedModuleObj = useMemo(() => {
+    if (!availableModules || availableModules.length === 0) return null;
+    return (
+      availableModules.find(
+        (m: any) => String(m.id) === String(formModuleId) || m.title === formModuleId
+      ) || availableModules[0]
+    );
+  }, [availableModules, formModuleId]);
+
+  // Available Lessons for the selected module
+  const availableLessons = useMemo(() => {
+    if (!selectedModuleObj || !Array.isArray(selectedModuleObj.lessons)) return [];
+    return selectedModuleObj.lessons;
+  }, [selectedModuleObj]);
+
+  // Auto-initialize Course, Module, Lesson selections
+  React.useEffect(() => {
+    if (effectiveCourseList.length > 0) {
+      if (!formCourseId || !effectiveCourseList.some((c) => String(c.id) === String(formCourseId) || c.title === formCourseId)) {
+        setFormCourseId(String(effectiveCourseList[0].id));
+      }
+    }
+  }, [effectiveCourseList, formCourseId]);
+
+  React.useEffect(() => {
+    if (availableModules.length > 0) {
+      if (!formModuleId || !availableModules.some((m: any) => String(m.id) === String(formModuleId) || m.title === formModuleId)) {
+        setFormModuleId(String(availableModules[0].id || availableModules[0].title));
+      }
+    } else {
+      setFormModuleId("");
+    }
+  }, [availableModules, formModuleId]);
+
+  React.useEffect(() => {
+    if (availableLessons.length > 0) {
+      if (!formLessonId || !availableLessons.some((l: any) => String(l.id) === String(formLessonId) || l.title === formLessonId)) {
+        setFormLessonId(String(availableLessons[0].id || availableLessons[0].title));
+      }
+    } else {
+      setFormLessonId("");
+    }
+  }, [availableLessons, formLessonId]);
+
   const [uploadedFileName, setUploadedFileName] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -263,7 +352,11 @@ export default function AddContentModal({
         setSelectedType(draft.data.selectedType || "module");
         setFormContentType(draft.data.formContentType || "module");
         setFormTitle(draft.data.formTitle || "");
-        setFormAttachTo(draft.data.formAttachTo || availableCourses[0] || "General Library");
+        setFormCourseId(draft.data.formCourseId || "");
+        setFormModuleId(draft.data.formModuleId || "");
+        setFormLessonId(draft.data.formLessonId || "");
+        setFormResourceUrl(draft.data.formResourceUrl || "");
+        setFormNotesContent(draft.data.formNotesContent || "");
         setFormDescription(draft.data.formDescription || "");
         setUploadedFileName(draft.data.uploadedFileName || "");
         setIsRestoredDraft(true);
@@ -278,7 +371,13 @@ export default function AddContentModal({
   // Auto-save form state to draft
   React.useEffect(() => {
     if (!isOpen) return;
-    const hasData = Boolean(formTitle.trim() || formDescription.trim() || uploadedFileName);
+    const hasData = Boolean(
+      formTitle.trim() ||
+        formDescription.trim() ||
+        uploadedFileName ||
+        formResourceUrl ||
+        formNotesContent
+    );
     if (!hasData) return;
 
     const timer = setTimeout(() => {
@@ -288,7 +387,11 @@ export default function AddContentModal({
           step,
           selectedType,
           formContentType,
-          formAttachTo,
+          formCourseId,
+          formModuleId,
+          formLessonId,
+          formResourceUrl,
+          formNotesContent,
           formTitle,
           formDescription,
           uploadedFileName,
@@ -299,12 +402,27 @@ export default function AddContentModal({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [isOpen, step, selectedType, formContentType, formAttachTo, formTitle, formDescription, uploadedFileName]);
+  }, [
+    isOpen,
+    step,
+    selectedType,
+    formContentType,
+    formCourseId,
+    formModuleId,
+    formLessonId,
+    formResourceUrl,
+    formNotesContent,
+    formTitle,
+    formDescription,
+    uploadedFileName,
+  ]);
 
   const handleDiscardDraft = () => {
     clearDraft("add_content");
     setFormTitle("");
     setFormDescription("");
+    setFormResourceUrl("");
+    setFormNotesContent("");
     setUploadedFileName("");
     setIsRestoredDraft(false);
     setLastSavedTime(null);
@@ -335,6 +453,8 @@ export default function AddContentModal({
     setStep("select_type");
     setFormTitle("");
     setFormDescription("");
+    setFormResourceUrl("");
+    setFormNotesContent("");
     setUploadedFileName("");
     onClose();
   };
@@ -354,6 +474,8 @@ export default function AddContentModal({
     setFormContentType(selectedType);
     setFormTitle("");
     setFormDescription("");
+    setFormResourceUrl("");
+    setFormNotesContent("");
     setUploadedFileName("");
     setStep("create_form");
   };
@@ -376,13 +498,38 @@ export default function AddContentModal({
     if (e) e.preventDefault();
     clearDraft("add_content");
     const typeOption = CONTENT_TYPES.find((t) => t.id === formContentType) || currentTypeOption;
-    const finalTitle = formTitle.trim() || `${typeOption.title} - ${formAttachTo}`;
+    const chosenCourse = effectiveCourseList.find(
+      (c) => String(c.id) === String(formCourseId) || c.title === formCourseId
+    );
+    const courseTitle = chosenCourse?.title || "General Library";
+    const moduleTitle = selectedModuleObj?.title || formModuleId || "";
+    const selectedLessonObj = availableLessons.find(
+      (l: any) => String(l.id) === String(formLessonId) || l.title === formLessonId
+    );
+    const lessonTitle = selectedLessonObj?.title || formLessonId || "";
+
+    const parentDisplay = lessonTitle
+      ? `${courseTitle} › ${moduleTitle} › ${lessonTitle}`
+      : moduleTitle
+      ? `${courseTitle} › ${moduleTitle}`
+      : courseTitle;
+
+    const finalTitle = formTitle.trim() || `${typeOption.title} - ${parentDisplay}`;
 
     onContinue(formContentType, typeOption, {
       title: finalTitle,
       type: typeOption.title,
-      parent: formAttachTo,
+      parent: parentDisplay,
+      courseId: chosenCourse ? String(chosenCourse.id) : undefined,
+      courseTitle,
+      moduleId: selectedModuleObj ? String(selectedModuleObj.id) : undefined,
+      moduleTitle,
+      lessonId: selectedLessonObj ? String(selectedLessonObj.id) : undefined,
+      lessonTitle,
       description: formDescription.trim(),
+      resourceFile: uploadedFileName,
+      resourceUrl: formResourceUrl.trim(),
+      notesContent: formNotesContent.trim(),
     });
 
     handleClose();
@@ -663,7 +810,7 @@ export default function AddContentModal({
                   />
                 </div>
 
-                {/* Two Column Row: Content type & Attach to */}
+                {/* Form Inputs: Content type & Course */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Content type Dropdown */}
                   <div>
@@ -690,51 +837,152 @@ export default function AddContentModal({
                     </div>
                   </div>
 
-                  {/* Attach to Dropdown */}
+                  {/* 1. Attach to Course Dropdown */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      Attach to
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-between">
+                      <span>1. Attach to Course</span>
+                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">Required</span>
                     </label>
                     <div className="relative">
                       <select
-                        value={formAttachTo}
-                        onChange={(e) => setFormAttachTo(e.target.value)}
-                        className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] px-4 py-2.5 pr-9 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
+                        value={formCourseId}
+                        onChange={(e) => setFormCourseId(e.target.value)}
+                        className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] px-4 py-2.5 pr-9 text-xs font-semibold text-slate-900 dark:text-white focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
                       >
-                        {availableCourses.length > 0 ? (
-                          availableCourses.map((c) => (
-                            <option
-                              key={c}
-                              value={c}
-                              className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white"
-                            >
-                              {c}
-                            </option>
-                          ))
-                        ) : (
+                        {effectiveCourseList.map((c) => (
                           <option
-                            value="General Library"
+                            key={c.id}
+                            value={c.id}
                             className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white"
                           >
-                            General Library
+                            {c.title}
                           </option>
-                        )}
+                        ))}
                       </select>
                       <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     </div>
                   </div>
                 </div>
 
+                {/* Hierarchical Cascading Row: Module & Lesson */}
+                {formContentType !== "module" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-2xl border border-indigo-100/80 dark:border-white/10 bg-indigo-50/20 dark:bg-white/[0.02] p-4">
+                    {/* 2. Target Module */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-between">
+                        <span>2. Target Module</span>
+                        {availableModules.length > 0 && (
+                          <span className="text-[10px] text-slate-400">{availableModules.length} available</span>
+                        )}
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={formModuleId}
+                          onChange={(e) => setFormModuleId(e.target.value)}
+                          className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-4 py-2.5 pr-9 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
+                        >
+                          {availableModules.length > 0 ? (
+                            availableModules.map((m: any, mIdx: number) => (
+                              <option
+                                key={String(m.id || mIdx)}
+                                value={String(m.id || m.title)}
+                                className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white"
+                              >
+                                {m.title || `Module ${mIdx + 1}`} ({m.lessons?.length || 0} lessons)
+                              </option>
+                            ))
+                          ) : (
+                            <option value="" className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white">
+                              General Course Curriculum
+                            </option>
+                          )}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      </div>
+                    </div>
+
+                    {/* 3. Target Lesson (for Notes, Resources, Practice Problem, Assignment) */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-between">
+                        <span>3. Target Lesson</span>
+                        {availableLessons.length > 0 && (
+                          <span className="text-[10px] text-slate-400">{availableLessons.length} lessons</span>
+                        )}
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={formLessonId}
+                          onChange={(e) => setFormLessonId(e.target.value)}
+                          className="w-full appearance-none rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] px-4 py-2.5 pr-9 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
+                        >
+                          {availableLessons.length > 0 ? (
+                            availableLessons.map((l: any, lIdx: number) => (
+                              <option
+                                key={String(l.id || lIdx)}
+                                value={String(l.id || l.title)}
+                                className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white"
+                              >
+                                {l.title || `Lesson ${lIdx + 1}`} {l.duration ? `(${l.duration})` : ""}
+                              </option>
+                            ))
+                          ) : (
+                            <option value="" className="bg-white dark:bg-[#151926] text-slate-900 dark:text-white">
+                              All Lessons in Module
+                            </option>
+                          )}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lesson Concept & Mental Model / Notes Content (for Notes, PDF, Text) */}
+                {(formContentType === "notes_pdf" || formContentType === "text" || formContentType === "lesson") && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-between">
+                      <span>Lesson Notes / Mental Model / Key Invariants</span>
+                      <span className="text-[10px] text-slate-400">Displayed in Student Notes Tab</span>
+                    </label>
+                    <textarea
+                      value={formNotesContent}
+                      onChange={(e) => setFormNotesContent(e.target.value)}
+                      placeholder="Enter the core concepts, mental model, pseudocode invariant, or study summary for this lesson..."
+                      className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] p-4 text-xs font-mono text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-h-[100px] resize-y"
+                    />
+                  </div>
+                )}
+
+                {/* External Resource URL or Video Stream Link */}
+                {formContentType !== "module" && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-between">
+                      <span>Resource Direct Link or URL</span>
+                      <span className="text-[10px] text-slate-400">Optional</span>
+                    </label>
+                    <div className="relative">
+                      <Link2 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="url"
+                        value={formResourceUrl}
+                        onChange={(e) => setFormResourceUrl(e.target.value)}
+                        placeholder="https://drive.google.com/... or https://youtube.com/..."
+                        className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] pl-10 pr-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Description Textarea */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Description
+                    Description & Overview
                   </label>
                   <textarea
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     placeholder="Add a short description for learners"
-                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-h-[120px] resize-y"
+                    className="w-full rounded-2xl border border-slate-200/90 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] p-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-[#151926] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all min-h-[90px] resize-y"
                   />
                 </div>
 
@@ -742,7 +990,7 @@ export default function AddContentModal({
                 {formContentType !== "module" && (
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                      Upload or link resource
+                      Upload Supplementary File
                     </label>
                     <div
                       onClick={() => fileInputRef.current?.click()}
@@ -753,7 +1001,7 @@ export default function AddContentModal({
                       onDragLeave={() => setIsDragging(false)}
                       onDrop={handleDrop}
                       className={cn(
-                        "relative flex flex-col items-center justify-center rounded-2xl border p-7 text-center transition-all cursor-pointer",
+                        "relative flex flex-col items-center justify-center rounded-2xl border p-6 text-center transition-all cursor-pointer",
                         isDragging
                           ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30"
                           : "border-indigo-100/90 dark:border-white/10 bg-indigo-50/20 dark:bg-white/[0.02] hover:border-indigo-300 dark:hover:border-white/20 hover:bg-indigo-50/40"
@@ -772,7 +1020,7 @@ export default function AddContentModal({
                         {uploadedFileName || "Drop a file or browse"}
                       </p>
                       <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
-                        PDF, DOCX, PPT, ZIP, or external link
+                        PDF, DOCX, PPT, ZIP, or Code Templates
                       </p>
                     </div>
                   </div>
