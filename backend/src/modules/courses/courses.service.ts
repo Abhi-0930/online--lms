@@ -72,31 +72,38 @@ export class CoursesService {
       total = 0;
     }
 
+    AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
     const courseMap = new Map<string, any>();
     for (const c of courses) {
       const meta = AdminService.fallbackCourses.get(String(c.id)) ||
                    AdminService.fallbackCourses.get(String(c.slug)) || {};
       const merged = {
-        ...meta,
         ...c,
-        modules: (meta.modules && meta.modules.length > 0) ? meta.modules : c.modules,
-        category: meta.category || c.category,
+        ...meta,
+        id: String(c.id),
+        title: meta.title || c.title,
+        subtitle: meta.subtitle !== undefined ? meta.subtitle : (c.subtitle || ''),
+        description: meta.description || c.description || '',
+        coverImageUrl: meta.coverImageUrl || meta.thumbnailPreview || c.coverImageUrl || null,
+        thumbnailPreview: meta.thumbnailPreview || meta.coverImageUrl || c.coverImageUrl || null,
+        modules: (meta.modules && meta.modules.length > 0) ? meta.modules : (c.modules || []),
+        category: meta.category || c.category || 'Development',
         language: meta.language || c.language || 'English',
-        level: meta.level || c.level || 'Beginner',
-        price: meta.price !== undefined && meta.price !== null ? meta.price : (c.price !== undefined ? Number(c.price) : 0),
-        discountPrice: meta.discountPrice !== undefined && meta.discountPrice !== null ? meta.discountPrice : (c.discountPrice !== undefined ? Number(c.discountPrice) : undefined),
+        level: meta.level || (c.level ? String(c.level).charAt(0) + String(c.level).slice(1).toLowerCase().replace(/_/g, ' ') : 'Beginner'),
+        price: meta.price !== undefined && meta.price !== null ? Number(meta.price) : (c.price !== undefined ? Number(c.price) : 0),
+        discountPrice: meta.discountPrice !== undefined && meta.discountPrice !== null ? Number(meta.discountPrice) : 0,
         currency: meta.currency || c.currency || 'INR ₹',
-        courseType: meta.courseType || c.courseType,
-        accessType: meta.accessType || c.accessType,
-        durationCycleMode: meta.durationCycleMode || c.durationCycleMode,
+        courseType: meta.courseType || c.courseType || ((Number(meta.price) > 0 || Number(c.price) > 0) ? 'Paid' : 'Free'),
+        accessType: meta.accessType || c.accessType || 'Lifetime Access',
+        durationCycleMode: meta.durationCycleMode || c.durationCycleMode || 'Date Range',
         startDate: meta.startDate || c.startDate,
         endDate: meta.endDate || c.endDate,
-        durationValue: meta.durationValue || c.durationValue,
-        durationUnit: meta.durationUnit || c.durationUnit,
-        subscriptionCycle: meta.subscriptionCycle || c.subscriptionCycle,
-        enrollmentLimit: meta.enrollmentLimit || c.enrollmentLimit,
-        courseVisibility: meta.courseVisibility || c.courseVisibility,
-        skillsCovered: meta.skillsCovered || c.skillsCovered || meta.tags || c.tags || [],
+        durationValue: meta.durationValue || c.durationValue || '90',
+        durationUnit: meta.durationUnit || c.durationUnit || 'Days',
+        subscriptionCycle: meta.subscriptionCycle || c.subscriptionCycle || 'Monthly',
+        enrollmentLimit: meta.enrollmentLimit || c.enrollmentLimit || 'Unlimited',
+        courseVisibility: meta.courseVisibility || c.courseVisibility || 'Public',
+        skillsCovered: meta.skillsCovered || meta.tags || c.skillsCovered || c.tags || [],
         prerequisites: meta.prerequisites || c.prerequisites || '',
         estimatedDuration: meta.estimatedDuration || c.estimatedDuration || '12 Weeks',
         certificateAvailable: meta.certificateAvailable !== undefined ? meta.certificateAvailable : true,
@@ -106,7 +113,9 @@ export class CoursesService {
         learningOutcomes: meta.learningOutcomes || c.learningOutcomes || [],
         requirements: meta.requirements || c.requirements || [],
         targetLearners: meta.targetLearners || c.targetLearners || [],
-        tags: meta.tags || c.tags || meta.skillsCovered || c.skillsCovered || [],
+        tags: meta.tags || meta.skillsCovered || c.tags || c.skillsCovered || [],
+        status: meta.status || (c.status === 'PUBLISHED' ? 'Published' : c.status === 'DRAFT' ? 'Draft' : 'Review'),
+        updatedAt: meta.updatedAt || c.updatedAt || new Date().toISOString(),
       };
       courseMap.set(String(c.id), merged);
     }
@@ -160,6 +169,7 @@ export class CoursesService {
       course = null;
     }
 
+    AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
     const meta = AdminService.fallbackCourses.get(String(course?.id || slug)) || 
                  AdminService.fallbackCourses.get(String(slug)) || 
                  Array.from(AdminService.fallbackCourses.values()).find(c => c.slug === slug || c.id === slug) || {};
@@ -169,14 +179,20 @@ export class CoursesService {
     }
 
     const merged = {
-      ...meta,
       ...(course || {}),
+      ...meta,
+      id: String(course?.id || meta.id || slug),
+      title: meta.title || course?.title,
+      subtitle: meta.subtitle !== undefined ? meta.subtitle : (course?.subtitle || ''),
+      description: meta.description || course?.description || '',
+      coverImageUrl: meta.coverImageUrl || meta.thumbnailPreview || course?.coverImageUrl || null,
+      thumbnailPreview: meta.thumbnailPreview || meta.coverImageUrl || course?.coverImageUrl || null,
       modules: (meta.modules && meta.modules.length > 0) ? meta.modules : (course?.modules || []),
-      category: meta.category || course?.category,
+      category: meta.category || course?.category || 'Development',
       language: meta.language || course?.language || 'English',
-      level: meta.level || course?.level || 'Beginner',
-      price: meta.price !== undefined && meta.price !== null ? meta.price : (course?.price !== undefined ? Number(course.price) : 0),
-      discountPrice: meta.discountPrice !== undefined && meta.discountPrice !== null ? meta.discountPrice : (course?.discountPrice !== undefined ? Number(course.discountPrice) : undefined),
+      level: meta.level || (course?.level ? String(course.level).charAt(0) + String(course.level).slice(1).toLowerCase().replace(/_/g, ' ') : 'Beginner'),
+      price: meta.price !== undefined && meta.price !== null ? Number(meta.price) : (course?.price !== undefined ? Number(course.price) : 0),
+      discountPrice: meta.discountPrice !== undefined && meta.discountPrice !== null ? Number(meta.discountPrice) : 0,
       currency: meta.currency || course?.currency || 'INR ₹',
       courseType: meta.courseType || course?.courseType,
       accessType: meta.accessType || course?.accessType,
