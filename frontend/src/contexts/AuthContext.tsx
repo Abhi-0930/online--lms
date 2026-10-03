@@ -390,14 +390,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {}
 
-    // Periodic heartbeat to verify session integrity (every 20s)
-    const interval = setInterval(() => {
-      const activeToken = typeof window !== "undefined" ? (localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY) || localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)) : null;
-      if (activeToken) {
-        fetchUser().catch(() => {});
-      }
-    }, 20000);
-
     const handleFocusCheck = () => {
       handleAuthChange();
     };
@@ -408,7 +400,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener("lms:auth-change", handleAuthChange);
 
     return () => {
-      clearInterval(interval);
       if (channel) {
         try {
           channel.close();
