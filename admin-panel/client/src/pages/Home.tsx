@@ -10,6 +10,7 @@ import PracticeProblemBuilder from "@/components/PracticeProblemBuilder";
 import PracticeProblemDetailView from "@/components/PracticeProblemDetailView";
 import PostAnnouncementModal, { AnnouncementItem } from "@/components/PostAnnouncementModal";
 import EditContentModal from "@/components/EditContentModal";
+import StudentProgressModal from "@/components/StudentProgressModal";
 import ActiveDraftBanner from "@/components/ActiveDraftBanner";
 import {
   DraftType,
@@ -1071,6 +1072,7 @@ function StudentsView({
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
+  const [selectedStudentForProgress, setSelectedStudentForProgress] = useState<StudentItem | null>(null);
 
   const filtered = students.filter((learner) => {
     const matchesFilter = filter === "All" || learner.status === filter;
@@ -1119,6 +1121,7 @@ function StudentsView({
                 <th className="px-4 py-3">Progress</th>
                 <th className="px-4 py-3">Last active</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1192,6 +1195,17 @@ function StudentsView({
                   <td className="px-4 py-4">
                     <StatusBadge>{learner.status}</StatusBadge>
                   </td>
+                  <td className="px-4 py-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStudentForProgress(learner)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/70 hover:bg-indigo-100/90 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-[11px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
+                      title="Manage completed lessons & checklist"
+                    >
+                      <ListChecks className="h-3.5 w-3.5" />
+                      <span>Checklist</span>
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1206,6 +1220,18 @@ function StudentsView({
           )}
         </div>
       </DataCard>
+
+      <StudentProgressModal
+        isOpen={!!selectedStudentForProgress}
+        onClose={() => setSelectedStudentForProgress(null)}
+        student={selectedStudentForProgress}
+        courses={liveData.courses}
+        onProgressSaved={(studentId, newProgress, courseId) => {
+          refresh();
+          onToast(`Updated lesson progress for student to ${newProgress}%`);
+        }}
+        onToast={onToast}
+      />
     </div>
   );
 }
