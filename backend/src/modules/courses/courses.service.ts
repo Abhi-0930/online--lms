@@ -73,8 +73,23 @@ export class CoursesService {
     }
 
     AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
+    AdminService.deletedCoursesIds = AdminService.loadDeletedCoursesFromFile();
+
+    const isDeleted = (c: any) => {
+      if (!c) return true;
+      const cId = String(c.id || '').trim();
+      const cSlug = String(c.slug || '').trim();
+      const cTitle = String(c.title || '').trim().toLowerCase();
+      return (
+        AdminService.deletedCoursesIds.has(cId) ||
+        AdminService.deletedCoursesIds.has(cSlug) ||
+        AdminService.deletedCoursesIds.has(cTitle)
+      );
+    };
+
     const courseMap = new Map<string, any>();
     for (const c of courses) {
+      if (isDeleted(c)) continue;
       const meta = AdminService.fallbackCourses.get(String(c.id)) ||
                    AdminService.fallbackCourses.get(String(c.slug)) || {};
       const merged = {
@@ -121,6 +136,7 @@ export class CoursesService {
     }
 
     for (const meta of AdminService.fallbackCourses.values()) {
+      if (isDeleted(meta)) continue;
       const canonicalId = String(meta.id || '');
       const metaSlug = String(meta.slug || '');
       const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
@@ -144,6 +160,12 @@ export class CoursesService {
   }
 
   async getCourseBySlug(slug: string) {
+    AdminService.deletedCoursesIds = AdminService.loadDeletedCoursesFromFile();
+    const slugStr = String(slug || '').trim();
+    if (AdminService.deletedCoursesIds.has(slugStr)) {
+      throw new Error('Course not found');
+    }
+
     let course: any = null;
     try {
       course = await this.prisma.course.findFirst({
@@ -173,12 +195,16 @@ export class CoursesService {
       course = null;
     }
 
+    if (course && (AdminService.deletedCoursesIds.has(String(course.id)) || AdminService.deletedCoursesIds.has(String(course.slug)))) {
+      throw new Error('Course not found');
+    }
+
     AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
     const meta = AdminService.fallbackCourses.get(String(course?.id || slug)) || 
                  AdminService.fallbackCourses.get(String(slug)) || 
                  Array.from(AdminService.fallbackCourses.values()).find(c => c.slug === slug || c.id === slug) || {};
 
-    if (!course && !meta.id) {
+    if ((!course && !meta.id) || (meta.id && AdminService.deletedCoursesIds.has(String(meta.id))) || (meta.slug && AdminService.deletedCoursesIds.has(String(meta.slug)))) {
       throw new Error('Course not found');
     }
 

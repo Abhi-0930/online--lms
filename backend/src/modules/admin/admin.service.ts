@@ -27,6 +27,7 @@ export class AdminService {
   }
 
   private static metaFilePath = AdminService.resolveDataFile('courses_meta.json');
+  private static deletedCoursesFilePath = AdminService.resolveDataFile('deleted_courses.json');
   private static problemsFilePath = AdminService.resolveDataFile('practice_problems.json');
   private static assignmentsFilePath = AdminService.resolveDataFile('assignments.json');
   private static liveSessionsFilePath = AdminService.resolveDataFile('live_sessions.json');
@@ -38,6 +39,36 @@ export class AdminService {
   private static practiceSubmissionsFilePath = AdminService.resolveDataFile('practice_submissions.json');
   private static practiceDiscussionsFilePath = AdminService.resolveDataFile('practice_discussions.json');
   private static studentProgressFilePath = AdminService.resolveDataFile('student_progress.json');
+
+  public static deletedCoursesIds = AdminService.loadDeletedCoursesFromFile();
+
+  public static loadDeletedCoursesFromFile(): Set<string> {
+    try {
+      if (fs.existsSync(AdminService.deletedCoursesFilePath)) {
+        const raw = fs.readFileSync(AdminService.deletedCoursesFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return new Set<string>(parsed.map((id) => String(id).trim()));
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load deleted courses from file:', err);
+    }
+    return new Set<string>();
+  }
+
+  public static saveDeletedCoursesToFile(): void {
+    try {
+      const dir = path.dirname(AdminService.deletedCoursesFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = Array.from(AdminService.deletedCoursesIds.values());
+      fs.writeFileSync(AdminService.deletedCoursesFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save deleted courses to file:', err);
+    }
+  }
 
   private static loadStudentProgressFromFile(): Map<string, string[]> {
     try {
@@ -741,6 +772,20 @@ export class AdminService {
 
   async getAllCourses() {
     AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
+    AdminService.deletedCoursesIds = AdminService.loadDeletedCoursesFromFile();
+
+    const isDeleted = (c: any) => {
+      if (!c) return true;
+      const cId = String(c.id || '').trim();
+      const cSlug = String(c.slug || '').trim();
+      const cTitle = String(c.title || '').trim().toLowerCase();
+      return (
+        AdminService.deletedCoursesIds.has(cId) ||
+        AdminService.deletedCoursesIds.has(cSlug) ||
+        AdminService.deletedCoursesIds.has(cTitle)
+      );
+    };
+
     let dbCourses: any[] = [];
     try {
       dbCourses = await this.prisma.course.findMany({
@@ -760,6 +805,7 @@ export class AdminService {
 
     const courseMap = new Map<string, any>();
     for (const course of dbCourses) {
+      if (isDeleted(course)) continue;
       const fallback = AdminService.fallbackCourses.get(String(course.id)) || {};
       const merged = {
         ...course,
@@ -785,6 +831,7 @@ export class AdminService {
       courseMap.set(String(course.id), merged);
     }
     for (const fallback of AdminService.fallbackCourses.values()) {
+      if (isDeleted(fallback)) continue;
       const canonicalId = String(fallback.id || '');
       const fallbackSlug = String(fallback.slug || '');
       const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
@@ -988,6 +1035,15 @@ export class AdminService {
     const instructorDisplayName = data.instructorName?.trim() || 'Admin User';
     const coverImage = data.coverImageUrl || data.thumbnailPreview || null;
     const priceNumber = typeof data.price === 'number' && !isNaN(data.price) ? data.price : 0;
+
+    // Untombstone if previously marked deleted
+    if (data.id) {
+      AdminService.deletedCoursesIds.delete(String(data.id).trim());
+    }
+    if (data.title) {
+      AdminService.deletedCoursesIds.delete(data.title.trim().toLowerCase());
+    }
+    AdminService.saveDeletedCoursesToFile();
 
     // Check if updating an existing course
     if (data.id) {
@@ -1413,29 +1469,136 @@ export class AdminService {
   }
 
   async deleteCourse(id: string) {
+    const rawId = String(id || '').trim();
+    const decodedId = decodeURIComponent(rawId).trim();
+
+    AdminService.deletedCoursesIds = AdminService.loadDeletedCoursesFromFile();
+    AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
+
+    // 1. Tombstone raw ID and decoded ID
+    if (rawId) AdminService.deletedCoursesIds.add(rawId);
+    if (decodedId) AdminService.deletedCoursesIds.add(decodedId);
+
+    // 2. Cascading Prisma DB cleanup
+    const matchedPrismaIds: string[] = [];
     try {
       const existing = await this.prisma.course.findFirst({
         where: {
           OR: [
-            { id },
-            { slug: id },
+            { id: rawId },
+            { id: decodedId },
+            { slug: rawId },
+            { slug: decodedId },
           ],
+        },
+        include: {
+          modules: {
+            include: {
+              lessons: true,
+            },
+          },
+          cohorts: true,
+          assignments: true,
         },
       });
 
       if (existing) {
-        await this.prisma.course.delete({
-          where: { id: existing.id },
-        });
+        matchedPrismaIds.push(existing.id);
+        if (existing.slug) {
+          matchedPrismaIds.push(existing.slug);
+          AdminService.deletedCoursesIds.add(existing.slug);
+        }
+        if (existing.title) {
+          AdminService.deletedCoursesIds.add(existing.title.trim().toLowerCase());
+        }
+
+        const courseId = existing.id;
+
+        try {
+          // Submissions for assignments in this course
+          const assignmentIds = existing.assignments?.map((a: any) => a.id) || [];
+          if (assignmentIds.length > 0) {
+            await (this.prisma as any).assignmentSubmission.deleteMany({
+              where: { assignmentId: { in: assignmentIds } },
+            }).catch(() => {});
+          }
+          await (this.prisma as any).assignment.deleteMany({
+            where: { courseId },
+          }).catch(() => {});
+
+          // Cohort enrollments and cohorts
+          const cohortIds = existing.cohorts?.map((c: any) => c.id) || [];
+          if (cohortIds.length > 0) {
+            await (this.prisma as any).cohortEnrollment.deleteMany({
+              where: { cohortId: { in: cohortIds } },
+            }).catch(() => {});
+          }
+          await (this.prisma as any).cohort.deleteMany({
+            where: { courseId },
+          }).catch(() => {});
+
+          // Lesson progress, lessons, modules
+          const moduleIds = existing.modules?.map((m: any) => m.id) || [];
+          const lessonIds = existing.modules?.flatMap((m: any) => m.lessons?.map((l: any) => l.id) || []) || [];
+          if (lessonIds.length > 0) {
+            await (this.prisma as any).lessonProgress.deleteMany({
+              where: { lessonId: { in: lessonIds } },
+            }).catch(() => {});
+            await (this.prisma as any).resource.deleteMany({
+              where: { lessonId: { in: lessonIds } },
+            }).catch(() => {});
+            await (this.prisma as any).lesson.deleteMany({
+              where: { id: { in: lessonIds } },
+            }).catch(() => {});
+          }
+          if (moduleIds.length > 0) {
+            await (this.prisma as any).module.deleteMany({
+              where: { id: { in: moduleIds } },
+            }).catch(() => {});
+          }
+
+          // Resources, roadmaps, enrollments, payments
+          await (this.prisma as any).resource.deleteMany({ where: { courseId } }).catch(() => {});
+          await (this.prisma as any).roadmapItem.deleteMany({ where: { courseId } }).catch(() => {});
+          await (this.prisma as any).enrollment.deleteMany({ where: { courseId } }).catch(() => {});
+          await (this.prisma as any).payment.deleteMany({ where: { courseId } }).catch(() => {});
+
+          // Delete the course row from DB
+          await this.prisma.course.delete({
+            where: { id: courseId },
+          });
+        } catch (cascadeErr) {
+          console.error('Error during course cascading delete:', cascadeErr);
+        }
       }
     } catch (err: any) {
       console.warn('Prisma course delete warning:', err?.message || err);
     }
 
-    AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
+    // 3. Save deleted courses tombstone file
+    AdminService.saveDeletedCoursesToFile();
+
+    // 4. Remove all matching keys from fallbackCourses map
     const keysToDelete: string[] = [];
     for (const [k, v] of AdminService.fallbackCourses.entries()) {
-      if (k === id || (v && (v.id === id || v.slug === id))) {
+      const kStr = String(k).trim();
+      const vId = v?.id ? String(v.id).trim() : '';
+      const vSlug = v?.slug ? String(v.slug).trim() : '';
+      const vTitle = v?.title ? String(v.title).trim().toLowerCase() : '';
+
+      if (
+        kStr === rawId ||
+        kStr === decodedId ||
+        matchedPrismaIds.includes(kStr) ||
+        matchedPrismaIds.includes(vId) ||
+        matchedPrismaIds.includes(vSlug) ||
+        (vId && (vId === rawId || vId === decodedId)) ||
+        (vSlug && (vSlug === rawId || vSlug === decodedId)) ||
+        AdminService.deletedCoursesIds.has(kStr) ||
+        AdminService.deletedCoursesIds.has(vId) ||
+        AdminService.deletedCoursesIds.has(vSlug) ||
+        AdminService.deletedCoursesIds.has(vTitle)
+      ) {
         keysToDelete.push(k);
       }
     }
@@ -1443,6 +1606,7 @@ export class AdminService {
       AdminService.fallbackCourses.delete(k);
     }
     AdminService.saveMetaToFile();
+
     return { success: true, id };
   }
 
