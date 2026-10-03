@@ -130,6 +130,12 @@ const KNOWN_DOMAINS: Record<string, string> = {
   twilio: "twilio.com",
   databricks: "databricks.com",
   snowflake: "snowflake.com",
+  "cdk global": "cdkglobal.com",
+  cdk: "cdkglobal.com",
+  virtusa: "virtusa.com",
+  cloudbridge: "cloudbridge.com",
+  "standard group companies": "standardgroup.com",
+  "standard group": "standardgroup.com",
 };
 
 export function getCompanyDomain(name: string): string {
@@ -170,6 +176,7 @@ export function getCompanyInitial(name: string) {
 interface CompanyLogoProps {
   name: string;
   domain?: string;
+  logoUrl?: string;
   size?: "xs" | "sm" | "md" | "lg";
   className?: string;
 }
@@ -177,30 +184,37 @@ interface CompanyLogoProps {
 export function CompanyLogo({
   name,
   domain,
+  logoUrl,
   size = "md",
   className = "",
 }: CompanyLogoProps) {
   const primaryDomain = domain || getCompanyDomain(name);
-  const [imgSrc, setImgSrc] = useState<string>(
-    `https://logo.clearbit.com/${primaryDomain}`
-  );
-  const [hasTriedFavicon, setHasTriedFavicon] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [stage, setStage] = useState(0);
 
   useEffect(() => {
-    setImgSrc(`https://logo.clearbit.com/${primaryDomain}`);
-    setHasTriedFavicon(false);
-    setHasError(false);
-  }, [primaryDomain]);
+    setStage(0);
+  }, [name, domain, logoUrl, primaryDomain]);
 
-  const handleError = () => {
-    if (!hasTriedFavicon) {
-      setHasTriedFavicon(true);
-      setImgSrc(`https://www.google.com/s2/favicons?domain=${primaryDomain}&sz=128`);
-    } else {
-      setHasError(true);
+  const handleNextStage = () => {
+    setStage((prev) => prev + 1);
+  };
+
+  const getImageSrc = () => {
+    switch (stage) {
+      case 0:
+        return logoUrl || (primaryDomain ? `https://logo.clearbit.com/${primaryDomain}` : null);
+      case 1:
+        return primaryDomain ? `https://logo.clearbit.com/${primaryDomain}` : null;
+      case 2:
+        return primaryDomain ? `https://unavatar.io/${primaryDomain}` : null;
+      case 3:
+        return primaryDomain ? `https://www.google.com/s2/favicons?domain=${primaryDomain}&sz=128` : null;
+      default:
+        return null;
     }
   };
+
+  const currentSrc = getImageSrc();
 
   const sizeClasses = {
     xs: "w-4 h-4 text-[9px] rounded-xs",
@@ -209,7 +223,7 @@ export function CompanyLogo({
     lg: "w-8 h-8 text-[14px] rounded-lg",
   };
 
-  if (hasError) {
+  if (!currentSrc || stage >= 4) {
     const palette = getMonogramPalette(name);
     return (
       <div
@@ -222,9 +236,9 @@ export function CompanyLogo({
 
   return (
     <img
-      src={imgSrc}
+      src={currentSrc}
       alt={`${name} logo`}
-      onError={handleError}
+      onError={handleNextStage}
       className={`${sizeClasses[size]} object-contain bg-white dark:bg-white/10 p-0.5 rounded-xs shrink-0 shadow-2xs ${className}`}
       loading="lazy"
     />
