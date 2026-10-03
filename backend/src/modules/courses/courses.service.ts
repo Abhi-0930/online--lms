@@ -289,6 +289,9 @@ export class CoursesService {
       updatedAt: new Date(),
     };
     AdminService.fallbackCourses.set(String(id), full);
+    if (full.slug || course?.slug) {
+      AdminService.fallbackCourses.set(String(full.slug || course?.slug), full);
+    }
     AdminService.saveMetaToFile();
 
     logger.info({ courseId: id }, 'Course updated');
