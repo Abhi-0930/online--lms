@@ -803,22 +803,24 @@ function CoursesView({
     const targetId = courseToDelete.id;
     const targetTitle = courseToDelete.title;
 
-    // Immediately close confirmation modal on 1st click
-    setCourseToDelete(null);
-
-    // Optimistically update local state
-    setLocalRows((prev) => (prev ? prev.filter((c) => c.id !== targetId) : []));
-    onToast(`Course "${targetTitle}" deleted successfully`);
-
     try {
-      await fetch(`${API_BASE_URL}/api/v1/admin/courses/${targetId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/courses/${targetId}`, {
         method: "DELETE",
       });
-      refresh();
-    } catch {
-      refresh();
+
+      if (res.ok) {
+        setLocalRows((prev) => (prev ? prev.filter((c) => c.id !== targetId) : []));
+        onToast(`Course "${targetTitle}" deleted successfully`);
+        refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        onToast(`Failed to delete course: ${data.error || res.statusText}`);
+      }
+    } catch (err: any) {
+      onToast(`Error deleting course: ${err?.message || "Network error"}`);
     } finally {
       setIsDeleting(false);
+      setCourseToDelete(null);
     }
   };
 
