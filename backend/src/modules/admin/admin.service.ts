@@ -1750,7 +1750,23 @@ export class AdminService {
       if (Array.isArray(course.modules)) {
         for (let mIdx = 0; mIdx < course.modules.length; mIdx++) {
           const mod = course.modules[mIdx];
-          if (Array.isArray(mod.topics)) {
+          if (Array.isArray(mod.lessons) && mod.lessons.length > 0) {
+            for (let lIdx = 0; lIdx < mod.lessons.length; lIdx++) {
+              const les = mod.lessons[lIdx];
+              const uniqueId = String(les.id || `mod_${mod.id || mIdx}_les_${lIdx}`);
+              if (AdminService.deletedContentIds.has(uniqueId)) continue;
+              const override = AdminService.fallbackContentOverrides.get(uniqueId);
+              items.push({
+                id: uniqueId,
+                title: les.title || `Lesson ${lIdx + 1}`,
+                type: les.type || 'Video',
+                parent: `${course.title} · ${mod.title || 'Curriculum'}`,
+                owner,
+                status: override?.status || les.status || (les.isCompleted ? 'Completed' : status),
+                updated,
+              });
+            }
+          } else if (Array.isArray(mod.topics)) {
             for (let tIdx = 0; tIdx < mod.topics.length; tIdx++) {
               const top = mod.topics[tIdx];
               if (Array.isArray(top.subtopics) && top.subtopics.length > 0) {
@@ -1758,26 +1774,28 @@ export class AdminService {
                   const sub = top.subtopics[sIdx];
                   const uniqueId = String(sub.id || `sub_${course.id || cIdx}_${mod.id || mIdx}_${top.id || tIdx}_${sIdx}`);
                   if (AdminService.deletedContentIds.has(uniqueId)) continue;
+                  const override = AdminService.fallbackContentOverrides.get(uniqueId);
                   items.push({
                     id: uniqueId,
                     title: sub.title || top.title || `Lesson ${sIdx + 1}`,
                     type: sub.type || 'Video',
                     parent: `${course.title} · ${mod.title || 'Curriculum'}`,
                     owner,
-                    status,
+                    status: override?.status || sub.status || (sub.isCompleted ? 'Completed' : status),
                     updated,
                   });
                 }
               } else {
                 const uniqueId = String(top.id || `top_${course.id || cIdx}_${mod.id || mIdx}_${tIdx}`);
                 if (AdminService.deletedContentIds.has(uniqueId)) continue;
+                const override = AdminService.fallbackContentOverrides.get(uniqueId);
                 items.push({
                   id: uniqueId,
                   title: top.title || `Topic ${tIdx + 1}`,
                   type: top.type || 'Video',
                   parent: `${course.title} · ${mod.title || 'Curriculum'}`,
                   owner,
-                  status,
+                  status: override?.status || top.status || (top.isCompleted ? 'Completed' : status),
                   updated,
                 });
               }
@@ -1890,16 +1908,32 @@ export class AdminService {
       });
     } catch {}
 
-    // 2. Update in fallbackCourses if matching topic/subtopic
+    // 2. Update in fallbackCourses if matching topic/subtopic/lesson
     for (const [, course] of AdminService.fallbackCourses.entries()) {
       let changed = false;
       if (Array.isArray(course.modules)) {
         for (const mod of course.modules) {
+          if (Array.isArray(mod.lessons)) {
+            for (let lIdx = 0; lIdx < mod.lessons.length; lIdx++) {
+              const les = mod.lessons[lIdx];
+              if ((les.id && String(les.id) === idStr) || `mod_${mod.id || ''}_les_${lIdx}` === idStr) {
+                if (updates.title) les.title = updates.title;
+                if (updates.type) les.type = updates.type;
+                if (updates.status !== undefined) les.status = updates.status;
+                if (updates.isCompleted !== undefined) les.isCompleted = updates.isCompleted;
+                else if (updates.status === 'Completed') les.isCompleted = true;
+                changed = true;
+              }
+            }
+          }
           if (Array.isArray(mod.topics)) {
             for (const top of mod.topics) {
               if (top.id && String(top.id) === idStr) {
                 if (updates.title) top.title = updates.title;
                 if (updates.type) top.type = updates.type;
+                if (updates.status !== undefined) top.status = updates.status;
+                if (updates.isCompleted !== undefined) top.isCompleted = updates.isCompleted;
+                else if (updates.status === 'Completed') top.isCompleted = true;
                 changed = true;
               }
               if (Array.isArray(top.subtopics)) {
@@ -1907,6 +1941,9 @@ export class AdminService {
                   if ((sub.id && String(sub.id) === idStr) || `sub_${mod.id}_${top.id}_${sub.title}` === idStr) {
                     if (updates.title) sub.title = updates.title;
                     if (updates.type) sub.type = updates.type;
+                    if (updates.status !== undefined) sub.status = updates.status;
+                    if (updates.isCompleted !== undefined) sub.isCompleted = updates.isCompleted;
+                    else if (updates.status === 'Completed') sub.isCompleted = true;
                     changed = true;
                   }
                 }
@@ -1918,6 +1955,41 @@ export class AdminService {
       if (changed) {
         AdminService.saveMetaToFile();
       }
+    }
+
+    // 3. Update LessonProgress in Prisma database if applicable
+    if (updates.status === 'Completed' || updates.isCompleted) {
+      try {
+        const lesson = await this.prisma.lesson.findUnique({
+          where: { id: idStr },
+          include: { module: { include: { course: true } } },
+        });
+        if (lesson) {
+          const enrollments = await this.prisma.enrollment.findMany({
+            where: { courseId: lesson.module.courseId },
+          });
+          for (const enroll of enrollments) {
+            await this.prisma.lessonProgress.upsert({
+              where: {
+                userId_lessonId: {
+                  userId: enroll.userId,
+                  lessonId: lesson.id,
+                },
+              },
+              update: {
+                isCompleted: true,
+                completedAt: new Date(),
+              },
+              create: {
+                userId: enroll.userId,
+                lessonId: lesson.id,
+                isCompleted: true,
+                completedAt: new Date(),
+              },
+            });
+          }
+        }
+      } catch {}
     }
 
     return updated;
