@@ -88,7 +88,14 @@ export interface ContentItem {
   parent: string;
   courseId?: string;
   courseTitle?: string;
+  moduleId?: string;
   moduleTitle?: string;
+  lessonId?: string;
+  lessonTitle?: string;
+  description?: string;
+  resourceUrl?: string;
+  resourceFile?: string;
+  notesContent?: string;
   owner: string;
   status: string;
   updated: string;
@@ -696,6 +703,75 @@ export function useLiveAdminData() {
     } catch {}
   };
 
+  const fetchContent = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/content`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          updateContent(data);
+        }
+      }
+    } catch {}
+  };
+
+  const addContent = async (newItem: Partial<ContentItem>) => {
+    const id = newItem.id || `content_${Date.now()}`;
+    const formatted: ContentItem = {
+      id,
+      title: newItem.title || "Untitled Content",
+      type: newItem.type || "Resource",
+      parent: newItem.parent || "General Library",
+      courseId: newItem.courseId ? String(newItem.courseId) : undefined,
+      courseTitle: newItem.courseTitle,
+      moduleId: newItem.moduleId ? String(newItem.moduleId) : undefined,
+      moduleTitle: newItem.moduleTitle,
+      lessonId: newItem.lessonId ? String(newItem.lessonId) : undefined,
+      lessonTitle: newItem.lessonTitle,
+      description: newItem.description,
+      resourceUrl: newItem.resourceUrl,
+      resourceFile: newItem.resourceFile,
+      notesContent: newItem.notesContent,
+      owner: newItem.owner || "Admin Team",
+      status: newItem.status || "Published",
+      updated: "Just now",
+    };
+
+    setContentList((prev) => {
+      const idx = prev.findIndex((c) => String(c.id) === String(id));
+      const updated = idx >= 0
+        ? prev.map((c) => (String(c.id) === String(id) ? formatted : c))
+        : [formatted, ...prev];
+      writeCache(CACHE_KEYS.CONTENT, updated);
+      return updated;
+    });
+
+    try {
+      await fetch(`${API_BASE_URL}/api/v1/admin/content`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formatted),
+      });
+      await Promise.all([fetchContent(), fetchCourses()]);
+    } catch {}
+    return formatted;
+  };
+
+  const deleteContentItem = async (id: string | number) => {
+    setContentList((prev) => {
+      const updated = prev.filter((c) => String(c.id) !== String(id));
+      writeCache(CACHE_KEYS.CONTENT, updated);
+      return updated;
+    });
+
+    try {
+      await fetch(`${API_BASE_URL}/api/v1/admin/content/${encodeURIComponent(String(id))}`, {
+        method: "DELETE",
+      });
+      await Promise.all([fetchContent(), fetchCourses()]);
+    } catch {}
+  };
+
   const fetchInitialSnapshot = async () => {
     try {
       fetchCourses();
@@ -864,6 +940,9 @@ export function useLiveAdminData() {
     upsertCourse,
     deleteCourse,
     setCourses: updateCourses,
+    addContent,
+    deleteContentItem,
+    setContent: updateContent,
     upsertPracticeProblem,
     deletePracticeProblem,
     toggleProblemStatus,
