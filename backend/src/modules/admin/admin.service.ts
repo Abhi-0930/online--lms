@@ -5,17 +5,38 @@ import { AuthService } from '../auth/auth.service';
 import { OnboardingService } from '../onboarding/onboarding.service';
 
 export class AdminService {
-  private static metaFilePath = path.resolve(process.cwd(), 'data', 'courses_meta.json');
-  private static problemsFilePath = path.resolve(process.cwd(), 'data', 'practice_problems.json');
-  private static assignmentsFilePath = path.resolve(process.cwd(), 'data', 'assignments.json');
-  private static liveSessionsFilePath = path.resolve(process.cwd(), 'data', 'live_sessions.json');
-  private static announcementsFilePath = path.resolve(process.cwd(), 'data', 'announcements.json');
-  private static recordingsFilePath = path.resolve(process.cwd(), 'data', 'recordings.json');
-  private static contentOverridesFilePath = path.resolve(process.cwd(), 'data', 'content_overrides.json');
-  private static deletedContentFilePath = path.resolve(process.cwd(), 'data', 'deleted_content.json');
-  private static practiceSubmissionsFilePath = path.resolve(process.cwd(), 'data', 'practice_submissions.json');
-  private static practiceDiscussionsFilePath = path.resolve(process.cwd(), 'data', 'practice_discussions.json');
-  private static studentProgressFilePath = path.resolve(process.cwd(), 'data', 'student_progress.json');
+  public static resolveDataFile(filename: string): string {
+    const candidates = [
+      path.resolve(__dirname, '../../../data', filename),
+      path.resolve(__dirname, '../../../../data', filename),
+      path.resolve(process.cwd(), 'backend', 'data', filename),
+      path.resolve(process.cwd(), 'data', filename),
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) return p;
+    }
+    const backendDataDir = path.resolve(__dirname, '../../../data');
+    if (fs.existsSync(backendDataDir)) {
+      return path.resolve(backendDataDir, filename);
+    }
+    const cwdBackendDataDir = path.resolve(process.cwd(), 'backend', 'data');
+    if (fs.existsSync(cwdBackendDataDir)) {
+      return path.resolve(cwdBackendDataDir, filename);
+    }
+    return path.resolve(process.cwd(), 'data', filename);
+  }
+
+  private static metaFilePath = AdminService.resolveDataFile('courses_meta.json');
+  private static problemsFilePath = AdminService.resolveDataFile('practice_problems.json');
+  private static assignmentsFilePath = AdminService.resolveDataFile('assignments.json');
+  private static liveSessionsFilePath = AdminService.resolveDataFile('live_sessions.json');
+  private static announcementsFilePath = AdminService.resolveDataFile('announcements.json');
+  private static recordingsFilePath = AdminService.resolveDataFile('recordings.json');
+  private static contentOverridesFilePath = AdminService.resolveDataFile('content_overrides.json');
+  private static deletedContentFilePath = AdminService.resolveDataFile('deleted_content.json');
+  private static practiceSubmissionsFilePath = AdminService.resolveDataFile('practice_submissions.json');
+  private static practiceDiscussionsFilePath = AdminService.resolveDataFile('practice_discussions.json');
+  private static studentProgressFilePath = AdminService.resolveDataFile('student_progress.json');
 
   private static loadStudentProgressFromFile(): Map<string, string[]> {
     try {
@@ -1089,6 +1110,9 @@ export class AdminService {
             updatedAt: new Date(),
           };
           AdminService.fallbackCourses.set(String(updated.id), fullUpdated);
+          if (updated.slug) {
+            AdminService.fallbackCourses.set(String(updated.slug), fullUpdated);
+          }
           AdminService.saveMetaToFile();
           return fullUpdated;
         } catch (updateErr) {
@@ -1147,6 +1171,9 @@ export class AdminService {
           updatedAt: new Date(),
         };
         AdminService.fallbackCourses.set(String(data.id), fullUpdated);
+        if ((data as any).slug || fullUpdated.slug) {
+          AdminService.fallbackCourses.set(String((data as any).slug || fullUpdated.slug), fullUpdated);
+        }
         AdminService.saveMetaToFile();
         return fullUpdated;
       }
@@ -1248,6 +1275,9 @@ export class AdminService {
         instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
       };
       AdminService.fallbackCourses.set(String(course.id), fullCourse);
+      if (course.slug) {
+        AdminService.fallbackCourses.set(String(course.slug), fullCourse);
+      }
       AdminService.saveMetaToFile();
       return fullCourse;
     } catch (dbErr) {
@@ -1297,6 +1327,9 @@ export class AdminService {
         updatedAt: new Date(),
       };
       AdminService.fallbackCourses.set(String(fallbackId), fallbackCourse);
+      if (fallbackCourse.slug) {
+        AdminService.fallbackCourses.set(String(fallbackCourse.slug), fallbackCourse);
+      }
       AdminService.saveMetaToFile();
       return fallbackCourse;
     }
@@ -1359,6 +1392,9 @@ export class AdminService {
         updatedAt: new Date(),
       };
       AdminService.fallbackCourses.set(String(id), full);
+      if (full.slug || updated.slug) {
+        AdminService.fallbackCourses.set(String(full.slug || updated.slug), full);
+      }
       AdminService.saveMetaToFile();
       return full;
     } catch {
@@ -1381,6 +1417,9 @@ export class AdminService {
         updatedAt: new Date(),
       };
       AdminService.fallbackCourses.set(String(id), updated);
+      if (updated.slug || existing.slug) {
+        AdminService.fallbackCourses.set(String(updated.slug || existing.slug), updated);
+      }
       AdminService.saveMetaToFile();
       return updated;
     }
@@ -3548,7 +3587,7 @@ export class AdminService {
     }
   }
 
-  private static auditLogsFilePath = path.resolve(process.cwd(), 'data', 'audit_logs.json');
+  private static auditLogsFilePath = AdminService.resolveDataFile('audit_logs.json');
 
   public static logAuditEvent(event: {
     action: string;
