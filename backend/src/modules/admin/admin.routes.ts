@@ -17,6 +17,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     AdminWsBroadcaster.addClient(ws, fastify.prisma);
   });
 
+  fastify.get('/api/v1/admin/ws', { websocket: true }, (connection) => {
+    const ws = (connection as any).socket || connection;
+    AdminWsBroadcaster.addClient(ws, fastify.prisma);
+  });
+
   // Public live sessions route for learner frontend
   fastify.get('/api/v1/live-sessions', async (_request, reply) => {
     reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
