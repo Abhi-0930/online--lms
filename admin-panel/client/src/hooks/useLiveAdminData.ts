@@ -757,41 +757,21 @@ export function useLiveAdminData() {
           try {
             const payload = JSON.parse(event.data);
             if (payload.type === "INITIAL_DATA" || payload.type === "DATA_UPDATE") {
-              if (payload.data?.stats) {
-                updateStats(payload.data.stats);
-              }
-              if (payload.data?.students) {
-                updateStudents(payload.data.students);
-              }
-              if (payload.data?.courses) {
-                updateCourses(payload.data.courses);
-              }
-              if (payload.data?.assignments) {
-                updateAssignments(payload.data.assignments);
-              }
-              if (payload.data?.submissions) {
-                updateSubmissions(payload.data.submissions);
-              }
-              if (payload.data?.content) {
-                updateContent(payload.data.content);
-              }
-              if (payload.data?.practiceProblems) {
-                updatePracticeProblems(payload.data.practiceProblems);
-              }
-              if (payload.data?.liveSessions) {
-                updateLiveSessions(payload.data.liveSessions);
-              }
-              if (payload.data?.recordings && Array.isArray(payload.data.recordings)) {
-                updateRecordings(payload.data.recordings);
-              }
-              if (payload.data?.payments && Array.isArray(payload.data.payments)) {
-                updatePayments(payload.data.payments);
-              }
-              if (payload.data?.instructors) {
-                updateInstructors(payload.data.instructors);
-              }
-              if (payload.data?.auditLogs && Array.isArray(payload.data.auditLogs)) {
-                updateAuditLogs(payload.data.auditLogs);
+              if (payload.data) {
+                if (payload.data.stats) updateStats(payload.data.stats);
+                if (payload.data.students) updateStudents(payload.data.students);
+                if (payload.data.courses) updateCourses(payload.data.courses);
+                if (payload.data.assignments) updateAssignments(payload.data.assignments);
+                if (payload.data.submissions) updateSubmissions(payload.data.submissions);
+                if (payload.data.content) updateContent(payload.data.content);
+                if (payload.data.practiceProblems) updatePracticeProblems(payload.data.practiceProblems);
+                if (payload.data.liveSessions) updateLiveSessions(payload.data.liveSessions);
+                if (payload.data.recordings && Array.isArray(payload.data.recordings)) updateRecordings(payload.data.recordings);
+                if (payload.data.payments && Array.isArray(payload.data.payments)) updatePayments(payload.data.payments);
+                if (payload.data.instructors) updateInstructors(payload.data.instructors);
+                if (payload.data.auditLogs && Array.isArray(payload.data.auditLogs)) updateAuditLogs(payload.data.auditLogs);
+              } else {
+                fetchInitialSnapshot();
               }
               setIsLoading(false);
             }
