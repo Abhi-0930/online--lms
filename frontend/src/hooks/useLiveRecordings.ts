@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { API_BASE_URL } from "@/lib/apiConfig";
+import { API_BASE_URL, WS_BASE_URL } from "@/lib/apiConfig";
 
 export interface RecordingResource {
   id: number | string;
@@ -127,9 +127,7 @@ export function useLiveRecordings() {
 
     const connectWs = () => {
       try {
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const host = window.location.hostname || "localhost";
-        ws = new WebSocket(`${protocol}//${host}:4000/api/v1/ws`);
+        ws = new WebSocket(`${WS_BASE_URL}/api/v1/admin/ws`);
 
         ws.onmessage = (event) => {
           try {
