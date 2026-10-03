@@ -476,7 +476,7 @@ export const SUCCESS_STORIES: SuccessStory[] = [
   {
     id: "story-1",
     name: "Sri Vardhan Anurag",
-    avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80",
+    avatar: "/testimonials/vardhan.png",
     currentRole: "Enterprise AI Orchestrator",
     company: "CloudBridge",
     companyLogo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=100&q=80",
@@ -494,7 +494,7 @@ export const SUCCESS_STORIES: SuccessStory[] = [
   {
     id: "story-2",
     name: "Vishnu Priya",
-    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80",
+    avatar: "/testimonials/vishnu.png",
     currentRole: "Software Developer",
     company: "CDK Global",
     companyLogo: "https://upload.wikimedia.org/wikipedia/commons/4/44/CDK_Global_logo.svg",
@@ -512,7 +512,7 @@ export const SUCCESS_STORIES: SuccessStory[] = [
   {
     id: "story-3",
     name: "Yaswitha Rao",
-    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80",
+    avatar: "/testimonials/yaswitha.png",
     currentRole: "Procurement Specialist",
     company: "Standard Group Companies",
     companyLogo: "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?auto=format&fit=crop&w=100&q=80",
@@ -530,7 +530,7 @@ export const SUCCESS_STORIES: SuccessStory[] = [
   {
     id: "story-4",
     name: "Akshith",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+    avatar: "/testimonials/akshith.png",
     currentRole: "Associate Software Engineer",
     company: "Accenture",
     companyLogo: "https://upload.wikimedia.org/wikipedia/commons/c/cd/Accenture.svg",
@@ -548,7 +548,7 @@ export const SUCCESS_STORIES: SuccessStory[] = [
   {
     id: "story-5",
     name: "Sharon Lee",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    avatar: "/testimonials/sharon.png",
     currentRole: "Associate Engineer",
     company: "Virtusa",
     companyLogo: "https://upload.wikimedia.org/wikipedia/commons/7/7b/Virtusa_logo.svg",
@@ -566,7 +566,7 @@ export const SUCCESS_STORIES: SuccessStory[] = [
   {
     id: "story-6",
     name: "Madhumitha",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
+    avatar: "/testimonials/madhumitha.png",
     currentRole: "Program Analyst Trainee",
     company: "Cognizant",
     companyLogo: "https://upload.wikimedia.org/wikipedia/commons/9/95/Cognizant_logo_2022.svg",
@@ -584,7 +584,7 @@ export const SUCCESS_STORIES: SuccessStory[] = [
   {
     id: "story-7",
     name: "Bala Subramanyam",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+    avatar: "/testimonials/balasubramanyam.png",
     currentRole: "Systems Engineer (Prime)",
     company: "TCS",
     companyLogo: "https://upload.wikimedia.org/wikipedia/commons/b/b1/Tata_Consultancy_Services_Logo.svg",
