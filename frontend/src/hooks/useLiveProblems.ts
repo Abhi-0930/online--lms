@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { API_BASE_URL, WS_BASE_URL } from "@/lib/apiConfig";
+import { sharedWs } from "@/lib/sharedWebSocket";
 
 export interface PublicProblem {
   id: string | number;
@@ -434,58 +435,31 @@ export function useLiveProblems() {
     });
 
     // Setup WebSocket live sync with backend
-    let socket: WebSocket | null = null;
-    let reconnectTimer: any = null;
-
-    const connectWs = () => {
-      if (!isMountedRef.current) return;
-      try {
-        const wsUrl = `${WS_BASE_URL}/ws`;
-        socket = new WebSocket(wsUrl);
-
-        socket.onmessage = (event) => {
+    const unsubscribe = sharedWs.subscribe((msg) => {
+      if (Array.isArray(msg?.data?.practiceProblems) && msg.data.practiceProblems.length > 0) {
+        const mapped = transformProblemList(msg.data.practiceProblems);
+        if (isMountedRef.current) {
+          setProblems(mapped);
           try {
-            const msg = JSON.parse(event.data);
-            if (Array.isArray(msg.data?.practiceProblems) && msg.data.practiceProblems.length > 0) {
-              const mapped = transformProblemList(msg.data.practiceProblems);
-              if (isMountedRef.current) {
-                setProblems(mapped);
-                try {
-                  localStorage.setItem(CACHE_KEY, JSON.stringify(mapped));
-                } catch {}
-              }
-            } else if (
-              msg.type === "DATA_UPDATE" ||
-              msg.type === "INITIAL_DATA" ||
-              msg.type === "PRACTICE_PROBLEM_CREATED" ||
-              msg.type === "PRACTICE_PROBLEM_UPDATED" ||
-              msg.type === "PRACTICE_PROBLEM_DELETED" ||
-              msg.type === "PRACTICE_PROBLEMS_SYNC"
-            ) {
-              fetchProblems();
-            }
+            localStorage.setItem(CACHE_KEY, JSON.stringify(mapped));
           } catch {}
-        };
-
-        socket.onclose = () => {
-          if (isMountedRef.current) {
-            reconnectTimer = setTimeout(connectWs, 3000);
-          }
-        };
-      } catch {}
-    };
-
-    connectWs();
+        }
+      } else if (
+        msg?.type === "DATA_UPDATE" ||
+        msg?.type === "INITIAL_DATA" ||
+        msg?.type === "PRACTICE_PROBLEM_CREATED" ||
+        msg?.type === "PRACTICE_PROBLEM_UPDATED" ||
+        msg?.type === "PRACTICE_PROBLEM_DELETED" ||
+        msg?.type === "PRACTICE_PROBLEMS_SYNC"
+      ) {
+        fetchProblems();
+      }
+    });
 
     return () => {
       isMountedRef.current = false;
       window.removeEventListener("focus", handleFocus);
-      if (socket) {
-        socket.close();
-      }
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-      }
+      unsubscribe();
     };
   }, [fetchProblems, transformProblemList]);
 
