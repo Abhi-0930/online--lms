@@ -1580,12 +1580,13 @@ function ContentView({
             <tbody>
               {filtered.map((item, index) => {
                 const itemId = String(item.id ?? `content_${index}_${item.title}`);
-                const isMenuOpen = openMenuId === itemId;
+                const rowMenuKey = `content_row_menu_${itemId}_${index}`;
+                const isMenuOpen = openMenuId === rowMenuKey;
                 const isItemCompleted = item.status === "Completed";
 
                 return (
                   <tr
-                    key={itemId}
+                    key={rowMenuKey}
                     className="border-b border-[var(--app-line)] last:border-0 hover:bg-[var(--subtle-bg)]"
                   >
                     <td className="px-5 py-4 sm:px-6">
@@ -1637,7 +1638,7 @@ function ContentView({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOpenMenuId((prev) => (prev === itemId ? null : itemId));
+                            setOpenMenuId((prev) => (prev === rowMenuKey ? null : rowMenuKey));
                           }}
                           className={cn(
                             "icon-button transition-colors",
