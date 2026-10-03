@@ -15,6 +15,44 @@ export class AdminService {
   private static deletedContentFilePath = path.resolve(process.cwd(), 'data', 'deleted_content.json');
   private static practiceSubmissionsFilePath = path.resolve(process.cwd(), 'data', 'practice_submissions.json');
   private static practiceDiscussionsFilePath = path.resolve(process.cwd(), 'data', 'practice_discussions.json');
+  private static studentProgressFilePath = path.resolve(process.cwd(), 'data', 'student_progress.json');
+
+  private static loadStudentProgressFromFile(): Map<string, string[]> {
+    try {
+      if (fs.existsSync(AdminService.studentProgressFilePath)) {
+        const raw = fs.readFileSync(AdminService.studentProgressFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          const map = new Map<string, string[]>();
+          for (const [k, v] of Object.entries(parsed)) {
+            if (Array.isArray(v)) {
+              map.set(String(k), v.map(String));
+            }
+          }
+          return map;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load student progress from file:', err);
+    }
+    return new Map<string, string[]>();
+  }
+
+  public static saveStudentProgressToFile(): void {
+    try {
+      const dir = path.dirname(AdminService.studentProgressFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const obj: Record<string, string[]> = {};
+      for (const [k, v] of AdminService.fallbackStudentProgress.entries()) {
+        obj[k] = v;
+      }
+      fs.writeFileSync(AdminService.studentProgressFilePath, JSON.stringify(obj, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save student progress to file:', err);
+    }
+  }
 
   private static loadPracticeDiscussionsFromFile(): Map<string, any> {
     try {
@@ -362,6 +400,7 @@ export class AdminService {
   public static fallbackSubmissions = new Map<string, any>();
   public static fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
   public static fallbackPracticeDiscussions = AdminService.loadPracticeDiscussionsFromFile();
+  public static fallbackStudentProgress = AdminService.loadStudentProgressFromFile();
 
   constructor(private prisma: PrismaClient) {}
 
@@ -3625,6 +3664,282 @@ export class AdminService {
     });
 
     return result;
+  }
+
+  async getStudentCourseProgress(studentIdOrEmail: string, courseIdOrSlug: string) {
+    const identifier = String(studentIdOrEmail || '').trim().toLowerCase();
+    let user: any = null;
+    try {
+      user = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: studentIdOrEmail },
+            { email: identifier },
+          ],
+        },
+        include: {
+          enrollments: {
+            include: { course: true },
+          },
+        },
+      });
+    } catch {}
+
+    if (!user) {
+      user = AuthService.fallbackUsers.get(identifier) ||
+        Array.from(AuthService.fallbackUsers.values()).find(
+          (u) => String(u.id) === studentIdOrEmail || u.email.toLowerCase() === identifier
+        );
+    }
+
+    if (!user) {
+      throw new Error(`Student not found: ${studentIdOrEmail}`);
+    }
+
+    const courseIdentifier = String(courseIdOrSlug || '').trim().toLowerCase();
+    let dbCourse: any = null;
+    try {
+      dbCourse = await this.prisma.course.findFirst({
+        where: {
+          OR: [
+            { id: courseIdOrSlug },
+            { slug: courseIdentifier },
+          ],
+        },
+        include: {
+          modules: {
+            include: {
+              lessons: true,
+            },
+            orderBy: { position: 'asc' },
+          },
+        },
+      });
+    } catch {}
+
+    const fallbackCourse = AdminService.fallbackCourses.get(courseIdOrSlug) ||
+      Array.from(AdminService.fallbackCourses.values()).find(
+        (c) => String(c.id).toLowerCase() === courseIdentifier || String(c.slug || '').toLowerCase() === courseIdentifier
+      );
+
+    const course = dbCourse || fallbackCourse;
+    if (!course) {
+      throw new Error(`Course not found: ${courseIdOrSlug}`);
+    }
+
+    const modules = (course.modules || fallbackCourse?.modules || []).map((mod: any, mIdx: number) => {
+      let lessonsList: any[] = [];
+      if (Array.isArray(mod.lessons) && mod.lessons.length > 0) {
+        lessonsList = mod.lessons.map((l: any, lIdx: number) => ({
+          id: String(l.id || `mod_${mod.id || mIdx}_les_${lIdx}`),
+          title: l.title || `Lesson ${lIdx + 1}`,
+          type: l.type || 'Video',
+          duration: l.durationSeconds ? `${Math.round(l.durationSeconds / 60)} mins` : (l.duration || '15 mins'),
+        }));
+      } else if (Array.isArray(mod.topics) && mod.topics.length > 0) {
+        for (const t of mod.topics) {
+          if (Array.isArray(t.subtopics) && t.subtopics.length > 0) {
+            for (const s of t.subtopics) {
+              lessonsList.push({
+                id: String(s.id || `sub_${s.title}`),
+                title: s.title,
+                type: s.type || 'Video',
+                duration: s.duration || '15 mins',
+              });
+            }
+          } else {
+            lessonsList.push({
+              id: String(t.id || `top_${t.title}`),
+              title: t.title,
+              type: t.type || 'Video',
+              duration: t.duration || '15 mins',
+            });
+          }
+        }
+      } else {
+        const count = Number(mod.lessonsCount || 4);
+        for (let i = 0; i < count; i++) {
+          lessonsList.push({
+            id: `mod_${mod.id || mIdx}_les_${i + 1}`,
+            title: `${mod.title || 'Module'} - Lesson ${i + 1}`,
+            type: 'Video',
+            duration: '15 mins',
+          });
+        }
+      }
+
+      return {
+        id: String(mod.id || `mod_${mIdx}`),
+        title: mod.title || `Module ${mIdx + 1}`,
+        description: mod.description || '',
+        lessons: lessonsList,
+      };
+    });
+
+    const allLessonIds: string[] = [];
+    modules.forEach((m: any) => {
+      m.lessons.forEach((l: any) => {
+        allLessonIds.push(l.id);
+      });
+    });
+
+    const progressKey = `${user.id || user.email}_${course.id || course.slug}`;
+    const progressKeyEmail = `${user.email.toLowerCase()}_${course.id || course.slug}`;
+    const fallbackCompleted = AdminService.fallbackStudentProgress.get(progressKey) ||
+      AdminService.fallbackStudentProgress.get(progressKeyEmail) ||
+      [];
+
+    let dbCompletedIds: string[] = [];
+    try {
+      const dbProgresses = await this.prisma.lessonProgress.findMany({
+        where: {
+          userId: user.id,
+          isCompleted: true,
+        },
+        select: { lessonId: true },
+      });
+      dbCompletedIds = dbProgresses.map((p) => String(p.lessonId));
+    } catch {}
+
+    const completedSet = new Set<string>([...dbCompletedIds, ...fallbackCompleted]);
+
+    let completedCount = 0;
+    const enrichedModules = modules.map((m: any) => {
+      const enrichedLessons = m.lessons.map((l: any) => {
+        const isCompleted = completedSet.has(l.id);
+        if (isCompleted) completedCount++;
+        return {
+          ...l,
+          isCompleted,
+        };
+      });
+      const moduleCompletedCount = enrichedLessons.filter((l: any) => l.isCompleted).length;
+      return {
+        ...m,
+        lessons: enrichedLessons,
+        completedLessonsCount: moduleCompletedCount,
+        totalLessonsCount: enrichedLessons.length,
+        isModuleComplete: enrichedLessons.length > 0 && moduleCompletedCount === enrichedLessons.length,
+      };
+    });
+
+    const totalLessons = allLessonIds.length;
+    const progressPct = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+
+    return {
+      student: {
+        id: user.id || user.email,
+        name: user.fullName || user.name || user.email.split('@')[0],
+        email: user.email,
+      },
+      course: {
+        id: course.id,
+        title: course.title,
+        slug: course.slug,
+        subtitle: course.subtitle || course.track || '',
+        coverImageUrl: course.coverImageUrl || course.thumbnailPreview || null,
+      },
+      totalLessons,
+      completedCount,
+      progressPct,
+      completedLessonIds: Array.from(completedSet).filter((id) => allLessonIds.includes(id)),
+      modules: enrichedModules,
+    };
+  }
+
+  async updateStudentCourseProgress(
+    studentIdOrEmail: string,
+    courseIdOrSlug: string,
+    payload: { completedLessonIds: string[] }
+  ) {
+    const completedLessonIds = Array.isArray(payload?.completedLessonIds)
+      ? payload.completedLessonIds.map(String)
+      : [];
+
+    const current = await this.getStudentCourseProgress(studentIdOrEmail, courseIdOrSlug);
+    const userId = current.student.id;
+    const userEmail = current.student.email;
+    const courseId = current.course.id;
+
+    const progressKey = `${userId}_${courseId}`;
+    const progressKeyEmail = `${userEmail.toLowerCase()}_${courseId}`;
+
+    AdminService.fallbackStudentProgress.set(progressKey, completedLessonIds);
+    AdminService.fallbackStudentProgress.set(progressKeyEmail, completedLessonIds);
+    AdminService.saveStudentProgressToFile();
+
+    const totalLessons = current.totalLessons;
+    const completedCount = completedLessonIds.length;
+    const progressPct = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+
+    try {
+      const allModuleLessons: any[] = [];
+      current.modules.forEach((m: any) => allModuleLessons.push(...m.lessons));
+
+      for (const l of allModuleLessons) {
+        const isCompleted = completedLessonIds.includes(l.id);
+        try {
+          await this.prisma.lessonProgress.upsert({
+            where: {
+              userId_lessonId: {
+                userId,
+                lessonId: l.id,
+              },
+            },
+            update: {
+              isCompleted,
+              completedAt: isCompleted ? new Date() : null,
+            },
+            create: {
+              userId,
+              lessonId: l.id,
+              isCompleted,
+              completedAt: isCompleted ? new Date() : null,
+            },
+          });
+        } catch {}
+      }
+
+      await this.prisma.enrollment.upsert({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId,
+          },
+        },
+        update: {
+          progressPct,
+          status: progressPct === 100 ? 'COMPLETED' : 'ACTIVE',
+          completedAt: progressPct === 100 ? new Date() : null,
+        },
+        create: {
+          userId,
+          courseId,
+          status: progressPct === 100 ? 'COMPLETED' : 'ACTIVE',
+          progressPct,
+          completedAt: progressPct === 100 ? new Date() : null,
+        },
+      });
+    } catch (err) {
+      console.warn('DB update for student progress had minor error, fallback saved:', err);
+    }
+
+    try {
+      AdminService.logAuditEvent({
+        action: 'Student progress updated',
+        entity: `${current.course.title}`,
+        actor: 'Admin',
+        details: `Updated lesson checklist for ${userEmail}: ${completedCount}/${totalLessons} completed (${progressPct}%).`,
+      });
+    } catch {}
+
+    return {
+      success: true,
+      progressPct,
+      completedCount,
+      totalLessons,
+      completedLessonIds,
+    };
   }
 }
 
