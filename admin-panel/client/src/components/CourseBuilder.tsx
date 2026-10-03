@@ -1135,68 +1135,75 @@ export default function CourseBuilder({
     return DEFAULT_COURSE_FORM_DATA;
   });
 
+  const lastLoadedCourseIdRef = useRef<string | null | undefined>(initialData?.id);
+
   useEffect(() => {
     if (initialData) {
-      setFormData({
-        id: initialData.id,
-        title: initialData.title || "",
-        subtitle: initialData.subtitle || "",
-        description: initialData.description || "",
-        language: initialData.language || "English",
-        category: initialData.category || "Development",
-        level: initialData.level || "Beginner",
-        thumbnail: initialData.thumbnail || null,
-        thumbnailPreview: initialData.thumbnailPreview || null,
-        courseType: initialData.courseType || "Paid",
-        price: initialData.price !== undefined ? String(initialData.price) : "18,999",
-        discountPrice: initialData.discountPrice !== undefined ? String(initialData.discountPrice) : "",
-        currency: initialData.currency || "INR ₹",
-        accessType: initialData.accessType || "Lifetime Access",
-        durationCycleMode: initialData.durationCycleMode || "Date Range",
-        startDate: initialData.startDate || new Date().toISOString().split("T")[0],
-        endDate:
-          initialData.endDate ||
-          new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split("T")[0],
-        durationValue: initialData.durationValue || "90",
-        durationUnit: initialData.durationUnit || "Days",
-        subscriptionCycle: initialData.subscriptionCycle || "Monthly",
-        enrollmentLimit: initialData.enrollmentLimit || "Unlimited",
-        courseVisibility: initialData.courseVisibility || "Public",
-        modules: initialData.modules || [],
-        instructorName:
-          initialData.instructorName ||
-          (initialData as any)?.instructor ||
-          "",
-        skillsCovered:
-          initialData.skillsCovered || initialData.tags || [],
-        prerequisites:
-          initialData.prerequisites !== undefined
-            ? initialData.prerequisites
-            : (Array.isArray(initialData.requirements)
-              ? initialData.requirements.join("\n")
-              : initialData.requirements || ""),
-        estimatedDuration: initialData.estimatedDuration || "12 Weeks",
-        certificateAvailable:
-          initialData.certificateAvailable !== undefined
-            ? initialData.certificateAvailable
-            : true,
-        courseStatus: initialData.courseStatus || "Published",
-        seoTitle: initialData.seoTitle || "",
-        seoDescription: initialData.seoDescription || "",
-        targetAudience:
-          initialData.targetAudience !== undefined
-            ? initialData.targetAudience
-            : (Array.isArray(initialData.targetLearners)
-              ? initialData.targetLearners.join(", ")
-              : initialData.targetLearners || ""),
-        learningOutcomes: initialData.learningOutcomes || [],
-        requirements: initialData.requirements || [],
-        targetLearners: initialData.targetLearners || [],
-        tags: initialData.tags || [],
-      });
-      setCurrentStep(1);
+      if (lastLoadedCourseIdRef.current !== initialData.id) {
+        lastLoadedCourseIdRef.current = initialData.id;
+        setFormData({
+          id: initialData.id,
+          title: initialData.title || "",
+          subtitle: initialData.subtitle || "",
+          description: initialData.description || "",
+          language: initialData.language || "English",
+          category: initialData.category || "Development",
+          level: initialData.level || "Beginner",
+          thumbnail: initialData.thumbnail || null,
+          thumbnailPreview: initialData.thumbnailPreview || null,
+          courseType: initialData.courseType || "Paid",
+          price: initialData.price !== undefined ? String(initialData.price) : "18,999",
+          discountPrice: initialData.discountPrice !== undefined ? String(initialData.discountPrice) : "",
+          currency: initialData.currency || "INR ₹",
+          accessType: initialData.accessType || "Lifetime Access",
+          durationCycleMode: initialData.durationCycleMode || "Date Range",
+          startDate: initialData.startDate || new Date().toISOString().split("T")[0],
+          endDate:
+            initialData.endDate ||
+            new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+              .toISOString()
+              .split("T")[0],
+          durationValue: initialData.durationValue || "90",
+          durationUnit: initialData.durationUnit || "Days",
+          subscriptionCycle: initialData.subscriptionCycle || "Monthly",
+          enrollmentLimit: initialData.enrollmentLimit || "Unlimited",
+          courseVisibility: initialData.courseVisibility || "Public",
+          modules: initialData.modules || [],
+          instructorName:
+            initialData.instructorName ||
+            (initialData as any)?.instructor ||
+            "",
+          skillsCovered:
+            initialData.skillsCovered || initialData.tags || [],
+          prerequisites:
+            initialData.prerequisites !== undefined
+              ? initialData.prerequisites
+              : (Array.isArray(initialData.requirements)
+                ? initialData.requirements.join("\n")
+                : initialData.requirements || ""),
+          estimatedDuration: initialData.estimatedDuration || "12 Weeks",
+          certificateAvailable:
+            initialData.certificateAvailable !== undefined
+              ? initialData.certificateAvailable
+              : true,
+          courseStatus: initialData.courseStatus || "Published",
+          seoTitle: initialData.seoTitle || "",
+          seoDescription: initialData.seoDescription || "",
+          targetAudience:
+            initialData.targetAudience !== undefined
+              ? initialData.targetAudience
+              : (Array.isArray(initialData.targetLearners)
+                ? initialData.targetLearners.join(", ")
+                : initialData.targetLearners || ""),
+          learningOutcomes: initialData.learningOutcomes || [],
+          requirements: initialData.requirements || [],
+          targetLearners: initialData.targetLearners || [],
+          tags: initialData.tags || [],
+        });
+        setCurrentStep(1);
+      }
+    } else {
+      lastLoadedCourseIdRef.current = null;
     }
   }, [initialData]);
 
