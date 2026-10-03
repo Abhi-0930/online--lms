@@ -4287,6 +4287,8 @@ function RecordingsView({
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
   const [previewRecording, setPreviewRecording] = useState<RecordingData | null>(null);
+  const [deleteConfirmRecording, setDeleteConfirmRecording] = useState<RecordingData | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const rows = recordings;
   const [recordingDraft, setRecordingDraft] = useState(() => getDraft("upload_recording"));
 
@@ -4503,7 +4505,7 @@ function RecordingsView({
                     {onDeleteRecording && (
                       <button
                         type="button"
-                        onClick={() => onDeleteRecording(item.id!)}
+                        onClick={() => setDeleteConfirmRecording(item)}
                         className="text-[10px] font-semibold text-rose-500 hover:underline cursor-pointer"
                       >
                         Delete
@@ -4651,6 +4653,29 @@ function RecordingsView({
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <CustomConfirmDialog
+        isOpen={deleteConfirmRecording !== null}
+        title="Delete Class Recording"
+        description={`Are you sure you want to delete "${deleteConfirmRecording?.title || "this recording"}"? It will be permanently deleted and removed from all learner dashboards and on-demand archives.`}
+        confirmText={isDeleting ? "Deleting..." : "Delete"}
+        variant="destructive"
+        onConfirm={async () => {
+          if (deleteConfirmRecording?.id && onDeleteRecording) {
+            setIsDeleting(true);
+            try {
+              await onDeleteRecording(deleteConfirmRecording.id);
+            } finally {
+              setIsDeleting(false);
+              setDeleteConfirmRecording(null);
+            }
+          }
+        }}
+        onClose={() => {
+          if (!isDeleting) setDeleteConfirmRecording(null);
+        }}
+      />
     </div>
   );
 }
