@@ -120,9 +120,13 @@ export class CoursesService {
       courseMap.set(String(c.id), merged);
     }
 
-    for (const [id, meta] of AdminService.fallbackCourses.entries()) {
-      if (!courseMap.has(String(id))) {
-        courseMap.set(String(id), meta);
+    for (const meta of AdminService.fallbackCourses.values()) {
+      const canonicalId = String(meta.id || '');
+      const metaSlug = String(meta.slug || '');
+      const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
+        (metaSlug && Array.from(courseMap.values()).some((c: any) => c.slug === metaSlug || c.id === canonicalId));
+      if (!alreadyExists && canonicalId) {
+        courseMap.set(canonicalId, meta);
       }
     }
 
@@ -289,9 +293,6 @@ export class CoursesService {
       updatedAt: new Date(),
     };
     AdminService.fallbackCourses.set(String(id), full);
-    if (full.slug || course?.slug) {
-      AdminService.fallbackCourses.set(String(full.slug || course?.slug), full);
-    }
     AdminService.saveMetaToFile();
 
     logger.info({ courseId: id }, 'Course updated');
