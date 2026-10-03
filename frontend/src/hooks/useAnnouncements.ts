@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { API_BASE_URL } from "@/lib/apiConfig";
+import { API_BASE_URL, WS_BASE_URL } from "@/lib/apiConfig";
 
 export interface AnnouncementItem {
   id: string;
@@ -112,9 +112,7 @@ export function useAnnouncements() {
     const connectWs = () => {
       if (!isMountedRef.current) return;
       try {
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const host = window.location.hostname || "localhost";
-        const wsUrl = `${protocol}//${host}:4000/api/v1/admin/ws`;
+        const wsUrl = `${WS_BASE_URL}/api/v1/admin/ws`;
 
         socket = new WebSocket(wsUrl);
 
