@@ -70,12 +70,16 @@ import {
   LineChart,
   ListChecks,
   Loader2,
+  Lock,
   LockKeyhole,
   LogOut,
+  Maximize,
   Menu,
+  MessageSquare,
   MessageCircle,
   MoreHorizontal,
   Moon,
+  Pause,
   Play,
   PlaySquare,
   Plus,
@@ -2886,7 +2890,7 @@ function CourseDetail({ courseId }: { courseId: string }) {
                               : [{ id: top.id, title: top.title || `Lesson ${tIdx + 1}`, duration: "15 min", type: "Video" }]
                             ).map((sub: any, sIdx: number) => (
                               <Link
-                                href={enrolled ? getSecureHref("/learn") : createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
+                                href={enrolled ? createSecureUrl("/learn", { courseId: course.id, lessonId: sub.id }) : createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
                                 key={sub.id || sIdx}
                                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-[#f0f3fb] dark:hover:bg-white/5 transition"
                               >
@@ -2910,7 +2914,7 @@ function CourseDetail({ courseId }: { courseId: string }) {
                       ) : (
                         Array.from({ length: Math.min(module.lessons || 4, 6) }).map((_, lessonIndex) => (
                           <Link
-                            href={lessonIndex < (module.complete || 0) || enrolled ? getSecureHref("/learn") : createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
+                            href={lessonIndex < (module.complete || 0) || enrolled ? createSecureUrl("/learn", { courseId: course.id, lessonId: `mod_${module.id || 0}_les_${lessonIndex}` }) : createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
                             key={lessonIndex}
                             className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm hover:bg-[#f0f3fb] dark:hover:bg-white/5"
                           >
@@ -3680,84 +3684,721 @@ function MyCourseCard({ course }: { course: LiveCourseItem }) {
   );
 }
 
-function PlayerPage() {
-  const { assignments } = useAssignments();
+function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string; initialLessonId?: string }) {
+  const { courses } = useLiveCourses();
+  const { recordings } = useLiveRecordings();
   const { problems: liveProblems } = useLiveProblems();
-  const [tab, setTab] = useState("Notes");
-  const [completed, setCompleted] = useState(false);
-  const [moduleOpen, setModuleOpen] = useState(1);
-  const [note, setNote] = useState("");
-  const lessons = ["Welcome & how to think in patterns", "Arrays: the mental model", "Sliding Window Patterns", "Two pointers: a visual guide", "Stacks in the real world", "Checkpoint: arrays & strings"];
+  const { assignments } = useAssignments();
+  const { enrollments } = useEnrollments();
+  const { user } = useAuth();
+
+  const [tab, setTab] = useState<"Notes" | "Resources" | "Practice problems" | "Assignments" | "Discussion">("Notes");
+  const [activeLessonId, setActiveLessonId] = useState<string>(initialLessonId || "");
+  const [moduleOpenMap, setModuleOpenMap] = useState<Record<number, boolean>>({ 0: true, 1: true, 2: false, 3: false });
+  const [studentNoteInput, setStudentNoteInput] = useState("");
+  const [savedNotes, setSavedNotes] = useState<Array<{ id: string; text: string; createdAt: string }>>([]);
+  const [discussionInput, setDiscussionInput] = useState("");
+  const [discussions, setDiscussions] = useState<Array<{ id: string; author: string; role: string; avatar?: string; text: string; time: string; likes: number; hasLiked?: boolean }>>([]);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // 1. Resolve Active Course
+  const activeCourse = useMemo(() => {
+    if (courseId) {
+      const match = courses.find((c) => c.id === courseId || c.slug === courseId);
+      if (match) return match;
+    }
+    if (enrollments && enrollments.length > 0) {
+      const enrolledCourseId = enrollments[0].courseId || enrollments[0].course?.id;
+      const match = courses.find((c) => c.id === enrolledCourseId);
+      if (match) return match;
+    }
+    if (courses && courses.length > 0) {
+      return courses[0];
+    }
+    return {
+      id: "course_dsa_foundations",
+      slug: "dsa-foundations",
+      title: "DSA Foundations",
+      category: "DSA",
+      modules: [
+        {
+          id: "mod_0",
+          title: "Foundations",
+          topics: [
+            {
+              id: "top_0",
+              title: "Basics",
+              subtopics: [
+                { id: "les_0_1", title: "Introduction & Complexity Analysis", duration: "10 mins", type: "Video" },
+                { id: "les_0_2", title: "Asymptotic Notation (Big-O)", duration: "15 mins", type: "Video" },
+                { id: "les_0_3", title: "Arrays & Memory Architecture", duration: "12 mins", type: "Video" },
+                { id: "les_0_4", title: "Basic Sorting & Searching", duration: "18 mins", type: "Video" },
+                { id: "les_0_5", title: "Recursion Fundamentals", duration: "14 mins", type: "Video" },
+                { id: "les_0_6", title: "Foundations Checkpoint Quiz", duration: "10 mins", type: "Quiz" },
+              ],
+            },
+          ],
+        },
+        {
+          id: "mod_1",
+          title: "Sliding Window Patterns",
+          topics: [
+            {
+              id: "top_1",
+              title: "Techniques",
+              subtopics: [
+                { id: "les_1_1", title: "Welcome & how to think in patterns", duration: "10m", type: "Video" },
+                { id: "les_1_2", title: "Arrays: the mental model", duration: "13m", type: "Video" },
+                { id: "les_1_3", title: "Sliding Window Patterns", duration: "15m", type: "Video" },
+                { id: "les_1_4", title: "Two pointers: a visual guide", duration: "19m", type: "Video" },
+                { id: "les_1_5", title: "Stacks in the real world", duration: "22m", type: "Video" },
+                { id: "les_1_6", title: "Checkpoint: arrays & strings", duration: "25m", type: "Quiz" },
+              ],
+            },
+          ],
+        },
+        {
+          id: "mod_2",
+          title: "Stacks & Queues",
+          topics: [
+            {
+              id: "top_2",
+              title: "Data Structures",
+              subtopics: [
+                { id: "les_2_1", title: "Monotonic Stack Patterns", duration: "16 mins", type: "Video" },
+                { id: "les_2_2", title: "Queue Implementations & Deques", duration: "14 mins", type: "Video" },
+                { id: "les_2_3", title: "Next Greater Element Mastery", duration: "20 mins", type: "Video" },
+                { id: "les_2_4", title: "Sliding Window Maximum with Deque", duration: "22 mins", type: "Video" },
+                { id: "les_2_5", title: "Stack Interview Problems", duration: "18 mins", type: "Video" },
+                { id: "les_2_6", title: "Stacks Assessment", duration: "15 mins", type: "Quiz" },
+              ],
+            },
+          ],
+        },
+        {
+          id: "mod_3",
+          title: "Trees & Graphs",
+          topics: [
+            {
+              id: "top_3",
+              title: "Non-Linear Structures",
+              subtopics: [
+                { id: "les_3_1", title: "Binary Tree Traversals (BFS & DFS)", duration: "18 mins", type: "Video" },
+                { id: "les_3_2", title: "Lowest Common Ancestor & Diameter", duration: "20 mins", type: "Video" },
+                { id: "les_3_3", title: "Binary Search Trees (BST) Properties", duration: "15 mins", type: "Video" },
+                { id: "les_3_4", title: "Graph Representation & Adjacency Lists", duration: "16 mins", type: "Video" },
+                { id: "les_3_5", title: "Dijkstra's Algorithm & Shortest Paths", duration: "25 mins", type: "Video" },
+                { id: "les_3_6", title: "Trees & Graphs Capstone", duration: "30 mins", type: "Assignment" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+  }, [courseId, courses, enrollments]);
+
+  // 2. Normalized Curriculum with Recording Matches & Instructor Completion Status
+  const normalizedModules = useMemo(() => {
+    const rawMods = Array.isArray(activeCourse?.modules) ? activeCourse.modules : [];
+    if (rawMods.length === 0) return [];
+
+    return rawMods.map((mod: any, mIdx: number) => {
+      const modTitle = mod.title || `Module ${mIdx + 1}`;
+      const modId = String(mod.id || `mod_${mIdx}`);
+
+      let rawLessons: any[] = [];
+      if (Array.isArray(mod.topics) && mod.topics.length > 0) {
+        mod.topics.forEach((top: any, tIdx: number) => {
+          if (Array.isArray(top.subtopics) && top.subtopics.length > 0) {
+            top.subtopics.forEach((sub: any, sIdx: number) => {
+              rawLessons.push({
+                ...sub,
+                topicTitle: top.title,
+                subtopicIndex: sIdx,
+                topicIndex: tIdx,
+              });
+            });
+          } else {
+            rawLessons.push({
+              id: top.id || `top_${modId}_${tIdx}`,
+              title: top.title || `Topic ${tIdx + 1}`,
+              duration: top.duration || "15 mins",
+              type: top.type || "Video",
+              topicTitle: top.title,
+            });
+          }
+        });
+      } else if (Array.isArray(mod.lessons) && mod.lessons.length > 0) {
+        rawLessons = [...mod.lessons];
+      } else {
+        rawLessons = [
+          { id: `${modId}_les_0`, title: `${modTitle} Overview`, duration: "10 mins", type: "Video" },
+          { id: `${modId}_les_1`, title: `${modTitle} Deep Dive`, duration: "15 mins", type: "Video" },
+          { id: `${modId}_les_2`, title: `${modTitle} Checkpoint`, duration: "12 mins", type: "Quiz" },
+        ];
+      }
+
+      const lessons = rawLessons.map((les: any, lIdx: number) => {
+        const lesId = String(les.id || `mod_${mIdx}_les_${lIdx}`);
+        const lesTitle = les.title || `Lesson ${lIdx + 1}`;
+
+        // Match recording by course and topic/title/module
+        const matchingRecording = recordings.find((r) => {
+          if (!r) return false;
+          const courseMatches =
+            (r.courseId && (r.courseId === activeCourse?.id || r.courseId === activeCourse?.slug)) ||
+            (r.course && activeCourse?.title && r.course.toLowerCase().trim() === activeCourse.title.toLowerCase().trim());
+          if (!courseMatches) return false;
+
+          const titleMatches =
+            (r.topic && r.topic.toLowerCase().trim() === lesTitle.toLowerCase().trim()) ||
+            (r.title && (r.title.toLowerCase().includes(lesTitle.toLowerCase()) || lesTitle.toLowerCase().includes(r.title.toLowerCase()))) ||
+            (r.module && r.module.toLowerCase().trim() === modTitle.toLowerCase().trim());
+
+          return Boolean(titleMatches);
+        });
+
+        const hasRecordingVideo = Boolean(matchingRecording?.videoUrl || les.videoUrl);
+        const isExplicitlyCompleted =
+          les.isCompleted === true ||
+          les.isCompletedByInstructor === true ||
+          les.status === "Completed" ||
+          mod.isCompleted === true ||
+          mod.status === "Completed";
+
+        const isCompletedByInstructor = Boolean(
+          hasRecordingVideo ||
+          isExplicitlyCompleted ||
+          (mIdx === 0) ||
+          (mIdx === 1 && lIdx < 5)
+        );
+
+        const videoUrl = matchingRecording?.videoUrl || les.videoUrl;
+        const durationStr = matchingRecording?.duration || les.duration || `${10 + ((lIdx * 3) % 15)}m`;
+
+        const resources = Array.isArray(matchingRecording?.resources) && matchingRecording.resources.length > 0
+          ? matchingRecording.resources
+          : Array.isArray(les.resources) && les.resources.length > 0
+          ? les.resources
+          : [
+              { name: `${lesTitle.replace(/[^a-zA-Z0-9 ]/g, "")}_CheatSheet.pdf`, size: "2.4 MB", type: "PDF" },
+              { name: "Starter_Code_Template.cpp", size: "14 KB", type: "Code" },
+              { name: "Slide_Deck_Annotated.pdf", size: "4.8 MB", type: "PDF" },
+            ];
+
+        return {
+          id: lesId,
+          uniqueKey: `mod_${mIdx}_les_${lIdx}_${lesId}`,
+          title: lesTitle,
+          duration: durationStr,
+          type: les.type || "Video",
+          moduleIndex: mIdx,
+          moduleTitle: modTitle,
+          lessonIndex: lIdx,
+          videoUrl,
+          isCompletedByInstructor,
+          recording: matchingRecording,
+          resources,
+          description: matchingRecording?.description || les.description || `In this session, we break down ${lesTitle}. Build the mental model step-by-step with real-world examples, visual invariant tracing, and pattern analysis.`,
+        };
+      });
+
+      return {
+        id: modId,
+        title: modTitle,
+        moduleIndex: mIdx,
+        lessons,
+        totalCount: lessons.length,
+      };
+    });
+  }, [activeCourse, recordings]);
+
+  const allLessons = useMemo(() => {
+    return normalizedModules.flatMap((m) => m.lessons);
+  }, [normalizedModules]);
+
+  // 3. Active Lesson Resolution
+  const activeLesson = useMemo(() => {
+    if (activeLessonId) {
+      const match = allLessons.find((l) => l.id === activeLessonId || l.uniqueKey === activeLessonId);
+      if (match) return match;
+    }
+    const defaultLesson = allLessons.find((l) => l.isCompletedByInstructor && l.moduleIndex === 1 && l.lessonIndex === 2) ||
+      allLessons.find((l) => l.isCompletedByInstructor) ||
+      allLessons[0] ||
+      null;
+    return defaultLesson;
+  }, [activeLessonId, allLessons]);
+
+  // 4. Student Progress Persistence
+  const courseStorageKey = useMemo(() => `lms_completed_lessons_${activeCourse?.id || "default"}`, [activeCourse?.id]);
+
+  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set<string>();
+    try {
+      const saved = localStorage.getItem(`lms_completed_lessons_${courseId || "default"}`);
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr)) return new Set(arr);
+      }
+    } catch {}
+    return new Set<string>(["les_0_1", "les_0_2", "les_0_3", "les_0_4", "les_0_5", "les_0_6", "les_1_1", "les_1_2"]);
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !courseStorageKey) return;
+    try {
+      const saved = localStorage.getItem(courseStorageKey);
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr)) setCompletedLessonIds(new Set(arr));
+      } else {
+        const initial = new Set<string>(["les_0_1", "les_0_2", "les_0_3", "les_0_4", "les_0_5", "les_0_6", "les_1_1", "les_1_2"]);
+        setCompletedLessonIds(initial);
+      }
+    } catch {}
+  }, [courseStorageKey]);
+
+  // Completion Percentage calculation for sidebar header
+  const completionStats = useMemo(() => {
+    const total = allLessons.length;
+    if (total === 0) return { count: 0, total: 0, percentage: 68 };
+    const count = allLessons.filter((l) => completedLessonIds.has(l.id) || completedLessonIds.has(l.uniqueKey)).length;
+    const percentage = Math.round((count / total) * 100);
+    return { count, total, percentage: Math.min(100, Math.max(0, percentage)) };
+  }, [allLessons, completedLessonIds]);
+
+  useEffect(() => {
+    if (activeLesson) {
+      setModuleOpenMap((prev) => ({
+        ...prev,
+        [activeLesson.moduleIndex]: true,
+      }));
+    }
+  }, [activeLesson]);
+
+  // Load private student notes for current lesson
+  useEffect(() => {
+    if (typeof window === "undefined" || !activeLesson) return;
+    try {
+      const noteKey = `lms_student_notes_${activeLesson.id}`;
+      const saved = localStorage.getItem(noteKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setSavedNotes(parsed);
+          return;
+        }
+      }
+      setSavedNotes([]);
+    } catch {
+      setSavedNotes([]);
+    }
+  }, [activeLesson?.id]);
+
+  // Load discussions for current lesson
+  useEffect(() => {
+    if (typeof window === "undefined" || !activeLesson) return;
+    try {
+      const discKey = `lms_lesson_discussions_${activeLesson.id}`;
+      const saved = localStorage.getItem(discKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setDiscussions(parsed);
+          return;
+        }
+      }
+      setDiscussions([
+        {
+          id: "disc_1",
+          author: "Arjun Verma",
+          role: "Learner",
+          text: "Why do we shrink the window while the condition is invalid instead of restarting from right? The sliding window invariant makes this O(N)!",
+          time: "2 hours ago",
+          likes: 5,
+          hasLiked: false,
+        },
+        {
+          id: "disc_2",
+          author: "Platform Mentor",
+          role: "Instructor",
+          text: "Spot on Arjun! Because the left pointer only moves forward, each element enters and leaves the window at most once, giving linear O(2N) = O(N) amortized time.",
+          time: "1 hour ago",
+          likes: 9,
+          hasLiked: true,
+        },
+      ]);
+    } catch {
+      setDiscussions([]);
+    }
+  }, [activeLesson?.id]);
+
+  const isLessonCompletedByStudent = activeLesson
+    ? completedLessonIds.has(activeLesson.id) || completedLessonIds.has(activeLesson.uniqueKey)
+    : false;
+
+  const handleToggleComplete = () => {
+    if (!activeLesson) return;
+    const targetKey = activeLesson.id;
+    const updated = new Set(completedLessonIds);
+    if (updated.has(targetKey)) {
+      updated.delete(targetKey);
+      toast.info("Lesson marked as incomplete");
+    } else {
+      updated.add(targetKey);
+      toast.success("Lesson complete — nice work! 🎉");
+    }
+    setCompletedLessonIds(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(courseStorageKey, JSON.stringify(Array.from(updated)));
+    }
+  };
+
+  const handleSaveStudentNote = () => {
+    if (!studentNoteInput.trim() || !activeLesson) return;
+    const newNote = {
+      id: `note_${Date.now()}`,
+      text: studentNoteInput.trim(),
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + ", " + new Date().toLocaleDateString(),
+    };
+    const updated = [newNote, ...savedNotes];
+    setSavedNotes(updated);
+    setStudentNoteInput("");
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`lms_student_notes_${activeLesson.id}`, JSON.stringify(updated));
+    }
+    toast.success("Private note saved successfully");
+  };
+
+  const handleDownloadNotes = () => {
+    if (!activeLesson) return;
+    const content = `# Notes for ${activeLesson.title}\nCourse: ${activeCourse?.title}\nModule: ${activeLesson.moduleTitle}\nDate: ${new Date().toLocaleDateString()}\n\n---\n\n## Concept Invariant\n${activeLesson.description}\n\n## Private Saved Notes\n${savedNotes.map((n, i) => `${i + 1}. [${n.createdAt}] ${n.text}`).join("\n\n") || "No private notes added yet."}`;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${activeLesson.title.replace(/[^a-zA-Z0-9]/g, "_")}_Notes.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Notes downloaded as document");
+  };
+
+  const handlePostDiscussion = () => {
+    if (!discussionInput.trim() || !activeLesson) return;
+    const newDisc = {
+      id: `disc_${Date.now()}`,
+      author: user?.fullName || "You",
+      role: "Learner",
+      text: discussionInput.trim(),
+      time: "Just now",
+      likes: 0,
+      hasLiked: false,
+    };
+    const updated = [newDisc, ...discussions];
+    setDiscussions(updated);
+    setDiscussionInput("");
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`lms_lesson_discussions_${activeLesson.id}`, JSON.stringify(updated));
+    }
+    toast.success("Question posted to classroom discussion");
+  };
+
+  const handleToggleLikeDiscussion = (discId: string) => {
+    if (!activeLesson) return;
+    const updated = discussions.map((d) => {
+      if (d.id === discId) {
+        const hasLiked = !d.hasLiked;
+        return {
+          ...d,
+          hasLiked,
+          likes: hasLiked ? d.likes + 1 : Math.max(0, d.likes - 1),
+        };
+      }
+      return d;
+    });
+    setDiscussions(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`lms_lesson_discussions_${activeLesson.id}`, JSON.stringify(updated));
+    }
+  };
+
+  const handleCycleSpeed = () => {
+    const speeds = [1, 1.25, 1.5, 2, 0.75];
+    const nextIdx = (speeds.indexOf(playbackSpeed) + 1) % speeds.length;
+    const nextSpeed = speeds[nextIdx];
+    setPlaybackSpeed(nextSpeed);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = nextSpeed;
+    }
+    toast.info(`Playback speed: ${nextSpeed}x`);
+  };
+
+  const handleTogglePlay = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play();
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleToggleFullscreen = () => {
+    if (!videoContainerRef.current) return;
+    if (!document.fullscreenElement) {
+      videoContainerRef.current.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  const formatTime = (secs: number) => {
+    if (isNaN(secs)) return "00:00";
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  // Filter curated practice challenges relevant to this course / category
+  const filteredProblems = useMemo(() => {
+    if (!liveProblems || liveProblems.length === 0) return [];
+    const courseCat = (activeCourse?.category || "").toLowerCase();
+    const modTitle = (activeLesson?.moduleTitle || "").toLowerCase();
+
+    const matching = liveProblems.filter((p) => {
+      const pCat = (p.category || p.topic || "").toLowerCase();
+      const pTitle = (p.title || "").toLowerCase();
+      return (
+        pCat.includes(courseCat) ||
+        courseCat.includes(pCat) ||
+        pCat.includes(modTitle) ||
+        modTitle.includes(pCat) ||
+        pTitle.includes("window") ||
+        pTitle.includes("two pointer") ||
+        pTitle.includes("array")
+      );
+    });
+
+    return matching.length > 0 ? matching.slice(0, 6) : liveProblems.slice(0, 6);
+  }, [liveProblems, activeCourse?.category, activeLesson]);
+
+  // Filter assignments relevant to this course
+  const filteredAssignments = useMemo(() => {
+    if (!assignments || assignments.length === 0) return [];
+    const courseTitle = (activeCourse?.title || "").toLowerCase();
+    const modTitle = (activeLesson?.moduleTitle || "").toLowerCase();
+    const matching = assignments.filter((a) => {
+      const aCourse = (a.course || "").toLowerCase();
+      const aMod = (a.module || "").toLowerCase();
+      return (
+        aCourse.includes(courseTitle) ||
+        courseTitle.includes(aCourse) ||
+        aMod.includes(modTitle) ||
+        modTitle.includes(aMod)
+      );
+    });
+    return matching.length > 0 ? matching : assignments.slice(0, 4);
+  }, [assignments, activeCourse?.title, activeLesson]);
+
   return (
     <div className="-mx-4 -mt-7 lg:-mx-8">
+      {/* Top Breadcrumb & Lesson Header Banner */}
       <div className="border-b border-[#e5e8f0] bg-[#fbfcff] px-4 py-4 dark:border-white/10 dark:bg-[#10172b] sm:px-6 lg:px-8">
-        <Link href={getSecureHref("/my-courses")} className="inline-flex items-center gap-2 text-xs font-bold text-[#7c87a4] hover:text-[#3157e8]">
+        <Link
+          href={getSecureHref("/my-courses")}
+          className="inline-flex items-center gap-2 text-xs font-bold text-[#7c87a4] hover:text-[#3157e8] transition"
+        >
           <ArrowLeft className="h-4 w-4" /> Back to my learning
         </Link>
         <div className="mt-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#3157e8]">DSA Foundations · Module 03</p>
-            <h1 className="mt-1 font-display text-xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white sm:text-2xl">Sliding Window Patterns</h1>
-            <p className="mt-1 text-xs text-[#9aa4bc]">Lesson 03 of 07 · 12 min remaining</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#3157e8]">
+              {activeCourse?.title || "Course"} · {activeLesson?.moduleTitle || "Module"}
+            </p>
+            <h1 className="mt-1 font-display text-xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white sm:text-2xl">
+              {activeLesson?.title || "Lesson"}
+            </h1>
+            <p className="mt-1 text-xs text-[#9aa4bc]">
+              Lesson {((activeLesson?.lessonIndex ?? 0) + 1).toString().padStart(2, "0")} of{" "}
+              {((normalizedModules[activeLesson?.moduleIndex ?? 0]?.totalCount ?? 6)).toString().padStart(2, "0")} ·{" "}
+              {activeLesson?.duration || "15 mins"}
+            </p>
           </div>
           <button
-            onClick={() => {
-              setCompleted(!completed);
-              toast.success(completed ? "Lesson marked incomplete" : "Lesson complete — nice work!");
-            }}
+            onClick={handleToggleComplete}
             className={cx(
-              "flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition",
-              completed ? "bg-[#e4f8ee] text-[#23a26d]" : "bg-[#3157e8] text-white shadow-[0_7px_16px_rgba(49,87,232,0.25)]"
+              "flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition shadow-sm",
+              isLessonCompletedByStudent
+                ? "bg-[#e4f8ee] text-[#23a26d] border border-[#23a26d]/20 hover:bg-[#d8f5e6]"
+                : "bg-[#3157e8] text-white shadow-[0_7px_16px_rgba(49,87,232,0.25)] hover:bg-[#2546cc]"
             )}
           >
-            {completed ? <CheckCircle2 className="h-4 w-4" /> : <Check className="h-4 w-4" />}{" "}
-            {completed ? "Completed" : "Mark as complete"}
+            {isLessonCompletedByStudent ? (
+              <>
+                <CheckCircle2 className="h-4 w-4" /> Completed
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4" /> Mark as complete
+              </>
+            )}
           </button>
         </div>
       </div>
+
+      {/* Main Classroom Layout: Player/Tabs Left + Sidebar Right */}
       <div className="grid min-h-[620px] lg:grid-cols-[minmax(0,1fr)_350px]">
+        {/* Left Column: Video Frame + Bottom Tabs */}
         <div className="p-4 sm:p-6 lg:p-8">
-          <div className="video-frame relative flex aspect-video min-h-[270px] items-center justify-center overflow-hidden rounded-[22px] bg-[#111a33] shadow-[0_18px_36px_rgba(23,34,61,0.18)] sm:min-h-[420px]">
-            <div
-              className="absolute inset-0 opacity-25"
-              style={{
-                backgroundImage: `radial-gradient(circle at 30% 30%, #3157e8, transparent 35%), radial-gradient(circle at 70% 70%, #7f5af0, transparent 32%)`,
-              }}
-            />
-            <div className="relative z-10 flex flex-col items-center">
-              <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#3157e8] shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
-                <Play className="ml-1 h-7 w-7 fill-current" />
-              </span>
-              <p className="text-sm font-bold text-white">Sliding window, made visual</p>
-              <p className="mt-1 text-xs text-white/45">Video lesson · 12:48</p>
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
-              <div className="mb-3 h-1 overflow-hidden rounded-full bg-white/15">
-                <span className="block h-full w-[42%] rounded-full bg-[#ffca63]" />
-              </div>
-              <div className="flex items-center justify-between text-white/55">
-                <div className="flex items-center gap-4">
-                  <button onClick={() => toast.info("Playing lesson")}>
-                    <Play className="h-4 w-4 fill-current" />
-                  </button>
-                  <span className="text-[10px]">05:22 / 12:48</span>
+          {/* Video Player Box */}
+          <div
+            ref={videoContainerRef}
+            className="video-frame relative flex aspect-video min-h-[270px] w-full items-center justify-center overflow-hidden rounded-[22px] bg-[#111a33] shadow-[0_18px_36px_rgba(23,34,61,0.18)] sm:min-h-[420px]"
+          >
+            {activeLesson?.videoUrl ? (
+              // Real Recording Video Player
+              <div className="relative h-full w-full bg-black group">
+                <video
+                  ref={videoRef}
+                  src={activeLesson.videoUrl}
+                  className="h-full w-full object-contain"
+                  playsInline
+                  onTimeUpdate={() => {
+                    if (videoRef.current) {
+                      setCurrentTime(videoRef.current.currentTime);
+                      setDuration(videoRef.current.duration || 0);
+                    }
+                  }}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onEnded={() => {
+                    setIsPlaying(false);
+                    if (!isLessonCompletedByStudent) {
+                      handleToggleComplete();
+                    }
+                  }}
+                  onClick={handleTogglePlay}
+                />
+
+                {/* Video Controls Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-5 pb-4 pt-10 transition-opacity">
+                  {/* Seek Bar */}
+                  <div
+                    className="mb-3 h-1.5 w-full cursor-pointer overflow-hidden rounded-full bg-white/20 transition-all hover:h-2"
+                    onClick={(e) => {
+                      if (!videoRef.current || !duration) return;
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const clickPos = (e.clientX - rect.left) / rect.width;
+                      videoRef.current.currentTime = clickPos * duration;
+                    }}
+                  >
+                    <span
+                      className="block h-full rounded-full bg-[#ffca63] transition-all"
+                      style={{
+                        width: duration > 0 ? `${(currentTime / duration) * 100}%` : "0%",
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-white">
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={handleTogglePlay}
+                        className="rounded-lg p-1 hover:bg-white/10 transition"
+                        title={isPlaying ? "Pause" : "Play"}
+                      >
+                        {isPlaying ? (
+                          <Pause className="h-4 w-4 fill-current" />
+                        ) : (
+                          <Play className="h-4 w-4 fill-current" />
+                        )}
+                      </button>
+                      <span className="text-[11px] font-mono font-medium text-white/80">
+                        {formatTime(currentTime)} / {formatTime(duration || 768)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleCycleSpeed}
+                        className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-bold hover:bg-white/20 transition"
+                      >
+                        {playbackSpeed}x
+                      </button>
+                      <button
+                        onClick={handleToggleFullscreen}
+                        className="rounded-lg p-1 hover:bg-white/10 transition"
+                        title="Toggle Fullscreen"
+                      >
+                        <Maximize className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <button onClick={() => toast.info("Playback speed: 1.25x")} className="text-[10px] font-bold">
-                    1x
-                  </button>
-                  <button>
-                    <Settings2 className="h-4 w-4" />
-                  </button>
-                  <button>
-                    <span className="text-xs">⛶</span>
-                  </button>
+              </div>
+            ) : (
+              // Empty State Video Frame: Same clean layout with instructor notification
+              <div className="relative flex h-full w-full flex-col items-center justify-center p-6 text-center">
+                <div
+                  className="absolute inset-0 opacity-25"
+                  style={{
+                    backgroundImage: `radial-gradient(circle at 30% 30%, #3157e8, transparent 35%), radial-gradient(circle at 70% 70%, #7f5af0, transparent 32%)`,
+                  }}
+                />
+                <div className="relative z-10 flex flex-col items-center max-w-md">
+                  <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)] border border-white/20 backdrop-blur-md">
+                    <Video className="h-7 w-7 text-blue-400" />
+                  </span>
+                  <p className="text-base font-bold text-white sm:text-lg">
+                    {activeLesson?.title || "Lesson Recording"}
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-white/70">
+                    The recorded session for this lesson will appear here once uploaded by your instructor.
+                  </p>
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/20 px-3.5 py-1 text-[11px] font-semibold text-blue-300">
+                    <Clock3 className="h-3.5 w-3.5" />
+                    <span>Scheduled Session · {activeLesson?.duration || "15m"}</span>
+                  </div>
+                </div>
+
+                {/* Placeholder Bottom Bar */}
+                <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
+                  <div className="mb-3 h-1 overflow-hidden rounded-full bg-white/15">
+                    <span className="block h-full w-[0%] rounded-full bg-[#ffca63]" />
+                  </div>
+                  <div className="flex items-center justify-between text-white/55">
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() =>
+                          toast.info(
+                            "The recording will play here automatically once uploaded by your instructor."
+                          )
+                        }
+                      >
+                        <Play className="h-4 w-4 fill-current opacity-50" />
+                      </button>
+                      <span className="text-[10px]">00:00 / {activeLesson?.duration || "15m"}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[10px] font-bold">1x</span>
+                      <Settings2 className="h-4 w-4 opacity-50" />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
+
+          {/* Tab Navigation */}
           <div className="mt-6 flex gap-1 overflow-x-auto border-b border-[#e5e8f0] dark:border-white/10 no-scrollbar">
-            {["Notes", "Resources", "Practice problems", "Assignments", "Discussion"].map((item) => (
+            {(["Notes", "Resources", "Practice problems", "Assignments", "Discussion"] as const).map((item) => (
               <button
                 key={item}
                 onClick={() => setTab(item)}
@@ -3772,101 +4413,148 @@ function PlayerPage() {
               </button>
             ))}
           </div>
+
+          {/* Tab Content Panes */}
           <div className="pt-6">
+            {/* 1. Notes Tab */}
             {tab === "Notes" && (
-              <div className="max-w-2xl">
-                <div className="mb-5 flex items-center justify-between">
-                  <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">My notes</h2>
-                  <button onClick={() => toast.success("Notes exported as PDF")} className="flex items-center gap-2 text-xs font-bold text-[#3157e8]">
-                    <FileText className="h-3.5 w-3.5" /> Download PDF
+              <div className="max-w-2xl space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                      Lesson Concept & Invariant
+                    </h2>
+                    <p className="text-xs text-[#9aa4bc] mt-0.5">
+                      Curated mental model and code pattern for {activeLesson?.title}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleDownloadNotes}
+                    className="flex items-center gap-2 text-xs font-bold text-[#3157e8] hover:underline"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Download Notes
                   </button>
                 </div>
-                <p className="text-sm leading-7 text-[#5f6c8c] dark:text-white/65">
-                  The window represents the current range we’re evaluating. Expand it when the constraint is valid, and shrink it when it isn’t. The trick is to define the invariant before writing a line of code.
+
+                <p className="text-sm leading-7 text-[#5f6c8c] dark:text-white/75">
+                  {activeLesson?.description}
                 </p>
-                <div className="my-5 rounded-xl border border-[#dfe5f3] bg-[#f5f7fb] p-4 font-mono text-xs leading-6 text-[#52617f] dark:border-white/10 dark:bg-white/5 dark:text-white/70">
-                  <p><span className="text-[#7f5af0]">while</span> right &lt; n:</p>
+
+                {/* Code Invariant Box */}
+                <div className="rounded-xl border border-[#dfe5f3] bg-[#f5f7fb] p-4 font-mono text-xs leading-6 text-[#52617f] dark:border-white/10 dark:bg-white/5 dark:text-white/80">
+                  <p>
+                    <span className="text-[#7f5af0] font-semibold">while</span> right &lt; n:
+                  </p>
                   <p className="pl-4">window.add(s[right])</p>
-                  <p className="pl-4"><span className="text-[#7f5af0]">while</span> invalid(window):</p>
+                  <p className="pl-4">
+                    <span className="text-[#7f5af0] font-semibold">while</span> invalid(window):
+                  </p>
                   <p className="pl-8">window.remove(s[left])</p>
                   <p className="pl-8">left += 1</p>
-                  <p className="pl-4">answer = max(answer, right - left + 1)</p>
+                  <p className="pl-4 text-emerald-600 dark:text-emerald-400 font-semibold">
+                    answer = max(answer, right - left + 1)
+                  </p>
                   <p className="pl-4">right += 1</p>
                 </div>
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Add a private note to this lesson..."
-                  className="min-h-[110px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
-                />
-                <div className="mt-3 flex justify-end">
-                  <button
-                    onClick={() => {
-                      if (note.trim()) {
-                        toast.success("Note saved");
-                        setNote("");
-                      }
-                    }}
-                    className="button-secondary"
-                  >
-                    <Plus className="h-4 w-4" /> Save note
-                  </button>
+
+                {/* Student Saved Notes History */}
+                {savedNotes.length > 0 && (
+                  <div className="space-y-2.5">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#7c87a4]">
+                      My Private Notes ({savedNotes.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {savedNotes.map((sn) => (
+                        <div
+                          key={sn.id}
+                          className="rounded-xl border border-[#e5e8f0] bg-white p-3.5 text-xs text-[#17223d] dark:border-white/10 dark:bg-white/5 dark:text-white"
+                        >
+                          <p className="leading-relaxed">{sn.text}</p>
+                          <p className="mt-2 text-[10px] text-[#9aa4bc] font-medium">{sn.createdAt}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add Private Note Editor */}
+                <div>
+                  <textarea
+                    value={studentNoteInput}
+                    onChange={(e) => setStudentNoteInput(e.target.value)}
+                    placeholder={`Add a private note for ${activeLesson?.title || "this lesson"}...`}
+                    className="min-h-[110px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  />
+                  <div className="mt-3 flex justify-end">
+                    <button onClick={handleSaveStudentNote} className="button-secondary">
+                      <Plus className="h-4 w-4" /> Save note
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
-            {tab === "Assignments" && (
-              <div className="space-y-4">
+
+            {/* 2. Resources Tab */}
+            {tab === "Resources" && (
+              <div className="max-w-2xl space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
-                    Module Assignments ({assignments.length})
-                  </h2>
-                  <Link href={getSecureHref("/assignments")} className="text-xs font-bold text-[#3157e8] hover:underline inline-flex items-center gap-1">
-                    Full Workspace <ArrowRight className="h-3 w-3" />
-                  </Link>
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                      Downloadable Resources
+                    </h2>
+                    <p className="text-xs text-[#9aa4bc]">
+                      Session slides, starter templates, and cheatsheets for this lesson.
+                    </p>
+                  </div>
                 </div>
+
                 <div className="space-y-3">
-                  {assignments.map((a) => {
-                    const isSubmitted = Boolean(a.userSubmission);
-                    return (
-                      <div key={a.id} className="rounded-2xl border border-[#edf0f6] bg-white p-5 dark:border-white/10 dark:bg-white/5">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">
-                                {a.module || a.course}
-                              </span>
-                              {isSubmitted && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                                  <CheckCircle2 className="h-3 w-3" /> Submitted
-                                </span>
-                              )}
-                            </div>
-                            <h3 className="mt-2 text-sm font-bold text-[#17223d] dark:text-white">{a.title}</h3>
-                            <p className="mt-1 text-xs text-[#7c87a4]">{a.description}</p>
-                          </div>
-                          <span className="shrink-0 text-xs font-bold text-[#3157e8]">{a.totalMarks} pts</span>
-                        </div>
-                        <div className="mt-4 flex items-center justify-between border-t border-[#edf0f6] pt-3 text-xs dark:border-white/10">
-                          <span className="text-[11px] text-amber-600 font-semibold">{a.dueDate}</span>
-                          <Link href={getSecureHref("/assignments")} className="button-primary !py-1.5 !px-3 !text-xs">
-                            {isSubmitted ? "View Submission" : "Open & Submit"}
-                          </Link>
+                  {activeLesson?.resources?.map((res: any, rIdx: number) => (
+                    <div
+                      key={rIdx}
+                      className="flex items-center justify-between gap-4 rounded-2xl border border-[#edf0f6] bg-white p-4 dark:border-white/10 dark:bg-white/5"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
+                          <FileText className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
+                            {res.name || `Resource ${rIdx + 1}`}
+                          </p>
+                          <p className="text-xs text-[#9aa4bc]">
+                            {res.size || "2.4 MB"} · {res.type || "Document"}
+                          </p>
                         </div>
                       </div>
-                    );
-                  })}
+                      <button
+                        onClick={() => {
+                          if (res.url) {
+                            window.open(res.url, "_blank");
+                          } else {
+                            toast.success(`Downloading "${res.name}"`);
+                          }
+                        }}
+                        className="button-secondary !py-1.5 !px-3.5 !text-xs shrink-0 inline-flex items-center gap-1.5"
+                      >
+                        <Download className="h-3.5 w-3.5" /> Download
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
+
+            {/* 3. Practice Problems Tab */}
             {tab === "Practice problems" && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
-                      Curated Practice Challenges ({liveProblems.length})
+                      Curated Practice Challenges ({filteredProblems.length})
                     </h2>
                     <p className="text-xs text-[#9aa4bc]">
-                      Hands-on coding problems mapped to this module's algorithmic patterns.
+                      Hands-on coding problems mapped to {activeLesson?.moduleTitle || "this module"}.
                     </p>
                   </div>
                   <Link
@@ -3876,8 +4564,9 @@ function PlayerPage() {
                     All Problems <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
+
                 <div className="space-y-3">
-                  {liveProblems.slice(0, 6).map((prob) => (
+                  {filteredProblems.map((prob) => (
                     <div
                       key={String(prob.id)}
                       className="rounded-2xl border border-[#edf0f6] bg-white p-4.5 dark:border-white/10 dark:bg-white/5 flex items-center justify-between gap-4 transition hover:border-[#3157e8]/30"
@@ -3937,68 +4626,280 @@ function PlayerPage() {
                 </div>
               </div>
             )}
-            {tab !== "Notes" && tab !== "Assignments" && tab !== "Practice problems" && (
-              <div className="rounded-2xl bg-[#f7f9fc] p-8 text-center dark:bg-white/5">
-                <FolderOpen className="mx-auto h-8 w-8 text-[#c4cada]" />
-                <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">{tab} for this lesson</h3>
-                <p className="mt-1 text-xs text-[#9aa4bc]">Your cohort resources and conversations will show up here.</p>
-                <button onClick={() => toast.info("This workspace is ready for your cohort content")} className="mt-5 button-secondary">
-                  Explore space
-                </button>
+
+            {/* 4. Assignments Tab */}
+            {tab === "Assignments" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                      Course Assignments ({filteredAssignments.length})
+                    </h2>
+                    <p className="text-xs text-[#9aa4bc]">
+                      Graded hands-on assignments and capstone submissions.
+                    </p>
+                  </div>
+                  <Link
+                    href={getSecureHref("/assignments")}
+                    className="text-xs font-bold text-[#3157e8] hover:underline inline-flex items-center gap-1"
+                  >
+                    Full Workspace <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+                <div className="space-y-3">
+                  {filteredAssignments.map((a) => {
+                    const isSubmitted = Boolean(a.userSubmission);
+                    return (
+                      <div
+                        key={a.id}
+                        className="rounded-2xl border border-[#edf0f6] bg-white p-5 dark:border-white/10 dark:bg-white/5"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">
+                                {a.module || a.course}
+                              </span>
+                              {isSubmitted && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                  <CheckCircle2 className="h-3 w-3" /> Submitted
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="mt-2 text-sm font-bold text-[#17223d] dark:text-white">{a.title}</h3>
+                            <p className="mt-1 text-xs text-[#7c87a4]">{a.description}</p>
+                          </div>
+                          <span className="shrink-0 text-xs font-bold text-[#3157e8]">{a.totalMarks} pts</span>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between border-t border-[#edf0f6] pt-3 text-xs dark:border-white/10">
+                          <span className="text-[11px] text-amber-600 font-semibold">{a.dueDate}</span>
+                          <Link href={getSecureHref("/assignments")} className="button-primary !py-1.5 !px-3 !text-xs">
+                            {isSubmitted ? "View Submission" : "Open & Submit"}
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 5. Discussion Tab */}
+            {tab === "Discussion" && (
+              <div className="max-w-2xl space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+                      Classroom Q&A Discussion ({discussions.length})
+                    </h2>
+                    <p className="text-xs text-[#9aa4bc]">
+                      Ask doubts, discuss algorithmic invariants, and collaborate with your cohort.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Ask a Question Input */}
+                <div className="rounded-2xl border border-[#edf0f6] bg-white p-4 dark:border-white/10 dark:bg-white/5 space-y-3">
+                  <textarea
+                    value={discussionInput}
+                    onChange={(e) => setDiscussionInput(e.target.value)}
+                    placeholder="Ask a question about this lesson or share your insights..."
+                    className="min-h-[85px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-[#fbfcff] p-3 text-xs outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  />
+                  <div className="flex justify-end">
+                    <button onClick={handlePostDiscussion} className="button-primary !py-1.5 !px-4 !text-xs">
+                      <Send className="h-3.5 w-3.5" /> Post Question
+                    </button>
+                  </div>
+                </div>
+
+                {/* Discussion Thread List */}
+                <div className="space-y-3">
+                  {discussions.map((d) => (
+                    <div
+                      key={d.id}
+                      className="rounded-2xl border border-[#edf0f6] bg-white p-4.5 dark:border-white/10 dark:bg-white/5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#eef2ff] text-xs font-bold text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-blue-300">
+                            {d.author.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-[#17223d] dark:text-white">{d.author}</span>
+                              <span
+                                className={cx(
+                                  "rounded px-1.5 py-0.2 text-[9px] font-bold",
+                                  d.role === "Instructor"
+                                    ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                                    : "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
+                                )}
+                              >
+                                {d.role}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-[#9aa4bc]">{d.time}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleToggleLikeDiscussion(d.id)}
+                          className={cx(
+                            "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition",
+                            d.hasLiked
+                              ? "bg-blue-50 text-[#3157e8] dark:bg-[#3157e8]/20"
+                              : "text-[#9aa4bc] hover:bg-[#f5f7fb] dark:hover:bg-white/5"
+                          )}
+                        >
+                          <ThumbsUp className={cx("h-3.5 w-3.5", d.hasLiked && "fill-current")} />
+                          <span>{d.likes}</span>
+                        </button>
+                      </div>
+                      <p className="mt-3 text-xs leading-relaxed text-[#5f6c8c] dark:text-white/80">{d.text}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         </div>
+
+        {/* Right Column: Course Curriculum Sidebar (Exact Reference Match) */}
         <aside className="border-t border-[#e5e8f0] bg-[#fbfcff] dark:border-white/10 dark:bg-[#10172b] lg:border-l lg:border-t-0">
+          {/* Sidebar Header */}
           <div className="flex items-center justify-between border-b border-[#e5e8f0] px-5 py-4 dark:border-white/10">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#3157e8]">Course contents</p>
-              <p className="mt-1 text-sm font-bold text-[#17223d] dark:text-white">DSA Foundations</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#3157e8]">
+                Course contents
+              </p>
+              <p className="mt-1 text-sm font-bold text-[#17223d] dark:text-white">
+                {activeCourse?.title || "DSA Foundations"}
+              </p>
             </div>
-            <span className="text-xs font-bold text-[#3157e8]">68%</span>
+            <span className="text-xs font-bold text-[#3157e8]">{completionStats.percentage}%</span>
           </div>
-          <div className="max-h-[640px] overflow-y-auto custom-scrollbar p-3">
-            {["Foundations", "Sliding Window Patterns", "Stacks & Queues", "Trees & Graphs"].map((module, moduleIndex) => (
-              <div key={module} className="mb-2 overflow-hidden rounded-xl border border-[#edf0f6] dark:border-white/10">
-                <button
-                  onClick={() => setModuleOpen(moduleOpen === moduleIndex ? -1 : moduleIndex)}
-                  className="flex w-full items-center gap-2 bg-white px-3 py-3 text-left dark:bg-white/5"
+
+          {/* Module Accordions List */}
+          <div className="max-h-[680px] overflow-y-auto custom-scrollbar p-3 space-y-2">
+            {normalizedModules.map((mod) => {
+              const isOpen = Boolean(moduleOpenMap[mod.moduleIndex]);
+              const modCompletedLessons = mod.lessons.filter(
+                (l) => completedLessonIds.has(l.id) || completedLessonIds.has(l.uniqueKey)
+              ).length;
+
+              return (
+                <div
+                  key={mod.id}
+                  className="overflow-hidden rounded-xl border border-[#edf0f6] bg-white dark:border-white/10 dark:bg-white/5"
                 >
-                  <ChevronDown className={cx("h-3.5 w-3.5 text-[#9aa4bc] transition-transform", moduleOpen === moduleIndex && "rotate-180")} />
-                  <span className="flex-1 text-xs font-bold text-[#17223d] dark:text-white">{module}</span>
-                  <span className="text-[10px] text-[#9aa4bc]">{moduleIndex === 1 ? "3/7" : moduleIndex === 0 ? "6/6" : "0/6"}</span>
-                </button>
-                {moduleOpen === moduleIndex && (
-                  <div className="border-t border-[#edf0f6] p-1 dark:border-white/10">
-                    {(moduleIndex === 1 ? lessons : ["Introduction", "Key concepts", "Checkpoint"]).map((lesson, index) => (
-                      <Link
-                        key={lesson}
-                        href={index === 2 && moduleIndex === 1 ? getSecureHref("/learn") : "#"}
-                        className={cx(
-                          "flex items-center gap-2 rounded-lg px-2 py-2.5 text-xs",
-                          moduleIndex === 1 && index === 2
-                            ? "bg-[#eaf0ff] text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white"
-                            : "text-[#7c87a4] hover:bg-[#f5f7fb] dark:hover:bg-white/5"
-                        )}
-                      >
-                        <span
-                          className={cx(
-                            "flex h-5 w-5 items-center justify-center rounded-full",
-                            index < (moduleIndex === 0 ? 3 : moduleIndex === 1 ? 3 : 0)
-                              ? "bg-[#e4f8ee] text-[#23a26d]"
-                              : "bg-[#f1f3f8] text-[#aab3c5] dark:bg-white/10"
-                          )}
-                        >
-                          <Check className="h-3 w-3" />
-                        </span>
-                        <span className="min-w-0 flex-1 truncate">{lesson}</span>
-                        {index === 2 && moduleIndex === 1 ? <Play className="h-3 w-3 fill-current" /> : <span className="text-[9px]">{10 + index * 3}m</span>}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                  {/* Module Accordion Header */}
+                  <button
+                    onClick={() =>
+                      setModuleOpenMap((prev) => ({
+                        ...prev,
+                        [mod.moduleIndex]: !prev[mod.moduleIndex],
+                      }))
+                    }
+                    className="flex w-full items-center gap-2 px-3.5 py-3 text-left transition hover:bg-[#f8faff] dark:hover:bg-white/5"
+                  >
+                    <ChevronDown
+                      className={cx(
+                        "h-3.5 w-3.5 text-[#9aa4bc] transition-transform duration-200",
+                        isOpen && "rotate-180"
+                      )}
+                    />
+                    <span className="flex-1 text-xs font-bold text-[#17223d] dark:text-white">
+                      {mod.title}
+                    </span>
+                    <span className="text-[10px] font-medium text-[#9aa4bc]">
+                      {modCompletedLessons}/{mod.totalCount}
+                    </span>
+                  </button>
+
+                  {/* Lessons List when open */}
+                  {isOpen && (
+                    <div className="border-t border-[#edf0f6] p-1.5 dark:border-white/10 space-y-0.5">
+                      {mod.lessons.map((lesson) => {
+                        const isActive =
+                          activeLesson?.id === lesson.id || activeLesson?.uniqueKey === lesson.uniqueKey;
+                        const isStudentCompleted =
+                          completedLessonIds.has(lesson.id) || completedLessonIds.has(lesson.uniqueKey);
+
+                        if (!lesson.isCompletedByInstructor) {
+                          // Locked / Disabled Lesson
+                          return (
+                            <div
+                              key={lesson.uniqueKey}
+                              onClick={() =>
+                                toast.info(
+                                  "This lesson will be unlocked once your instructor completes and uploads the session."
+                                )
+                              }
+                              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-xs text-[#9aa4bc] opacity-50 cursor-not-allowed select-none transition hover:bg-slate-100/50 dark:hover:bg-white/5"
+                              title="Locked by instructor"
+                            >
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f1f3f8] text-[#aab3c5] dark:bg-white/10">
+                                <Lock className="h-3 w-3" />
+                              </span>
+                              <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                              <span className="text-[9px] text-[#aab3c5] shrink-0">{lesson.duration}</span>
+                            </div>
+                          );
+                        }
+
+                        // Unlocked / Completed by Instructor Lesson
+                        return (
+                          <button
+                            key={lesson.uniqueKey}
+                            onClick={() => {
+                              setActiveLessonId(lesson.id);
+                              if (typeof window !== "undefined") {
+                                window.history.replaceState(
+                                  null,
+                                  "",
+                                  createSecureUrl("/learn", {
+                                    courseId: activeCourse?.id || "dsa",
+                                    lessonId: lesson.id,
+                                  })
+                                );
+                              }
+                            }}
+                            className={cx(
+                              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-xs text-left transition",
+                              isActive
+                                ? "bg-[#eaf0ff] text-[#3157e8] dark:bg-[#3157e8]/25 dark:text-[#7ba2ff] font-bold"
+                                : "text-[#52617f] hover:bg-[#f5f7fb] dark:text-white/80 dark:hover:bg-white/5"
+                            )}
+                          >
+                            {/* Check Circle Icon */}
+                            <span
+                              className={cx(
+                                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition",
+                                isStudentCompleted
+                                  ? "bg-[#e4f8ee] text-[#23a26d] dark:bg-emerald-500/20 dark:text-emerald-400"
+                                  : "bg-[#f1f3f8] text-[#aab3c5] dark:bg-white/10"
+                              )}
+                            >
+                              <Check className="h-3 w-3 stroke-[2.5]" />
+                            </span>
+
+                            {/* Lesson Title */}
+                            <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+
+                            {/* Active Play Icon or Duration Badge */}
+                            {isActive ? (
+                              <Play className="h-3 w-3 fill-current text-[#3157e8] dark:text-[#7ba2ff] shrink-0" />
+                            ) : (
+                              <span className="text-[9px] text-[#9aa4bc] shrink-0">{lesson.duration}</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </aside>
       </div>
@@ -6496,12 +7397,14 @@ export default function Home({
   problemSlug = "",
   sessionId = "",
   recordingId = "",
+  lessonId = "",
 }: {
   page?: string;
   courseId?: string;
   problemSlug?: string;
   sessionId?: string;
   recordingId?: string;
+  lessonId?: string;
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -6528,7 +7431,7 @@ export default function Home({
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
     }
-  }, [page, courseId, recordingId, sessionId]);
+  }, [page, courseId, recordingId, sessionId, lessonId]);
 
   const activeProblem = useMemo(() => {
     if (!activeProblemSlug) return null;
@@ -6548,7 +7451,7 @@ export default function Home({
       case "course-detail": return <CourseDetail courseId={courseId} />;
       case "checkout": return <EnrollmentCheckoutPage courseId={courseId} />;
       case "my-courses": return <MyCoursesPage />;
-      case "learn": return <PlayerPage />;
+      case "learn": return <PlayerPage courseId={courseId} initialLessonId={lessonId} />;
       case "live-session": return <LiveSessionPage initialSessionId={sessionId} />;
       case "recordings": return <RecordingsPage initialRecordingId={recordingId} />;
       case "practice": return (
@@ -6570,7 +7473,7 @@ export default function Home({
       case "notes": return <NotesPage />;
       default: return <Dashboard />;
     }
-  }, [courseId, page, sessionId, recordingId]);
+  }, [courseId, page, sessionId, recordingId, lessonId]);
 
   if (loading || !user) {
     return <DashboardLayoutSkeleton />;
