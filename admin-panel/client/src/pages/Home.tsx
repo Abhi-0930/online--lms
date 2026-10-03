@@ -1360,6 +1360,8 @@ function ContentView({
     }
   };
 
+  const [selectedCourseTab, setSelectedCourseTab] = useState<string>("all");
+
   const handleToggleCompleted = async (item: ContentItem) => {
     const targetId = String(item.id);
     const isCurrentlyCompleted = item.status === "Completed";
@@ -1398,14 +1400,69 @@ function ContentView({
     } catch {}
   };
 
-  const filtered = rows.filter((item) => {
-    const matchesQuery = `${item.title} ${item.parent} ${item.owner}`.toLowerCase().includes(query.toLowerCase());
-    if (filter === "All") return matchesQuery;
-    if (filter === "Completed") return item.status === "Completed" && matchesQuery;
-    if (filter === "Published") return item.status === "Published" && matchesQuery;
-    if (filter === "Draft") return (item.status === "Draft" || item.status === "Review") && matchesQuery;
-    return item.type === filter && matchesQuery;
-  });
+  const courseCategories = useMemo(() => {
+    const list: Array<{ id: string; title: string; count: number; completedCount: number }> = [];
+    const seen = new Set<string>();
+
+    liveCourses.forEach((c) => {
+      const cTitle = c.title;
+      if (!cTitle || seen.has(cTitle.toLowerCase())) return;
+      seen.add(cTitle.toLowerCase());
+      const itemsForCourse = rows.filter(
+        (r) =>
+          (r.courseId && String(r.courseId) === String(c.id)) ||
+          (r.courseTitle && r.courseTitle.toLowerCase() === cTitle.toLowerCase()) ||
+          (r.parent && r.parent.toLowerCase().includes(cTitle.toLowerCase()))
+      );
+      list.push({
+        id: String(c.id),
+        title: cTitle,
+        count: itemsForCourse.length,
+        completedCount: itemsForCourse.filter((r) => r.status === "Completed").length,
+      });
+    });
+
+    rows.forEach((r) => {
+      const p = r.courseTitle || (r.parent ? r.parent.split(" · ")[0] : "General Library");
+      if (p && !seen.has(p.toLowerCase())) {
+        seen.add(p.toLowerCase());
+        const itemsForCategory = rows.filter(
+          (item) =>
+            (item.courseTitle && item.courseTitle.toLowerCase() === p.toLowerCase()) ||
+            (item.parent && item.parent.toLowerCase().startsWith(p.toLowerCase()))
+        );
+        list.push({
+          id: p,
+          title: p,
+          count: itemsForCategory.length,
+          completedCount: itemsForCategory.filter((item) => item.status === "Completed").length,
+        });
+      }
+    });
+
+    return list;
+  }, [liveCourses, rows]);
+
+  const courseFiltered = useMemo(() => {
+    if (selectedCourseTab === "all") return rows;
+    return rows.filter((item) => {
+      const matchId = item.courseId && String(item.courseId) === selectedCourseTab;
+      const matchTitle = item.courseTitle && item.courseTitle.toLowerCase() === selectedCourseTab.toLowerCase();
+      const matchParent = item.parent && item.parent.toLowerCase().includes(selectedCourseTab.toLowerCase());
+      return matchId || matchTitle || matchParent;
+    });
+  }, [rows, selectedCourseTab]);
+
+  const filtered = useMemo(() => {
+    return courseFiltered.filter((item) => {
+      const matchesQuery = `${item.title} ${item.parent} ${item.owner}`.toLowerCase().includes(query.toLowerCase());
+      if (filter === "All") return matchesQuery;
+      if (filter === "Completed") return item.status === "Completed" && matchesQuery;
+      if (filter === "Published") return item.status === "Published" && matchesQuery;
+      if (filter === "Draft") return (item.status === "Draft" || item.status === "Review") && matchesQuery;
+      return item.type === filter && matchesQuery;
+    });
+  }, [courseFiltered, query, filter]);
 
   const completedCount = rows.filter((r) => r.status === "Completed").length;
   const publishedCount = rows.filter((r) => r.status === "Published").length;
@@ -1414,6 +1471,10 @@ function ContentView({
   const assignmentCount = rows.filter(
     (r) => r.type === "Assignment" || r.type === "Practice problem" || r.type === "Quiz"
   ).length;
+
+  const currentSelectedCourseObj = courseCategories.find(
+    (c) => c.id === selectedCourseTab || c.title === selectedCourseTab
+  );
 
   const handleContinueAddContent = (
     selectedType: string,
@@ -1547,11 +1608,107 @@ function ContentView({
         ]}
       />
 
+      {/* Course Filter Tabs Bar */}
+      <div className="mt-8 mb-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+              Filter By Course Track
+            </h3>
+          </div>
+          {selectedCourseTab !== "all" && (
+            <button
+              type="button"
+              onClick={() => setSelectedCourseTab("all")}
+              className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+            >
+              View all courses ({rows.length})
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectedCourseTab("all")}
+            className={cn(
+              "flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer select-none",
+              selectedCourseTab === "all"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                : "border border-slate-200/80 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-white/10"
+            )}
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            <span>All Content</span>
+            <span
+              className={cn(
+                "ml-1 rounded-full px-1.5 py-0.2 text-[10px] font-extrabold",
+                selectedCourseTab === "all"
+                  ? "bg-white/20 text-white"
+                  : "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-400"
+              )}
+            >
+              {rows.length}
+            </span>
+          </button>
+
+          {courseCategories.map((c) => {
+            const isSelected = selectedCourseTab === c.id || selectedCourseTab === c.title;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setSelectedCourseTab(c.id)}
+                className={cn(
+                  "flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer select-none",
+                  isSelected
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                    : "border border-slate-200/80 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-white/10"
+                )}
+              >
+                <GraduationCap className="h-3.5 w-3.5" />
+                <span className="truncate max-w-[200px]">{c.title}</span>
+                <span
+                  className={cn(
+                    "ml-1 rounded-full px-1.5 py-0.2 text-[10px] font-extrabold",
+                    isSelected
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-400"
+                  )}
+                >
+                  {c.count}
+                </span>
+                {c.completedCount > 0 && (
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 py-0.2 text-[9px] font-extrabold",
+                      isSelected
+                        ? "bg-emerald-400/30 text-emerald-100"
+                        : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                    )}
+                    title={`${c.completedCount} lessons completed`}
+                  >
+                    ✓ {c.completedCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <DataCard
-        title="Content library"
+        title={
+          selectedCourseTab === "all"
+            ? "Content library"
+            : `Course Content: ${currentSelectedCourseObj?.title || selectedCourseTab}`
+        }
         subtitle={
           rows.length > 0
-            ? `${filtered.length} of ${rows.length} learning assets in library`
+            ? selectedCourseTab === "all"
+              ? `${filtered.length} of ${rows.length} learning assets in library`
+              : `${filtered.length} of ${courseFiltered.length} assets for this course`
             : "0 learning assets in library"
         }
         toolbar={
