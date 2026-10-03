@@ -97,7 +97,7 @@ function createRazorpayOptions({
   const keyId =
     orderData.keyId ||
     process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
-    "rzp_live_TiFe7K8DqS4FLU";
+    "rzp_test_TjTmBMa68YS2ki";
 
   return {
     key: keyId,
