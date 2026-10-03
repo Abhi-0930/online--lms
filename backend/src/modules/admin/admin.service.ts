@@ -1753,7 +1753,9 @@ export class AdminService {
           if (Array.isArray(mod.lessons) && mod.lessons.length > 0) {
             for (let lIdx = 0; lIdx < mod.lessons.length; lIdx++) {
               const les = mod.lessons[lIdx];
-              const uniqueId = String(les.id || `mod_${mod.id || mIdx}_les_${lIdx}`);
+              const lesIdStr = String(les.id || '');
+              const isLesUuid = lesIdStr.length > 20 && lesIdStr.includes('-');
+              const uniqueId = isLesUuid ? lesIdStr : `mod_${mod.id || mIdx}_les_${les.id || lIdx}`;
               if (AdminService.deletedContentIds.has(uniqueId)) continue;
               const override = AdminService.fallbackContentOverrides.get(uniqueId);
               items.push({
@@ -1772,7 +1774,9 @@ export class AdminService {
               if (Array.isArray(top.subtopics) && top.subtopics.length > 0) {
                 for (let sIdx = 0; sIdx < top.subtopics.length; sIdx++) {
                   const sub = top.subtopics[sIdx];
-                  const uniqueId = String(sub.id || `sub_${course.id || cIdx}_${mod.id || mIdx}_${top.id || tIdx}_${sIdx}`);
+                  const subIdStr = String(sub.id || '');
+                  const isSubUuid = subIdStr.length > 20 && subIdStr.includes('-');
+                  const uniqueId = isSubUuid ? subIdStr : `sub_${course.id || cIdx}_${mod.id || mIdx}_${top.id || tIdx}_${sub.id || sIdx}`;
                   if (AdminService.deletedContentIds.has(uniqueId)) continue;
                   const override = AdminService.fallbackContentOverrides.get(uniqueId);
                   items.push({
@@ -1786,7 +1790,9 @@ export class AdminService {
                   });
                 }
               } else {
-                const uniqueId = String(top.id || `top_${course.id || cIdx}_${mod.id || mIdx}_${tIdx}`);
+                const topIdStr = String(top.id || '');
+                const isTopUuid = topIdStr.length > 20 && topIdStr.includes('-');
+                const uniqueId = isTopUuid ? topIdStr : `top_${course.id || cIdx}_${mod.id || mIdx}_${top.id || tIdx}`;
                 if (AdminService.deletedContentIds.has(uniqueId)) continue;
                 const override = AdminService.fallbackContentOverrides.get(uniqueId);
                 items.push({
