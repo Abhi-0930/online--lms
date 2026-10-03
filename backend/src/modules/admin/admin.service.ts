@@ -1413,13 +1413,34 @@ export class AdminService {
 
   async deleteCourse(id: string) {
     try {
-      await this.prisma.course.delete({
-        where: { id },
+      const existing = await this.prisma.course.findFirst({
+        where: {
+          OR: [
+            { id },
+            { slug: id },
+          ],
+        },
       });
-    } catch {
-      // ignore db unreachable
+
+      if (existing) {
+        await this.prisma.course.delete({
+          where: { id: existing.id },
+        });
+      }
+    } catch (err: any) {
+      console.warn('Prisma course delete warning:', err?.message || err);
     }
-    AdminService.fallbackCourses.delete(String(id));
+
+    AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
+    const keysToDelete: string[] = [];
+    for (const [k, v] of AdminService.fallbackCourses.entries()) {
+      if (k === id || (v && (v.id === id || v.slug === id))) {
+        keysToDelete.push(k);
+      }
+    }
+    for (const k of keysToDelete) {
+      AdminService.fallbackCourses.delete(k);
+    }
     AdminService.saveMetaToFile();
     return { success: true, id };
   }
