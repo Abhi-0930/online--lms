@@ -50,6 +50,7 @@ export interface LiveRecordingItem {
 }
 
 const CACHE_KEY = "lms_user_cached_recordings";
+const DELETED_TOMBSTONES = new Set(["rec_1790278429652", "1790278429652"]);
 
 function readCache(): LiveRecordingItem[] {
   if (typeof window === "undefined") return [];
@@ -57,7 +58,9 @@ function readCache(): LiveRecordingItem[] {
     const raw = localStorage.getItem(CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((r) => r && r.id && !DELETED_TOMBSTONES.has(String(r.id)));
+      }
     }
   } catch {}
   return [];
@@ -66,7 +69,8 @@ function readCache(): LiveRecordingItem[] {
 function writeCache(data: LiveRecordingItem[]) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    const cleaned = data.filter((r) => r && r.id && !DELETED_TOMBSTONES.has(String(r.id)));
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cleaned));
   } catch {}
 }
 
@@ -87,7 +91,9 @@ export function useLiveRecordings() {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && isMountedRef.current) {
-          const published = data.filter((r: any) => r && r.status !== "Draft");
+          const published = data.filter(
+            (r: any) => r && r.status !== "Draft" && !DELETED_TOMBSTONES.has(String(r.id))
+          );
           setRecordings(published);
           writeCache(published);
         }
@@ -112,12 +118,22 @@ export function useLiveRecordings() {
     };
     const handleCustom = (e: any) => {
       if (e.detail && Array.isArray(e.detail)) {
-        setRecordings(e.detail.filter((r: any) => r && r.status !== "Draft"));
+        setRecordings(
+          e.detail.filter((r: any) => r && r.status !== "Draft" && !DELETED_TOMBSTONES.has(String(r.id)))
+        );
       } else {
         fetchRecordings();
       }
     };
 
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        fetchRecordings();
+      }
+    };
+
+    window.addEventListener("focus", fetchRecordings);
+    document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("storage", handleStorage);
     window.addEventListener("lms:recordings-updated", handleCustom);
     window.addEventListener("lms_recordings_updated", handleCustom);
@@ -125,7 +141,9 @@ export function useLiveRecordings() {
     const unsubscribe = sharedWs.subscribe((payload) => {
       if (payload?.type === "INITIAL_DATA" || payload?.type === "DATA_UPDATE") {
         if (payload.data?.recordings && Array.isArray(payload.data.recordings)) {
-          const pub = payload.data.recordings.filter((r: any) => r && r.status !== "Draft");
+          const pub = payload.data.recordings.filter(
+            (r: any) => r && r.status !== "Draft" && !DELETED_TOMBSTONES.has(String(r.id))
+          );
           setRecordings(pub);
           writeCache(pub);
         } else {
@@ -137,6 +155,8 @@ export function useLiveRecordings() {
     return () => {
       isMountedRef.current = false;
       unsubscribe();
+      window.removeEventListener("focus", fetchRecordings);
+      document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("lms:recordings-updated", handleCustom);
       window.removeEventListener("lms_recordings_updated", handleCustom);
