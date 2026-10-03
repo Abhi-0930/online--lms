@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { API_BASE_URL, WS_BASE_URL } from "@/lib/apiConfig";
+import { sharedWs } from "@/lib/sharedWebSocket";
 
 export interface LiveSessionItem {
   id: string;
@@ -115,79 +116,26 @@ export function useLiveSessions() {
     isMountedRef.current = true;
     fetchSessions();
 
-    // WebSocket real-time connection
-    let socket: WebSocket | null = null;
-    let reconnectTimer: any = null;
-    let pingInterval: any = null;
-
-    const connectWs = () => {
-      if (!isMountedRef.current) return;
-      try {
-        const wsUrl = `${WS_BASE_URL}/api/v1/admin/ws`;
-
-        socket = new WebSocket(wsUrl);
-
-        socket.onopen = () => {
-          if (!isMountedRef.current) return;
-          socket?.send(JSON.stringify({ type: "REFRESH" }));
-
-          // Keep-alive ping every 25 seconds
-          if (pingInterval) clearInterval(pingInterval);
-          pingInterval = setInterval(() => {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({ type: "PING" }));
-            }
-          }, 25000);
-        };
-
-        socket.onmessage = (event) => {
-          if (!isMountedRef.current) return;
-          try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === "INITIAL_DATA" || msg.type === "DATA_UPDATE") {
-              if (msg.data?.liveSessions && Array.isArray(msg.data.liveSessions)) {
-                // Filter out drafts for learner frontend
-                const publicSessions = msg.data.liveSessions.filter(
-                  (s: any) => s.status !== "Draft"
-                );
-                setSessions(publicSessions);
-                writeCachedLiveSessions(publicSessions);
-              } else {
-                fetchSessions();
-              }
-            } else if (
-              msg.type === "LIVE_SESSIONS_UPDATED" ||
-              msg.type === "LIVE_SESSION_CREATED" ||
-              msg.type === "LIVE_SESSION_UPDATED" ||
-              msg.type === "LIVE_SESSION_DELETED"
-            ) {
-              fetchSessions();
-            }
-          } catch {
-            // Ignore non-json frames
-          }
-        };
-
-        socket.onclose = () => {
-          if (pingInterval) clearInterval(pingInterval);
-          if (isMountedRef.current) {
-            reconnectTimer = setTimeout(connectWs, 3000);
-          }
-        };
-
-        socket.onerror = () => {
-          if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.close();
-          }
-        };
-      } catch {
-        if (isMountedRef.current) {
-          reconnectTimer = setTimeout(connectWs, 5000);
+    const unsubscribe = sharedWs.subscribe((msg) => {
+      if (
+        msg?.type === "INITIAL_DATA" ||
+        msg?.type === "DATA_UPDATE" ||
+        msg?.type === "LIVE_SESSIONS_UPDATED" ||
+        msg?.type === "LIVE_SESSION_CREATED" ||
+        msg?.type === "LIVE_SESSION_UPDATED" ||
+        msg?.type === "LIVE_SESSION_DELETED"
+      ) {
+        if (msg.data?.liveSessions && Array.isArray(msg.data.liveSessions)) {
+          const publicSessions = msg.data.liveSessions.filter(
+            (s: any) => s.status !== "Draft"
+          );
+          setSessions(publicSessions);
+          writeCachedLiveSessions(publicSessions);
+        } else {
+          fetchSessions();
         }
       }
-    };
-
-    connectWs();
+    });
 
     // Event listeners for intra-window sync
     const handleLocalSync = () => {
@@ -199,14 +147,9 @@ export function useLiveSessions() {
 
     return () => {
       isMountedRef.current = false;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (pingInterval) clearInterval(pingInterval);
+      unsubscribe();
       window.removeEventListener("storage", handleLocalSync);
       window.removeEventListener("lms_live_sessions_updated", handleLocalSync);
-      if (socket) {
-        socket.onclose = null;
-        socket.close();
-      }
     };
   }, [fetchSessions]);
 
