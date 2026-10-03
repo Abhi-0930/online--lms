@@ -76,6 +76,7 @@ export interface Course {
   requirements?: string[];
   targetLearners?: string[];
   tags?: string[];
+  slug?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -444,6 +445,26 @@ export function useLiveAdminData() {
       if (res.ok) {
         const data = await res.json();
         updateCourses(data);
+      }
+    } catch {}
+  };
+
+  const deleteCourse = async (id: string | number) => {
+    const targetId = String(id).trim();
+    setCoursesList((prev) => {
+      const updated = prev.filter(
+        (c) => String(c.id).trim() !== targetId && String(c.slug || "").trim() !== targetId
+      );
+      writeCache(CACHE_KEYS.COURSES, updated);
+      return updated;
+    });
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/courses/${encodeURIComponent(targetId)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        await fetchCourses();
       }
     } catch {}
   };
@@ -841,6 +862,7 @@ export function useLiveAdminData() {
     isWsConnected,
     refresh,
     upsertCourse,
+    deleteCourse,
     setCourses: updateCourses,
     upsertPracticeProblem,
     deletePracticeProblem,

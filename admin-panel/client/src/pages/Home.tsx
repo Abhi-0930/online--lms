@@ -716,6 +716,7 @@ function CoursesView({
   onToast,
   onCreateCourse,
   onEditCourse,
+  onDeleteCourse: propDeleteCourse,
   courses: propCourses,
   isLoading: propLoading,
   onRefresh: propRefresh,
@@ -724,6 +725,7 @@ function CoursesView({
   onToast: (message: string) => void;
   onCreateCourse?: () => void;
   onEditCourse?: (course: Course) => void;
+  onDeleteCourse?: (id: string | number) => void;
   courses?: Course[];
   isLoading?: boolean;
   onRefresh?: () => void;
@@ -732,6 +734,7 @@ function CoursesView({
   const liveCourses = propCourses !== undefined ? propCourses : hookData.courses;
   const isLoading = propLoading !== undefined ? propLoading : hookData.isLoading;
   const refresh = propRefresh || hookData.refresh;
+  const deleteCourse = propDeleteCourse || hookData.deleteCourse;
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
@@ -804,18 +807,16 @@ function CoursesView({
     const targetTitle = courseToDelete.title;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/admin/courses/${targetId}`, {
-        method: "DELETE",
-      });
-
-      if (res.ok) {
-        setLocalRows((prev) => (prev ? prev.filter((c) => c.id !== targetId) : []));
-        onToast(`Course "${targetTitle}" deleted successfully`);
-        refresh();
+      if (deleteCourse) {
+        await deleteCourse(targetId);
       } else {
-        const data = await res.json().catch(() => ({}));
-        onToast(`Failed to delete course: ${data.error || res.statusText}`);
+        await fetch(`${API_BASE_URL}/api/v1/admin/courses/${encodeURIComponent(targetId)}`, {
+          method: "DELETE",
+        });
       }
+      setLocalRows((prev) => (prev ? prev.filter((c) => c.id !== targetId) : []));
+      onToast(`Course "${targetTitle}" deleted successfully`);
+      refresh();
     } catch (err: any) {
       onToast(`Error deleting course: ${err?.message || "Network error"}`);
     } finally {
@@ -5782,6 +5783,7 @@ export default function Home() {
     isLoading,
     isWsConnected,
     upsertCourse,
+    deleteCourse,
     upsertPracticeProblem,
     deletePracticeProblem,
     toggleProblemStatus,
@@ -6478,6 +6480,7 @@ export default function Home() {
         onToast={onToast}
         onCreateCourse={handleOpenCourseBuilder}
         onEditCourse={handleEditCourse}
+        onDeleteCourse={deleteCourse}
         courses={liveCourses}
         isLoading={isLoading}
         onRefresh={refresh}
