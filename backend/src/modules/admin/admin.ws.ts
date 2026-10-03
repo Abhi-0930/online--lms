@@ -1,19 +1,23 @@
 import { WebSocket } from 'ws';
 import { PrismaClient } from '@prisma/client';
-import { AdminService } from './admin.service';
 import logger from '../../utils/logger';
 
 export class AdminWsBroadcaster {
   private static clients = new Set<WebSocket>();
+  private static broadcastDebounceTimer: any = null;
 
-  public static addClient(socket: WebSocket, prisma: PrismaClient) {
+  public static addClient(socket: WebSocket, _prisma: PrismaClient) {
     this.clients.add(socket);
-    logger.info({ totalConnected: this.clients.size }, 'Admin WebSocket client connected');
+    logger.info({ totalConnected: this.clients.size }, 'WebSocket client connected');
 
-    // Send initial snapshot immediately on connection
-    this.sendSnapshot(socket, prisma, 'INITIAL_DATA');
+    // Send instant lightweight connection confirmation (0 bytes overhead)
+    if (socket.readyState === WebSocket.OPEN) {
+      try {
+        socket.send(JSON.stringify({ type: 'CONNECTED', timestamp: new Date().toISOString() }));
+      } catch {}
+    }
 
-    socket.on('message', async (raw) => {
+    socket.on('message', (raw) => {
       try {
         const msg = JSON.parse(raw.toString());
         if (msg.type === 'PING') {
@@ -21,7 +25,9 @@ export class AdminWsBroadcaster {
             socket.send(JSON.stringify({ type: 'PONG', timestamp: Date.now() }));
           }
         } else if (msg.type === 'REFRESH') {
-          await this.sendSnapshot(socket, prisma, 'DATA_UPDATE');
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'DATA_UPDATE', timestamp: new Date().toISOString() }));
+          }
         }
       } catch {
         // ignore malformed client packets
@@ -30,112 +36,42 @@ export class AdminWsBroadcaster {
 
     socket.on('close', () => {
       this.clients.delete(socket);
-      logger.info({ totalConnected: this.clients.size }, 'Admin WebSocket client disconnected');
+      logger.info({ totalConnected: this.clients.size }, 'WebSocket client disconnected');
     });
 
     socket.on('error', (err) => {
-      logger.warn({ err: err.message }, 'Admin WebSocket error');
+      logger.warn({ err: err.message }, 'WebSocket client error');
       this.clients.delete(socket);
     });
   }
 
-  private static cachedPayload: string | null = null;
-  private static cachedTimestamp = 0;
-  private static inflightPromise: Promise<string> | null = null;
-  private static broadcastDebounceTimer: any = null;
-
-  private static async getOrBuildPayload(prisma: PrismaClient): Promise<string> {
-    const now = Date.now();
-    // Use cached payload if built within the last 2.5 seconds
-    if (this.cachedPayload && now - this.cachedTimestamp < 2500) {
-      return this.cachedPayload;
-    }
-
-    if (this.inflightPromise) {
-      return this.inflightPromise;
-    }
-
-    this.inflightPromise = (async () => {
-      try {
-        const adminService = new AdminService(prisma);
-        const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs] = await Promise.all([
-          adminService.getDashboardStats(),
-          adminService.getAllStudents(),
-          adminService.getAllCourses(),
-          adminService.getAllAssignments(),
-          adminService.getAllSubmissions(),
-          adminService.getAllContent(),
-          adminService.getAllPracticeProblems(),
-          adminService.getAllLiveSessions(),
-          adminService.getAllAnnouncements(),
-          adminService.getInstructors(),
-          adminService.getAllRecordings(),
-          adminService.getAllPayments(),
-          adminService.getAuditLogs(),
-        ]);
-
-        const payload = JSON.stringify({
-          type: 'DATA_UPDATE',
-          data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs },
-          timestamp: new Date().toISOString(),
-        });
-
-        this.cachedPayload = payload;
-        this.cachedTimestamp = Date.now();
-        return payload;
-      } finally {
-        this.inflightPromise = null;
-      }
-    })();
-
-    return this.inflightPromise;
-  }
-
-  private static async sendSnapshot(socket: WebSocket, prisma: PrismaClient, type: string) {
-    try {
-      const payloadString = await this.getOrBuildPayload(prisma);
-      if (socket.readyState === WebSocket.OPEN) {
-        if (type === 'INITIAL_DATA') {
-          // Replace message type cleanly without full re-serialization
-          const initPayload = payloadString.replace('"type":"DATA_UPDATE"', '"type":"INITIAL_DATA"');
-          socket.send(initPayload);
-        } else {
-          socket.send(payloadString);
-        }
-      }
-    } catch (err: any) {
-      logger.error({ err: err.message }, 'Failed to send admin snapshot via WebSocket');
-    }
-  }
-
-  public static async broadcastUpdate(prisma: PrismaClient) {
+  public static async broadcastUpdate(_prisma?: PrismaClient): Promise<void> {
     if (this.clients.size === 0) return;
 
-    // Invalidate cache immediately on data change
-    this.cachedPayload = null;
-    this.cachedTimestamp = 0;
-
-    // Debounce rapid successive broadcasts within 200ms
+    // Debounce rapid successive broadcasts within 150ms
     if (this.broadcastDebounceTimer) {
       clearTimeout(this.broadcastDebounceTimer);
     }
 
-    this.broadcastDebounceTimer = setTimeout(async () => {
-      try {
-        const payload = await this.getOrBuildPayload(prisma);
+    this.broadcastDebounceTimer = setTimeout(() => {
+      const payload = JSON.stringify({
+        type: 'DATA_UPDATE',
+        timestamp: new Date().toISOString(),
+      });
 
-        for (const client of this.clients) {
+      for (const client of Array.from(this.clients)) {
+        try {
           if (client.readyState === WebSocket.OPEN) {
             client.send(payload);
           } else {
             this.clients.delete(client);
           }
+        } catch {
+          this.clients.delete(client);
         }
-
-        logger.info({ clientCount: this.clients.size }, 'Broadcasted real-time WebSocket update to clients');
-      } catch (err: any) {
-        logger.error({ err: err.message }, 'Failed to broadcast admin WebSocket update');
       }
+
+      logger.info({ clientCount: this.clients.size }, 'Broadcasted lightweight real-time event to clients');
     }, 150);
   }
 
@@ -143,4 +79,3 @@ export class AdminWsBroadcaster {
     return this.clients.size;
   }
 }
-
