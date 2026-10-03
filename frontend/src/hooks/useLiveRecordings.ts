@@ -37,6 +37,9 @@ export interface LiveRecordingItem {
   sessionTime?: string;
   resources: RecordingResource[];
   chapters: RecordingChapter[];
+  resourceUrl?: string;
+  notes?: string;
+  notesContent?: string;
   visibility?: string;
   accessType?: string;
   allowDownload?: boolean;
