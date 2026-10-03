@@ -3881,15 +3881,31 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
         const videoUrl = matchingRecording?.videoUrl || les.videoUrl;
         const durationStr = matchingRecording?.duration || les.duration || `${10 + ((lIdx * 3) % 15)}m`;
 
-        const resources = Array.isArray(matchingRecording?.resources) && matchingRecording.resources.length > 0
+        const rawResources = Array.isArray(matchingRecording?.resources) && matchingRecording.resources.length > 0
           ? matchingRecording.resources
           : Array.isArray(les.resources) && les.resources.length > 0
           ? les.resources
-          : [
-              { name: `${lesTitle.replace(/[^a-zA-Z0-9 ]/g, "")}_CheatSheet.pdf`, size: "2.4 MB", type: "PDF" },
-              { name: "Starter_Code_Template.cpp", size: "14 KB", type: "Code" },
-              { name: "Slide_Deck_Annotated.pdf", size: "4.8 MB", type: "PDF" },
-            ];
+          : [];
+
+        const resources = [...rawResources];
+        if (les.resourceUrl && !resources.some((r: any) => r.url === les.resourceUrl)) {
+          resources.push({
+            name: les.resourceTitle || `${lesTitle} Supplementary Materials`,
+            url: les.resourceUrl,
+            size: "Online Link",
+            type: "Web Resource",
+          });
+        }
+        if (matchingRecording?.resourceUrl && !resources.some((r: any) => r.url === matchingRecording.resourceUrl)) {
+          resources.push({
+            name: matchingRecording.topic ? `${matchingRecording.topic} Slides & Docs` : "Session Resources",
+            url: matchingRecording.resourceUrl,
+            size: "Online Resource",
+            type: "Resource",
+          });
+        }
+
+        const lessonNotes = les.notes || les.notesContent || les.notesSummary || matchingRecording?.notes || matchingRecording?.notesContent || "";
 
         return {
           id: lesId,
@@ -3904,7 +3920,8 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
           isCompletedByInstructor,
           recording: matchingRecording,
           resources,
-          description: matchingRecording?.description || les.description || `In this session, we break down ${lesTitle}. Build the mental model step-by-step with real-world examples, visual invariant tracing, and pattern analysis.`,
+          notes: lessonNotes,
+          description: les.description || matchingRecording?.description || `In this session, we explore ${lesTitle}. Build the mental model step-by-step with real-world examples and pattern analysis.`,
         };
       });
 
@@ -4166,46 +4183,61 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // Filter curated practice challenges relevant to this course / category
+  // Filter curated practice challenges attached to this course / module / lesson
   const filteredProblems = useMemo(() => {
     if (!liveProblems || liveProblems.length === 0) return [];
-    const courseCat = (activeCourse?.category || "").toLowerCase();
-    const modTitle = (activeLesson?.moduleTitle || "").toLowerCase();
+    const courseId = String(activeCourse?.id || "").toLowerCase();
+    const courseSlug = String(activeCourse?.slug || "").toLowerCase();
+    const courseTitle = (activeCourse?.title || "").toLowerCase().trim();
+    const courseCat = (activeCourse?.category || "").toLowerCase().trim();
+    const modTitle = (activeLesson?.moduleTitle || "").toLowerCase().trim();
+    const lesTitle = (activeLesson?.title || "").toLowerCase().trim();
 
-    const matching = liveProblems.filter((p) => {
-      const pCat = (p.category || p.topic || "").toLowerCase();
-      const pTitle = (p.title || "").toLowerCase();
-      return (
-        pCat.includes(courseCat) ||
-        courseCat.includes(pCat) ||
-        pCat.includes(modTitle) ||
-        modTitle.includes(pCat) ||
-        pTitle.includes("window") ||
-        pTitle.includes("two pointer") ||
-        pTitle.includes("array")
-      );
+    return liveProblems.filter((p: any) => {
+      const pCourseId = String(p.courseId || "").toLowerCase();
+      const pCourse = String(p.course || p.courseTitle || "").toLowerCase().trim();
+      const pMod = String(p.module || p.moduleTitle || "").toLowerCase().trim();
+      const pLes = String(p.lesson || p.lessonTitle || "").toLowerCase().trim();
+      const pCat = String(p.category || p.topic || "").toLowerCase().trim();
+
+      // Direct ID or title matches
+      if (pCourseId && (pCourseId === courseId || pCourseId === courseSlug)) return true;
+      if (pCourse && (pCourse === courseTitle || courseTitle.includes(pCourse) || pCourse.includes(courseTitle))) return true;
+      if (pMod && modTitle && (pMod === modTitle || modTitle.includes(pMod) || pMod.includes(modTitle))) return true;
+      if (pLes && lesTitle && (pLes === lesTitle || lesTitle.includes(pLes) || pLes.includes(lesTitle))) return true;
+
+      // Category matching
+      if (pCat && modTitle && (modTitle.includes(pCat) || pCat.includes(modTitle))) return true;
+      if (pCat && lesTitle && (lesTitle.includes(pCat) || pCat.includes(lesTitle))) return true;
+      if (pCat && courseCat && (courseCat.includes(pCat) || pCat.includes(courseCat))) return true;
+
+      return false;
     });
+  }, [liveProblems, activeCourse, activeLesson]);
 
-    return matching.length > 0 ? matching.slice(0, 6) : liveProblems.slice(0, 6);
-  }, [liveProblems, activeCourse?.category, activeLesson]);
-
-  // Filter assignments relevant to this course
+  // Filter assignments attached to this course / module / lesson
   const filteredAssignments = useMemo(() => {
     if (!assignments || assignments.length === 0) return [];
-    const courseTitle = (activeCourse?.title || "").toLowerCase();
-    const modTitle = (activeLesson?.moduleTitle || "").toLowerCase();
-    const matching = assignments.filter((a) => {
-      const aCourse = (a.course || "").toLowerCase();
-      const aMod = (a.module || "").toLowerCase();
-      return (
-        aCourse.includes(courseTitle) ||
-        courseTitle.includes(aCourse) ||
-        aMod.includes(modTitle) ||
-        modTitle.includes(aMod)
-      );
+    const courseId = String(activeCourse?.id || "").toLowerCase();
+    const courseSlug = String(activeCourse?.slug || "").toLowerCase();
+    const courseTitle = (activeCourse?.title || "").toLowerCase().trim();
+    const modTitle = (activeLesson?.moduleTitle || "").toLowerCase().trim();
+    const lesTitle = (activeLesson?.title || "").toLowerCase().trim();
+
+    return assignments.filter((a: any) => {
+      const aCourseId = String(a.courseId || "").toLowerCase();
+      const aCourse = String(a.course || a.courseName || "").toLowerCase().trim();
+      const aMod = String(a.module || a.moduleTitle || "").toLowerCase().trim();
+      const aLes = String(a.lesson || a.lessonTitle || a.topic || "").toLowerCase().trim();
+
+      if (aCourseId && (aCourseId === courseId || aCourseId === courseSlug)) return true;
+      if (aCourse && (aCourse === courseTitle || courseTitle.includes(aCourse) || aCourse.includes(courseTitle))) return true;
+      if (aMod && modTitle && (aMod === modTitle || modTitle.includes(aMod) || aMod.includes(modTitle))) return true;
+      if (aLes && lesTitle && (aLes === lesTitle || lesTitle.includes(aLes) || aLes.includes(lesTitle))) return true;
+
+      return false;
     });
-    return matching.length > 0 ? matching : assignments.slice(0, 4);
-  }, [assignments, activeCourse?.title, activeLesson]);
+  }, [assignments, activeCourse, activeLesson]);
 
   return (
     <div className="-mx-4 -mt-7 lg:-mx-8">
@@ -4440,22 +4472,27 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                   {activeLesson?.description}
                 </p>
 
-                {/* Code Invariant Box */}
-                <div className="rounded-xl border border-[#dfe5f3] bg-[#f5f7fb] p-4 font-mono text-xs leading-6 text-[#52617f] dark:border-white/10 dark:bg-white/5 dark:text-white/80">
-                  <p>
-                    <span className="text-[#7f5af0] font-semibold">while</span> right &lt; n:
-                  </p>
-                  <p className="pl-4">window.add(s[right])</p>
-                  <p className="pl-4">
-                    <span className="text-[#7f5af0] font-semibold">while</span> invalid(window):
-                  </p>
-                  <p className="pl-8">window.remove(s[left])</p>
-                  <p className="pl-8">left += 1</p>
-                  <p className="pl-4 text-emerald-600 dark:text-emerald-400 font-semibold">
-                    answer = max(answer, right - left + 1)
-                  </p>
-                  <p className="pl-4">right += 1</p>
-                </div>
+                {/* Real Instructor Notes / Invariant Box if provided */}
+                {activeLesson?.notes ? (
+                  <div className="rounded-2xl border border-[#dfe5f3] bg-[#f8faff] p-5 dark:border-white/10 dark:bg-white/5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <BookOpen className="h-4 w-4 text-[#3157e8]" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#3157e8]">
+                        Instructor Key Takeaways & Logic Invariant
+                      </span>
+                    </div>
+                    <div className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-[#17223d] dark:text-white/90">
+                      {activeLesson.notes}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-4 text-xs text-[#7c87a4] dark:border-white/10 dark:bg-white/5">
+                    <Info className="h-4 w-4 text-[#3157e8] shrink-0" />
+                    <span>
+                      Official instructor code invariants have not been attached to this specific lesson yet. You can jot down personal takeaways below!
+                    </span>
+                  </div>
+                )}
 
                 {/* Student Saved Notes History */}
                 {savedNotes.length > 0 && (
@@ -4508,40 +4545,60 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  {activeLesson?.resources?.map((res: any, rIdx: number) => (
-                    <div
-                      key={rIdx}
-                      className="flex items-center justify-between gap-4 rounded-2xl border border-[#edf0f6] bg-white p-4 dark:border-white/10 dark:bg-white/5"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
-                          <FileText className="h-5 w-5" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
-                            {res.name || `Resource ${rIdx + 1}`}
-                          </p>
-                          <p className="text-xs text-[#9aa4bc]">
-                            {res.size || "2.4 MB"} · {res.type || "Document"}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (res.url) {
-                            window.open(res.url, "_blank");
-                          } else {
-                            toast.success(`Downloading "${res.name}"`);
-                          }
-                        }}
-                        className="button-secondary !py-1.5 !px-3.5 !text-xs shrink-0 inline-flex items-center gap-1.5"
+                {activeLesson?.resources && activeLesson.resources.length > 0 ? (
+                  <div className="space-y-3">
+                    {activeLesson.resources.map((res: any, rIdx: number) => (
+                      <div
+                        key={rIdx}
+                        className="flex items-center justify-between gap-4 rounded-2xl border border-[#edf0f6] bg-white p-4 dark:border-white/10 dark:bg-white/5"
                       >
-                        <Download className="h-3.5 w-3.5" /> Download
-                      </button>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
+                            <FileText className="h-5 w-5" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
+                              {res.name || res.title || `Resource ${rIdx + 1}`}
+                            </p>
+                            <p className="text-xs text-[#9aa4bc]">
+                              {res.size || "Resource"} · {res.type || "Attached Material"}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (res.url) {
+                              window.open(res.url, "_blank");
+                            } else {
+                              toast.success(`Accessing "${res.name || res.title}"`);
+                            }
+                          }}
+                          className="button-secondary !py-1.5 !px-3.5 !text-xs shrink-0 inline-flex items-center gap-1.5"
+                        >
+                          {res.url?.startsWith("http") ? (
+                            <>
+                              <ExternalLink className="h-3.5 w-3.5" /> Open Link
+                            </>
+                          ) : (
+                            <>
+                              <Download className="h-3.5 w-3.5" /> Download
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-8 text-center dark:border-white/10 dark:bg-white/5">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
+                      <FolderOpen className="h-6 w-6" />
                     </div>
-                  ))}
-                </div>
+                    <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No Attached Resources</h3>
+                    <p className="mt-1 text-xs text-[#9aa4bc] max-w-sm mx-auto">
+                      There are no downloadable slides, starter templates, or files attached to this specific lesson yet.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -4565,65 +4622,82 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                   </Link>
                 </div>
 
-                <div className="space-y-3">
-                  {filteredProblems.map((prob) => (
-                    <div
-                      key={String(prob.id)}
-                      className="rounded-2xl border border-[#edf0f6] bg-white p-4.5 dark:border-white/10 dark:bg-white/5 flex items-center justify-between gap-4 transition hover:border-[#3157e8]/30"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span
-                          className={cx(
-                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold",
-                            prob.solved
-                              ? "bg-[#e4f8ee] text-[#23a26d]"
-                              : "bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white"
-                          )}
-                        >
-                          <Code2 className="h-4 w-4" />
-                        </span>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
-                              {prob.title}
-                            </p>
-                            {prob.solved && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
-                                <CheckCircle2 className="h-3 w-3" /> Solved
-                              </span>
+                {filteredProblems.length > 0 ? (
+                  <div className="space-y-3">
+                    {filteredProblems.map((prob) => (
+                      <div
+                        key={String(prob.id)}
+                        className="rounded-2xl border border-[#edf0f6] bg-white p-4.5 dark:border-white/10 dark:bg-white/5 flex items-center justify-between gap-4 transition hover:border-[#3157e8]/30"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span
+                            className={cx(
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold",
+                              prob.solved
+                                ? "bg-[#e4f8ee] text-[#23a26d]"
+                                : "bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white"
                             )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5 text-xs text-[#9aa4bc]">
-                            <span>{prob.category || prob.topic}</span>
-                            <span>·</span>
-                            <span
-                              className={cx(
-                                "font-bold",
-                                prob.difficulty === "Easy"
-                                  ? "text-emerald-600"
-                                  : prob.difficulty === "Medium"
-                                  ? "text-amber-600"
-                                  : "text-rose-600"
+                          >
+                            <Code2 className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
+                                {prob.title}
+                              </p>
+                              {prob.solved && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                                  <CheckCircle2 className="h-3 w-3" /> Solved
+                                </span>
                               )}
-                            >
-                              {prob.difficulty}
-                            </span>
-                            <span>·</span>
-                            <span>{prob.acceptance || "80%"} acceptance</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-[#9aa4bc]">
+                              <span>{prob.category || prob.topic}</span>
+                              <span>·</span>
+                              <span
+                                className={cx(
+                                  "font-bold",
+                                  prob.difficulty === "Easy"
+                                    ? "text-emerald-600"
+                                    : prob.difficulty === "Medium"
+                                    ? "text-amber-600"
+                                    : "text-rose-600"
+                                )}
+                              >
+                                {prob.difficulty}
+                              </span>
+                              <span>·</span>
+                              <span>{prob.acceptance || "80%"} acceptance</span>
+                            </div>
                           </div>
                         </div>
+                        <Link
+                          href={getSecureHref("/practice", {
+                            slug: prob.slug || String(prob.id),
+                          })}
+                          className="button-primary !py-1.5 !px-3.5 !text-xs shrink-0 inline-flex items-center gap-1.5"
+                        >
+                          {prob.solved ? "Review Arena" : "Solve in Arena"} <ArrowRight className="h-3 w-3" />
+                        </Link>
                       </div>
-                      <Link
-                        href={getSecureHref("/practice", {
-                          slug: prob.slug || String(prob.id),
-                        })}
-                        className="button-primary !py-1.5 !px-3.5 !text-xs shrink-0 inline-flex items-center gap-1.5"
-                      >
-                        {prob.solved ? "Review Arena" : "Solve in Arena"} <ArrowRight className="h-3 w-3" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-8 text-center dark:border-white/10 dark:bg-white/5">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
+                      <Code2 className="h-6 w-6" />
+                    </div>
+                    <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No Mapped Practice Problems</h3>
+                    <p className="mt-1 text-xs text-[#9aa4bc] max-w-sm mx-auto">
+                      There are currently no specific problem challenges mapped to this topic. You can explore all algorithms in the Code Arena.
+                    </p>
+                    <div className="mt-4">
+                      <Link href={getSecureHref("/practice")} className="button-primary !py-2 !px-4 !text-xs inline-flex items-center gap-2">
+                        <Code2 className="h-3.5 w-3.5" /> Explore All Problems <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -4646,41 +4720,58 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                     Full Workspace <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
-                <div className="space-y-3">
-                  {filteredAssignments.map((a) => {
-                    const isSubmitted = Boolean(a.userSubmission);
-                    return (
-                      <div
-                        key={a.id}
-                        className="rounded-2xl border border-[#edf0f6] bg-white p-5 dark:border-white/10 dark:bg-white/5"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">
-                                {a.module || a.course}
-                              </span>
-                              {isSubmitted && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                                  <CheckCircle2 className="h-3 w-3" /> Submitted
+                {filteredAssignments.length > 0 ? (
+                  <div className="space-y-3">
+                    {filteredAssignments.map((a) => {
+                      const isSubmitted = Boolean(a.userSubmission);
+                      return (
+                        <div
+                          key={a.id}
+                          className="rounded-2xl border border-[#edf0f6] bg-white p-5 dark:border-white/10 dark:bg-white/5"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">
+                                  {a.module || a.course}
                                 </span>
-                              )}
+                                {isSubmitted && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                    <CheckCircle2 className="h-3 w-3" /> Submitted
+                                  </span>
+                                )}
+                              </div>
+                              <h3 className="mt-2 text-sm font-bold text-[#17223d] dark:text-white">{a.title}</h3>
+                              <p className="mt-1 text-xs text-[#7c87a4]">{a.description}</p>
                             </div>
-                            <h3 className="mt-2 text-sm font-bold text-[#17223d] dark:text-white">{a.title}</h3>
-                            <p className="mt-1 text-xs text-[#7c87a4]">{a.description}</p>
+                            <span className="shrink-0 text-xs font-bold text-[#3157e8]">{a.totalMarks} pts</span>
                           </div>
-                          <span className="shrink-0 text-xs font-bold text-[#3157e8]">{a.totalMarks} pts</span>
+                          <div className="mt-4 flex items-center justify-between border-t border-[#edf0f6] pt-3 text-xs dark:border-white/10">
+                            <span className="text-[11px] text-amber-600 font-semibold">{a.dueDate}</span>
+                            <Link href={getSecureHref("/assignments")} className="button-primary !py-1.5 !px-3 !text-xs">
+                              {isSubmitted ? "View Submission" : "Open & Submit"}
+                            </Link>
+                          </div>
                         </div>
-                        <div className="mt-4 flex items-center justify-between border-t border-[#edf0f6] pt-3 text-xs dark:border-white/10">
-                          <span className="text-[11px] text-amber-600 font-semibold">{a.dueDate}</span>
-                          <Link href={getSecureHref("/assignments")} className="button-primary !py-1.5 !px-3 !text-xs">
-                            {isSubmitted ? "View Submission" : "Open & Submit"}
-                          </Link>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-8 text-center dark:border-white/10 dark:bg-white/5">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
+                      <FileText className="h-6 w-6" />
+                    </div>
+                    <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No Module Assignments</h3>
+                    <p className="mt-1 text-xs text-[#9aa4bc] max-w-sm mx-auto">
+                      There are no active graded assignments or submissions required for this specific lesson. Check the assignments hub for global capstones.
+                    </p>
+                    <div className="mt-4">
+                      <Link href={getSecureHref("/assignments")} className="button-primary !py-2 !px-4 !text-xs inline-flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5" /> View Assignments Workspace <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -4714,51 +4805,57 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                 </div>
 
                 {/* Discussion Thread List */}
-                <div className="space-y-3">
-                  {discussions.map((d) => (
-                    <div
-                      key={d.id}
-                      className="rounded-2xl border border-[#edf0f6] bg-white p-4.5 dark:border-white/10 dark:bg-white/5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#eef2ff] text-xs font-bold text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-blue-300">
-                            {d.author.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-[#17223d] dark:text-white">{d.author}</span>
-                              <span
-                                className={cx(
-                                  "rounded px-1.5 py-0.2 text-[9px] font-bold",
-                                  d.role === "Instructor"
-                                    ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
-                                    : "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
-                                )}
-                              >
-                                {d.role}
-                              </span>
+                {discussions.length > 0 ? (
+                  <div className="space-y-3">
+                    {discussions.map((d) => (
+                      <div
+                        key={d.id}
+                        className="rounded-2xl border border-[#edf0f6] bg-white p-4.5 dark:border-white/10 dark:bg-white/5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#eef2ff] text-xs font-bold text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-blue-300">
+                              {d.author.charAt(0)}
                             </div>
-                            <p className="text-[10px] text-[#9aa4bc]">{d.time}</p>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-[#17223d] dark:text-white">{d.author}</span>
+                                <span
+                                  className={cx(
+                                    "rounded px-1.5 py-0.2 text-[9px] font-bold",
+                                    d.role === "Instructor"
+                                      ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                                      : "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
+                                  )}
+                                >
+                                  {d.role}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-[#9aa4bc]">{d.time}</p>
+                            </div>
                           </div>
+                          <button
+                            onClick={() => handleToggleLikeDiscussion(d.id)}
+                            className={cx(
+                              "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition",
+                              d.hasLiked
+                                ? "bg-blue-50 text-[#3157e8] dark:bg-[#3157e8]/20"
+                                : "text-[#9aa4bc] hover:bg-[#f5f7fb] dark:hover:bg-white/5"
+                            )}
+                          >
+                            <ThumbsUp className={cx("h-3.5 w-3.5", d.hasLiked && "fill-current")} />
+                            <span>{d.likes}</span>
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleToggleLikeDiscussion(d.id)}
-                          className={cx(
-                            "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition",
-                            d.hasLiked
-                              ? "bg-blue-50 text-[#3157e8] dark:bg-[#3157e8]/20"
-                              : "text-[#9aa4bc] hover:bg-[#f5f7fb] dark:hover:bg-white/5"
-                          )}
-                        >
-                          <ThumbsUp className={cx("h-3.5 w-3.5", d.hasLiked && "fill-current")} />
-                          <span>{d.likes}</span>
-                        </button>
+                        <p className="mt-3 text-xs leading-relaxed text-[#5f6c8c] dark:text-white/80">{d.text}</p>
                       </div>
-                      <p className="mt-3 text-xs leading-relaxed text-[#5f6c8c] dark:text-white/80">{d.text}</p>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-6 text-center dark:border-white/10 dark:bg-white/5">
+                    <p className="text-xs text-[#9aa4bc]">No discussions yet for this lesson. Post your question above to start the thread!</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
