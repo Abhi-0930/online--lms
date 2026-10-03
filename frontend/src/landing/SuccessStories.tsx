@@ -171,6 +171,9 @@ interface LightArcCardProps {
 }
 
 function LightArcCard({ story, isCenter }: LightArcCardProps) {
+  const [imgError, setImgError] = useState(false);
+  const [logoError, setLogoError] = useState(false);
+
   return (
     <div
       className={`relative w-full h-[280px] sm:h-[295px] rounded-[22px] overflow-hidden transition-all duration-300 flex flex-col justify-between p-4 bg-white border ${
@@ -182,34 +185,47 @@ function LightArcCard({ story, isCenter }: LightArcCardProps) {
       {/* Header: Avatar + Verified Dot + Company Logo */}
       <div className="flex items-center justify-between gap-2">
         <div className="relative">
-          <img
-            draggable={false}
-            src={story.avatar}
-            alt={story.name}
-            className="w-10 h-10 rounded-xl object-cover ring-1 ring-slate-200 shadow-xs"
-          />
+          {!imgError ? (
+            <img
+              draggable={false}
+              src={story.avatar}
+              alt={story.name}
+              className="w-10 h-10 rounded-xl object-cover ring-1 ring-slate-200 shadow-xs"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center ring-1 ring-slate-200 shadow-xs">
+              {story.name.charAt(0)}
+            </div>
+          )}
           <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
         </div>
 
-        {/* Company Logo Image */}
-        <div className="h-6 max-w-[85px] flex items-center justify-end">
-          <img
-            draggable={false}
-            src={story.companyLogo}
-            alt={story.company}
-            className="max-h-5 max-w-full object-contain"
-            onError={(e) => {
-              (e.target as HTMLElement).style.display = "none";
-            }}
-          />
+        {/* Company Logo Image or Fallback Badge */}
+        <div className="h-6 max-w-[105px] flex items-center justify-end">
+          {story.companyLogo && !logoError ? (
+            <img
+              draggable={false}
+              src={story.companyLogo}
+              alt={story.company}
+              className="max-h-5 max-w-full object-contain"
+              onError={() => setLogoError(true)}
+            />
+          ) : (
+            <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md truncate max-w-[105px]">
+              {story.company}
+            </span>
+          )}
         </div>
       </div>
 
       {/* Center Details: Name & Role */}
       <div className="space-y-0.5">
-        <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate">{story.name}</h4>
-        <p className="text-xs text-slate-500 font-medium truncate">
-          {story.currentRole}
+        <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate" title={story.name}>
+          {story.name}
+        </h4>
+        <p className="text-xs text-slate-500 font-medium truncate" title={`${story.currentRole} • ${story.company}`}>
+          {story.currentRole} • {story.company}
         </p>
       </div>
 
