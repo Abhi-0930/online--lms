@@ -567,7 +567,7 @@ export function CommunitySection() {
 
             {/* WhatsApp Community Button */}
             <a
-              href="https://chat.whatsapp.com/"
+              href="https://chat.whatsapp.com/G6tLDiLYBN7HAD3UuLSeu0"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-3 px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl bg-[#00a859] hover:bg-[#00924d] text-white font-semibold text-base sm:text-lg shadow-lg shadow-emerald-600/25 hover:shadow-emerald-600/35 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 group mb-10"
