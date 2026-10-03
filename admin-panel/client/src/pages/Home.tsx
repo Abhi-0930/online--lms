@@ -156,14 +156,21 @@ function useHashRoute() {
 function StatusBadge({ children }: { children: React.ReactNode }) {
   const value = String(children);
   const tone =
-    value === "Published" || value === "Paid" || value === "Live" || value === "On track" || value === "Responded"
+    value === "Completed"
+      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300/70 dark:border-emerald-700/60 font-extrabold"
+      : value === "Published" || value === "Paid" || value === "Live" || value === "On track" || value === "Responded"
       ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
       : value === "Draft" || value === "Review" || value === "Open" || value === "Upcoming" || value === "New" || value === "Refund requested" || value === "In progress"
       ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
       : value === "Not enrolled"
       ? "bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border border-slate-200/60 dark:border-white/10"
       : "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300";
-  return <span className={cn("rounded-md px-2 py-1 text-[10px] font-bold", tone)}>{children}</span>;
+  return (
+    <span className={cn("rounded-md px-2 py-1 text-[10px] font-bold inline-flex items-center gap-1", tone)}>
+      {value === "Completed" && <Check className="h-3 w-3 stroke-[3]" />}
+      {children}
+    </span>
+  );
 }
 
 function SectionHeader({ section, description, actionLabel, onAction, onExport }: { section: string; description: string; actionLabel: string; onAction: () => void; onExport?: () => void }) {
@@ -1353,6 +1360,27 @@ function ContentView({
     }
   };
 
+  const handleToggleCompleted = async (item: ContentItem) => {
+    const targetId = String(item.id);
+    const isCurrentlyCompleted = item.status === "Completed";
+    const newStatus = isCurrentlyCompleted ? "Published" : "Completed";
+    const updated = { ...item, status: newStatus };
+    setLocalRows((current) =>
+      (current || []).map((r) => (String(r.id) === targetId ? updated : r))
+    );
+    try {
+      await fetch(`${API_BASE_URL}/api/v1/admin/content/${encodeURIComponent(targetId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus, isCompleted: !isCurrentlyCompleted }),
+      });
+      onToast(isCurrentlyCompleted ? `Marked "${item.title}" as incomplete` : `Marked "${item.title}" as completed!`);
+      if (onRefresh) onRefresh();
+    } catch {
+      onToast(`Status updated to ${newStatus}`);
+    }
+  };
+
   const handleToggleStatus = async (item: ContentItem) => {
     const targetId = String(item.id);
     const newStatus = item.status === "Published" ? "Draft" : "Published";
@@ -1370,12 +1398,16 @@ function ContentView({
     } catch {}
   };
 
-  const filtered = rows.filter(
-    (item) =>
-      (filter === "All" || item.type === filter) &&
-      `${item.title} ${item.parent} ${item.owner}`.toLowerCase().includes(query.toLowerCase())
-  );
+  const filtered = rows.filter((item) => {
+    const matchesQuery = `${item.title} ${item.parent} ${item.owner}`.toLowerCase().includes(query.toLowerCase());
+    if (filter === "All") return matchesQuery;
+    if (filter === "Completed") return item.status === "Completed" && matchesQuery;
+    if (filter === "Published") return item.status === "Published" && matchesQuery;
+    if (filter === "Draft") return (item.status === "Draft" || item.status === "Review") && matchesQuery;
+    return item.type === filter && matchesQuery;
+  });
 
+  const completedCount = rows.filter((r) => r.status === "Completed").length;
   const publishedCount = rows.filter((r) => r.status === "Published").length;
   const videoCount = rows.filter((r) => r.type === "Video").length;
   const draftsCount = rows.filter((r) => r.status === "Draft" || r.status === "Review").length;
@@ -1497,9 +1529,10 @@ function ContentView({
             change: rows.length > 0 ? `↗ ${rows.length} total items` : "0 items in library",
           },
           {
-            label: "Published lessons & files",
-            value: publishedCount.toLocaleString(),
-            change: publishedCount > 0 ? `↗ ${publishedCount} published` : "0 published",
+            label: "Completed lessons",
+            value: completedCount.toLocaleString(),
+            change: completedCount > 0 ? `✓ ${completedCount} marked done` : "0 completed",
+            tone: "text-emerald-600",
           },
           {
             label: "Video lessons",
@@ -1527,7 +1560,7 @@ function ContentView({
             setQuery={setQuery}
             filter={filter}
             setFilter={setFilter}
-            filters={["All", "Video", "PDF", "Assignment", "Resource", "Practice problem", "Text", "Quiz"]}
+            filters={["All", "Completed", "Video", "PDF", "Assignment", "Resource", "Practice problem", "Published", "Draft"]}
           />
         }
       >
@@ -1541,13 +1574,14 @@ function ContentView({
                 <th className="px-4 py-3">Owner</th>
                 <th className="px-4 py-3">Updated</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((item, index) => {
                 const itemId = String(item.id ?? `content_${index}_${item.title}`);
                 const isMenuOpen = openMenuId === itemId;
+                const isItemCompleted = item.status === "Completed";
 
                 return (
                   <tr
@@ -1556,6 +1590,22 @@ function ContentView({
                   >
                     <td className="px-5 py-4 sm:px-6">
                       <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleCompleted({ ...item, id: itemId });
+                          }}
+                          className={cn(
+                            "group flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all cursor-pointer shadow-2xs",
+                            isItemCompleted
+                              ? "border-emerald-500 bg-emerald-500 text-white shadow-xs"
+                              : "border-slate-300 dark:border-white/20 bg-white/60 dark:bg-white/5 text-transparent hover:border-emerald-500 hover:text-emerald-500 dark:hover:border-emerald-400"
+                          )}
+                          title={isItemCompleted ? "Mark as Incomplete" : "Mark as Completed"}
+                        >
+                          <Check className={cn("h-3.5 w-3.5 stroke-[3]", isItemCompleted ? "opacity-100" : "opacity-0 group-hover:opacity-70")} />
+                        </button>
                         <span className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
                           {item.type === "Video" ? (
                             <PlayCircle className="h-4 w-4" />
@@ -1569,7 +1619,9 @@ function ContentView({
                             <FileText className="h-4 w-4" />
                           )}
                         </span>
-                        <p className="text-[12px] font-bold">{item.title}</p>
+                        <p className={cn("text-[12px] font-bold", isItemCompleted && "text-slate-600 dark:text-slate-300")}>
+                          {item.title}
+                        </p>
                       </div>
                     </td>
                     <td className="px-4 py-4 text-[11px] font-semibold">{item.type}</td>
@@ -1597,7 +1649,26 @@ function ContentView({
                         </button>
 
                         {isMenuOpen && (
-                          <div className="absolute right-0 top-full mt-1.5 z-40 w-48 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+                          <div className="absolute right-0 top-full mt-1.5 z-40 w-52 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#121620] p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleToggleCompleted({ ...item, id: itemId });
+                                setOpenMenuId(null);
+                              }}
+                              className={cn(
+                                "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer",
+                                isItemCompleted
+                                  ? "text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50"
+                                  : "text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/60"
+                              )}
+                            >
+                              <CheckCircle2 className={cn("h-3.5 w-3.5", isItemCompleted ? "text-amber-600" : "text-emerald-600 dark:text-emerald-400")} />
+                              <span>{isItemCompleted ? "Mark as Incomplete" : "Mark as Completed"}</span>
+                            </button>
+
+                            <div className="my-1 border-t border-slate-100 dark:border-white/5" />
+
                             <button
                               type="button"
                               onClick={() => {
