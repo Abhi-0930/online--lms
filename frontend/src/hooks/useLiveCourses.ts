@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { API_BASE_URL, WS_BASE_URL } from "@/lib/apiConfig";
+import { sharedWs } from "@/lib/sharedWebSocket";
 
 export interface LiveCourseItem {
   id: string;
@@ -328,49 +329,15 @@ export function useLiveCourses() {
     isMountedRef.current = true;
     fetchCourses();
 
-    let socket: WebSocket | null = null;
-    let reconnectTimer: any = null;
-
-    const connectWs = () => {
-      if (!isMountedRef.current) return;
-      try {
-        const wsUrl = `${WS_BASE_URL}/api/v1/admin/ws`;
-
-        socket = new WebSocket(wsUrl);
-
-        socket.onopen = () => {
-          socket?.send(JSON.stringify({ type: "REFRESH" }));
-        };
-
-        socket.onmessage = (event) => {
-          try {
-            const payload = JSON.parse(event.data);
-            if (payload.type === "INITIAL_DATA" || payload.type === "DATA_UPDATE") {
-              fetchCourses();
-            }
-          } catch {
-            // Ignore non-json
-          }
-        };
-
-        socket.onclose = () => {
-          if (!isMountedRef.current) return;
-          reconnectTimer = setTimeout(connectWs, 5000);
-        };
-      } catch {
-        reconnectTimer = setTimeout(connectWs, 5000);
+    const unsubscribe = sharedWs.subscribe((payload) => {
+      if (payload?.type === "INITIAL_DATA" || payload?.type === "DATA_UPDATE") {
+        fetchCourses();
       }
-    };
-
-    connectWs();
+    });
 
     return () => {
       isMountedRef.current = false;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (socket) {
-        socket.onclose = null;
-        socket.close();
-      }
+      unsubscribe();
     };
   }, [fetchCourses]);
 
