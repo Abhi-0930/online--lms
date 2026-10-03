@@ -39,33 +39,69 @@ export class AdminWsBroadcaster {
     });
   }
 
+  private static cachedPayload: string | null = null;
+  private static cachedTimestamp = 0;
+  private static inflightPromise: Promise<string> | null = null;
+  private static broadcastDebounceTimer: any = null;
+
+  private static async getOrBuildPayload(prisma: PrismaClient): Promise<string> {
+    const now = Date.now();
+    // Use cached payload if built within the last 2.5 seconds
+    if (this.cachedPayload && now - this.cachedTimestamp < 2500) {
+      return this.cachedPayload;
+    }
+
+    if (this.inflightPromise) {
+      return this.inflightPromise;
+    }
+
+    this.inflightPromise = (async () => {
+      try {
+        const adminService = new AdminService(prisma);
+        const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs] = await Promise.all([
+          adminService.getDashboardStats(),
+          adminService.getAllStudents(),
+          adminService.getAllCourses(),
+          adminService.getAllAssignments(),
+          adminService.getAllSubmissions(),
+          adminService.getAllContent(),
+          adminService.getAllPracticeProblems(),
+          adminService.getAllLiveSessions(),
+          adminService.getAllAnnouncements(),
+          adminService.getInstructors(),
+          adminService.getAllRecordings(),
+          adminService.getAllPayments(),
+          adminService.getAuditLogs(),
+        ]);
+
+        const payload = JSON.stringify({
+          type: 'DATA_UPDATE',
+          data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs },
+          timestamp: new Date().toISOString(),
+        });
+
+        this.cachedPayload = payload;
+        this.cachedTimestamp = Date.now();
+        return payload;
+      } finally {
+        this.inflightPromise = null;
+      }
+    })();
+
+    return this.inflightPromise;
+  }
+
   private static async sendSnapshot(socket: WebSocket, prisma: PrismaClient, type: string) {
     try {
-      const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs] = await Promise.all([
-        adminService.getDashboardStats(),
-        adminService.getAllStudents(),
-        adminService.getAllCourses(),
-        adminService.getAllAssignments(),
-        adminService.getAllSubmissions(),
-        adminService.getAllContent(),
-        adminService.getAllPracticeProblems(),
-        adminService.getAllLiveSessions(),
-        adminService.getAllAnnouncements(),
-        adminService.getInstructors(),
-        adminService.getAllRecordings(),
-        adminService.getAllPayments(),
-        adminService.getAuditLogs(),
-      ]);
-
+      const payloadString = await this.getOrBuildPayload(prisma);
       if (socket.readyState === WebSocket.OPEN) {
-        socket.send(
-          JSON.stringify({
-            type,
-            data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs },
-            timestamp: new Date().toISOString(),
-          })
-        );
+        if (type === 'INITIAL_DATA') {
+          // Replace message type cleanly without full re-serialization
+          const initPayload = payloadString.replace('"type":"DATA_UPDATE"', '"type":"INITIAL_DATA"');
+          socket.send(initPayload);
+        } else {
+          socket.send(payloadString);
+        }
       }
     } catch (err: any) {
       logger.error({ err: err.message }, 'Failed to send admin snapshot via WebSocket');
@@ -75,42 +111,32 @@ export class AdminWsBroadcaster {
   public static async broadcastUpdate(prisma: PrismaClient) {
     if (this.clients.size === 0) return;
 
-    try {
-      const adminService = new AdminService(prisma);
-      const [stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs] = await Promise.all([
-        adminService.getDashboardStats(),
-        adminService.getAllStudents(),
-        adminService.getAllCourses(),
-        adminService.getAllAssignments(),
-        adminService.getAllSubmissions(),
-        adminService.getAllContent(),
-        adminService.getAllPracticeProblems(),
-        adminService.getAllLiveSessions(),
-        adminService.getAllAnnouncements(),
-        adminService.getInstructors(),
-        adminService.getAllRecordings(),
-        adminService.getAllPayments(),
-        adminService.getAuditLogs(),
-      ]);
+    // Invalidate cache immediately on data change
+    this.cachedPayload = null;
+    this.cachedTimestamp = 0;
 
-      const payload = JSON.stringify({
-        type: 'DATA_UPDATE',
-        data: { stats, students, courses, assignments, submissions, content, practiceProblems, liveSessions, announcements, instructors, recordings, payments, auditLogs },
-        timestamp: new Date().toISOString(),
-      });
-
-      for (const client of this.clients) {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(payload);
-        } else {
-          this.clients.delete(client);
-        }
-      }
-
-      logger.info({ clientCount: this.clients.size }, 'Broadcasted real-time WebSocket update to clients');
-    } catch (err: any) {
-      logger.error({ err: err.message }, 'Failed to broadcast admin WebSocket update');
+    // Debounce rapid successive broadcasts within 200ms
+    if (this.broadcastDebounceTimer) {
+      clearTimeout(this.broadcastDebounceTimer);
     }
+
+    this.broadcastDebounceTimer = setTimeout(async () => {
+      try {
+        const payload = await this.getOrBuildPayload(prisma);
+
+        for (const client of this.clients) {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(payload);
+          } else {
+            this.clients.delete(client);
+          }
+        }
+
+        logger.info({ clientCount: this.clients.size }, 'Broadcasted real-time WebSocket update to clients');
+      } catch (err: any) {
+        logger.error({ err: err.message }, 'Failed to broadcast admin WebSocket update');
+      }
+    }, 150);
   }
 
   public static getConnectedCount(): number {
