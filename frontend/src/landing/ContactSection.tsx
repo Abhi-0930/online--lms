@@ -9,6 +9,7 @@ import {
   Mail,
   Instagram,
   Facebook,
+  Linkedin,
   CheckCircle2
 } from "lucide-react";
 import { toast } from "sonner";
@@ -147,6 +148,16 @@ export function ContactSection() {
 
             {/* Social Icon Buttons */}
             <div className="flex items-center gap-3 pt-2">
+              <a
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="LinkedIn"
+                className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-neutral-300 hover:text-white hover:bg-white/[0.1] hover:border-white/20 transition cursor-pointer shadow-xs"
+              >
+                <Linkedin className="w-4 h-4" />
+              </a>
+
               <a
                 href="https://x.com"
                 target="_blank"
