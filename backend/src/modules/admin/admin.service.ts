@@ -2931,14 +2931,32 @@ export class AdminService {
             `Look for repeated subproblems or invariant relationships.`
           ];
 
+      const probIdStr = String(id).toLowerCase();
+      const probSlugStr = String(prob.slug || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : `problem-${id}`)).toLowerCase();
+      const matchingSubs = allPracticeSubs.filter((s) => {
+        const sProblemId = String(s.problemId || '').toLowerCase();
+        const sProblemSlug = String(s.problemSlug || '').toLowerCase();
+        return sProblemId === probIdStr || sProblemSlug === probIdStr || (probSlugStr && (sProblemId === probSlugStr || sProblemSlug === probSlugStr));
+      });
+
+      const realSubmissionsCount = Math.max(matchingSubs.length, typeof prob.submissions === 'number' ? prob.submissions : 0);
+      const approvedSubs = matchingSubs.filter((s) => {
+        const st = String(s.status || '').toLowerCase();
+        return st === 'approved' || st === 'accepted' || st === 'pass' || st === 'passed';
+      });
+
+      const acceptanceRate = matchingSubs.length > 0
+        ? `${Math.round((approvedSubs.length / matchingSubs.length) * 100)}%`
+        : (prob.acceptance || '0.0%');
+
       return {
         id,
         slug: prob.slug || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : `problem-${id}`),
         title,
         category,
         difficulty,
-        acceptance: prob.acceptance || '78.5%',
-        submissions: typeof prob.submissions === 'number' ? prob.submissions : 0,
+        acceptance: acceptanceRate,
+        submissions: realSubmissionsCount,
         testCases: typeof prob.testCases === 'number' ? prob.testCases : examples.length,
         status: prob.status === 'Draft' || prob.status === 'DRAFT' ? 'Draft' : 'Live',
         description: prob.description || '',
@@ -2968,6 +2986,9 @@ export class AdminService {
     for (const [k, v] of fileProblems.entries()) {
       AdminService.fallbackProblems.set(String(k), v);
     }
+
+    AdminService.fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
+    const allPracticeSubs = Array.from(AdminService.fallbackPracticeSubmissions.values());
 
     const problemMap = new Map<string, any>();
     for (const p of AdminService.fallbackProblems.values()) {

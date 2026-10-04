@@ -3382,6 +3382,7 @@ function PracticeProblemsView({
   const easyCount = rows.filter((p) => p.difficulty === "Easy").length;
   const medHardCount = rows.filter((p) => p.difficulty !== "Easy").length;
   const liveCount = rows.filter((p) => p.status === "Live").length;
+  const totalSubmissions = rows.reduce((sum, p) => sum + (Number(p.submissions) || 0), 0);
 
   const handleCreateNew = () => {
     if (onCreateProblem) {
@@ -3503,9 +3504,9 @@ function PracticeProblemsView({
       <MetricStrip
         items={[
           { label: "Coding problems", value: String(totalCount), change: `${liveCount} Live on platform` },
+          { label: "Total Submissions", value: String(totalSubmissions), change: totalSubmissions > 0 ? "Real learner code turn-ins" : "No submissions yet", tone: "text-indigo-600" },
           { label: "Easy challenges", value: String(easyCount), change: "High solve rate" },
           { label: "Medium / Hard", value: String(medHardCount), change: "Interview focused", tone: "text-amber-600" },
-          { label: "Active challenge bank", value: "100% synced", change: "Persistent storage", tone: "text-emerald-600" },
         ]}
       />
 
@@ -3594,7 +3595,11 @@ function PracticeProblemsView({
                       </span>
                     </td>
                     <td className="px-4 py-4 text-[12px] font-bold">{item.acceptance || "75.0%"}</td>
-                    <td className="px-4 py-4 text-[12px] font-semibold text-[var(--muted)]">{(item.submissions || 0).toLocaleString()}</td>
+                    <td className="px-4 py-4 text-[12px] font-semibold text-slate-700 dark:text-slate-300">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 px-2.5 py-1 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 shadow-2xs">
+                        {(item.submissions || 0).toLocaleString()} {item.submissions === 1 ? "submission" : "submissions"}
+                      </span>
+                    </td>
                     <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => onToggleStatus && onToggleStatus(item.id)}
