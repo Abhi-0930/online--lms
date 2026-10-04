@@ -3,13 +3,14 @@ export const API_BASE_URL = (() => {
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
     const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
-    if (!isLocal) {
-      if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
-        return "https://site--preppath-backend--x9gt4y7zlzhr.code.run";
-      }
+    if (isLocal) {
+      return "http://localhost:4000";
+    }
+    if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
+      return "https://site--preppath-backend--x9gt4y7zlzhr.code.run";
     }
   }
-  return (envUrl || "https://site--preppath-backend--x9gt4y7zlzhr.code.run").replace(/\/$/, "");
+  return (envUrl || "http://localhost:4000").replace(/\/$/, "");
 })();
 
 export const WS_BASE_URL = (
