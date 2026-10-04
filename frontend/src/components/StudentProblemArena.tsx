@@ -649,66 +649,102 @@ export default function StudentProblemArena({
 
             setCommunitySolutions(mapped);
 
-            // Synchronize and update personal submission status from "Pending Review" to "Accepted" or "Needs Improvement"
-            setMySubmissions((prev) => {
-              let changed = false;
-              const updated = prev.map((mySub) => {
-                const match = data.find(
-                  (sub: any) =>
-                    sub.id === mySub.id ||
-                    (mySub.codeSnippet && sub.code?.trim() === mySub.codeSnippet?.trim()) ||
-                    (sub.studentEmail && user?.email && sub.studentEmail.toLowerCase() === user.email.toLowerCase())
-                );
-                if (match) {
-                  const rawStatus = (match.status || "").toLowerCase();
-                  let normalizedStatus: "Accepted" | "Pending Review" | "Needs Improvement" | "Rejected" | "Wrong Answer" = "Pending Review";
-                  if (rawStatus.includes("approved") || rawStatus.includes("accepted")) {
-                    normalizedStatus = "Accepted";
-                  } else if (rawStatus.includes("improve") || rawStatus.includes("needs")) {
-                    normalizedStatus = "Needs Improvement";
-                  } else if (rawStatus.includes("reject") || rawStatus.includes("wrong")) {
-                    normalizedStatus = "Rejected";
-                  } else {
-                    normalizedStatus = "Pending Review";
-                  }
+            // Synchronize and track all personal student submissions (preserves full submission history)
+            const userSubmissionsFromBackend = data.filter((sub: any) => {
+              const matchesEmail =
+                user?.email &&
+                sub.studentEmail &&
+                sub.studentEmail.toLowerCase() === user.email.toLowerCase();
+              const matchesId = user?.id && sub.userId && String(sub.userId) === String(user.id);
+              return matchesEmail || matchesId;
+            });
 
-                  const feedback = match.feedback || match.reviewNotes || "";
-
-                  if (mySub.status !== normalizedStatus || (mySub.feedback || "") !== feedback) {
-                    changed = true;
-                    return {
-                      ...mySub,
-                      id: String(match.id),
-                      status: normalizedStatus,
-                      feedback,
-                      runtime: match.runtime || mySub.runtime,
-                      memory: match.memory || mySub.memory,
-                    };
-                  }
+            if (userSubmissionsFromBackend.length > 0) {
+              const mappedUserSubs = userSubmissionsFromBackend.map((sub: any) => {
+                const rawStatus = (sub.status || "").toLowerCase();
+                let normalizedStatus: "Accepted" | "Pending Review" | "Needs Improvement" | "Rejected" | "Wrong Answer" = "Pending Review";
+                if (rawStatus.includes("approved") || rawStatus.includes("accepted")) {
+                  normalizedStatus = "Accepted";
+                } else if (rawStatus.includes("improve") || rawStatus.includes("needs")) {
+                  normalizedStatus = "Needs Improvement";
+                } else if (rawStatus.includes("reject") || rawStatus.includes("wrong")) {
+                  normalizedStatus = "Rejected";
+                } else {
+                  normalizedStatus = "Pending Review";
                 }
-                return mySub;
+
+                return {
+                  id: String(sub.id),
+                  status: normalizedStatus,
+                  runtime: sub.runtime || sub.time || "32 ms",
+                  memory: sub.memory || "16.4 MB",
+                  language: (sub.language || "Python").toUpperCase(),
+                  timestamp: sub.submitted || (sub.submittedAt ? "Recently" : "Just now"),
+                  codeSnippet: sub.code || "",
+                  feedback: sub.feedback || sub.reviewNotes || "",
+                };
               });
 
-              // Deduplicate by codeSnippet or id so count remains exactly 1 per attempt
-              const seen = new Set<string>();
-              const deduplicated = updated.filter((item) => {
-                const key = item.id || item.codeSnippet?.trim();
-                if (!key || seen.has(key)) return false;
-                seen.add(key);
-                return true;
-              });
-
-              if (changed || deduplicated.length !== prev.length) {
+              setMySubmissions((prev) => {
+                const backendIds = new Set(mappedUserSubs.map((s) => s.id));
+                const pendingLocal = prev.filter(
+                  (p) => !backendIds.has(p.id) && String(p.id).startsWith("local-")
+                );
+                const combined = [...mappedUserSubs, ...pendingLocal];
                 try {
                   localStorage.setItem(
                     `lms_submissions_${problem.id || problem.slug}`,
-                    JSON.stringify(deduplicated)
+                    JSON.stringify(combined)
                   );
                 } catch {}
-                return deduplicated;
-              }
-              return prev;
-            });
+                return combined;
+              });
+            } else {
+              // Fallback sync for offline/local submissions by exact ID
+              setMySubmissions((prev) => {
+                let changed = false;
+                const updated = prev.map((mySub) => {
+                  const match = data.find((sub: any) => String(sub.id) === String(mySub.id));
+                  if (match) {
+                    const rawStatus = (match.status || "").toLowerCase();
+                    let normalizedStatus: "Accepted" | "Pending Review" | "Needs Improvement" | "Rejected" | "Wrong Answer" = "Pending Review";
+                    if (rawStatus.includes("approved") || rawStatus.includes("accepted")) {
+                      normalizedStatus = "Accepted";
+                    } else if (rawStatus.includes("improve") || rawStatus.includes("needs")) {
+                      normalizedStatus = "Needs Improvement";
+                    } else if (rawStatus.includes("reject") || rawStatus.includes("wrong")) {
+                      normalizedStatus = "Rejected";
+                    } else {
+                      normalizedStatus = "Pending Review";
+                    }
+
+                    const feedback = match.feedback || match.reviewNotes || "";
+                    if (mySub.status !== normalizedStatus || (mySub.feedback || "") !== feedback) {
+                      changed = true;
+                      return {
+                        ...mySub,
+                        status: normalizedStatus,
+                        feedback,
+                        runtime: match.runtime || mySub.runtime,
+                        memory: match.memory || mySub.memory,
+                      };
+                    }
+                  }
+                  return mySub;
+                });
+
+                if (changed) {
+                  try {
+                    localStorage.setItem(
+                      `lms_submissions_${problem.id || problem.slug}`,
+                      JSON.stringify(updated)
+                    );
+                  } catch {}
+                  return updated;
+                }
+                return prev;
+              });
+            }
             return;
           }
         }
@@ -953,11 +989,9 @@ export default function StudentProblemArena({
         }
       }
 
-      // Add to personal submission history and deduplicate
+      // Add to personal submission history without removing prior attempts
       setMySubmissions((prev) => {
-        const withoutCurrent = prev.filter(
-          (s) => s.id !== subId && s.id !== finalId && s.codeSnippet?.trim() !== code.trim()
-        );
+        const withoutExactSameId = prev.filter((s) => s.id !== subId && s.id !== finalId);
         const newSubmission = {
           id: finalId,
           status: finalStatus,
@@ -967,7 +1001,7 @@ export default function StudentProblemArena({
           timestamp: "Just now",
           codeSnippet: code,
         };
-        const updatedSubs = [newSubmission, ...withoutCurrent];
+        const updatedSubs = [newSubmission, ...withoutExactSameId];
         try {
           localStorage.setItem(
             `lms_submissions_${problem.id || problem.slug}`,
@@ -989,8 +1023,8 @@ export default function StudentProblemArena({
         codeSnippet: code,
       };
       setMySubmissions((prev) => {
-        const withoutCurrent = prev.filter((s) => s.id !== subId && s.codeSnippet?.trim() !== code.trim());
-        const updatedSubs = [newSubmission, ...withoutCurrent];
+        const withoutExactSameId = prev.filter((s) => s.id !== subId);
+        const updatedSubs = [newSubmission, ...withoutExactSameId];
         try {
           localStorage.setItem(
             `lms_submissions_${problem.id || problem.slug}`,
