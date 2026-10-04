@@ -1393,7 +1393,12 @@ function ContentView({
       await fetch(`${API_BASE_URL}/api/v1/admin/content/${encodeURIComponent(targetId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus, isCompleted: !isCurrentlyCompleted }),
+        body: JSON.stringify({
+          title: item.title,
+          type: item.type,
+          status: newStatus,
+          isCompleted: !isCurrentlyCompleted,
+        }),
       });
       onToast(isCurrentlyCompleted ? `Marked "${item.title}" as incomplete` : `Marked "${item.title}" as completed!`);
       if (onRefresh) onRefresh();
@@ -1413,9 +1418,14 @@ function ContentView({
       await fetch(`${API_BASE_URL}/api/v1/admin/content/${encodeURIComponent(targetId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({
+          title: item.title,
+          type: item.type,
+          status: newStatus,
+        }),
       });
       onToast(`Status changed to ${newStatus}`);
+      if (onRefresh) onRefresh();
     } catch {}
   };
 
