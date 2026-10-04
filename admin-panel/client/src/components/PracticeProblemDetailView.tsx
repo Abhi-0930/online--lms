@@ -74,6 +74,21 @@ export interface ProblemSubmissionItem {
   reviewNotes?: string;
 }
 
+const formatFeedbackBullets = (raw?: string): string => {
+  if (!raw || !raw.trim()) return "";
+  const lines = raw.split("\n");
+  const bulletLines: string[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const clean = trimmed.replace(/^([•\-\*]|\d+[\.\)])\s*/, "").trim();
+    if (clean) {
+      bulletLines.push(`• ${clean}`);
+    }
+  }
+  return bulletLines.join("\n");
+};
+
 export default function PracticeProblemDetailView({
   problem,
   onBack,
@@ -1983,14 +1998,26 @@ export default function PracticeProblemDetailView({
                 </div>
 
                 {viewingSubmission.feedback && (
-                  <div className="rounded-xl border border-amber-200/90 dark:border-amber-800/40 bg-amber-50/70 dark:bg-amber-950/30 p-3.5 space-y-1">
+                  <div className="rounded-xl border border-amber-200/90 dark:border-amber-800/40 bg-amber-50/70 dark:bg-amber-950/30 p-3.5 space-y-1.5">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
                       <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                       <span>Existing Instructor Feedback:</span>
                     </div>
-                    <p className="text-xs text-amber-900 dark:text-amber-200 font-medium whitespace-pre-line pl-5 leading-relaxed">
-                      {viewingSubmission.feedback}
-                    </p>
+                    <div className="space-y-1 pl-5">
+                      {viewingSubmission.feedback
+                        .split("\n")
+                        .map((l) => l.trim())
+                        .filter(Boolean)
+                        .map((line, lIdx) => {
+                          const text = line.replace(/^[•\-\*]\s*/, "").trim();
+                          return (
+                            <div key={lIdx} className="flex items-start gap-1.5 text-xs text-amber-900 dark:text-amber-200 font-medium leading-relaxed">
+                              <span className="text-amber-600 dark:text-amber-400 font-bold select-none">•</span>
+                              <span>{text}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2000,7 +2027,8 @@ export default function PracticeProblemDetailView({
               <button
                 type="button"
                 onClick={() => {
-                  setImprovementReason(viewingSubmission.feedback || "");
+                  const initialText = viewingSubmission.feedback ? formatFeedbackBullets(viewingSubmission.feedback) : "• ";
+                  setImprovementReason(initialText);
                   setImprovementModalSub(viewingSubmission);
                 }}
                 className="px-3.5 py-2 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100/60 transition cursor-pointer flex items-center gap-1.5"
@@ -2072,15 +2100,55 @@ export default function PracticeProblemDetailView({
             </div>
 
             <div className="space-y-3">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Reason & Detailed Feedback for Student
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Reason & Detailed Feedback for Student
+                </label>
+                <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                  Automatic bullet points (•)
+                </span>
+              </div>
               <textarea
                 value={improvementReason}
-                onChange={(e) => setImprovementReason(e.target.value)}
-                placeholder="Explain what the student needs to improve (e.g. Time complexity is O(N^2), please optimize using a Hash Map; handle negative numbers or empty input cases...)"
-                rows={4}
-                className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3.5 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition resize-none"
+                onChange={(e) => {
+                  let val = e.target.value;
+                  if (val && !val.startsWith("• ") && !val.startsWith("•")) {
+                    val = `• ${val}`;
+                  }
+                  setImprovementReason(val);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    const target = e.currentTarget;
+                    const start = target.selectionStart;
+                    const end = target.selectionEnd;
+                    const val = target.value;
+
+                    const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+                    const lineEnd = val.indexOf("\n", start);
+                    const currentLine = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
+
+                    if (currentLine.trim() === "•" || currentLine.trim() === "") {
+                      const updated = val.slice(0, lineStart) + val.slice(start);
+                      setImprovementReason(updated);
+                      setTimeout(() => {
+                        target.selectionStart = target.selectionEnd = lineStart;
+                      }, 0);
+                      return;
+                    }
+
+                    const nextBullet = "\n• ";
+                    const updated = val.slice(0, start) + nextBullet + val.slice(end);
+                    setImprovementReason(updated);
+                    setTimeout(() => {
+                      target.selectionStart = target.selectionEnd = start + nextBullet.length;
+                    }, 0);
+                  }
+                }}
+                placeholder="• Explain what needs improvement (e.g. Optimize time complexity to O(N))\n• Handle edge cases..."
+                rows={5}
+                className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3.5 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition resize-none leading-relaxed"
                 autoFocus
               />
 
@@ -2099,9 +2167,13 @@ export default function PracticeProblemDetailView({
                       key={idx}
                       type="button"
                       onClick={() => {
-                        setImprovementReason((prev) =>
-                          prev ? `${prev}\n• ${tag}` : `• ${tag}`
-                        );
+                        setImprovementReason((prev) => {
+                          const trimmed = prev.trim();
+                          if (!trimmed || trimmed === "•") {
+                            return `• ${tag}`;
+                          }
+                          return `${trimmed}\n• ${tag}`;
+                        });
                       }}
                       className="rounded-lg bg-slate-100 dark:bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-950/40 hover:text-amber-800 dark:hover:text-amber-300 transition cursor-pointer"
                     >
@@ -2126,7 +2198,9 @@ export default function PracticeProblemDetailView({
               <button
                 type="button"
                 onClick={async () => {
-                  const finalFeedback = improvementReason.trim() || "Please optimize your solution time/space complexity and handle all edge cases.";
+                  const finalFeedback =
+                    formatFeedbackBullets(improvementReason) ||
+                    "• Please optimize your solution time/space complexity and handle all edge cases.";
                   await handleUpdateSubmissionStatus(improvementModalSub.id, "Needs Improvement", finalFeedback);
                   setImprovementModalSub(null);
                   setImprovementReason("");

@@ -1922,14 +1922,26 @@ export default function StudentProblemArena({
 
                         {/* Instructor Feedback Banner for Needs Improvement */}
                         {sub.feedback && (
-                          <div className="rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50 dark:from-amber-950/50 dark:via-orange-950/20 dark:to-[#17130a] p-3.5 text-xs space-y-1.5 shadow-2xs">
+                          <div className="rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50 dark:from-amber-950/50 dark:via-orange-950/20 dark:to-[#17130a] p-3.5 text-xs space-y-2 shadow-2xs">
                             <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-300 text-xs">
                               <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
                               <span>Instructor Feedback / Improvement Needed:</span>
                             </div>
-                            <p className="text-amber-900/90 dark:text-amber-200/90 font-medium whitespace-pre-line text-[11px] leading-relaxed pl-5.5">
-                              {sub.feedback}
-                            </p>
+                            <div className="space-y-1.5 pl-5.5">
+                              {sub.feedback
+                                .split("\n")
+                                .map((l) => l.trim())
+                                .filter(Boolean)
+                                .map((line, lIdx) => {
+                                  const text = line.replace(/^[•\-\*]\s*/, "").trim();
+                                  return (
+                                    <div key={lIdx} className="flex items-start gap-2 text-amber-900/90 dark:text-amber-200/90 font-medium text-[11px] leading-relaxed">
+                                      <span className="text-amber-600 dark:text-amber-400 font-bold select-none mt-0.5">•</span>
+                                      <span>{text}</span>
+                                    </div>
+                                  );
+                                })}
+                            </div>
                           </div>
                         )}
                       </div>
