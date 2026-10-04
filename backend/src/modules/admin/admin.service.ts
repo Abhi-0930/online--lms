@@ -4,6 +4,70 @@ import path from 'path';
 import { AuthService } from '../auth/auth.service';
 import { OnboardingService } from '../onboarding/onboarding.service';
 
+export function cleanLessonTitle(str: any): string {
+  if (!str || typeof str !== 'string') return '';
+  let cleaned = str.trim();
+  // Strip repeated variations of "Lessons & Topics", "Lessons and Topics", "Lessons", etc. with separators
+  cleaned = cleaned.replace(/(Lessons?\s*(&|and)?\s*Topics?(\s*[·\-\/:]\s*)*)+/gi, '');
+  // Clean up repeated "Topic:\s*Topic:\s*"
+  cleaned = cleaned.replace(/^(Topic:\s*)+/i, 'Topic: ');
+  // Clean leading/trailing delimiters
+  cleaned = cleaned.replace(/^([·\-\/:\s]+)/, '').replace(/([·\-\/:\s]+)$/, '').trim();
+  return cleaned || str.trim();
+}
+
+export function cleanTopicTitle(str: any): string {
+  if (!str || typeof str !== 'string') return 'Topic';
+  const cleaned = cleanLessonTitle(str);
+  if (!cleaned || cleaned.toLowerCase() === 'lessons & topics' || cleaned.toLowerCase() === 'lessons and topics' || cleaned.toLowerCase() === 'lessons') {
+    return 'Topic';
+  }
+  return cleaned;
+}
+
+export function cleanCourseModules(modules: any[]): any[] {
+  if (!Array.isArray(modules)) return [];
+  return modules.map((mod, mIdx) => {
+    const modTitle = cleanLessonTitle(mod.title) || `Module ${mIdx + 1}`;
+    if (Array.isArray(mod.topics) && mod.topics.length > 0) {
+      const cleanedTopics = mod.topics.map((t: any) => {
+        let tTitle = cleanTopicTitle(t.title);
+        const cleanedSubtopics = Array.isArray(t.subtopics)
+          ? t.subtopics.map((s: any) => ({
+              ...s,
+              title: cleanLessonTitle(s.title),
+            }))
+          : [];
+        return {
+          ...t,
+          title: tTitle,
+          subtopics: cleanedSubtopics,
+        };
+      });
+      return {
+        ...mod,
+        title: modTitle,
+        topics: cleanedTopics,
+      };
+    }
+    if (Array.isArray(mod.lessons) && mod.lessons.length > 0) {
+      const cleanedLessons = mod.lessons.map((l: any) => ({
+        ...l,
+        title: cleanLessonTitle(l.title),
+      }));
+      return {
+        ...mod,
+        title: modTitle,
+        lessons: cleanedLessons,
+      };
+    }
+    return {
+      ...mod,
+      title: modTitle,
+    };
+  });
+}
+
 export class AdminService {
   public static resolveDataFile(filename: string): string {
     const candidates = [
@@ -226,6 +290,7 @@ export class AdminService {
           const map = new Map<string, any>();
           for (const item of parsed) {
             if (item && item.id) {
+              if (item.modules) item.modules = cleanCourseModules(item.modules);
               map.set(String(item.id), item);
             }
           }
@@ -233,6 +298,9 @@ export class AdminService {
         } else if (parsed && typeof parsed === 'object') {
           const map = new Map<string, any>();
           for (const [k, v] of Object.entries(parsed)) {
+            if (v && typeof v === 'object' && (v as any).modules) {
+              (v as any).modules = cleanCourseModules((v as any).modules);
+            }
             map.set(String(k), v);
           }
           return map;
@@ -330,6 +398,11 @@ export class AdminService {
       const dir = path.dirname(AdminService.metaFilePath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
+      }
+      for (const [, course] of AdminService.fallbackCourses.entries()) {
+        if (course && course.modules) {
+          course.modules = cleanCourseModules(course.modules);
+        }
       }
       const data = Object.fromEntries(AdminService.fallbackCourses.entries());
       fs.writeFileSync(AdminService.metaFilePath, JSON.stringify(data, null, 2), 'utf-8');
@@ -875,20 +948,31 @@ export class AdminService {
 
       const mappedModules = (course.modules || []).map((mod: any, mIdx: number) => {
         if (mod.topics) {
-          return mod;
+          return {
+            ...mod,
+            title: cleanLessonTitle(mod.title) || `Module ${mIdx + 1}`,
+            topics: (mod.topics || []).map((t: any) => ({
+              ...t,
+              title: cleanTopicTitle(t.title),
+              subtopics: (t.subtopics || []).map((s: any) => ({
+                ...s,
+                title: cleanLessonTitle(s.title),
+              })),
+            })),
+          };
         }
         const lessons = mod.lessons || [];
         return {
           id: mod.id || `mod_${mIdx}`,
-          title: mod.title || `Module ${mIdx + 1}`,
+          title: cleanLessonTitle(mod.title) || `Module ${mIdx + 1}`,
           description: mod.description || '',
           topics: lessons.length > 0 ? [
             {
               id: `top_${mod.id || mIdx}`,
-              title: 'Lessons & Topics',
+              title: 'Topic',
               subtopics: lessons.map((l: any) => ({
                 id: l.id,
-                title: l.title,
+                title: cleanLessonTitle(l.title),
                 type: l.type ? (l.type.charAt(0).toUpperCase() + l.type.slice(1).toLowerCase()) : 'Video',
                 duration: l.durationSeconds ? `${Math.round(l.durationSeconds / 60)} mins` : '15 mins',
               })),
@@ -1085,17 +1169,24 @@ export class AdminService {
               for (let mIdx = 0; mIdx < data.modules.length; mIdx++) {
                 const mod = data.modules[mIdx];
                 const modLessons = mod.topics && mod.topics.length > 0
-                  ? mod.topics.flatMap((top, tIdx) => {
+                  ? mod.topics.flatMap((top: any, tIdx: number) => {
+                      const cleanTop = cleanTopicTitle(top.title);
                       if (top.subtopics && top.subtopics.length > 0) {
-                        return top.subtopics.map((sub, sIdx) => {
+                        return top.subtopics.map((sub: any, sIdx: number) => {
                           const subType = (sub.type || 'Video').toUpperCase();
                           let lessonType: any = 'VIDEO';
                           if (subType === 'QUIZ') lessonType = 'QUIZ';
                           else if (subType === 'ASSIGNMENT') lessonType = 'ASSIGNMENT';
                           else if (subType === 'ARTICLE') lessonType = 'ARTICLE';
 
+                          const cleanSub = cleanLessonTitle(sub.title || 'Lesson');
+                          let fullTitle = cleanSub;
+                          if (cleanTop && cleanTop.toLowerCase() !== 'topic' && !cleanSub.toLowerCase().includes(cleanTop.toLowerCase())) {
+                            fullTitle = `${cleanTop} · ${cleanSub}`;
+                          }
+
                           return {
-                            title: top.title ? `${top.title} · ${sub.title || 'Lesson'}` : (sub.title || 'Lesson'),
+                            title: fullTitle,
                             slug: `lesson-${Date.now()}-${mIdx}-${tIdx}-${sIdx}`,
                             type: lessonType,
                             position: (tIdx * 10) + sIdx + 1,
@@ -1103,7 +1194,7 @@ export class AdminService {
                         });
                       }
                       return [{
-                        title: top.title || `Lesson ${tIdx + 1}`,
+                        title: cleanTop && cleanTop.toLowerCase() !== 'topic' ? cleanTop : (cleanLessonTitle(top.title) || `Lesson ${tIdx + 1}`),
                         slug: `lesson-${Date.now()}-${mIdx}-${tIdx}`,
                         type: 'VIDEO' as const,
                         position: tIdx + 1,
@@ -1269,11 +1360,12 @@ export class AdminService {
 
     const modulesCreate = data.modules && data.modules.length > 0 ? {
       create: data.modules.map((mod, mIdx) => ({
-        title: mod.title || `Module ${mIdx + 1}`,
+        title: cleanLessonTitle(mod.title) || `Module ${mIdx + 1}`,
         description: mod.description || null,
         position: mIdx + 1,
         lessons: mod.topics && mod.topics.length > 0 ? {
           create: mod.topics.flatMap((top, tIdx) => {
+            const cleanTop = cleanTopicTitle(top.title);
             if (top.subtopics && top.subtopics.length > 0) {
               return top.subtopics.map((sub, sIdx) => {
                 const subType = (sub.type || 'Video').toUpperCase();
@@ -1282,8 +1374,14 @@ export class AdminService {
                 else if (subType === 'ASSIGNMENT') lessonType = 'ASSIGNMENT';
                 else if (subType === 'ARTICLE') lessonType = 'ARTICLE';
 
+                const cleanSub = cleanLessonTitle(sub.title || 'Lesson');
+                let fullTitle = cleanSub;
+                if (cleanTop && cleanTop.toLowerCase() !== 'topic' && !cleanSub.toLowerCase().includes(cleanTop.toLowerCase())) {
+                  fullTitle = `${cleanTop} · ${cleanSub}`;
+                }
+
                 return {
-                  title: top.title ? `${top.title} · ${sub.title || 'Lesson'}` : (sub.title || 'Lesson'),
+                  title: fullTitle,
                   slug: `lesson-${Date.now()}-${mIdx}-${tIdx}-${sIdx}`,
                   type: lessonType,
                   position: (tIdx * 10) + sIdx + 1,
@@ -1291,7 +1389,7 @@ export class AdminService {
               });
             }
             return [{
-              title: top.title || `Lesson ${tIdx + 1}`,
+              title: cleanTop && cleanTop.toLowerCase() !== 'topic' ? cleanTop : (cleanLessonTitle(top.title) || `Lesson ${tIdx + 1}`),
               slug: `lesson-${Date.now()}-${mIdx}-${tIdx}`,
               type: 'VIDEO' as const,
               position: tIdx + 1,
