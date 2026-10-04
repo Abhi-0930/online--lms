@@ -3886,9 +3886,7 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
 
         const isCompletedByInstructor = Boolean(
           hasRecordingVideo ||
-          isExplicitlyCompleted ||
-          (mIdx === 0) ||
-          (mIdx === 1 && lIdx < 5)
+          isExplicitlyCompleted
         );
 
         const videoUrl = matchingRecording?.videoUrl || les.videoUrl;
@@ -3958,8 +3956,7 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
       const match = allLessons.find((l) => l.id === activeLessonId || l.uniqueKey === activeLessonId);
       if (match) return match;
     }
-    const defaultLesson = allLessons.find((l) => l.isCompletedByInstructor && l.moduleIndex === 1 && l.lessonIndex === 2) ||
-      allLessons.find((l) => l.isCompletedByInstructor) ||
+    const defaultLesson = allLessons.find((l) => l.isCompletedByInstructor) ||
       allLessons[0] ||
       null;
     return defaultLesson;
@@ -4393,7 +4390,32 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
             ref={videoContainerRef}
             className="video-frame relative flex aspect-video min-h-[270px] w-full items-center justify-center overflow-hidden rounded-[22px] bg-[#111a33] shadow-[0_18px_36px_rgba(23,34,61,0.18)] sm:min-h-[420px]"
           >
-            {activeLesson?.videoUrl ? (
+            {!activeLesson?.isCompletedByInstructor ? (
+              // Locked State Video Frame: Shows clear locked notification
+              <div className="relative flex h-full w-full flex-col items-center justify-center p-6 text-center">
+                <div
+                  className="absolute inset-0 opacity-25"
+                  style={{
+                    backgroundImage: `radial-gradient(circle at 30% 30%, #3157e8, transparent 35%), radial-gradient(circle at 70% 70%, #7f5af0, transparent 32%)`,
+                  }}
+                />
+                <div className="relative z-10 flex flex-col items-center max-w-md">
+                  <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10 text-amber-400 shadow-[0_12px_30px_rgba(0,0,0,0.22)] border border-amber-400/20 backdrop-blur-md">
+                    <Lock className="h-7 w-7" />
+                  </span>
+                  <p className="text-base font-bold text-white sm:text-lg">
+                    {activeLesson?.title || "Lesson Locked"}
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-white/70">
+                    This lesson will be unlocked once your instructor completes and uploads the session.
+                  </p>
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/20 px-3.5 py-1 text-[11px] font-semibold text-amber-300">
+                    <Clock3 className="h-3.5 w-3.5" />
+                    <span>Scheduled Session · {activeLesson?.duration || "15m"}</span>
+                  </div>
+                </div>
+              </div>
+            ) : activeLesson?.videoUrl ? (
               // Real Recording Video Player
               <div className="relative h-full w-full bg-black group">
                 <video
@@ -4547,7 +4569,21 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
 
           {/* Tab Content Panes */}
           <div className="pt-6">
-            {/* 1. Notes Tab */}
+            {!activeLesson?.isCompletedByInstructor ? (
+              <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-8 text-center dark:border-white/10 dark:bg-white/5 space-y-2">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+                  <Lock className="h-6 w-6" />
+                </div>
+                <h3 className="font-display text-sm font-bold text-[#17223d] dark:text-white">
+                  Lesson Materials Locked
+                </h3>
+                <p className="mx-auto max-w-md text-xs text-[#9aa4bc]">
+                  Notes, downloadable resources, practice problems, and assignments for this lesson will unlock as soon as your instructor marks this session as completed.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* 1. Notes Tab */}
             {tab === "Notes" && (
               <div className="max-w-2xl space-y-6">
                 <div className="flex items-center justify-between">
@@ -4960,6 +4996,8 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                   </div>
                 )}
               </div>
+            )}
+              </>
             )}
           </div>
         </div>
