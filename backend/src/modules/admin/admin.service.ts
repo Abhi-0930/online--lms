@@ -68,6 +68,96 @@ export function cleanCourseModules(modules: any[]): any[] {
   });
 }
 
+export function parseDurationSeconds(dur: any): number {
+  if (typeof dur === 'number' && !isNaN(dur)) return Math.max(0, Math.round(dur));
+  if (!dur) return 900;
+  const str = String(dur).toLowerCase().trim();
+  const hrMatch = str.match(/(\d+)\s*(?:h|hr|hour|hours)/);
+  const minMatch = str.match(/(\d+)\s*(?:m|min|minute|minutes)/);
+  const secMatch = str.match(/(\d+)\s*(?:s|sec|second|seconds)/);
+  let total = 0;
+  if (hrMatch) total += parseInt(hrMatch[1], 10) * 3600;
+  if (minMatch) total += parseInt(minMatch[1], 10) * 60;
+  if (secMatch) total += parseInt(secMatch[1], 10);
+  if (total > 0) return total;
+  const numOnly = parseInt(str.replace(/[^0-9]/g, ''), 10);
+  if (!isNaN(numOnly) && numOnly > 0) return numOnly * 60;
+  return 900;
+}
+
+export function parseLessonType(typeStr: any): 'VIDEO' | 'ARTICLE' | 'QUIZ' | 'ASSIGNMENT' {
+  if (!typeStr) return 'VIDEO';
+  const s = String(typeStr).toUpperCase().trim();
+  if (s === 'QUIZ') return 'QUIZ';
+  if (s === 'ASSIGNMENT') return 'ASSIGNMENT';
+  if (s === 'ARTICLE') return 'ARTICLE';
+  return 'VIDEO';
+}
+
+export function buildPrismaLessonsFromModule(mod: any, mIdx: number) {
+  const lessons: Array<{
+    title: string;
+    slug: string;
+    type: 'VIDEO' | 'ARTICLE' | 'QUIZ' | 'ASSIGNMENT';
+    content?: string | null;
+    videoUrl?: string | null;
+    durationSeconds: number;
+    isFreePreview: boolean;
+    position: number;
+  }> = [];
+
+  if (Array.isArray(mod.topics) && mod.topics.length > 0) {
+    mod.topics.forEach((top: any, tIdx: number) => {
+      const cleanTop = cleanTopicTitle(top.title);
+      if (Array.isArray(top.subtopics) && top.subtopics.length > 0) {
+        top.subtopics.forEach((sub: any, sIdx: number) => {
+          const cleanSub = cleanLessonTitle(sub.title || 'Lesson');
+          let fullTitle = cleanSub;
+          if (cleanTop && cleanTop.toLowerCase() !== 'topic' && !cleanSub.toLowerCase().includes(cleanTop.toLowerCase())) {
+            fullTitle = `${cleanTop} · ${cleanSub}`;
+          }
+          lessons.push({
+            title: fullTitle,
+            slug: `lesson-${Date.now()}-${mIdx}-${tIdx}-${sIdx}`,
+            type: parseLessonType(sub.type),
+            content: sub.content || null,
+            videoUrl: sub.videoUrl || sub.video || null,
+            durationSeconds: parseDurationSeconds(sub.duration || sub.durationSeconds),
+            isFreePreview: Boolean(sub.isFreePreview || sub.isPreview),
+            position: (tIdx * 10) + sIdx + 1,
+          });
+        });
+      } else {
+        lessons.push({
+          title: cleanTop && cleanTop.toLowerCase() !== 'topic' ? cleanTop : (cleanLessonTitle(top.title) || `Lesson ${tIdx + 1}`),
+          slug: `lesson-${Date.now()}-${mIdx}-${tIdx}`,
+          type: parseLessonType(top.type),
+          content: top.content || null,
+          videoUrl: top.videoUrl || top.video || null,
+          durationSeconds: parseDurationSeconds(top.duration || top.durationSeconds),
+          isFreePreview: Boolean(top.isFreePreview || top.isPreview),
+          position: tIdx + 1,
+        });
+      }
+    });
+  } else if (Array.isArray(mod.lessons) && mod.lessons.length > 0) {
+    mod.lessons.forEach((l: any, lIdx: number) => {
+      lessons.push({
+        title: cleanLessonTitle(l.title) || `Lesson ${lIdx + 1}`,
+        slug: l.slug || `lesson-${Date.now()}-${mIdx}-${lIdx}`,
+        type: parseLessonType(l.type),
+        content: l.content || null,
+        videoUrl: l.videoUrl || null,
+        durationSeconds: parseDurationSeconds(l.durationSeconds || l.duration),
+        isFreePreview: Boolean(l.isFreePreview),
+        position: l.position || (lIdx + 1),
+      });
+    });
+  }
+
+  return lessons;
+}
+
 export class AdminService {
   public static resolveDataFile(filename: string): string {
     const candidates = [
@@ -1051,9 +1141,9 @@ export class AdminService {
 
   async saveCourseDraft(data: {
     id?: string;
-    title: string;
+    title?: string;
     subtitle?: string;
-    description: string;
+    description?: string;
     language?: string;
     category?: string;
     level?: string;
@@ -1072,7 +1162,7 @@ export class AdminService {
     subscriptionCycle?: string;
     enrollmentLimit?: string;
     courseVisibility?: string;
-    status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+    status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | string;
     instructorName?: string;
     skillsCovered?: string[];
     prerequisites?: string;
@@ -1097,7 +1187,19 @@ export class AdminService {
           title: string;
           type?: string;
           duration?: string;
+          isFreePreview?: boolean;
+          videoUrl?: string;
         }>;
+      }>;
+      lessons?: Array<{
+        id?: string;
+        title: string;
+        type?: string;
+        durationSeconds?: number;
+        duration?: string;
+        isFreePreview?: boolean;
+        videoUrl?: string;
+        position?: number;
       }>;
     }>;
   }) {
@@ -1131,168 +1233,129 @@ export class AdminService {
     // Untombstone if previously marked deleted
     if (data.id) {
       AdminService.deletedCoursesIds.delete(String(data.id).trim());
+      AdminService.deletedCoursesIds.delete(String(data.id).trim().toLowerCase());
     }
     if (data.title) {
       AdminService.deletedCoursesIds.delete(data.title.trim().toLowerCase());
     }
     AdminService.saveDeletedCoursesToFile();
 
-    // Check if updating an existing course
+    // Check if updating an existing course in PostgreSQL
+    let existingDbCourse: any = null;
     if (data.id) {
-      let existingDbCourse: any = null;
       try {
-        existingDbCourse = await this.prisma.course.findUnique({
-          where: { id: data.id },
-          include: { modules: true },
+        existingDbCourse = await this.prisma.course.findFirst({
+          where: {
+            OR: [
+              { id: String(data.id).trim() },
+              { slug: String(data.id).trim() },
+              ...(data.title ? [{ title: { equals: data.title.trim(), mode: 'insensitive' as const } }] : []),
+            ],
+          },
+          include: {
+            instructor: true,
+            modules: {
+              include: { lessons: true },
+            },
+          },
         });
       } catch {
         existingDbCourse = null;
       }
-
-      if (existingDbCourse) {
-        try {
-          const updated = await this.prisma.course.update({
-            where: { id: data.id },
-            data: {
-              title: data.title || existingDbCourse.title,
-              subtitle: data.subtitle !== undefined ? data.subtitle : existingDbCourse.subtitle,
-              description: data.description || existingDbCourse.description,
-              coverImageUrl: coverImage !== null ? coverImage : existingDbCourse.coverImageUrl,
-              price: priceNumber,
-              level: levelEnum,
-              status: statusVal,
+    }
+    if (!existingDbCourse && data.title) {
+      try {
+        existingDbCourse = await this.prisma.course.findFirst({
+          where: {
+            title: { equals: data.title.trim(), mode: 'insensitive' as const },
+          },
+          include: {
+            instructor: true,
+            modules: {
+              include: { lessons: true },
             },
-            include: {
-              instructor: true,
-              modules: {
-                include: { lessons: true },
-              },
-            },
-          });
-
-          // If modules provided on update, re-sync them
-          if (data.modules && data.modules.length > 0) {
-            try {
-              await this.prisma.module.deleteMany({ where: { courseId: data.id } });
-              for (let mIdx = 0; mIdx < data.modules.length; mIdx++) {
-                const mod = data.modules[mIdx];
-                const modLessons = mod.topics && mod.topics.length > 0
-                  ? mod.topics.flatMap((top: any, tIdx: number) => {
-                      const cleanTop = cleanTopicTitle(top.title);
-                      if (top.subtopics && top.subtopics.length > 0) {
-                        return top.subtopics.map((sub: any, sIdx: number) => {
-                          const subType = (sub.type || 'Video').toUpperCase();
-                          let lessonType: any = 'VIDEO';
-                          if (subType === 'QUIZ') lessonType = 'QUIZ';
-                          else if (subType === 'ASSIGNMENT') lessonType = 'ASSIGNMENT';
-                          else if (subType === 'ARTICLE') lessonType = 'ARTICLE';
-
-                          const cleanSub = cleanLessonTitle(sub.title || 'Lesson');
-                          let fullTitle = cleanSub;
-                          if (cleanTop && cleanTop.toLowerCase() !== 'topic' && !cleanSub.toLowerCase().includes(cleanTop.toLowerCase())) {
-                            fullTitle = `${cleanTop} · ${cleanSub}`;
-                          }
-
-                          return {
-                            title: fullTitle,
-                            slug: `lesson-${Date.now()}-${mIdx}-${tIdx}-${sIdx}`,
-                            type: lessonType,
-                            position: (tIdx * 10) + sIdx + 1,
-                          };
-                        });
-                      }
-                      return [{
-                        title: cleanTop && cleanTop.toLowerCase() !== 'topic' ? cleanTop : (cleanLessonTitle(top.title) || `Lesson ${tIdx + 1}`),
-                        slug: `lesson-${Date.now()}-${mIdx}-${tIdx}`,
-                        type: 'VIDEO' as const,
-                        position: tIdx + 1,
-                      }];
-                    })
-                  : [];
-
-                await this.prisma.module.create({
-                  data: {
-                    courseId: data.id,
-                    title: mod.title || `Module ${mIdx + 1}`,
-                    description: mod.description || null,
-                    position: mIdx + 1,
-                    lessons: modLessons.length > 0 ? { create: modLessons } : undefined,
-                  },
-                });
-              }
-            } catch (syncErr) {
-              console.error('Module sync warning:', syncErr);
-            }
-          }
-
-          const existingFallback = AdminService.fallbackCourses.get(String(updated.id)) || {};
-          const fullUpdated = {
-            ...existingFallback,
-            ...updated,
-            ...data,
-            id: updated.id,
-            title: data.title || updated.title,
-            subtitle: data.subtitle !== undefined ? data.subtitle : updated.subtitle,
-            description: data.description || updated.description,
-            price: priceNumber,
-            discountPrice: data.discountPrice !== undefined ? data.discountPrice : (existingFallback.discountPrice !== undefined ? existingFallback.discountPrice : 0),
-            currency: data.currency || existingFallback.currency || 'INR ₹',
-            courseType: data.courseType || (priceNumber > 0 ? 'Paid' : 'Free'),
-            accessType: data.accessType || existingFallback.accessType || 'Lifetime Access',
-            durationCycleMode: data.durationCycleMode || existingFallback.durationCycleMode || 'Date Range',
-            startDate: data.startDate || existingFallback.startDate,
-            endDate: data.endDate || existingFallback.endDate,
-            durationValue: data.durationValue || existingFallback.durationValue || '90',
-            durationUnit: data.durationUnit || existingFallback.durationUnit || 'Days',
-            subscriptionCycle: data.subscriptionCycle || existingFallback.subscriptionCycle || 'Monthly',
-            enrollmentLimit: data.enrollmentLimit || existingFallback.enrollmentLimit || 'Unlimited',
-            courseVisibility: data.courseVisibility || existingFallback.courseVisibility || 'Public',
-            learningOutcomes: data.learningOutcomes || existingFallback.learningOutcomes || [],
-            prerequisites: data.prerequisites !== undefined ? data.prerequisites : (existingFallback.prerequisites || ''),
-            requirements: data.requirements || existingFallback.requirements || [],
-            targetAudience: data.targetAudience !== undefined ? data.targetAudience : (existingFallback.targetAudience || ''),
-            targetLearners: data.targetLearners || existingFallback.targetLearners || [],
-            skillsCovered: data.skillsCovered || data.tags || existingFallback.skillsCovered || [],
-            tags: data.tags || data.skillsCovered || existingFallback.tags || [],
-            modules: (data.modules && data.modules.length > 0) ? data.modules : (existingFallback.modules || []),
-            instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
-            instructorName: instructorDisplayName,
-            estimatedDuration: data.estimatedDuration || existingFallback.estimatedDuration || '12 Weeks',
-            certificateAvailable: data.certificateAvailable !== undefined ? data.certificateAvailable : (existingFallback.certificateAvailable !== undefined ? existingFallback.certificateAvailable : true),
-            seoTitle: data.seoTitle !== undefined ? data.seoTitle : (existingFallback.seoTitle || ''),
-            seoDescription: data.seoDescription !== undefined ? data.seoDescription : (existingFallback.seoDescription || ''),
-            status:
-              statusVal === 'PUBLISHED' || statusVal === 'Published'
-                ? 'Published'
-                : statusVal === 'DRAFT' || statusVal === 'Draft'
-                ? 'Draft'
-                : 'Review',
-            updatedAt: new Date(),
-          };
-          AdminService.fallbackCourses.set(String(updated.id), fullUpdated);
-          AdminService.saveMetaToFile();
-          return fullUpdated;
-        } catch (updateErr) {
-          console.error('Course update DB error:', updateErr);
-        }
+          },
+        });
+      } catch {
+        existingDbCourse = null;
       }
+    }
 
-      // If not in DB or DB update had issue, update fallback metadata directly
-      if (AdminService.fallbackCourses.has(String(data.id)) || data.id) {
-        const existingFallback = AdminService.fallbackCourses.get(String(data.id)) || {};
+    if (existingDbCourse) {
+      try {
+        const updated = await this.prisma.course.update({
+          where: { id: existingDbCourse.id },
+          data: {
+            title: data.title !== undefined ? data.title : existingDbCourse.title,
+            subtitle: data.subtitle !== undefined ? data.subtitle : existingDbCourse.subtitle,
+            description: data.description !== undefined ? data.description : existingDbCourse.description,
+            coverImageUrl: coverImage !== null ? coverImage : existingDbCourse.coverImageUrl,
+            price: data.price !== undefined ? priceNumber : Number(existingDbCourse.price),
+            level: data.level ? levelEnum : existingDbCourse.level,
+            status: data.status ? statusVal : existingDbCourse.status,
+          },
+          include: {
+            instructor: true,
+            modules: {
+              include: { lessons: true },
+            },
+          },
+        });
+
+        // Re-sync modules & lessons directly in PostgreSQL
+        if (Array.isArray(data.modules)) {
+          try {
+            const oldModules = await this.prisma.module.findMany({
+              where: { courseId: existingDbCourse.id },
+              select: { id: true },
+            });
+            const oldModuleIds = oldModules.map((m) => m.id);
+            if (oldModuleIds.length > 0) {
+              const oldLessons = await this.prisma.lesson.findMany({
+                where: { moduleId: { in: oldModuleIds } },
+                select: { id: true },
+              });
+              const oldLessonIds = oldLessons.map((l) => l.id);
+              if (oldLessonIds.length > 0) {
+                await this.prisma.lessonProgress.deleteMany({ where: { lessonId: { in: oldLessonIds } } }).catch(() => {});
+                await this.prisma.resource.deleteMany({ where: { lessonId: { in: oldLessonIds } } }).catch(() => {});
+                await this.prisma.lesson.deleteMany({ where: { id: { in: oldLessonIds } } }).catch(() => {});
+              }
+              await this.prisma.module.deleteMany({ where: { id: { in: oldModuleIds } } }).catch(() => {});
+            }
+
+            for (let mIdx = 0; mIdx < data.modules.length; mIdx++) {
+              const mod = data.modules[mIdx];
+              const modLessons = buildPrismaLessonsFromModule(mod, mIdx);
+
+              await this.prisma.module.create({
+                data: {
+                  courseId: existingDbCourse.id,
+                  title: cleanLessonTitle(mod.title) || `Module ${mIdx + 1}`,
+                  description: mod.description || null,
+                  position: mIdx + 1,
+                  lessons: modLessons.length > 0 ? { create: modLessons } : undefined,
+                },
+              });
+            }
+          } catch (syncErr) {
+            console.error('Module sync error during course update:', syncErr);
+          }
+        }
+
+        const existingFallback = AdminService.fallbackCourses.get(String(existingDbCourse.id)) ||
+                                 AdminService.fallbackCourses.get(String(data.id)) ||
+                                 AdminService.fallbackCourses.get(String(existingDbCourse.slug)) || {};
         const fullUpdated = {
           ...existingFallback,
+          ...updated,
           ...data,
-          id: data.id,
-          title: data.title || existingFallback.title || 'Untitled Course',
-          subtitle: data.subtitle !== undefined ? data.subtitle : existingFallback.subtitle,
-          description: data.description || existingFallback.description || '',
-          language: data.language || existingFallback.language || 'English',
-          category: data.category || existingFallback.category || 'Development',
-          level: data.level || existingFallback.level || 'Beginner',
-          coverImageUrl: coverImage !== null ? coverImage : existingFallback.coverImageUrl,
-          thumbnailPreview: coverImage !== null ? coverImage : existingFallback.thumbnailPreview,
-          price: priceNumber,
+          id: updated.id,
+          slug: updated.slug || existingDbCourse.slug || existingFallback.slug,
+          title: data.title !== undefined ? data.title : updated.title,
+          subtitle: data.subtitle !== undefined ? data.subtitle : updated.subtitle,
+          description: data.description !== undefined ? data.description : updated.description,
+          price: data.price !== undefined ? priceNumber : Number(updated.price),
           discountPrice: data.discountPrice !== undefined ? data.discountPrice : (existingFallback.discountPrice !== undefined ? existingFallback.discountPrice : 0),
           currency: data.currency || existingFallback.currency || 'INR ₹',
           courseType: data.courseType || (priceNumber > 0 ? 'Paid' : 'Free'),
@@ -1312,7 +1375,7 @@ export class AdminService {
           targetLearners: data.targetLearners || existingFallback.targetLearners || [],
           skillsCovered: data.skillsCovered || data.tags || existingFallback.skillsCovered || [],
           tags: data.tags || data.skillsCovered || existingFallback.tags || [],
-          modules: (data.modules && data.modules.length > 0) ? data.modules : (existingFallback.modules || []),
+          modules: cleanCourseModules(Array.isArray(data.modules) ? data.modules : (existingFallback.modules || [])),
           instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
           instructorName: instructorDisplayName,
           estimatedDuration: data.estimatedDuration || existingFallback.estimatedDuration || '12 Weeks',
@@ -1327,13 +1390,74 @@ export class AdminService {
               : 'Review',
           updatedAt: new Date(),
         };
-        AdminService.fallbackCourses.set(String(data.id), fullUpdated);
+        AdminService.fallbackCourses.set(String(updated.id), fullUpdated);
+        if (data.id && String(data.id) !== String(updated.id)) {
+          AdminService.fallbackCourses.delete(String(data.id));
+        }
         AdminService.saveMetaToFile();
         return fullUpdated;
+      } catch (updateErr) {
+        console.error('Course update DB error:', updateErr);
       }
     }
 
-    // Creating a brand new course
+    // If not in DB or DB update had issue, update fallback metadata directly
+    if (data.id && (AdminService.fallbackCourses.has(String(data.id)) || AdminService.fallbackCourses.has(String(slug)))) {
+      const existingFallback = AdminService.fallbackCourses.get(String(data.id)) ||
+                               AdminService.fallbackCourses.get(String(slug)) || {};
+      const fullUpdated = {
+        ...existingFallback,
+        ...data,
+        id: data.id,
+        title: data.title || existingFallback.title || 'Untitled Course',
+        subtitle: data.subtitle !== undefined ? data.subtitle : existingFallback.subtitle,
+        description: data.description || existingFallback.description || '',
+        language: data.language || existingFallback.language || 'English',
+        category: data.category || existingFallback.category || 'Development',
+        level: data.level || existingFallback.level || 'Beginner',
+        coverImageUrl: coverImage !== null ? coverImage : existingFallback.coverImageUrl,
+        thumbnailPreview: coverImage !== null ? coverImage : existingFallback.thumbnailPreview,
+        price: priceNumber,
+        discountPrice: data.discountPrice !== undefined ? data.discountPrice : (existingFallback.discountPrice !== undefined ? existingFallback.discountPrice : 0),
+        currency: data.currency || existingFallback.currency || 'INR ₹',
+        courseType: data.courseType || (priceNumber > 0 ? 'Paid' : 'Free'),
+        accessType: data.accessType || existingFallback.accessType || 'Lifetime Access',
+        durationCycleMode: data.durationCycleMode || existingFallback.durationCycleMode || 'Date Range',
+        startDate: data.startDate || existingFallback.startDate,
+        endDate: data.endDate || existingFallback.endDate,
+        durationValue: data.durationValue || existingFallback.durationValue || '90',
+        durationUnit: data.durationUnit || existingFallback.durationUnit || 'Days',
+        subscriptionCycle: data.subscriptionCycle || existingFallback.subscriptionCycle || 'Monthly',
+        enrollmentLimit: data.enrollmentLimit || existingFallback.enrollmentLimit || 'Unlimited',
+        courseVisibility: data.courseVisibility || existingFallback.courseVisibility || 'Public',
+        learningOutcomes: data.learningOutcomes || existingFallback.learningOutcomes || [],
+        prerequisites: data.prerequisites !== undefined ? data.prerequisites : (existingFallback.prerequisites || ''),
+        requirements: data.requirements || existingFallback.requirements || [],
+        targetAudience: data.targetAudience !== undefined ? data.targetAudience : (existingFallback.targetAudience || ''),
+        targetLearners: data.targetLearners || existingFallback.targetLearners || [],
+        skillsCovered: data.skillsCovered || data.tags || existingFallback.skillsCovered || [],
+        tags: data.tags || data.skillsCovered || existingFallback.tags || [],
+        modules: cleanCourseModules(Array.isArray(data.modules) ? data.modules : (existingFallback.modules || [])),
+        instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
+        instructorName: instructorDisplayName,
+        estimatedDuration: data.estimatedDuration || existingFallback.estimatedDuration || '12 Weeks',
+        certificateAvailable: data.certificateAvailable !== undefined ? data.certificateAvailable : (existingFallback.certificateAvailable !== undefined ? existingFallback.certificateAvailable : true),
+        seoTitle: data.seoTitle !== undefined ? data.seoTitle : (existingFallback.seoTitle || ''),
+        seoDescription: data.seoDescription !== undefined ? data.seoDescription : (existingFallback.seoDescription || ''),
+        status:
+          statusVal === 'PUBLISHED' || statusVal === 'Published'
+            ? 'Published'
+            : statusVal === 'DRAFT' || statusVal === 'Draft'
+            ? 'Draft'
+            : 'Review',
+        updatedAt: new Date(),
+      };
+      AdminService.fallbackCourses.set(String(data.id), fullUpdated);
+      AdminService.saveMetaToFile();
+      return fullUpdated;
+    }
+
+    // Creating a brand new course in PostgreSQL
     let instructor: any = null;
     try {
       if (data.instructorName?.trim()) {
@@ -1355,7 +1479,7 @@ export class AdminService {
       if (!instructor) {
         instructor = await this.prisma.user.create({
           data: {
-            email: 'admin@lms.com',
+            email: 'admin@learnhub.com',
             fullName: instructorDisplayName,
             role: 'ADMIN',
             isEmailVerified: true,
@@ -1366,44 +1490,15 @@ export class AdminService {
       console.error('Instructor lookup error:', instErr);
     }
 
-    const modulesCreate = data.modules && data.modules.length > 0 ? {
+    const modulesCreate = Array.isArray(data.modules) && data.modules.length > 0 ? {
       create: data.modules.map((mod, mIdx) => ({
         title: cleanLessonTitle(mod.title) || `Module ${mIdx + 1}`,
         description: mod.description || null,
         position: mIdx + 1,
-        lessons: mod.topics && mod.topics.length > 0 ? {
-          create: mod.topics.flatMap((top, tIdx) => {
-            const cleanTop = cleanTopicTitle(top.title);
-            if (top.subtopics && top.subtopics.length > 0) {
-              return top.subtopics.map((sub, sIdx) => {
-                const subType = (sub.type || 'Video').toUpperCase();
-                let lessonType: any = 'VIDEO';
-                if (subType === 'QUIZ') lessonType = 'QUIZ';
-                else if (subType === 'ASSIGNMENT') lessonType = 'ASSIGNMENT';
-                else if (subType === 'ARTICLE') lessonType = 'ARTICLE';
-
-                const cleanSub = cleanLessonTitle(sub.title || 'Lesson');
-                let fullTitle = cleanSub;
-                if (cleanTop && cleanTop.toLowerCase() !== 'topic' && !cleanSub.toLowerCase().includes(cleanTop.toLowerCase())) {
-                  fullTitle = `${cleanTop} · ${cleanSub}`;
-                }
-
-                return {
-                  title: fullTitle,
-                  slug: `lesson-${Date.now()}-${mIdx}-${tIdx}-${sIdx}`,
-                  type: lessonType,
-                  position: (tIdx * 10) + sIdx + 1,
-                };
-              });
-            }
-            return [{
-              title: cleanTop && cleanTop.toLowerCase() !== 'topic' ? cleanTop : (cleanLessonTitle(top.title) || `Lesson ${tIdx + 1}`),
-              slug: `lesson-${Date.now()}-${mIdx}-${tIdx}`,
-              type: 'VIDEO' as const,
-              position: tIdx + 1,
-            }];
-          }),
-        } : undefined,
+        lessons: (() => {
+          const lessons = buildPrismaLessonsFromModule(mod, mIdx);
+          return lessons.length > 0 ? { create: lessons } : undefined;
+        })(),
       })),
     } : undefined;
 
@@ -1433,7 +1528,15 @@ export class AdminService {
         ...course,
         ...data,
         id: course.id,
+        slug: course.slug,
+        modules: cleanCourseModules(data.modules || []),
         instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
+        instructorName: instructorDisplayName,
+        price: priceNumber,
+        discountPrice: data.discountPrice || 0,
+        currency: data.currency || 'INR ₹',
+        status: statusVal === 'PUBLISHED' ? 'Published' : statusVal === 'DRAFT' ? 'Draft' : 'Review',
+        updatedAt: new Date(),
       };
       AdminService.fallbackCourses.set(String(course.id), fullCourse);
       AdminService.saveMetaToFile();
@@ -1465,11 +1568,11 @@ export class AdminService {
         subscriptionCycle: data.subscriptionCycle || 'Monthly',
         enrollmentLimit: data.enrollmentLimit || 'Unlimited',
         courseVisibility: data.courseVisibility || 'Public',
-        status: statusVal,
+        status: statusVal === 'PUBLISHED' ? 'Published' : statusVal === 'DRAFT' ? 'Draft' : 'Review',
         instructorId: instructor?.id || 'admin_user',
         instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
         instructorName: instructorDisplayName,
-        modules: data.modules || [],
+        modules: cleanCourseModules(data.modules || []),
         skillsCovered: data.skillsCovered || data.tags || [],
         prerequisites: data.prerequisites || '',
         estimatedDuration: data.estimatedDuration || '12 Weeks',
@@ -1500,78 +1603,10 @@ export class AdminService {
       [key: string]: any;
     }
   ) {
-    let mappedStatus: any = undefined;
-    if (data.status) {
-      const s = data.status.toUpperCase();
-      if (s === 'PUBLISHED') mappedStatus = 'PUBLISHED';
-      else if (s === 'DRAFT') mappedStatus = 'DRAFT';
-      else if (s === 'ARCHIVED') mappedStatus = 'ARCHIVED';
-      else if (s === 'REVIEW' || s === 'UNDER REVIEW') mappedStatus = 'DRAFT';
-    }
-
-    try {
-      const updated = await this.prisma.course.update({
-        where: { id },
-        data: {
-          ...(data.title ? { title: data.title } : {}),
-          ...(data.description ? { description: data.description } : {}),
-          ...(data.price !== undefined ? { price: data.price } : {}),
-          ...(mappedStatus ? { status: mappedStatus } : {}),
-        },
-      });
-      const existing = AdminService.fallbackCourses.get(String(id)) || {};
-      const full = {
-        ...existing,
-        ...updated,
-        ...data,
-        id: updated.id,
-        title: data.title || updated.title || existing.title,
-        subtitle: data.subtitle !== undefined ? data.subtitle : (updated.subtitle !== undefined ? updated.subtitle : existing.subtitle),
-        description: data.description || updated.description || existing.description,
-        coverImageUrl: data.coverImageUrl || data.thumbnailPreview || existing.coverImageUrl || updated.coverImageUrl || null,
-        thumbnailPreview: data.thumbnailPreview || data.coverImageUrl || existing.thumbnailPreview || updated.coverImageUrl || null,
-        price: data.price !== undefined ? data.price : (existing.price !== undefined ? existing.price : Number(updated.price)),
-        discountPrice: data.discountPrice !== undefined ? data.discountPrice : existing.discountPrice,
-        status: data.status ? (data.status === 'PUBLISHED' ? 'Published' : data.status === 'DRAFT' ? 'Draft' : data.status) : (existing.status || 'Published'),
-        level: data.level || existing.level || (updated.level ? String(updated.level).charAt(0) + String(updated.level).slice(1).toLowerCase().replace(/_/g, ' ') : 'Beginner'),
-        category: data.category || existing.category || 'Development',
-        language: data.language || existing.language || 'English',
-        learningOutcomes: data.learningOutcomes || existing.learningOutcomes || [],
-        prerequisites: data.prerequisites !== undefined ? data.prerequisites : (existing.prerequisites || ''),
-        requirements: data.requirements || existing.requirements || [],
-        targetAudience: data.targetAudience !== undefined ? data.targetAudience : (existing.targetAudience || ''),
-        targetLearners: data.targetLearners || existing.targetLearners || [],
-        skillsCovered: data.skillsCovered || data.tags || existing.skillsCovered || [],
-        tags: data.tags || data.skillsCovered || existing.tags || [],
-        modules: (data.modules && data.modules.length > 0) ? data.modules : (existing.modules || []),
-        updatedAt: new Date(),
-      };
-      AdminService.fallbackCourses.set(String(id), full);
-      AdminService.saveMetaToFile();
-      return full;
-    } catch {
-      const existing = AdminService.fallbackCourses.get(String(id)) || {};
-      const updated = {
-        ...existing,
-        ...data,
-        id,
-        price: data.price !== undefined ? data.price : existing.price,
-        discountPrice: data.discountPrice !== undefined ? data.discountPrice : existing.discountPrice,
-        learningOutcomes: data.learningOutcomes || existing.learningOutcomes || [],
-        prerequisites: data.prerequisites !== undefined ? data.prerequisites : (existing.prerequisites || ''),
-        requirements: data.requirements || existing.requirements || [],
-        targetAudience: data.targetAudience !== undefined ? data.targetAudience : (existing.targetAudience || ''),
-        targetLearners: data.targetLearners || existing.targetLearners || [],
-        skillsCovered: data.skillsCovered || data.tags || existing.skillsCovered || [],
-        tags: data.tags || data.skillsCovered || existing.tags || [],
-        modules: (data.modules && data.modules.length > 0) ? data.modules : (existing.modules || []),
-        status: data.status ? data.status : existing.status,
-        updatedAt: new Date(),
-      };
-      AdminService.fallbackCourses.set(String(id), updated);
-      AdminService.saveMetaToFile();
-      return updated;
-    }
+    return this.saveCourseDraft({
+      ...data,
+      id,
+    });
   }
 
   async deleteCourse(id: string) {
