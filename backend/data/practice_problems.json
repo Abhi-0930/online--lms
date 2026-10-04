@@ -4,7 +4,7 @@
     "title": "Two Sum",
     "category": "Arrays",
     "difficulty": "Easy",
-    "acceptance": "0.0%",
+    "acceptance": "60%",
     "submissions": 13,
     "testCases": 0,
     "status": "Live",
@@ -29,10 +29,9 @@
       "Hash Map",
       "Brute Force",
       "Lookup",
-      "Optimization",
-      "Binary Search"
+      "Optimization"
     ],
-    "companies": "Google, Amazon, Microsoft, Meta, Netflix, Accenture",
+    "companies": "Google, Amazon, Microsoft, Meta, Netflix",
     "examples": [
       {
         "id": "ex-1",
@@ -63,6 +62,6 @@
     "visibility": "Public",
     "slug": "two-sum",
     "createdAt": "2026-09-28T19:22:29.654Z",
-    "updatedAt": "2026-10-04T18:07:49.653Z"
+    "updatedAt": "2026-10-04T19:11:26.399Z"
   }
 ]

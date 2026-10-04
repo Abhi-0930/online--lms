@@ -1,15 +1,37 @@
 [
   {
-    "id": "ANN-2587",
-    "title": "🚀 Live System Design Clinic with FAANG Staff Engineer",
-    "content": "Join us this Thursday at 7:30 PM IST for an exclusive interactive breakdown of distributed caching, Kafka event streaming, and real-world system architecture. Bring your questions for open Q&A!",
-    "category": "Live Session",
-    "targetAudience": "All Students",
-    "publishedAt": "2026-10-04T18:32:57.075Z",
+    "id": "ANN-3474",
+    "title": "🚀 Live System Design",
+    "content": "hi, how are you",
+    "body": "hi, how are you",
+    "category": "Assignment & Milestone",
+    "targetAudience": "All Cohorts & Learners",
+    "cohort": "All Cohorts & Learners",
+    "author": "Admin Team",
+    "publishedAt": "2026-10-04T19:23:32.872Z",
     "date": "Just now",
     "isPinned": false,
     "status": "Published",
+    "channels": [
+      "Email Digest",
+      "In-App Notice"
+    ],
     "ctaLabel": "Join Live Room",
-    "ctaUrl": "/announcements"
+    "ctaUrl": "/announcements",
+    "meetingLink": "",
+    "platform": "",
+    "instructor": "",
+    "sessionId": "",
+    "course": "",
+    "module": "",
+    "topic": "",
+    "startTime": "",
+    "endTime": "",
+    "timezone": "",
+    "hostNotes": "",
+    "passcode": "",
+    "resources": [],
+    "sessionType": "",
+    "description": "hi, how are you"
   }
 ]

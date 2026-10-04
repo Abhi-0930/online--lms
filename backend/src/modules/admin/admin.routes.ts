@@ -37,6 +37,30 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     return all.filter((a: any) => a.status !== 'Draft');
   });
 
+  fastify.post('/api/v1/announcements', async (request, reply) => {
+    const body = request.body as any;
+    try {
+      const adminService = new AdminService(fastify.prisma);
+      const ann = await adminService.saveAnnouncement(body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(ann);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to save announcement' });
+    }
+  });
+
+  fastify.delete('/api/v1/announcements/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const adminService = new AdminService(fastify.prisma);
+      const result = await adminService.deleteAnnouncement(id);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to delete announcement' });
+    }
+  });
+
   // Public recordings route for learner frontend
   fastify.get('/api/v1/recordings', async (_request, reply) => {
     reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
