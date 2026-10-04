@@ -1,4 +1,4 @@
-# Production Dockerfile for PrepPath LMS Backend
+# Production Dockerfile for PrepPath LMS Backend (Hugging Face Spaces / Cloud)
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -6,14 +6,16 @@ WORKDIR /app
 # Install dependencies including OpenSSL for Prisma
 RUN apk add --no-cache openssl libc6-compat
 
-COPY package*.json ./
-COPY prisma ./prisma/
+# Copy backend dependencies and prisma schema
+COPY backend/package*.json ./
+COPY backend/prisma ./prisma/
 
 RUN npm ci
 
-COPY tsconfig.json ./
-COPY src ./src/
-COPY data ./data/
+# Copy backend source code and config
+COPY backend/tsconfig.json ./
+COPY backend/src ./src/
+COPY backend/data ./data/
 
 RUN npx prisma generate
 RUN npm run build
@@ -29,14 +31,15 @@ ENV NODE_ENV=production
 ENV PORT=7860
 ENV HOST=0.0.0.0
 
-COPY package*.json ./
-COPY prisma ./prisma/
+COPY backend/package*.json ./
+COPY backend/prisma ./prisma/
 
 RUN npm ci --omit=dev && npx prisma generate
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/data ./data
 
+# Expose standard HF Spaces port (7860), Render/Northflank (8080), and default (4000)
 EXPOSE 7860
 EXPOSE 8080
 EXPOSE 4000
