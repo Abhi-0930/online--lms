@@ -70,6 +70,18 @@ export default async function adminController(fastify: FastifyInstance) {
     }
   });
 
+  fastify.put('/courses/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    try {
+      const updated = await adminService.updateCourse(id, body);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(updated);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to update course' });
+    }
+  });
+
   fastify.delete('/courses/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     try {
