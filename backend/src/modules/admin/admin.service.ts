@@ -855,7 +855,9 @@ export class AdminService {
       return (
         AdminService.deletedCoursesIds.has(cId) ||
         AdminService.deletedCoursesIds.has(cSlug) ||
-        AdminService.deletedCoursesIds.has(cTitle)
+        AdminService.deletedCoursesIds.has(cTitle) ||
+        (cId && AdminService.deletedCoursesIds.has(cId.toLowerCase())) ||
+        (cSlug && AdminService.deletedCoursesIds.has(cSlug.toLowerCase()))
       );
     };
 
@@ -879,11 +881,13 @@ export class AdminService {
     const courseMap = new Map<string, any>();
     for (const course of dbCourses) {
       if (isDeleted(course)) continue;
-      const fallback = AdminService.fallbackCourses.get(String(course.id)) || {};
+      const fallback = AdminService.fallbackCourses.get(String(course.id)) ||
+                       AdminService.fallbackCourses.get(String(course.slug)) || {};
       const merged = {
         ...course,
         ...fallback,
         id: String(course.id),
+        slug: course.slug || fallback.slug || String(course.id),
         title: fallback.title || course.title,
         subtitle: fallback.subtitle !== undefined ? fallback.subtitle : (course.subtitle || ''),
         description: fallback.description || course.description || '',
@@ -903,14 +907,17 @@ export class AdminService {
       };
       courseMap.set(String(course.id), merged);
     }
-    for (const fallback of AdminService.fallbackCourses.values()) {
-      if (isDeleted(fallback)) continue;
-      const canonicalId = String(fallback.id || '');
-      const fallbackSlug = String(fallback.slug || '');
-      const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
-        (fallbackSlug && Array.from(courseMap.values()).some((c: any) => c.slug === fallbackSlug || c.id === canonicalId));
-      if (!alreadyExists && canonicalId) {
-        courseMap.set(canonicalId, fallback);
+
+    if (dbCourses.length === 0) {
+      for (const fallback of AdminService.fallbackCourses.values()) {
+        if (isDeleted(fallback)) continue;
+        const canonicalId = String(fallback.id || '');
+        const fallbackSlug = String(fallback.slug || '');
+        const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
+          (fallbackSlug && Array.from(courseMap.values()).some((c: any) => c.slug === fallbackSlug || c.id === canonicalId));
+        if (!alreadyExists && canonicalId) {
+          courseMap.set(canonicalId, fallback);
+        }
       }
     }
 
@@ -987,7 +994,8 @@ export class AdminService {
       const revenueStr = totalRevenueNum > 0 ? `₹${totalRevenueNum.toLocaleString('en-IN')}` : '₹0';
 
       return {
-        id: course.id,
+        id: String(course.id),
+        slug: course.slug || course.id || '',
         title: course.title,
         subtitle: course.subtitle || course.track || '',
         description: course.description || '',
@@ -1569,13 +1577,16 @@ export class AdminService {
   async deleteCourse(id: string) {
     const rawId = String(id || '').trim();
     const decodedId = decodeURIComponent(rawId).trim();
+    if (!rawId) return { success: false, error: 'Course ID is required' };
 
     AdminService.deletedCoursesIds = AdminService.loadDeletedCoursesFromFile();
     AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
 
     // 1. Tombstone raw ID and decoded ID
-    if (rawId) AdminService.deletedCoursesIds.add(rawId);
-    if (decodedId) AdminService.deletedCoursesIds.add(decodedId);
+    AdminService.deletedCoursesIds.add(rawId);
+    AdminService.deletedCoursesIds.add(decodedId);
+    AdminService.deletedCoursesIds.add(rawId.toLowerCase());
+    AdminService.deletedCoursesIds.add(decodedId.toLowerCase());
 
     // 2. Cascading Prisma DB cleanup
     const matchedPrismaIds: string[] = [];
@@ -1587,6 +1598,10 @@ export class AdminService {
             { id: decodedId },
             { slug: rawId },
             { slug: decodedId },
+            { slug: rawId.toLowerCase() },
+            { slug: decodedId.toLowerCase() },
+            { title: { equals: rawId, mode: 'insensitive' } },
+            { title: { equals: decodedId, mode: 'insensitive' } },
           ],
         },
         include: {
@@ -1602,11 +1617,15 @@ export class AdminService {
 
       if (existing) {
         matchedPrismaIds.push(existing.id);
+        AdminService.deletedCoursesIds.add(existing.id);
+        AdminService.deletedCoursesIds.add(existing.id.toLowerCase());
         if (existing.slug) {
           matchedPrismaIds.push(existing.slug);
           AdminService.deletedCoursesIds.add(existing.slug);
+          AdminService.deletedCoursesIds.add(existing.slug.toLowerCase());
         }
         if (existing.title) {
+          AdminService.deletedCoursesIds.add(existing.title.trim());
           AdminService.deletedCoursesIds.add(existing.title.trim().toLowerCase());
         }
 
@@ -1673,10 +1692,7 @@ export class AdminService {
       console.warn('Prisma course delete warning:', err?.message || err);
     }
 
-    // 3. Save deleted courses tombstone file
-    AdminService.saveDeletedCoursesToFile();
-
-    // 4. Remove all matching keys from fallbackCourses map
+    // 3. Remove all matching keys from fallbackCourses map
     const keysToDelete: string[] = [];
     for (const [k, v] of AdminService.fallbackCourses.entries()) {
       const kStr = String(k).trim();
@@ -1684,25 +1700,48 @@ export class AdminService {
       const vSlug = v?.slug ? String(v.slug).trim() : '';
       const vTitle = v?.title ? String(v.title).trim().toLowerCase() : '';
 
-      if (
+      const isMatch =
         kStr === rawId ||
         kStr === decodedId ||
+        kStr.toLowerCase() === rawId.toLowerCase() ||
+        kStr.toLowerCase() === decodedId.toLowerCase() ||
+        vId === rawId ||
+        vId === decodedId ||
+        vId.toLowerCase() === rawId.toLowerCase() ||
+        vSlug === rawId ||
+        vSlug === decodedId ||
+        vSlug.toLowerCase() === rawId.toLowerCase() ||
+        vTitle === rawId.toLowerCase() ||
+        vTitle === decodedId.toLowerCase() ||
         matchedPrismaIds.includes(kStr) ||
         matchedPrismaIds.includes(vId) ||
         matchedPrismaIds.includes(vSlug) ||
-        (vId && (vId === rawId || vId === decodedId)) ||
-        (vSlug && (vSlug === rawId || vSlug === decodedId)) ||
         AdminService.deletedCoursesIds.has(kStr) ||
         AdminService.deletedCoursesIds.has(vId) ||
         AdminService.deletedCoursesIds.has(vSlug) ||
-        AdminService.deletedCoursesIds.has(vTitle)
-      ) {
+        AdminService.deletedCoursesIds.has(vTitle);
+
+      if (isMatch) {
+        if (vId) {
+          AdminService.deletedCoursesIds.add(vId);
+          AdminService.deletedCoursesIds.add(vId.toLowerCase());
+        }
+        if (vSlug) {
+          AdminService.deletedCoursesIds.add(vSlug);
+          AdminService.deletedCoursesIds.add(vSlug.toLowerCase());
+        }
+        if (vTitle) {
+          AdminService.deletedCoursesIds.add(vTitle);
+        }
         keysToDelete.push(k);
       }
     }
     for (const k of keysToDelete) {
       AdminService.fallbackCourses.delete(k);
     }
+
+    // 4. Save deleted courses tombstone file & clean metadata
+    AdminService.saveDeletedCoursesToFile();
     AdminService.saveMetaToFile();
 
     return { success: true, id };
