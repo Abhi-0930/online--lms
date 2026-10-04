@@ -27,43 +27,91 @@ export function cleanTopicTitle(str: any): string {
 
 export function cleanCourseModules(modules: any[]): any[] {
   if (!Array.isArray(modules)) return [];
+  const overrides = AdminService.fallbackContentOverrides || AdminService.loadContentOverridesFromFile();
+
   return modules.map((mod, mIdx) => {
     const modTitle = cleanLessonTitle(mod.title) || `Module ${mIdx + 1}`;
+    const modId = String(mod.id || `mod_${mIdx}`);
+    const modOverride = overrides.get(modId);
+    const isModCompleted = modOverride?.status === 'Completed' || modOverride?.isCompleted === true || mod.status === 'Completed' || mod.isCompleted === true;
+
     if (Array.isArray(mod.topics) && mod.topics.length > 0) {
-      const cleanedTopics = mod.topics.map((t: any) => {
+      const cleanedTopics = mod.topics.map((t: any, tIdx: number) => {
         let tTitle = cleanTopicTitle(t.title);
+        const topId = String(t.id || `top_${modId}_${tIdx}`);
+        const topOverride = overrides.get(topId);
+        const isTopCompleted = isModCompleted || topOverride?.status === 'Completed' || topOverride?.isCompleted === true || t.status === 'Completed' || t.isCompleted === true;
+
         const cleanedSubtopics = Array.isArray(t.subtopics)
-          ? t.subtopics.map((s: any) => ({
-              ...s,
-              title: cleanLessonTitle(s.title),
-            }))
+          ? t.subtopics.map((s: any, sIdx: number) => {
+              const subId = String(s.id || `sub_${modId}_${topId}_${sIdx}`);
+              const subOverride = overrides.get(subId) || (s.id ? overrides.get(String(s.id)) : undefined);
+              const isSubCompleted = isTopCompleted || subOverride?.status === 'Completed' || subOverride?.isCompleted === true || s.status === 'Completed' || s.isCompleted === true;
+
+              return {
+                ...s,
+                id: s.id || subId,
+                title: cleanLessonTitle(s.title),
+                status: isSubCompleted ? 'Completed' : (subOverride?.status || s.status || 'Published'),
+                isCompleted: isSubCompleted,
+                isCompletedByInstructor: isSubCompleted || Boolean(s.videoUrl),
+              };
+            })
           : [];
+
         return {
           ...t,
+          id: t.id || topId,
           title: tTitle,
           subtopics: cleanedSubtopics,
+          status: isTopCompleted ? 'Completed' : (topOverride?.status || t.status || 'Published'),
+          isCompleted: isTopCompleted,
+          isCompletedByInstructor: isTopCompleted || Boolean(t.videoUrl),
         };
       });
+
       return {
         ...mod,
+        id: modId,
         title: modTitle,
         topics: cleanedTopics,
+        status: isModCompleted ? 'Completed' : (modOverride?.status || mod.status || 'Published'),
+        isCompleted: isModCompleted,
       };
     }
+
     if (Array.isArray(mod.lessons) && mod.lessons.length > 0) {
-      const cleanedLessons = mod.lessons.map((l: any) => ({
-        ...l,
-        title: cleanLessonTitle(l.title),
-      }));
+      const cleanedLessons = mod.lessons.map((l: any, lIdx: number) => {
+        const lesId = String(l.id || `mod_${modId}_les_${lIdx}`);
+        const lesOverride = overrides.get(lesId) || (l.id ? overrides.get(String(l.id)) : undefined);
+        const isLesCompleted = isModCompleted || lesOverride?.status === 'Completed' || lesOverride?.isCompleted === true || l.status === 'Completed' || l.isCompleted === true;
+
+        return {
+          ...l,
+          id: l.id || lesId,
+          title: cleanLessonTitle(l.title),
+          status: isLesCompleted ? 'Completed' : (lesOverride?.status || l.status || 'Published'),
+          isCompleted: isLesCompleted,
+          isCompletedByInstructor: isLesCompleted || Boolean(l.videoUrl),
+        };
+      });
+
       return {
         ...mod,
+        id: modId,
         title: modTitle,
         lessons: cleanedLessons,
+        status: isModCompleted ? 'Completed' : (modOverride?.status || mod.status || 'Published'),
+        isCompleted: isModCompleted,
       };
     }
+
     return {
       ...mod,
+      id: modId,
       title: modTitle,
+      status: isModCompleted ? 'Completed' : (modOverride?.status || mod.status || 'Published'),
+      isCompleted: isModCompleted,
     };
   });
 }
@@ -385,7 +433,7 @@ export class AdminService {
     return new Set<string>();
   }
 
-  private static loadContentOverridesFromFile(): Map<string, any> {
+  public static loadContentOverridesFromFile(): Map<string, any> {
     try {
       if (fs.existsSync(AdminService.contentOverridesFilePath)) {
         const raw = fs.readFileSync(AdminService.contentOverridesFilePath, 'utf-8');
