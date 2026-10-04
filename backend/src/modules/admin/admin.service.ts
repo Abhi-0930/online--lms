@@ -192,6 +192,7 @@ export class AdminService {
   private static deletedContentFilePath = AdminService.resolveDataFile('deleted_content.json');
   private static practiceSubmissionsFilePath = AdminService.resolveDataFile('practice_submissions.json');
   private static practiceDiscussionsFilePath = AdminService.resolveDataFile('practice_discussions.json');
+  private static courseDiscussionsFilePath = AdminService.resolveDataFile('course_discussions.json');
   private static studentProgressFilePath = AdminService.resolveDataFile('student_progress.json');
 
   public static deletedCoursesIds = AdminService.loadDeletedCoursesFromFile();
@@ -292,6 +293,46 @@ export class AdminService {
       fs.writeFileSync(AdminService.practiceDiscussionsFilePath, JSON.stringify(data, null, 2), 'utf-8');
     } catch (err) {
       console.warn('Failed to save practice discussions to file:', err);
+    }
+  }
+
+  private static loadCourseDiscussionsFromFile(): Map<string, any> {
+    try {
+      if (fs.existsSync(AdminService.courseDiscussionsFilePath)) {
+        const raw = fs.readFileSync(AdminService.courseDiscussionsFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const map = new Map<string, any>();
+          for (const item of parsed) {
+            if (item && item.id) {
+              map.set(String(item.id), item);
+            }
+          }
+          return map;
+        } else if (parsed && typeof parsed === 'object') {
+          const map = new Map<string, any>();
+          for (const [k, v] of Object.entries(parsed)) {
+            map.set(String(k), v);
+          }
+          return map;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load course discussions from file:', err);
+    }
+    return new Map<string, any>();
+  }
+
+  public static saveCourseDiscussionsToFile(): void {
+    try {
+      const dir = path.dirname(AdminService.courseDiscussionsFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = Array.from(AdminService.fallbackCourseDiscussions.values());
+      fs.writeFileSync(AdminService.courseDiscussionsFilePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Failed to save course discussions to file:', err);
     }
   }
 
@@ -616,6 +657,7 @@ export class AdminService {
   public static fallbackSubmissions = new Map<string, any>();
   public static fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
   public static fallbackPracticeDiscussions = AdminService.loadPracticeDiscussionsFromFile();
+  public static fallbackCourseDiscussions = AdminService.loadCourseDiscussionsFromFile();
   public static fallbackStudentProgress = AdminService.loadStudentProgressFromFile();
 
   constructor(private prisma: PrismaClient) {}
@@ -3463,6 +3505,200 @@ export class AdminService {
     }
     AdminService.savePracticeDiscussionsToFile();
     return { success: true };
+  }
+
+  // ==========================================
+  // COURSE DISCUSSIONS CRUD OPERATIONS
+  // ==========================================
+  async saveCourseDiscussion(lessonIdOrSlug: string, data: any) {
+    AdminService.fallbackCourseDiscussions = AdminService.loadCourseDiscussionsFromFile();
+
+    const discId = data.id || `course-disc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const author = data.authorName || data.author || data.fullName || 'Learner';
+    const authorRole = data.authorRole || data.role || (data.isAdmin ? 'Instructor' : 'Learner');
+    const authorEmail = data.email || data.authorEmail || data.studentEmail || null;
+    const authorAvatar = data.avatar || data.authorAvatar || null;
+
+    const status = data.status || 'Approved';
+
+    const discussion = {
+      id: discId,
+      lessonId: String(lessonIdOrSlug),
+      courseId: data.courseId ? String(data.courseId) : null,
+      courseSlug: data.courseSlug ? String(data.courseSlug) : null,
+      lessonTitle: data.lessonTitle || 'Lesson Discussion',
+      userId: data.userId || null,
+      title: data.title || '',
+      text: data.text || data.content || data.body || '',
+      content: data.text || data.content || data.body || '',
+      author,
+      role: authorRole,
+      authorRole,
+      authorEmail,
+      avatar: authorAvatar,
+      likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
+      likes: typeof data.likes === 'number' ? data.likes : (Array.isArray(data.likedBy) ? data.likedBy.length : 0),
+      replies: Array.isArray(data.replyList) ? data.replyList.length : 0,
+      replyList: Array.isArray(data.replyList) ? data.replyList : [],
+      status,
+      time: 'Just now',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    AdminService.fallbackCourseDiscussions.set(discId, discussion);
+    AdminService.saveCourseDiscussionsToFile();
+    return discussion;
+  }
+
+  async getCourseDiscussions(lessonIdOrSlug: string, options?: { onlyApproved?: boolean; userId?: string; userEmail?: string }) {
+    AdminService.fallbackCourseDiscussions = AdminService.loadCourseDiscussionsFromFile();
+
+    const normKey = String(lessonIdOrSlug || '').toLowerCase().trim();
+    const userId = options?.userId ? String(options.userId).toLowerCase().trim() : null;
+    const userEmail = options?.userEmail ? String(options.userEmail).toLowerCase().trim() : null;
+
+    const list = Array.from(AdminService.fallbackCourseDiscussions.values()).filter((d) => {
+      const dLessonId = String(d.lessonId || '').toLowerCase().trim();
+      const matchLesson = dLessonId === normKey || (d.lessonSlug && String(d.lessonSlug).toLowerCase().trim() === normKey);
+      if (!matchLesson) return false;
+
+      if (options?.onlyApproved) {
+        const isApproved = (d.status || 'Approved').toLowerCase() === 'approved';
+        const isOwnPost = (userId && d.userId && String(d.userId).toLowerCase() === userId) ||
+                          (userEmail && d.authorEmail && String(d.authorEmail).toLowerCase() === userEmail);
+        return isApproved || isOwnPost;
+      }
+      return true;
+    });
+
+    list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+    return list.map((d) => {
+      const likedBy = Array.isArray(d.likedBy) ? d.likedBy : [];
+      const hasLiked = Boolean(
+        (userId && likedBy.some((id: string) => String(id).toLowerCase() === userId)) ||
+        (userEmail && likedBy.some((em: string) => String(em).toLowerCase() === userEmail))
+      );
+
+      return {
+        ...d,
+        hasLiked,
+        likes: likedBy.length > 0 ? likedBy.length : (d.likes || 0),
+      };
+    });
+  }
+
+  async getAllCourseDiscussions() {
+    AdminService.fallbackCourseDiscussions = AdminService.loadCourseDiscussionsFromFile();
+    const list = Array.from(AdminService.fallbackCourseDiscussions.values());
+    list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return list;
+  }
+
+  async likeCourseDiscussion(discussionId: string, options: { delta?: number; userEmail?: string; userId?: string }) {
+    AdminService.fallbackCourseDiscussions = AdminService.loadCourseDiscussionsFromFile();
+    const disc = AdminService.fallbackCourseDiscussions.get(String(discussionId));
+    if (!disc) {
+      throw new Error('Discussion not found');
+    }
+
+    const likedBy: string[] = Array.isArray(disc.likedBy) ? [...disc.likedBy] : [];
+    const identifier = options.userId || options.userEmail || 'anonymous';
+    const normId = identifier.toLowerCase().trim();
+
+    const existingIdx = likedBy.findIndex((id) => String(id).toLowerCase().trim() === normId);
+    let hasLiked = false;
+
+    if (options.delta !== undefined) {
+      if (options.delta > 0 && existingIdx === -1) {
+        likedBy.push(identifier);
+        hasLiked = true;
+      } else if (options.delta <= 0 && existingIdx !== -1) {
+        likedBy.splice(existingIdx, 1);
+        hasLiked = false;
+      } else {
+        hasLiked = existingIdx !== -1;
+      }
+    } else {
+      if (existingIdx === -1) {
+        likedBy.push(identifier);
+        hasLiked = true;
+      } else {
+        likedBy.splice(existingIdx, 1);
+        hasLiked = false;
+      }
+    }
+
+    disc.likedBy = likedBy;
+    disc.likes = likedBy.length;
+    disc.updatedAt = new Date().toISOString();
+
+    AdminService.fallbackCourseDiscussions.set(String(discussionId), disc);
+    AdminService.saveCourseDiscussionsToFile();
+
+    return {
+      ...disc,
+      hasLiked,
+      likes: disc.likes,
+    };
+  }
+
+  async replyToCourseDiscussion(discussionId: string, data: any) {
+    AdminService.fallbackCourseDiscussions = AdminService.loadCourseDiscussionsFromFile();
+    const disc = AdminService.fallbackCourseDiscussions.get(String(discussionId));
+    if (!disc) {
+      throw new Error('Discussion not found');
+    }
+
+    const replyId = data.id || `reply-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const replyAuthor = data.authorName || data.author || data.fullName || 'Instructor';
+    const replyRole = data.authorRole || data.role || (data.isAdmin ? 'Instructor' : 'Learner');
+    const replyEmail = data.email || data.authorEmail || null;
+    const replyContent = data.content || data.text || data.body || '';
+
+    const newReply = {
+      id: replyId,
+      discussionId: String(discussionId),
+      content: replyContent,
+      text: replyContent,
+      author: replyAuthor,
+      role: replyRole,
+      authorRole: replyRole,
+      authorEmail: replyEmail,
+      createdAt: new Date().toISOString(),
+      time: 'Just now',
+    };
+
+    if (!Array.isArray(disc.replyList)) {
+      disc.replyList = [];
+    }
+    disc.replyList.push(newReply);
+    disc.replies = disc.replyList.length;
+    disc.updatedAt = new Date().toISOString();
+
+    AdminService.fallbackCourseDiscussions.set(String(discussionId), disc);
+    AdminService.saveCourseDiscussionsToFile();
+
+    return disc;
+  }
+
+  async updateCourseDiscussionStatus(discussionId: string, status: string) {
+    AdminService.fallbackCourseDiscussions = AdminService.loadCourseDiscussionsFromFile();
+    const disc = AdminService.fallbackCourseDiscussions.get(String(discussionId));
+    if (!disc) throw new Error('Discussion not found');
+    disc.status = status;
+    disc.updatedAt = new Date().toISOString();
+    AdminService.fallbackCourseDiscussions.set(String(discussionId), disc);
+    AdminService.saveCourseDiscussionsToFile();
+    return disc;
+  }
+
+  async deleteCourseDiscussion(discussionId: string) {
+    AdminService.fallbackCourseDiscussions = AdminService.loadCourseDiscussionsFromFile();
+    const deleted = AdminService.fallbackCourseDiscussions.delete(String(discussionId));
+    AdminService.saveCourseDiscussionsToFile();
+    return { success: deleted };
   }
 
   // ==========================================
