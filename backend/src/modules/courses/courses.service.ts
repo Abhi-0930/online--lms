@@ -83,7 +83,9 @@ export class CoursesService {
       return (
         AdminService.deletedCoursesIds.has(cId) ||
         AdminService.deletedCoursesIds.has(cSlug) ||
-        AdminService.deletedCoursesIds.has(cTitle)
+        AdminService.deletedCoursesIds.has(cTitle) ||
+        (cId && AdminService.deletedCoursesIds.has(cId.toLowerCase())) ||
+        (cSlug && AdminService.deletedCoursesIds.has(cSlug.toLowerCase()))
       );
     };
 
@@ -96,6 +98,7 @@ export class CoursesService {
         ...c,
         ...meta,
         id: String(c.id),
+        slug: c.slug || meta.slug || String(c.id),
         title: meta.title || c.title,
         subtitle: meta.subtitle !== undefined ? meta.subtitle : (c.subtitle || ''),
         description: meta.description || c.description || '',
@@ -135,14 +138,16 @@ export class CoursesService {
       courseMap.set(String(c.id), merged);
     }
 
-    for (const meta of AdminService.fallbackCourses.values()) {
-      if (isDeleted(meta)) continue;
-      const canonicalId = String(meta.id || '');
-      const metaSlug = String(meta.slug || '');
-      const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
-        (metaSlug && Array.from(courseMap.values()).some((c: any) => c.slug === metaSlug || c.id === canonicalId));
-      if (!alreadyExists && canonicalId) {
-        courseMap.set(canonicalId, meta);
+    if (courses.length === 0) {
+      for (const meta of AdminService.fallbackCourses.values()) {
+        if (isDeleted(meta)) continue;
+        const canonicalId = String(meta.id || '');
+        const metaSlug = String(meta.slug || '');
+        const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
+          (metaSlug && Array.from(courseMap.values()).some((c: any) => c.slug === metaSlug || c.id === canonicalId));
+        if (!alreadyExists && canonicalId) {
+          courseMap.set(canonicalId, meta);
+        }
       }
     }
 
@@ -327,13 +332,10 @@ export class CoursesService {
   }
 
   async deleteCourse(id: string) {
-    await this.prisma.course.delete({
-      where: { id },
-    });
-
+    const adminService = new AdminService(this.prisma);
+    const result = await adminService.deleteCourse(id);
     logger.info({ courseId: id }, 'Course deleted');
-
-    return { success: true };
+    return result;
   }
 
   async createModule(courseId: string, data: any) {
