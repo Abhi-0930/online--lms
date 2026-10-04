@@ -1,19 +1,45 @@
 // Centralized API Base URL configuration for local dev and production on Vercel / custom domains
-export const API_BASE_URL = (
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
-  (typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1"
-    ? "https://site--preppath-backend--x9gt4y7zlzhr.code.run"
-    : "http://localhost:4000")
-).replace(/\/$/, "");
+export const API_BASE_URL = (() => {
+  const envUrl = typeof import.meta !== "undefined" ? import.meta.env?.VITE_API_BASE_URL : undefined;
+  if (envUrl) return envUrl.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    const isLocal =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("172.") ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".lan") ||
+      /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+    if (isLocal) {
+      return `http://${hostname}:4000`;
+    }
+    return "https://site--preppath-backend--x9gt4y7zlzhr.code.run";
+  }
+  return "http://localhost:4000";
+})().replace(/\/$/, "");
 
-export const WS_BASE_URL = (
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_WS_URL) ||
-  (typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1"
-    ? "wss://site--preppath-backend--x9gt4y7zlzhr.code.run"
-    : "ws://localhost:4000")
-).replace(/\/$/, "");
+export const WS_BASE_URL = (() => {
+  const envWs = typeof import.meta !== "undefined" ? import.meta.env?.VITE_WS_URL : undefined;
+  if (envWs) return envWs.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    const isLocal =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("172.") ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".lan") ||
+      /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+    if (isLocal) {
+      return `ws://${hostname}:4000`;
+    }
+    return "wss://site--preppath-backend--x9gt4y7zlzhr.code.run";
+  }
+  return "ws://localhost:4000";
+})().replace(/\/$/, "");
 

@@ -5779,12 +5779,19 @@ export default function Home() {
       try {
         localStorage.setItem("lms_admin_announcements", JSON.stringify(next));
         window.dispatchEvent(new CustomEvent("lms_announcements_updated", { detail: next }));
+        if ("BroadcastChannel" in window) {
+          const bc = new BroadcastChannel("lms_announcements_channel");
+          bc.postMessage({ type: "ANNOUNCEMENTS_UPDATED", data: next });
+          bc.close();
+        }
       } catch {}
       return next;
     });
 
     const urls = [
+      `${API_BASE_URL}/api/v1/announcements`,
       `${API_BASE_URL}/api/v1/admin/announcements`,
+      `http://localhost:4000/api/v1/announcements`,
       `http://localhost:4000/api/v1/admin/announcements`,
     ];
 
@@ -5806,13 +5813,20 @@ export default function Home() {
       try {
         localStorage.setItem("lms_admin_announcements", JSON.stringify(next));
         window.dispatchEvent(new CustomEvent("lms_announcements_updated", { detail: next }));
+        if ("BroadcastChannel" in window) {
+          const bc = new BroadcastChannel("lms_announcements_channel");
+          bc.postMessage({ type: "ANNOUNCEMENTS_UPDATED", data: next });
+          bc.close();
+        }
       } catch {}
       return next;
     });
     onToast("Announcement deleted");
 
     const urls = [
+      `${API_BASE_URL}/api/v1/announcements/${id}`,
       `${API_BASE_URL}/api/v1/admin/announcements/${id}`,
+      `http://localhost:4000/api/v1/announcements/${id}`,
       `http://localhost:4000/api/v1/admin/announcements/${id}`,
     ];
 

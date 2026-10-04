@@ -45,7 +45,9 @@ export interface AnnouncementItem {
   cohort: string;
   author: string;
   body: string;
+  content?: string;
   date: string;
+  publishedAt?: string;
   channels: string[];
   ctaLabel?: string;
   ctaUrl?: string;
@@ -434,6 +436,8 @@ export default function PostAnnouncementModal({
         cohort,
         author: author.trim() || "Admin Team",
         body: body.trim(),
+        content: body.trim(),
+        publishedAt: new Date().toISOString(),
         date: "Just now",
         channels: channels.length > 0 ? channels : ["In-App Notice"],
         ctaLabel: hasCta && ctaLabel.trim() ? ctaLabel.trim() : undefined,
