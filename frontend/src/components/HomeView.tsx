@@ -3702,7 +3702,8 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
   const [studentNoteInput, setStudentNoteInput] = useState("");
   const [savedNotes, setSavedNotes] = useState<Array<{ id: string; text: string; createdAt: string }>>([]);
   const [discussionInput, setDiscussionInput] = useState("");
-  const [discussions, setDiscussions] = useState<Array<{ id: string; author: string; role: string; avatar?: string; text: string; time: string; likes: number; hasLiked?: boolean }>>([]);
+  const [isPostingDiscussion, setIsPostingDiscussion] = useState(false);
+  const [discussions, setDiscussions] = useState<Array<{ id: string; author: string; role: string; avatar?: string; text: string; time: string; likes: number; hasLiked?: boolean; replies?: number; replyList?: any[] }>>([]);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -4030,43 +4031,63 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
     }
   }, [activeLesson?.id]);
 
-  // Load discussions for current lesson
+  // Load real discussions for current lesson from backend
   useEffect(() => {
-    if (typeof window === "undefined" || !activeLesson) return;
-    try {
-      const discKey = `lms_lesson_discussions_${activeLesson.id}`;
-      const saved = localStorage.getItem(discKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setDiscussions(parsed);
-          return;
+    if (!activeLesson?.id) return;
+    let isMounted = true;
+    const fetchLessonDiscussions = async () => {
+      try {
+        const uEmail = user?.email || "";
+        const uId = user?.id || "";
+        const url = `${API_BASE_URL}/api/v1/courses/lessons/${encodeURIComponent(activeLesson.id)}/discussions?userEmail=${encodeURIComponent(uEmail)}&userId=${encodeURIComponent(uId)}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data)) {
+            setDiscussions(
+              data.map((d: any) => ({
+                id: d.id,
+                author: d.author || d.authorName || "Learner",
+                role: d.role || d.authorRole || "Learner",
+                avatar: d.avatar || d.authorAvatar || undefined,
+                text: d.text || d.content || d.body || "",
+                time: d.time || (d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "Just now"),
+                likes: typeof d.likes === "number" ? d.likes : (Array.isArray(d.likedBy) ? d.likedBy.length : 0),
+                hasLiked: Boolean(d.hasLiked),
+                replies: typeof d.replies === "number" ? d.replies : (Array.isArray(d.replyList) ? d.replyList.length : 0),
+                replyList: Array.isArray(d.replyList) ? d.replyList : [],
+              }))
+            );
+            return;
+          }
         }
+      } catch (err) {
+        console.warn("Could not load discussions from server, falling back to local storage", err);
       }
-      setDiscussions([
-        {
-          id: "disc_1",
-          author: "Arjun Verma",
-          role: "Learner",
-          text: "Why do we shrink the window while the condition is invalid instead of restarting from right? The sliding window invariant makes this O(N)!",
-          time: "2 hours ago",
-          likes: 5,
-          hasLiked: false,
-        },
-        {
-          id: "disc_2",
-          author: "Platform Mentor",
-          role: "Instructor",
-          text: "Spot on Arjun! Because the left pointer only moves forward, each element enters and leaves the window at most once, giving linear O(2N) = O(N) amortized time.",
-          time: "1 hour ago",
-          likes: 9,
-          hasLiked: true,
-        },
-      ]);
-    } catch {
-      setDiscussions([]);
-    }
-  }, [activeLesson?.id]);
+
+      if (typeof window !== "undefined" && isMounted) {
+        try {
+          const discKey = `lms_lesson_discussions_${activeLesson.id}`;
+          const saved = localStorage.getItem(discKey);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              // Strip any old mock data
+              const realOnly = parsed.filter((d: any) => d.id !== "disc_1" && d.id !== "disc_2");
+              setDiscussions(realOnly);
+              return;
+            }
+          }
+        } catch {}
+        setDiscussions([]);
+      }
+    };
+
+    fetchLessonDiscussions();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeLesson?.id, user?.id, user?.email]);
 
   const isLessonCompletedByStudent = activeLesson
     ? completedLessonIds.has(activeLesson.id) || completedLessonIds.has(activeLesson.uniqueKey)
@@ -4118,42 +4139,108 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
     toast.success("Notes downloaded as document");
   };
 
-  const handlePostDiscussion = () => {
-    if (!discussionInput.trim() || !activeLesson) return;
-    const newDisc = {
+  const handlePostDiscussion = async () => {
+    if (!discussionInput.trim() || !activeLesson || isPostingDiscussion) return;
+    const text = discussionInput.trim();
+    setIsPostingDiscussion(true);
+
+    const authorName = user?.fullName || "You";
+    const authorRole = (user?.role === "ADMIN" || user?.role === "INSTRUCTOR") ? "Instructor" : "Learner";
+
+    const localDisc = {
       id: `disc_${Date.now()}`,
-      author: user?.fullName || "You",
-      role: "Learner",
-      text: discussionInput.trim(),
+      author: authorName,
+      role: authorRole,
+      text,
       time: "Just now",
       likes: 0,
       hasLiked: false,
+      replies: 0,
+      replyList: [],
     };
-    const updated = [newDisc, ...discussions];
-    setDiscussions(updated);
+
+    const updatedList = [localDisc, ...discussions];
+    setDiscussions(updatedList);
     setDiscussionInput("");
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`lms_lesson_discussions_${activeLesson.id}`, JSON.stringify(updatedList));
+    }
+
+    try {
+      const url = `${API_BASE_URL}/api/v1/courses/lessons/${encodeURIComponent(activeLesson.id)}/discussions`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lessonId: activeLesson.id,
+          lessonTitle: activeLesson.title,
+          courseId: activeCourse?.id || null,
+          courseSlug: activeCourse?.slug || null,
+          userId: user?.id || null,
+          authorName,
+          authorRole,
+          email: user?.email || null,
+          text,
+          content: text,
+        }),
+      });
+
+      if (res.ok) {
+        const savedDisc = await res.json();
+        setDiscussions((prev) =>
+          prev.map((d) =>
+            d.id === localDisc.id
+              ? {
+                  ...d,
+                  id: savedDisc.id,
+                  author: savedDisc.author || authorName,
+                  role: savedDisc.role || authorRole,
+                  text: savedDisc.text || text,
+                  time: savedDisc.time || "Just now",
+                }
+              : d
+          )
+        );
+      }
+      toast.success("Question posted to classroom discussion");
+    } catch (err) {
+      console.warn("Failed to post discussion to backend API", err);
+      toast.success("Question saved locally");
+    } finally {
+      setIsPostingDiscussion(false);
+    }
+  };
+
+  const handleToggleLikeDiscussion = async (discId: string) => {
+    if (!activeLesson) return;
+    const target = discussions.find((d) => d.id === discId);
+    if (!target) return;
+
+    const newHasLiked = !target.hasLiked;
+    const newLikes = newHasLiked ? target.likes + 1 : Math.max(0, target.likes - 1);
+
+    const updated = discussions.map((d) =>
+      d.id === discId ? { ...d, hasLiked: newHasLiked, likes: newLikes } : d
+    );
+    setDiscussions(updated);
     if (typeof window !== "undefined") {
       localStorage.setItem(`lms_lesson_discussions_${activeLesson.id}`, JSON.stringify(updated));
     }
-    toast.success("Question posted to classroom discussion");
-  };
 
-  const handleToggleLikeDiscussion = (discId: string) => {
-    if (!activeLesson) return;
-    const updated = discussions.map((d) => {
-      if (d.id === discId) {
-        const hasLiked = !d.hasLiked;
-        return {
-          ...d,
-          hasLiked,
-          likes: hasLiked ? d.likes + 1 : Math.max(0, d.likes - 1),
-        };
-      }
-      return d;
-    });
-    setDiscussions(updated);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(`lms_lesson_discussions_${activeLesson.id}`, JSON.stringify(updated));
+    try {
+      const url = `${API_BASE_URL}/api/v1/courses/discussions/${encodeURIComponent(discId)}/like`;
+      await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          delta: newHasLiked ? 1 : -1,
+          userId: user?.id || null,
+          userEmail: user?.email || null,
+        }),
+      });
+    } catch (err) {
+      console.warn("Failed to update like on server", err);
     }
   };
 
@@ -4810,8 +4897,12 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                     className="min-h-[85px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-[#fbfcff] p-3 text-xs outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
                   />
                   <div className="flex justify-end">
-                    <button onClick={handlePostDiscussion} className="button-primary !py-1.5 !px-4 !text-xs">
-                      <Send className="h-3.5 w-3.5" /> Post Question
+                    <button
+                      onClick={handlePostDiscussion}
+                      disabled={isPostingDiscussion || !discussionInput.trim()}
+                      className="button-primary !py-1.5 !px-4 !text-xs disabled:opacity-50"
+                    >
+                      <Send className="h-3.5 w-3.5" /> {isPostingDiscussion ? "Posting..." : "Post Question"}
                     </button>
                   </div>
                 </div>
