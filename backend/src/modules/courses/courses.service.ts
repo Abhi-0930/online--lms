@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import logger from '../../utils/logger';
-import { AdminService } from '../admin/admin.service';
+import { AdminService, cleanCourseModules } from '../admin/admin.service';
 
 export class CoursesService {
   constructor(private prisma: PrismaClient) {}
@@ -101,7 +101,7 @@ export class CoursesService {
         description: meta.description || c.description || '',
         coverImageUrl: meta.coverImageUrl || meta.thumbnailPreview || c.coverImageUrl || null,
         thumbnailPreview: meta.thumbnailPreview || meta.coverImageUrl || c.coverImageUrl || null,
-        modules: (meta.modules && meta.modules.length > 0) ? meta.modules : (c.modules || []),
+        modules: cleanCourseModules((meta.modules && meta.modules.length > 0) ? meta.modules : (c.modules || [])),
         category: meta.category || c.category || 'Development',
         language: meta.language || c.language || 'English',
         level: meta.level || (c.level ? String(c.level).charAt(0) + String(c.level).slice(1).toLowerCase().replace(/_/g, ' ') : 'Beginner'),
@@ -217,7 +217,7 @@ export class CoursesService {
       description: meta.description || course?.description || '',
       coverImageUrl: meta.coverImageUrl || meta.thumbnailPreview || course?.coverImageUrl || null,
       thumbnailPreview: meta.thumbnailPreview || meta.coverImageUrl || course?.coverImageUrl || null,
-      modules: (meta.modules && meta.modules.length > 0) ? meta.modules : (course?.modules || []),
+      modules: cleanCourseModules((meta.modules && meta.modules.length > 0) ? meta.modules : (course?.modules || [])),
       category: meta.category || course?.category || 'Development',
       language: meta.language || course?.language || 'English',
       level: meta.level || (course?.level ? String(course.level).charAt(0) + String(course.level).slice(1).toLowerCase().replace(/_/g, ' ') : 'Beginner'),
