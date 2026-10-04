@@ -311,6 +311,55 @@ export default async function adminController(fastify: FastifyInstance) {
     return reply.send(res);
   });
 
+  // Course Lesson Discussions management
+  fastify.get('/courses/discussions', async () => {
+    return adminService.getAllCourseDiscussions();
+  });
+
+  fastify.get('/courses/lessons/:lessonId/discussions', async (request) => {
+    const { lessonId } = request.params as { lessonId: string };
+    return adminService.getCourseDiscussions(lessonId, { onlyApproved: false });
+  });
+
+  fastify.post('/courses/lessons/:lessonId/discussions', async (request, reply) => {
+    const { lessonId } = request.params as { lessonId: string };
+    const body = request.body as any;
+    try {
+      const discussion = await adminService.saveCourseDiscussion(lessonId, {
+        ...body,
+        authorRole: 'Instructor',
+        status: body.status || 'Approved',
+      });
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.code(201).send(discussion);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to create discussion' });
+    }
+  });
+
+  fastify.patch('/courses/discussions/:discussionId', async (request, reply) => {
+    const { discussionId } = request.params as { discussionId: string };
+    const { status } = request.body as { status: string };
+    const updated = await adminService.updateCourseDiscussionStatus(discussionId, status || 'Approved');
+    AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+    return reply.send(updated);
+  });
+
+  fastify.post('/courses/discussions/:discussionId/reply', async (request, reply) => {
+    const { discussionId } = request.params as { discussionId: string };
+    const body = request.body as any;
+    const updated = await adminService.replyToCourseDiscussion(discussionId, body);
+    AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+    return reply.send(updated);
+  });
+
+  fastify.delete('/courses/discussions/:discussionId', async (request, reply) => {
+    const { discussionId } = request.params as { discussionId: string };
+    const res = await adminService.deleteCourseDiscussion(discussionId);
+    AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+    return reply.send(res);
+  });
+
   // Live Sessions & Webinars management
   fastify.get('/live-sessions', async () => {
     return adminService.getAllLiveSessions();
