@@ -278,53 +278,11 @@ export class CoursesService {
   }
 
   async updateCourse(id: string, data: any) {
-    let course: any = null;
-    try {
-      course = await this.prisma.course.update({
-        where: { id },
-        data,
-        include: {
-          instructor: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-            },
-          },
-        },
-      });
-    } catch {
-      // Prisma update fallback
-    }
-
-    const existing = AdminService.fallbackCourses.get(String(id)) || {};
-    const full = {
-      ...existing,
-      ...(course || {}),
+    const adminService = new AdminService(this.prisma);
+    const full = await adminService.saveCourseDraft({
       ...data,
-      id: course?.id || id,
-      title: data.title || course?.title || existing.title,
-      description: data.description || course?.description || existing.description,
-      coverImageUrl: data.coverImageUrl || data.thumbnailPreview || existing.coverImageUrl || course?.coverImageUrl || null,
-      thumbnailPreview: data.thumbnailPreview || data.coverImageUrl || existing.thumbnailPreview || course?.coverImageUrl || null,
-      price: data.price !== undefined ? data.price : (existing.price !== undefined ? existing.price : (course?.price !== undefined ? Number(course.price) : 0)),
-      discountPrice: data.discountPrice !== undefined ? data.discountPrice : existing.discountPrice,
-      status: data.status ? (data.status === 'PUBLISHED' ? 'Published' : data.status === 'DRAFT' ? 'Draft' : data.status) : (existing.status || 'Published'),
-      level: data.level || existing.level || 'Beginner',
-      category: data.category || existing.category || 'Development',
-      language: data.language || existing.language || 'English',
-      learningOutcomes: data.learningOutcomes || existing.learningOutcomes || [],
-      prerequisites: data.prerequisites !== undefined ? data.prerequisites : (existing.prerequisites || ''),
-      requirements: data.requirements || existing.requirements || [],
-      targetAudience: data.targetAudience !== undefined ? data.targetAudience : (existing.targetAudience || ''),
-      targetLearners: data.targetLearners || existing.targetLearners || [],
-      skillsCovered: data.skillsCovered || data.tags || existing.skillsCovered || [],
-      tags: data.tags || data.skillsCovered || existing.tags || [],
-      modules: (data.modules && data.modules.length > 0) ? data.modules : (existing.modules || []),
-      updatedAt: new Date(),
-    };
-    AdminService.fallbackCourses.set(String(id), full);
-    AdminService.saveMetaToFile();
+      id,
+    });
 
     logger.info({ courseId: id }, 'Course updated');
 
