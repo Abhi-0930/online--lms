@@ -33,6 +33,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Prisma
+# Prisma & Agents
 prisma/migrations/
 .neon
+.agents/
+.northflank-tmp-workspace/
