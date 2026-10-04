@@ -6275,14 +6275,24 @@ function AnnouncementsPage() {
 
 
   const filteredAnnouncements = announcements.filter((item) => {
-    const isLive = item.category === "Live Class" || Boolean(item.meetingLink) || Boolean(item.sessionId);
+    const isLive =
+      item.category === "Live Class" ||
+      item.category === "Live Session" ||
+      (item.category || "").toLowerCase().includes("live") ||
+      Boolean(item.meetingLink) ||
+      Boolean(item.sessionId);
     if (activeFilter === "live") return isLive;
     if (activeFilter === "general") return !isLive;
     return true;
   });
 
   const liveAnnouncementsCount = announcements.filter(
-    (item) => item.category === "Live Class" || Boolean(item.meetingLink) || Boolean(item.sessionId)
+    (item) =>
+      item.category === "Live Class" ||
+      item.category === "Live Session" ||
+      (item.category || "").toLowerCase().includes("live") ||
+      Boolean(item.meetingLink) ||
+      Boolean(item.sessionId)
   ).length;
 
   return (
@@ -6501,6 +6511,16 @@ function AnnouncementsPage() {
                           >
                             <Video className="h-3.5 w-3.5" />
                             Join {item.platform || "Live Class"}
+                            <ArrowUpRight className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+
+                        {item.ctaLabel && item.ctaUrl && !item.meetingLink && (
+                          <a
+                            href={item.ctaUrl.startsWith("http") ? item.ctaUrl : getSecureHref(item.ctaUrl)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-[#3157e8] hover:bg-[#2545c2] px-4 py-2 text-xs font-bold text-white shadow-sm transition cursor-pointer"
+                          >
+                            <span>{item.ctaLabel}</span>
                             <ArrowUpRight className="h-3.5 w-3.5" />
                           </a>
                         )}

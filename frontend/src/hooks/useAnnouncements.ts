@@ -56,6 +56,16 @@ function writeCachedAnnouncements(items: AnnouncementItem[]) {
   } catch {}
 }
 
+const getApiBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return "http://localhost:4000";
+    }
+  }
+  return API_BASE_URL || "http://localhost:4000";
+};
+
 export function useAnnouncements() {
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(() =>
     readCachedAnnouncements()
@@ -66,25 +76,43 @@ export function useAnnouncements() {
 
   const fetchAnnouncements = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/announcements?_t=${Date.now()}`, {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          "Pragma": "no-cache",
-        },
-      });
+      const baseUrl = getApiBaseUrl();
+      const urls = [
+        `${baseUrl}/api/v1/announcements?_t=${Date.now()}`,
+        `/api/v1/announcements?_t=${Date.now()}`,
+      ];
 
-      if (res.ok) {
-        const json = await res.json();
-        const items = Array.isArray(json) ? json : json?.data || [];
+      let fetchedData: any = null;
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, {
+            cache: "no-store",
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              "Pragma": "no-cache",
+            },
+          });
+          if (res.ok) {
+            fetchedData = await res.json();
+            break;
+          }
+        } catch {}
+      }
+
+      if (fetchedData) {
+        const items = Array.isArray(fetchedData) ? fetchedData : fetchedData?.data || [];
         if (Array.isArray(items) && isMountedRef.current) {
-          setAnnouncements(items);
-          writeCachedAnnouncements(items);
+          const liveItems = items.filter((a: any) => a && a.status !== "Draft");
+          setAnnouncements(liveItems);
+          writeCachedAnnouncements(liveItems);
           setError(null);
         }
       } else {
         if (isMountedRef.current) {
-          // Keep cached
+          const cached = readCachedAnnouncements();
+          if (cached.length > 0) {
+            setAnnouncements(cached);
+          }
         }
       }
     } catch (err: any) {
@@ -104,6 +132,11 @@ export function useAnnouncements() {
   useEffect(() => {
     isMountedRef.current = true;
     fetchAnnouncements();
+
+    // Fast interval polling every 4 seconds to catch new announcements in real-time
+    const interval = setInterval(() => {
+      fetchAnnouncements();
+    }, 4000);
 
     const unsubscribe = sharedWs.subscribe((msg) => {
       if (
@@ -130,13 +163,16 @@ export function useAnnouncements() {
       fetchAnnouncements();
     };
 
+    window.addEventListener("focus", handleLocalSync);
     window.addEventListener("storage", handleLocalSync);
     window.addEventListener("lms_announcements_updated", handleLocalSync);
     window.addEventListener("lms_live_sessions_updated", handleLocalSync);
 
     return () => {
       isMountedRef.current = false;
+      clearInterval(interval);
       unsubscribe();
+      window.removeEventListener("focus", handleLocalSync);
       window.removeEventListener("storage", handleLocalSync);
       window.removeEventListener("lms_announcements_updated", handleLocalSync);
       window.removeEventListener("lms_live_sessions_updated", handleLocalSync);
