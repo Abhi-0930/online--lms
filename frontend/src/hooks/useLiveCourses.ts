@@ -109,6 +109,70 @@ function parsePriceNumber(val: any): number {
   return parseFloat(clean) || 0;
 }
 
+export function cleanLessonTitle(str: any): string {
+  if (!str || typeof str !== "string") return "";
+  let cleaned = str.trim();
+  // Strip repeated variations of "Lessons & Topics", "Lessons and Topics", "Lessons", etc. with separators
+  cleaned = cleaned.replace(/(Lessons?\s*(&|and)?\s*Topics?(\s*[·\-\/:]\s*)*)+/gi, "");
+  // Clean up repeated "Topic:\s*Topic:\s*"
+  cleaned = cleaned.replace(/^(Topic:\s*)+/i, "Topic: ");
+  // Clean leading/trailing delimiters
+  cleaned = cleaned.replace(/^([·\-\/:\s]+)/, "").replace(/([·\-\/:\s]+)$/, "").trim();
+  return cleaned || str.trim();
+}
+
+export function cleanTopicTitle(str: any): string {
+  if (!str || typeof str !== "string") return "Topic";
+  const cleaned = cleanLessonTitle(str);
+  if (!cleaned || cleaned.toLowerCase() === "lessons & topics" || cleaned.toLowerCase() === "lessons and topics" || cleaned.toLowerCase() === "lessons") {
+    return "Topic";
+  }
+  return cleaned;
+}
+
+export function cleanCourseModules(modules: any[]): any[] {
+  if (!Array.isArray(modules)) return [];
+  return modules.map((mod, mIdx) => {
+    const modTitle = cleanLessonTitle(mod.title) || `Module ${mIdx + 1}`;
+    if (Array.isArray(mod.topics) && mod.topics.length > 0) {
+      const cleanedTopics = mod.topics.map((t: any) => {
+        let tTitle = cleanTopicTitle(t.title);
+        const cleanedSubtopics = Array.isArray(t.subtopics)
+          ? t.subtopics.map((s: any) => ({
+              ...s,
+              title: cleanLessonTitle(s.title),
+            }))
+          : [];
+        return {
+          ...t,
+          title: tTitle,
+          subtopics: cleanedSubtopics,
+        };
+      });
+      return {
+        ...mod,
+        title: modTitle,
+        topics: cleanedTopics,
+      };
+    }
+    if (Array.isArray(mod.lessons) && mod.lessons.length > 0) {
+      const cleanedLessons = mod.lessons.map((l: any) => ({
+        ...l,
+        title: cleanLessonTitle(l.title),
+      }));
+      return {
+        ...mod,
+        title: modTitle,
+        lessons: cleanedLessons,
+      };
+    }
+    return {
+      ...mod,
+      title: modTitle,
+    };
+  });
+}
+
 function transformDbCourse(c: any): LiveCourseItem {
   const p1 = parsePriceNumber(c.price);
   const p2 = parsePriceNumber(c.discountPrice);
@@ -168,32 +232,51 @@ function transformDbCourse(c: any): LiveCourseItem {
 
   const rawModules = Array.isArray(c.modules) ? c.modules : [];
   const modules = rawModules.map((mod: any, mIdx: number) => {
+    const modTitle = cleanLessonTitle(mod.title) || `Module ${mIdx + 1}`;
     if (mod.topics && Array.isArray(mod.topics) && mod.topics.length > 0) {
-      const allSubtopics = mod.topics.flatMap((t: any) => t.subtopics || []);
-      const totalLessons = allSubtopics.length > 0 ? allSubtopics.length : mod.topics.length;
+      const cleanedTopics = mod.topics.map((top: any) => {
+        let tTitle = cleanTopicTitle(top.title);
+        const subtopics = Array.isArray(top.subtopics)
+          ? top.subtopics.map((sub: any) => ({
+              ...sub,
+              title: cleanLessonTitle(sub.title),
+            }))
+          : [];
+        return {
+          ...top,
+          title: tTitle,
+          subtopics,
+        };
+      });
+      const allSubtopics = cleanedTopics.flatMap((t: any) => t.subtopics || []);
+      const totalLessons = allSubtopics.length > 0 ? allSubtopics.length : cleanedTopics.length;
       return {
         id: mod.id || `mod_${mIdx}`,
-        title: mod.title || `Module ${mIdx + 1}`,
+        title: modTitle,
         description: mod.description || "",
         lessons: totalLessons,
         duration: mod.duration || `${Math.max(15, totalLessons * 15)} mins`,
         complete: 0,
-        topics: mod.topics,
+        topics: cleanedTopics,
       };
     }
     const lessons = Array.isArray(mod.lessons) ? mod.lessons : [];
+    const cleanedLessons = lessons.map((l: any) => ({
+      ...l,
+      title: cleanLessonTitle(l.title),
+    }));
     return {
       id: mod.id || `mod_${mIdx}`,
-      title: mod.title || `Module ${mIdx + 1}`,
+      title: modTitle,
       description: mod.description || "",
-      lessons: lessons.length || 0,
-      duration: mod.duration || `${Math.max(15, (lessons.length || 1) * 15)} mins`,
+      lessons: cleanedLessons.length || 0,
+      duration: mod.duration || `${Math.max(15, (cleanedLessons.length || 1) * 15)} mins`,
       complete: 0,
-      topics: lessons.length > 0 ? [
+      topics: cleanedLessons.length > 0 ? [
         {
           id: `top_${mod.id || mIdx}`,
-          title: "Lessons",
-          subtopics: lessons.map((l: any) => ({
+          title: "Topic",
+          subtopics: cleanedLessons.map((l: any) => ({
             id: l.id,
             title: l.title,
             type: l.type ? (l.type.charAt(0).toUpperCase() + l.type.slice(1).toLowerCase()) : "Video",
