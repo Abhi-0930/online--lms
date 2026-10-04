@@ -82,14 +82,23 @@ export default async function practiceController(fastify: FastifyInstance) {
     return problem;
   });
 
-  // Get problem submissions (Real student submissions - Approved only for Community Solutions)
+  // Get problem submissions (Approved for Community Solutions + student's own submissions)
   fastify.get('/:slugOrId/submissions', async (request, reply) => {
     reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
     reply.header('Pragma', 'no-cache');
     reply.header('Expires', '0');
 
     const { slugOrId } = request.params as { slugOrId: string };
-    return adminService.getPracticeProblemSubmissions(slugOrId, true);
+    const { userId, userEmail, studentEmail } = (request.query || {}) as {
+      userId?: string;
+      userEmail?: string;
+      studentEmail?: string;
+    };
+    return adminService.getPracticeProblemSubmissions(slugOrId, {
+      onlyApproved: !userId && !userEmail && !studentEmail,
+      userId,
+      userEmail: userEmail || studentEmail,
+    });
   });
 
   // Submit code for a practice problem

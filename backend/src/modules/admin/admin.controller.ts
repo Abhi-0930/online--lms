@@ -235,8 +235,12 @@ export default async function adminController(fastify: FastifyInstance) {
 
   fastify.patch('/practice-problems/submissions/:submissionId', async (request, reply) => {
     const { submissionId } = request.params as { submissionId: string };
-    const { status } = request.body as { status: string };
-    const updated = await adminService.updatePracticeProblemSubmissionStatus(submissionId, status || 'Approved');
+    const { status, feedback, reviewNotes } = request.body as { status: string; feedback?: string; reviewNotes?: string };
+    const updated = await adminService.updatePracticeProblemSubmissionStatus(
+      submissionId,
+      status || 'Approved',
+      { feedback, reviewNotes }
+    );
     AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
     return reply.send(updated);
   });

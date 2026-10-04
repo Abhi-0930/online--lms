@@ -34,6 +34,7 @@ import {
   Building2,
   GraduationCap,
   Briefcase,
+  AlertCircle,
 } from "lucide-react";
 import { PracticeProblem } from "@/hooks/useLiveAdminData";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,8 @@ export interface ProblemSubmissionItem {
   attempt: string;
   status: string;
   code?: string;
+  feedback?: string;
+  reviewNotes?: string;
 }
 
 export default function PracticeProblemDetailView({
@@ -167,6 +170,7 @@ export default function PracticeProblemDetailView({
             attempt: sub.attempt || "1st Attempt",
             status: sub.status || "Approved",
             code: sub.code || "",
+            feedback: sub.feedback || sub.reviewNotes || "",
           }));
           setSubmissionsList(mapped);
           return;
@@ -244,17 +248,22 @@ export default function PracticeProblemDetailView({
     };
   }, [problem.id, problem.slug]);
 
-  const handleUpdateSubmissionStatus = async (submissionId: string, newStatus: string) => {
+  const handleUpdateSubmissionStatus = async (
+    submissionId: string,
+    newStatus: string,
+    feedbackText?: string
+  ) => {
     setSubmissionsList((prev) =>
-      prev.map((s) => (s.id === submissionId ? { ...s, status: newStatus } : s))
+      prev.map((s) => (s.id === submissionId ? { ...s, status: newStatus, feedback: feedbackText ?? s.feedback } : s))
     );
 
     try {
       await fetch(`${API_BASE_URL}/api/v1/admin/practice-problems/submissions/${submissionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, feedback: feedbackText }),
       });
+      fetchSubmissions();
     } catch {}
   };
 
@@ -326,6 +335,8 @@ export default function PracticeProblemDetailView({
 
   // Selected Submission Modal
   const [viewingSubmission, setViewingSubmission] = useState<ProblemSubmissionItem | null>(null);
+  const [improvementModalSub, setImprovementModalSub] = useState<ProblemSubmissionItem | null>(null);
+  const [improvementReason, setImprovementReason] = useState<string>("");
 
   // Parsing & fallbacks
   const topic = problem.category || "General";
@@ -1970,6 +1981,18 @@ export default function PracticeProblemDetailView({
                     <code>{viewingSubmission.code || editorialCode}</code>
                   </pre>
                 </div>
+
+                {viewingSubmission.feedback && (
+                  <div className="rounded-xl border border-amber-200/90 dark:border-amber-800/40 bg-amber-50/70 dark:bg-amber-950/30 p-3.5 space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+                      <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <span>Existing Instructor Feedback:</span>
+                    </div>
+                    <p className="text-xs text-amber-900 dark:text-amber-200 font-medium whitespace-pre-line pl-5 leading-relaxed">
+                      {viewingSubmission.feedback}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1977,18 +2000,13 @@ export default function PracticeProblemDetailView({
               <button
                 type="button"
                 onClick={() => {
-                  handleUpdateSubmissionStatus(viewingSubmission.id, "Needs Improvement");
-                  setViewingSubmission(null);
-                  setCustomAlert({
-                    isOpen: true,
-                    title: "Status Updated",
-                    message: `Submission marked as Needs Improvement.`,
-                    variant: "warning",
-                  });
+                  setImprovementReason(viewingSubmission.feedback || "");
+                  setImprovementModalSub(viewingSubmission);
                 }}
-                className="px-3.5 py-2 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100/60 transition cursor-pointer"
+                className="px-3.5 py-2 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100/60 transition cursor-pointer flex items-center gap-1.5"
               >
-                Mark Needs Improvement
+                <AlertCircle className="h-3.5 w-3.5" />
+                <span>Mark Needs Improvement</span>
               </button>
 
               <div className="flex items-center gap-2">
@@ -2018,6 +2036,112 @@ export default function PracticeProblemDetailView({
                   Approve Submission
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DEDICATED IMPROVEMENT FEEDBACK MODAL */}
+      {improvementModalSub && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 animate-in fade-in-0 duration-150">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#121620] p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="h-5 w-5" />
+                </span>
+                <div>
+                  <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    Request Code Improvement
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Student: <span className="font-bold text-slate-700 dark:text-slate-200">{improvementModalSub.student}</span> · {improvementModalSub.language}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setImprovementModalSub(null);
+                  setImprovementReason("");
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Reason & Detailed Feedback for Student
+              </label>
+              <textarea
+                value={improvementReason}
+                onChange={(e) => setImprovementReason(e.target.value)}
+                placeholder="Explain what the student needs to improve (e.g. Time complexity is O(N^2), please optimize using a Hash Map; handle negative numbers or empty input cases...)"
+                rows={4}
+                className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-3.5 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition resize-none"
+                autoFocus
+              />
+
+              {/* Quick suggestion tags */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Feedback Suggestions:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    "Optimize time complexity to O(N)",
+                    "Handle edge cases with empty array or duplicates",
+                    "Reduce auxiliary space complexity",
+                    "Add clear comments explaining logic",
+                    "Avoid nested brute-force loops",
+                  ].map((tag, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setImprovementReason((prev) =>
+                          prev ? `${prev}\n• ${tag}` : `• ${tag}`
+                        );
+                      }}
+                      className="rounded-lg bg-slate-100 dark:bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-950/40 hover:text-amber-800 dark:hover:text-amber-300 transition cursor-pointer"
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-white/5">
+              <button
+                type="button"
+                onClick={() => {
+                  setImprovementModalSub(null);
+                  setImprovementReason("");
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const finalFeedback = improvementReason.trim() || "Please optimize your solution time/space complexity and handle all edge cases.";
+                  await handleUpdateSubmissionStatus(improvementModalSub.id, "Needs Improvement", finalFeedback);
+                  setImprovementModalSub(null);
+                  setImprovementReason("");
+                  setViewingSubmission(null);
+                  setCustomAlert({
+                    isOpen: true,
+                    title: "Improvement Feedback Sent",
+                    message: `Submission by ${improvementModalSub.student} has been marked as Needs Improvement with your feedback.`,
+                    variant: "warning",
+                  });
+                }}
+                className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 cursor-pointer shadow-xs"
+              >
+                Send Feedback & Mark Needs Improvement
+              </button>
             </div>
           </div>
         </div>

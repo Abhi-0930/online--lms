@@ -3308,17 +3308,24 @@ export class AdminService {
     return submission;
   }
 
-  async getPracticeProblemSubmissions(problemIdOrSlug: string, onlyApproved = false) {
+  async getPracticeProblemSubmissions(
+    problemIdOrSlug: string,
+    options?: boolean | { onlyApproved?: boolean; userId?: string; userEmail?: string }
+  ) {
+    const onlyApproved = typeof options === "boolean" ? options : (options?.onlyApproved ?? false);
+    const userId = typeof options === "object" ? options?.userId : undefined;
+    const userEmail = typeof options === "object" ? options?.userEmail : undefined;
+
     AdminService.fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
     AdminService.fallbackProblems = AdminService.loadProblemsFromFile();
 
-    const normKey = String(problemIdOrSlug || '').toLowerCase().trim();
+    const normKey = String(problemIdOrSlug || "").toLowerCase().trim();
     let targetProblem: any = null;
     for (const p of AdminService.fallbackProblems.values()) {
       if (
         String(p.id).toLowerCase() === normKey ||
         (p.slug && p.slug.toLowerCase() === normKey) ||
-        (p.title && p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === normKey)
+        (p.title && p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") === normKey)
       ) {
         targetProblem = p;
         break;
@@ -3327,15 +3334,21 @@ export class AdminService {
 
     const matches: any[] = [];
     for (const sub of AdminService.fallbackPracticeSubmissions.values()) {
-      const subProbId = String(sub.problemId || '').toLowerCase();
-      const subProbSlug = String(sub.problemSlug || '').toLowerCase();
+      const subProbId = String(sub.problemId || "").toLowerCase();
+      const subProbSlug = String(sub.problemSlug || "").toLowerCase();
 
       if (
         subProbId === normKey ||
         subProbSlug === normKey ||
-        (targetProblem && (subProbId === String(targetProblem.id).toLowerCase() || subProbSlug === String(targetProblem.slug || '').toLowerCase()))
+        (targetProblem && (subProbId === String(targetProblem.id).toLowerCase() || subProbSlug === String(targetProblem.slug || "").toLowerCase()))
       ) {
-        if (!onlyApproved || (sub.status && sub.status.toLowerCase() === 'approved')) {
+        const isAuthor =
+          (userId && sub.userId && String(sub.userId).toLowerCase() === String(userId).toLowerCase()) ||
+          (userEmail && sub.studentEmail && String(sub.studentEmail).toLowerCase() === String(userEmail).toLowerCase());
+
+        const isApproved = sub.status && (sub.status.toLowerCase() === "approved" || sub.status.toLowerCase() === "accepted");
+
+        if (!onlyApproved || isApproved || isAuthor) {
           matches.push(sub);
         }
       }
@@ -3353,16 +3366,27 @@ export class AdminService {
     return all;
   }
 
-  async updatePracticeProblemSubmissionStatus(submissionId: string, status: string) {
+  async updatePracticeProblemSubmissionStatus(
+    submissionId: string,
+    status: string,
+    options?: { feedback?: string; reviewNotes?: string }
+  ) {
     AdminService.fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
     const existing = AdminService.fallbackPracticeSubmissions.get(String(submissionId));
     if (existing) {
       existing.status = status;
+      if (options?.feedback !== undefined) {
+        existing.feedback = options.feedback;
+      }
+      if (options?.reviewNotes !== undefined) {
+        existing.reviewNotes = options.reviewNotes;
+      }
+      existing.reviewedAt = new Date().toISOString();
       AdminService.fallbackPracticeSubmissions.set(String(submissionId), existing);
       AdminService.savePracticeSubmissionsToFile();
       return existing;
     }
-    return { success: false, error: 'Submission not found' };
+    return { success: false, error: "Submission not found" };
   }
 
   async deletePracticeProblemSubmission(submissionId: string) {

@@ -30,6 +30,8 @@ import {
   Award,
   CircleCheck,
   XCircle,
+  AlertCircle,
+  AlertTriangle,
   HelpCircle,
   BookOpen,
   Tag,
@@ -365,6 +367,7 @@ export default function StudentProblemArena({
       language: string;
       timestamp: string;
       codeSnippet: string;
+      feedback?: string;
     }>
   >([]);
 
@@ -591,8 +594,12 @@ export default function StudentProblemArena({
 
     const fetchSubmissionsFromApi = async () => {
       try {
+        const queryParams = new URLSearchParams();
+        if (user?.id) queryParams.set("userId", String(user.id));
+        if (user?.email) queryParams.set("userEmail", String(user.email));
+
         const res = await fetch(
-          `${API_BASE_URL}/api/v1/practice-problems/${problem.id || problem.slug}/submissions`,
+          `${API_BASE_URL}/api/v1/practice-problems/${problem.id || problem.slug}/submissions${queryParams.toString() ? `?${queryParams.toString()}` : ""}`,
           { cache: "no-store" }
         );
         if (res.ok) {
@@ -642,24 +649,42 @@ export default function StudentProblemArena({
 
             setCommunitySolutions(mapped);
 
-            // Synchronize and update personal submission status from "Pending Review" to "Accepted"
+            // Synchronize and update personal submission status from "Pending Review" to "Accepted" or "Needs Improvement"
             setMySubmissions((prev) => {
               let changed = false;
               const updated = prev.map((mySub) => {
-                const approvedMatch = data.find(
+                const match = data.find(
                   (sub: any) =>
-                    (sub.id === mySub.id || sub.code?.trim() === mySub.codeSnippet?.trim()) &&
-                    (sub.status || "").toLowerCase() === "approved"
+                    sub.id === mySub.id ||
+                    (mySub.codeSnippet && sub.code?.trim() === mySub.codeSnippet?.trim()) ||
+                    (sub.studentEmail && user?.email && sub.studentEmail.toLowerCase() === user.email.toLowerCase())
                 );
-                if (approvedMatch && mySub.status !== "Accepted") {
-                  changed = true;
-                  return {
-                    ...mySub,
-                    id: String(approvedMatch.id),
-                    status: "Accepted" as const,
-                    runtime: approvedMatch.runtime || mySub.runtime,
-                    memory: approvedMatch.memory || mySub.memory,
-                  };
+                if (match) {
+                  const rawStatus = (match.status || "").toLowerCase();
+                  let normalizedStatus: "Accepted" | "Pending Review" | "Needs Improvement" | "Rejected" | "Wrong Answer" = "Pending Review";
+                  if (rawStatus.includes("approved") || rawStatus.includes("accepted")) {
+                    normalizedStatus = "Accepted";
+                  } else if (rawStatus.includes("improve") || rawStatus.includes("needs")) {
+                    normalizedStatus = "Needs Improvement";
+                  } else if (rawStatus.includes("reject") || rawStatus.includes("wrong")) {
+                    normalizedStatus = "Rejected";
+                  } else {
+                    normalizedStatus = "Pending Review";
+                  }
+
+                  const feedback = match.feedback || match.reviewNotes || "";
+
+                  if (mySub.status !== normalizedStatus || (mySub.feedback || "") !== feedback) {
+                    changed = true;
+                    return {
+                      ...mySub,
+                      id: String(match.id),
+                      status: normalizedStatus,
+                      feedback,
+                      runtime: match.runtime || mySub.runtime,
+                      memory: match.memory || mySub.memory,
+                    };
+                  }
                 }
                 return mySub;
               });
@@ -1821,9 +1846,9 @@ export default function StudentProblemArena({
                                 sub.status === "Accepted"
                                   ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
                                   : sub.status === "Pending Review"
-                                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
+                                  ? "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
                                   : sub.status === "Needs Improvement"
-                                  ? "bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300"
+                                  ? "bg-amber-100/90 text-amber-900 border border-amber-300/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80"
                                   : "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
                               }`}
                             >
@@ -1831,6 +1856,8 @@ export default function StudentProblemArena({
                                 <CircleCheck className="h-3.5 w-3.5" />
                               ) : sub.status === "Pending Review" ? (
                                 <Clock className="h-3.5 w-3.5" />
+                              ) : sub.status === "Needs Improvement" ? (
+                                <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                               ) : (
                                 <XCircle className="h-3.5 w-3.5" />
                               )}
@@ -1858,6 +1885,19 @@ export default function StudentProblemArena({
                             <code>{sub.codeSnippet}</code>
                           </pre>
                         </div>
+
+                        {/* Instructor Feedback Banner for Needs Improvement */}
+                        {sub.feedback && (
+                          <div className="rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50 dark:from-amber-950/50 dark:via-orange-950/20 dark:to-[#17130a] p-3.5 text-xs space-y-1.5 shadow-2xs">
+                            <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-300 text-xs">
+                              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                              <span>Instructor Feedback / Improvement Needed:</span>
+                            </div>
+                            <p className="text-amber-900/90 dark:text-amber-200/90 font-medium whitespace-pre-line text-[11px] leading-relaxed pl-5.5">
+                              {sub.feedback}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
