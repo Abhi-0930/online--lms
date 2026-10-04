@@ -6,18 +6,13 @@ import { AdminWsBroadcaster } from './admin.ws';
 export default async function adminRoutes(fastify: FastifyInstance) {
   await fastify.register(adminController, { prefix: '/api/v1/admin' });
 
-  // Public WebSocket endpoints for learner frontend and admin panels
+  // Public WebSocket fallback endpoints
   fastify.get('/ws', { websocket: true }, (connection) => {
     const ws = (connection as any).socket || connection;
     AdminWsBroadcaster.addClient(ws, fastify.prisma);
   });
 
   fastify.get('/api/v1/ws', { websocket: true }, (connection) => {
-    const ws = (connection as any).socket || connection;
-    AdminWsBroadcaster.addClient(ws, fastify.prisma);
-  });
-
-  fastify.get('/api/v1/admin/ws', { websocket: true }, (connection) => {
     const ws = (connection as any).socket || connection;
     AdminWsBroadcaster.addClient(ws, fastify.prisma);
   });
