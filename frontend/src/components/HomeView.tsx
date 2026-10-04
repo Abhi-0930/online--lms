@@ -772,7 +772,7 @@ function Dashboard() {
                   {latestAnnouncement.title}
                 </h3>
                 <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400 line-clamp-1">
-                  {latestAnnouncement.content}
+                  {latestAnnouncement.content || latestAnnouncement.body || latestAnnouncement.description}
                 </p>
               </div>
             </div>
@@ -6660,71 +6660,151 @@ function Reminder({ icon: Icon, title, meta, color }: { icon: LucideIcon; title:
 function NotificationsPage() {
   const [read, setRead] = useState<string[]>([]);
   const { user } = useAuth();
-  const displayName = resolveDisplayName(user);
-  const firstName = resolveFirstName(user);
-  const notifications = [
-    { id: "1", title: "Maya shared a new clinic recording", body: "Sliding Window Patterns · 42 min", time: "12 min ago", icon: Video, color: "blue" },
-    { id: "2", title: "Assignment deadline tomorrow", body: "Arrays checkpoint · DSA Foundations", time: "3 hours ago", icon: AlarmClock, color: "amber" },
-    { id: "3", title: "Your submission was reviewed", body: `Nice work on the edge cases, ${firstName}.`, time: "Yesterday", icon: CheckCircle2, color: "emerald" },
-    { id: "4", title: "You moved up in the cohort", body: "You’re now in the top 20% for weekly activity.", time: "Yesterday", icon: Trophy, color: "violet" },
-  ];
+  const { announcements } = useAnnouncements();
+  const { upcomingSessions } = useLiveSessions();
+  const { assignments } = useAssignments();
+
+  const notifications = useMemo(() => {
+    const list: Array<{
+      id: string;
+      title: string;
+      body: string;
+      time: string;
+      icon: any;
+      color: "blue" | "amber" | "emerald" | "violet";
+      ctaLabel?: string;
+      ctaUrl?: string;
+    }> = [];
+
+    // Real announcements from admin
+    announcements.forEach((ann) => {
+      list.push({
+        id: `ann-${ann.id}`,
+        title: ann.title,
+        body: ann.content || ann.body || ann.description || "Platform Announcement",
+        time: ann.date || "Recent",
+        icon: ann.category?.toLowerCase().includes("live") ? Video : Bell,
+        color: ann.category?.toLowerCase().includes("live") ? "blue" : "violet",
+        ctaLabel: ann.ctaLabel,
+        ctaUrl: ann.ctaUrl,
+      });
+    });
+
+    // Real live sessions
+    upcomingSessions.forEach((sess) => {
+      list.push({
+        id: `sess-${sess.id}`,
+        title: `Live Class: ${sess.title}`,
+        body: `Scheduled with ${sess.instructor || "Instructor"} · ${sess.date || "Today"} at ${sess.startTime || "TBD"}`,
+        time: sess.date || "Upcoming",
+        icon: Video,
+        color: "blue",
+        ctaLabel: "View Session",
+        ctaUrl: `/live-session`,
+      });
+    });
+
+    // Real assignments
+    assignments.forEach((ass) => {
+      list.push({
+        id: `ass-${ass.id}`,
+        title: `Assignment: ${ass.title}`,
+        body: `Due: ${ass.dueDate || "Upcoming"} · ${ass.course || "Skillforge"}`,
+        time: ass.dueDate || "Due soon",
+        icon: AlarmClock,
+        color: "amber",
+        ctaLabel: "Open Assignment",
+        ctaUrl: `/assignments`,
+      });
+    });
+
+    return list;
+  }, [announcements, upcomingSessions, assignments]);
+
   return (
     <>
       <PageHeader
         eyebrow="Stay on top"
         title="Notifications"
-        description="A single place for new lessons, feedback, and important dates."
+        description="A single place for broadcasts, live class alerts, feedback, and important dates."
         action={
-          <button onClick={() => setRead(notifications.map((n) => n.id))} className="button-secondary">
-            <Check className="h-4 w-4" /> Mark all as read
-          </button>
+          notifications.length > 0 ? (
+            <button onClick={() => setRead(notifications.map((n) => n.id))} className="button-secondary">
+              <Check className="h-4 w-4" /> Mark all as read
+            </button>
+          ) : undefined
         }
       />
       <div className="card-surface overflow-hidden">
-        {notifications.map((item) => {
-          const Icon = item.icon;
-          const isRead = read.includes(item.id);
-          return (
-            <div
-              key={item.id}
-              className={cx(
-                "flex gap-4 border-b border-[#edf0f6] p-5 last:border-0 dark:border-white/10",
-                !isRead && "bg-[#fbfcff] dark:bg-white/[0.02]"
-              )}
-            >
-              <span
+        {notifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#eaf0ff] text-[#3157e8] dark:bg-white/10 dark:text-blue-400 mb-3">
+              <Bell className="h-6 w-6" />
+            </div>
+            <h3 className="font-display text-base font-bold text-[#17223d] dark:text-white">
+              No notifications right now
+            </h3>
+            <p className="mt-1 text-xs text-[#7c87a4] max-w-sm">
+              New announcements, live class alerts, and cohort updates posted by instructors will appear here in real-time.
+            </p>
+          </div>
+        ) : (
+          notifications.map((item) => {
+            const Icon = item.icon;
+            const isRead = read.includes(item.id);
+            return (
+              <div
+                key={item.id}
                 className={cx(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                  item.color === "blue"
-                    ? "bg-[#eaf0ff] text-[#3157e8]"
-                    : item.color === "amber"
-                    ? "bg-[#fff4db] text-[#d68c20]"
-                    : item.color === "emerald"
-                    ? "bg-[#e4f8ee] text-[#23a26d]"
-                    : "bg-[#f0eaff] text-[#7f5af0]"
+                  "flex gap-4 border-b border-[#edf0f6] p-5 last:border-0 dark:border-white/10 transition-colors",
+                  !isRead && "bg-[#fbfcff] dark:bg-white/[0.02]"
                 )}
               >
-                <Icon className="h-[18px] w-[18px]" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className={cx("text-sm", isRead ? "font-semibold text-[#7c87a4]" : "font-bold text-[#17223d] dark:text-white")}>
-                      {item.title}
-                    </p>
-                    <p className="mt-1 text-xs text-[#9aa4bc]">{item.body}</p>
+                <span
+                  className={cx(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                    item.color === "blue"
+                      ? "bg-[#eaf0ff] text-[#3157e8]"
+                      : item.color === "amber"
+                      ? "bg-[#fff4db] text-[#d68c20]"
+                      : item.color === "emerald"
+                      ? "bg-[#e4f8ee] text-[#23a26d]"
+                      : "bg-[#f0eaff] text-[#7f5af0]"
+                  )}
+                >
+                  <Icon className="h-[18px] w-[18px]" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className={cx("text-sm", isRead ? "font-semibold text-[#7c87a4]" : "font-bold text-[#17223d] dark:text-white")}>
+                        {item.title}
+                      </p>
+                      <p className="mt-1 text-xs text-[#9aa4bc] leading-relaxed">{item.body}</p>
+                    </div>
+                    <span className="shrink-0 text-[10px] text-[#aab3c5]">{item.time}</span>
                   </div>
-                  <span className="shrink-0 text-[10px] text-[#aab3c5]">{item.time}</span>
+                  <div className="mt-3 flex items-center gap-3">
+                    {item.ctaLabel && item.ctaUrl && (
+                      <a
+                        href={item.ctaUrl.startsWith("http") ? item.ctaUrl : getSecureHref(item.ctaUrl)}
+                        className="inline-flex items-center gap-1 rounded-lg bg-[#3157e8] px-3 py-1 text-[11px] font-bold text-white hover:bg-[#2545c2] transition shadow-xs cursor-pointer"
+                      >
+                        <span>{item.ctaLabel}</span>
+                        <ArrowUpRight className="h-3 w-3" />
+                      </a>
+                    )}
+                    {!isRead && (
+                      <button onClick={() => setRead([...read, item.id])} className="text-[10px] font-bold text-[#3157e8] hover:underline cursor-pointer">
+                        Mark as read
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {!isRead && (
-                  <button onClick={() => setRead([...read, item.id])} className="mt-3 text-[10px] font-bold text-[#3157e8]">
-                    Mark as read
-                  </button>
-                )}
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </>
   );

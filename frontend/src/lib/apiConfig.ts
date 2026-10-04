@@ -2,9 +2,17 @@ export const API_BASE_URL = (() => {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
-    const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+    const isLocal =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("172.") ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".lan") ||
+      /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname);
     if (isLocal) {
-      return "http://localhost:4000";
+      return `http://${hostname}:4000`;
     }
     if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
       return "https://site--preppath-backend--x9gt4y7zlzhr.code.run";
@@ -13,12 +21,30 @@ export const API_BASE_URL = (() => {
   return (envUrl || "http://localhost:4000").replace(/\/$/, "");
 })();
 
-export const WS_BASE_URL = (
-  process.env.NEXT_PUBLIC_WS_URL ||
-  (API_BASE_URL.startsWith("https://")
-    ? API_BASE_URL.replace("https://", "wss://")
-    : API_BASE_URL.replace("http://", "ws://"))
-).replace(/\/$/, "");
+export const WS_BASE_URL = (() => {
+  const envWs = process.env.NEXT_PUBLIC_WS_URL;
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    const isLocal =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("172.") ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".lan") ||
+      /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+    if (isLocal) {
+      return `ws://${hostname}:4000`;
+    }
+  }
+  return (
+    envWs ||
+    (API_BASE_URL.startsWith("https://")
+      ? API_BASE_URL.replace("https://", "wss://")
+      : API_BASE_URL.replace("http://", "ws://"))
+  ).replace(/\/$/, "");
+})();
 
 export function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = {

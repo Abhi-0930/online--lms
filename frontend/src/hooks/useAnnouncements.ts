@@ -59,8 +59,17 @@ function writeCachedAnnouncements(items: AnnouncementItem[]) {
 const getApiBaseUrl = () => {
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return "http://localhost:4000";
+    const isLocal =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("172.") ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".lan") ||
+      /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+    if (isLocal) {
+      return `http://${hostname}:4000`;
     }
   }
   return API_BASE_URL || "http://localhost:4000";
@@ -80,6 +89,8 @@ export function useAnnouncements() {
       const urls = [
         `${baseUrl}/api/v1/announcements?_t=${Date.now()}`,
         `/api/v1/announcements?_t=${Date.now()}`,
+        `${baseUrl}/api/v1/admin/announcements?_t=${Date.now()}`,
+        `http://localhost:4000/api/v1/announcements?_t=${Date.now()}`,
       ];
 
       let fetchedData: any = null;
@@ -94,7 +105,9 @@ export function useAnnouncements() {
           });
           if (res.ok) {
             fetchedData = await res.json();
-            break;
+            if (Array.isArray(fetchedData) || (fetchedData && Array.isArray(fetchedData.data))) {
+              break;
+            }
           }
         } catch {}
       }
@@ -133,10 +146,20 @@ export function useAnnouncements() {
     isMountedRef.current = true;
     fetchAnnouncements();
 
-    // Fast interval polling every 4 seconds to catch new announcements in real-time
+    // Fast interval polling every 3 seconds to catch new announcements in real-time
     const interval = setInterval(() => {
       fetchAnnouncements();
-    }, 4000);
+    }, 3000);
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        bc = new BroadcastChannel("lms_announcements_channel");
+        bc.onmessage = () => {
+          fetchAnnouncements();
+        };
+      }
+    } catch {}
 
     const unsubscribe = sharedWs.subscribe((msg) => {
       if (
@@ -171,6 +194,11 @@ export function useAnnouncements() {
     return () => {
       isMountedRef.current = false;
       clearInterval(interval);
+      if (bc) {
+        try {
+          bc.close();
+        } catch {}
+      }
       unsubscribe();
       window.removeEventListener("focus", handleLocalSync);
       window.removeEventListener("storage", handleLocalSync);
