@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { AuthService } from '../auth/auth.service';
 import { OnboardingService } from '../onboarding/onboarding.service';
+import { AdminWsBroadcaster } from './admin.ws';
 
 export function cleanLessonTitle(str: any): string {
   if (!str || typeof str !== 'string') return '';
@@ -29,29 +30,48 @@ export function cleanCourseModules(modules: any[]): any[] {
   if (!Array.isArray(modules)) return [];
   const overrides = AdminService.fallbackContentOverrides || AdminService.loadContentOverridesFromFile();
 
+  const findOverride = (idCandidates: (string | undefined)[], titleCandidate?: string) => {
+    for (const cand of idCandidates) {
+      if (!cand) continue;
+      const o = overrides.get(String(cand));
+      if (o) return o;
+    }
+    if (titleCandidate) {
+      const cleanTitle = cleanLessonTitle(titleCandidate).toLowerCase().trim();
+      for (const [k, v] of overrides.entries()) {
+        const vTitle = cleanLessonTitle(v.title || '').toLowerCase().trim();
+        if (vTitle && (vTitle === cleanTitle || k.toLowerCase().includes(cleanTitle))) {
+          return v;
+        }
+      }
+    }
+    return undefined;
+  };
+
   return modules.map((mod, mIdx) => {
     const modTitle = cleanLessonTitle(mod.title) || `Module ${mIdx + 1}`;
     const modId = String(mod.id || `mod_${mIdx}`);
-    const modOverride = overrides.get(modId);
+    const modOverride = findOverride([modId, `mod_${mIdx}`], modTitle);
     const isModCompleted = modOverride?.status === 'Completed' || modOverride?.isCompleted === true || mod.status === 'Completed' || mod.isCompleted === true;
 
     if (Array.isArray(mod.topics) && mod.topics.length > 0) {
       const cleanedTopics = mod.topics.map((t: any, tIdx: number) => {
         let tTitle = cleanTopicTitle(t.title);
         const topId = String(t.id || `top_${modId}_${tIdx}`);
-        const topOverride = overrides.get(topId);
+        const topOverride = findOverride([topId, String(t.id), `top_${mIdx}_${tIdx}`], tTitle);
         const isTopCompleted = isModCompleted || topOverride?.status === 'Completed' || topOverride?.isCompleted === true || t.status === 'Completed' || t.isCompleted === true;
 
         const cleanedSubtopics = Array.isArray(t.subtopics)
           ? t.subtopics.map((s: any, sIdx: number) => {
               const subId = String(s.id || `sub_${modId}_${topId}_${sIdx}`);
-              const subOverride = overrides.get(subId) || (s.id ? overrides.get(String(s.id)) : undefined);
+              const subTitle = cleanLessonTitle(s.title);
+              const subOverride = findOverride([subId, String(s.id), `sub_${mIdx}_${tIdx}_${sIdx}`], subTitle);
               const isSubCompleted = isTopCompleted || subOverride?.status === 'Completed' || subOverride?.isCompleted === true || s.status === 'Completed' || s.isCompleted === true;
 
               return {
                 ...s,
                 id: s.id || subId,
-                title: cleanLessonTitle(s.title),
+                title: subTitle,
                 status: isSubCompleted ? 'Completed' : (subOverride?.status || s.status || 'Published'),
                 isCompleted: isSubCompleted,
                 isCompletedByInstructor: isSubCompleted || Boolean(s.videoUrl),
@@ -83,13 +103,14 @@ export function cleanCourseModules(modules: any[]): any[] {
     if (Array.isArray(mod.lessons) && mod.lessons.length > 0) {
       const cleanedLessons = mod.lessons.map((l: any, lIdx: number) => {
         const lesId = String(l.id || `mod_${modId}_les_${lIdx}`);
-        const lesOverride = overrides.get(lesId) || (l.id ? overrides.get(String(l.id)) : undefined);
+        const lesTitle = cleanLessonTitle(l.title);
+        const lesOverride = findOverride([lesId, String(l.id), `mod_${mIdx}_les_${lIdx}`], lesTitle);
         const isLesCompleted = isModCompleted || lesOverride?.status === 'Completed' || lesOverride?.isCompleted === true || l.status === 'Completed' || l.isCompleted === true;
 
         return {
           ...l,
           id: l.id || lesId,
-          title: cleanLessonTitle(l.title),
+          title: lesTitle,
           status: isLesCompleted ? 'Completed' : (lesOverride?.status || l.status || 'Published'),
           isCompleted: isLesCompleted,
           isCompletedByInstructor: isLesCompleted || Boolean(l.videoUrl),
@@ -2417,6 +2438,12 @@ export class AdminService {
       updatedAt: new Date().toISOString(),
     };
     AdminService.fallbackContentOverrides.set(idStr, updated);
+    if (updates.title || existing.title) {
+      const itemTitleKey = cleanLessonTitle(updates.title || existing.title).toLowerCase().trim();
+      if (itemTitleKey) {
+        AdminService.fallbackContentOverrides.set(itemTitleKey, updated);
+      }
+    }
     AdminService.saveContentOverridesToFile();
 
     // 1. Update in Prisma database if matching Resource ID
@@ -2438,7 +2465,13 @@ export class AdminService {
           if (Array.isArray(mod.lessons)) {
             for (let lIdx = 0; lIdx < mod.lessons.length; lIdx++) {
               const les = mod.lessons[lIdx];
-              if ((les.id && String(les.id) === idStr) || `mod_${mod.id || ''}_les_${lIdx}` === idStr) {
+              const lesTitleClean = cleanLessonTitle(les.title).toLowerCase().trim();
+              const updTitleClean = cleanLessonTitle(updates.title || existing.title || '').toLowerCase().trim();
+              if (
+                (les.id && String(les.id) === idStr) ||
+                `mod_${mod.id || ''}_les_${lIdx}` === idStr ||
+                (updTitleClean && lesTitleClean === updTitleClean)
+              ) {
                 if (updates.title) les.title = updates.title;
                 if (updates.type) les.type = updates.type;
                 if (updates.status !== undefined) les.status = updates.status;
@@ -2450,7 +2483,12 @@ export class AdminService {
           }
           if (Array.isArray(mod.topics)) {
             for (const top of mod.topics) {
-              if (top.id && String(top.id) === idStr) {
+              const topTitleClean = cleanLessonTitle(top.title).toLowerCase().trim();
+              const updTitleClean = cleanLessonTitle(updates.title || existing.title || '').toLowerCase().trim();
+              if (
+                (top.id && String(top.id) === idStr) ||
+                (updTitleClean && topTitleClean === updTitleClean)
+              ) {
                 if (updates.title) top.title = updates.title;
                 if (updates.type) top.type = updates.type;
                 if (updates.status !== undefined) top.status = updates.status;
@@ -2460,7 +2498,12 @@ export class AdminService {
               }
               if (Array.isArray(top.subtopics)) {
                 for (const sub of top.subtopics) {
-                  if ((sub.id && String(sub.id) === idStr) || `sub_${mod.id}_${top.id}_${sub.title}` === idStr) {
+                  const subTitleClean = cleanLessonTitle(sub.title).toLowerCase().trim();
+                  if (
+                    (sub.id && String(sub.id) === idStr) ||
+                    `sub_${mod.id}_${top.id}_${sub.title}` === idStr ||
+                    (updTitleClean && subTitleClean === updTitleClean)
+                  ) {
                     if (updates.title) sub.title = updates.title;
                     if (updates.type) sub.type = updates.type;
                     if (updates.status !== undefined) sub.status = updates.status;
@@ -2479,14 +2522,37 @@ export class AdminService {
       }
     }
 
-    // 3. Update LessonProgress in Prisma database if applicable
-    if (updates.status === 'Completed' || updates.isCompleted) {
-      try {
-        const lesson = await this.prisma.lesson.findUnique({
+    // 3. Find and update Lesson and LessonProgress in PostgreSQL
+    try {
+      let lesson = null;
+      if (idStr.length > 20 && idStr.includes('-')) {
+        lesson = await this.prisma.lesson.findUnique({
           where: { id: idStr },
           include: { module: { include: { course: true } } },
         });
-        if (lesson) {
+      }
+      if (!lesson) {
+        const titleToSearch = cleanLessonTitle(updates.title || existing.title || '');
+        if (titleToSearch) {
+          lesson = await this.prisma.lesson.findFirst({
+            where: { title: { contains: titleToSearch, mode: 'insensitive' } },
+            include: { module: { include: { course: true } } },
+          });
+        }
+      }
+
+      if (lesson) {
+        AdminService.fallbackContentOverrides.set(String(lesson.id), updated);
+        AdminService.saveContentOverridesToFile();
+
+        if (updates.title) {
+          await this.prisma.lesson.update({
+            where: { id: lesson.id },
+            data: { title: updates.title },
+          });
+        }
+
+        if (updates.status === 'Completed' || updates.isCompleted) {
           const enrollments = await this.prisma.enrollment.findMany({
             where: { courseId: lesson.module.courseId },
           });
@@ -2511,8 +2577,15 @@ export class AdminService {
             });
           }
         }
-      } catch {}
+      }
+    } catch (err) {
+      console.warn('Error updating lesson in PostgreSQL:', err);
     }
+
+    // 4. Broadcast live update to all connected clients
+    try {
+      AdminWsBroadcaster.broadcastUpdate(this.prisma);
+    } catch {}
 
     return updated;
   }
