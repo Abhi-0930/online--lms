@@ -5748,17 +5748,42 @@ function PracticePage({
                   <span className="block truncate text-sm font-bold text-[#17223d] group-hover:text-[#3157e8] dark:text-white transition-colors">
                     {problem.title}
                   </span>
-                  {(problem.topic || problem.category) && (
-                    <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-[#9aa4bc] truncate">
-                      <span>{problem.topic || problem.category}</span>
-                      {problem.companies && (
-                        <>
-                          <span>·</span>
-                          <span className="truncate">{String(problem.companies).replace(/[\[\]"']/g, "")}</span>
-                        </>
-                      )}
-                    </span>
-                  )}
+                  <div className="mt-1 flex items-center gap-2 flex-wrap min-w-0">
+                    {(problem.topic || problem.category) && (
+                      <span className="text-[11px] font-medium text-[#9aa4bc] shrink-0">
+                        {problem.topic || problem.category}
+                      </span>
+                    )}
+                    {problem.companies && (
+                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                        <span className="text-[#9aa4bc] text-[10px] shrink-0">·</span>
+                        {String(problem.companies)
+                          .replace(/[\[\]"']/g, "")
+                          .split(",")
+                          .map((c) => c.trim())
+                          .filter(Boolean)
+                          .slice(0, 3)
+                          .map((comp, cIdx) => (
+                            <span
+                              key={cIdx}
+                              className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-200 shrink-0 shadow-2xs"
+                            >
+                              <CompanyLogo name={comp} size="xs" />
+                              <span className="truncate max-w-[80px]">{comp}</span>
+                            </span>
+                          ))}
+                        {String(problem.companies)
+                          .replace(/[\[\]"']/g, "")
+                          .split(",")
+                          .map((c) => c.trim())
+                          .filter(Boolean).length > 3 && (
+                          <span className="text-[10px] text-[#9aa4bc] font-bold shrink-0">
+                            +{String(problem.companies).replace(/[\[\]"']/g, "").split(",").map((c) => c.trim()).filter(Boolean).length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <span
