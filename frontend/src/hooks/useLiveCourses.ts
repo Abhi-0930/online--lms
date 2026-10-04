@@ -141,34 +141,49 @@ export function cleanCourseModules(modules: any[]): any[] {
           ? t.subtopics.map((s: any) => ({
               ...s,
               title: cleanLessonTitle(s.title),
+              isCompleted: s.isCompleted !== undefined ? Boolean(s.isCompleted) : s.status === "Completed",
+              status: s.status || (s.isCompleted ? "Completed" : "Published"),
+              isCompletedByInstructor: s.isCompletedByInstructor !== undefined ? Boolean(s.isCompletedByInstructor) : (Boolean(s.isCompleted) || s.status === "Completed" || Boolean(s.videoUrl)),
             }))
           : [];
         return {
           ...t,
           title: tTitle,
           subtopics: cleanedSubtopics,
+          isCompleted: t.isCompleted !== undefined ? Boolean(t.isCompleted) : t.status === "Completed",
+          status: t.status || (t.isCompleted ? "Completed" : "Published"),
+          isCompletedByInstructor: t.isCompletedByInstructor !== undefined ? Boolean(t.isCompletedByInstructor) : (Boolean(t.isCompleted) || t.status === "Completed" || Boolean(t.videoUrl)),
         };
       });
       return {
         ...mod,
         title: modTitle,
         topics: cleanedTopics,
+        isCompleted: mod.isCompleted !== undefined ? Boolean(mod.isCompleted) : mod.status === "Completed",
+        status: mod.status || (mod.isCompleted ? "Completed" : "Published"),
       };
     }
     if (Array.isArray(mod.lessons) && mod.lessons.length > 0) {
       const cleanedLessons = mod.lessons.map((l: any) => ({
         ...l,
         title: cleanLessonTitle(l.title),
+        isCompleted: l.isCompleted !== undefined ? Boolean(l.isCompleted) : l.status === "Completed",
+        status: l.status || (l.isCompleted ? "Completed" : "Published"),
+        isCompletedByInstructor: l.isCompletedByInstructor !== undefined ? Boolean(l.isCompletedByInstructor) : (Boolean(l.isCompleted) || l.status === "Completed" || Boolean(l.videoUrl)),
       }));
       return {
         ...mod,
         title: modTitle,
         lessons: cleanedLessons,
+        isCompleted: mod.isCompleted !== undefined ? Boolean(mod.isCompleted) : mod.status === "Completed",
+        status: mod.status || (mod.isCompleted ? "Completed" : "Published"),
       };
     }
     return {
       ...mod,
       title: modTitle,
+      isCompleted: mod.isCompleted !== undefined ? Boolean(mod.isCompleted) : mod.status === "Completed",
+      status: mod.status || (mod.isCompleted ? "Completed" : "Published"),
     };
   });
 }
@@ -240,23 +255,32 @@ function transformDbCourse(c: any): LiveCourseItem {
           ? top.subtopics.map((sub: any) => ({
               ...sub,
               title: cleanLessonTitle(sub.title),
+              isCompleted: sub.isCompleted !== undefined ? Boolean(sub.isCompleted) : sub.status === "Completed",
+              status: sub.status || (sub.isCompleted ? "Completed" : "Published"),
+              isCompletedByInstructor: sub.isCompletedByInstructor !== undefined ? Boolean(sub.isCompletedByInstructor) : (Boolean(sub.isCompleted) || sub.status === "Completed" || Boolean(sub.videoUrl)),
             }))
           : [];
         return {
           ...top,
           title: tTitle,
           subtopics,
+          isCompleted: top.isCompleted !== undefined ? Boolean(top.isCompleted) : top.status === "Completed",
+          status: top.status || (top.isCompleted ? "Completed" : "Published"),
+          isCompletedByInstructor: top.isCompletedByInstructor !== undefined ? Boolean(top.isCompletedByInstructor) : (Boolean(top.isCompleted) || top.status === "Completed" || Boolean(top.videoUrl)),
         };
       });
       const allSubtopics = cleanedTopics.flatMap((t: any) => t.subtopics || []);
       const totalLessons = allSubtopics.length > 0 ? allSubtopics.length : cleanedTopics.length;
       return {
+        ...mod,
         id: mod.id || `mod_${mIdx}`,
         title: modTitle,
         description: mod.description || "",
         lessons: totalLessons,
         duration: mod.duration || `${Math.max(15, totalLessons * 15)} mins`,
         complete: 0,
+        isCompleted: mod.isCompleted !== undefined ? Boolean(mod.isCompleted) : mod.status === "Completed",
+        status: mod.status || (mod.isCompleted ? "Completed" : "Published"),
         topics: cleanedTopics,
       };
     }
@@ -264,23 +288,33 @@ function transformDbCourse(c: any): LiveCourseItem {
     const cleanedLessons = lessons.map((l: any) => ({
       ...l,
       title: cleanLessonTitle(l.title),
+      isCompleted: l.isCompleted !== undefined ? Boolean(l.isCompleted) : l.status === "Completed",
+      status: l.status || (l.isCompleted ? "Completed" : "Published"),
+      isCompletedByInstructor: l.isCompletedByInstructor !== undefined ? Boolean(l.isCompletedByInstructor) : (Boolean(l.isCompleted) || l.status === "Completed" || Boolean(l.videoUrl)),
     }));
     return {
+      ...mod,
       id: mod.id || `mod_${mIdx}`,
       title: modTitle,
       description: mod.description || "",
       lessons: cleanedLessons.length || 0,
       duration: mod.duration || `${Math.max(15, (cleanedLessons.length || 1) * 15)} mins`,
       complete: 0,
+      isCompleted: mod.isCompleted !== undefined ? Boolean(mod.isCompleted) : mod.status === "Completed",
+      status: mod.status || (mod.isCompleted ? "Completed" : "Published"),
       topics: cleanedLessons.length > 0 ? [
         {
           id: `top_${mod.id || mIdx}`,
           title: "Topic",
           subtopics: cleanedLessons.map((l: any) => ({
+            ...l,
             id: l.id,
             title: l.title,
             type: l.type ? (l.type.charAt(0).toUpperCase() + l.type.slice(1).toLowerCase()) : "Video",
-            duration: l.durationSeconds ? `${Math.round(l.durationSeconds / 60)} mins` : "15 mins",
+            duration: l.durationSeconds ? `${Math.round(l.durationSeconds / 60)} mins` : (l.duration || "15 mins"),
+            isCompleted: l.isCompleted !== undefined ? Boolean(l.isCompleted) : l.status === "Completed",
+            status: l.status || (l.isCompleted ? "Completed" : "Published"),
+            isCompletedByInstructor: l.isCompletedByInstructor !== undefined ? Boolean(l.isCompletedByInstructor) : (Boolean(l.isCompleted) || l.status === "Completed" || Boolean(l.videoUrl)),
           })),
         }
       ] : [],
