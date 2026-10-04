@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const backendUrl =
       process.env.NEXT_PUBLIC_API_URL ||
       process.env.API_URL ||
-      "https://online-lms-v11c.onrender.com";
+      "https://site--preppath-backend--x9gt4y7zlzhr.code.run";
 
     // Forward securely to backend contact endpoint (backend holds all private email credentials)
     const backendRes = await fetch(`${backendUrl}/contact`, {

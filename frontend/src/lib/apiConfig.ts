@@ -5,11 +5,11 @@ export const API_BASE_URL = (() => {
     const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
     if (!isLocal) {
       if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
-        return "https://online-lms-v11c.onrender.com";
+        return "https://site--preppath-backend--x9gt4y7zlzhr.code.run";
       }
     }
   }
-  return (envUrl || "https://online-lms-v11c.onrender.com").replace(/\/$/, "");
+  return (envUrl || "https://site--preppath-backend--x9gt4y7zlzhr.code.run").replace(/\/$/, "");
 })();
 
 export const WS_BASE_URL = (
