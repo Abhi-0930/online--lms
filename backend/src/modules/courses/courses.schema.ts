@@ -2,15 +2,15 @@ import { Type } from '@fastify/type-provider-typebox';
 
 export const createCourseSchema = {
   body: Type.Object({
-    slug: Type.String(),
+    slug: Type.Optional(Type.String()),
     title: Type.String(),
     subtitle: Type.Optional(Type.String()),
-    description: Type.String(),
+    description: Type.Optional(Type.String()),
     coverImageUrl: Type.Optional(Type.String()),
     price: Type.Optional(Type.Number()),
-    status: Type.Optional(Type.Enum({ DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED', ARCHIVED: 'ARCHIVED' })),
-    level: Type.Optional(Type.Enum({ BEGINNER: 'BEGINNER', INTERMEDIATE: 'INTERMEDIATE', ADVANCED: 'ADVANCED', ALL_LEVELS: 'ALL_LEVELS' })),
-  }),
+    status: Type.Optional(Type.String()),
+    level: Type.Optional(Type.String()),
+  }, { additionalProperties: true }),
 };
 
 export const updateCourseSchema = {
@@ -20,9 +20,9 @@ export const updateCourseSchema = {
     description: Type.Optional(Type.String()),
     coverImageUrl: Type.Optional(Type.String()),
     price: Type.Optional(Type.Number()),
-    status: Type.Optional(Type.Enum({ DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED', ARCHIVED: 'ARCHIVED' })),
-    level: Type.Optional(Type.Enum({ BEGINNER: 'BEGINNER', INTERMEDIATE: 'INTERMEDIATE', ADVANCED: 'ADVANCED', ALL_LEVELS: 'ALL_LEVELS' })),
-  }),
+    status: Type.Optional(Type.String()),
+    level: Type.Optional(Type.String()),
+  }, { additionalProperties: true }),
 };
 
 export const createModuleSchema = {
