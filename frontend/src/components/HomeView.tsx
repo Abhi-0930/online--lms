@@ -9,7 +9,7 @@ import { createSecureUrl } from "@/lib/urlParams";
 import { resolveDisplayName, resolveFirstName, resolveEducationStatus } from "@/lib/nameUtils";
 import { initiateRazorpayCheckout, loadRazorpayScript, preloadCheckoutOrder } from "@/lib/razorpay";
 import { useEnrollments } from "@/hooks/useEnrollments";
-import { useLiveCourses, LiveCourseItem } from "@/hooks/useLiveCourses";
+import { useLiveCourses, LiveCourseItem, cleanLessonTitle, cleanTopicTitle } from "@/hooks/useLiveCourses";
 import { useAssignments, LiveAssignmentItem } from "@/hooks/useAssignments";
 import { useLiveProblems, PublicProblem } from "@/hooks/useLiveProblems";
 import { useLiveSessions, LiveSessionItem } from "@/hooks/useLiveSessions";
@@ -2878,39 +2878,43 @@ function CourseDetail({ courseId }: { courseId: string }) {
                   {openModule === index && (
                     <div className="border-t border-[#edf0f6] bg-[#fafbfe] px-5 pb-4 pt-3 dark:border-white/10 dark:bg-white/[0.02] space-y-3">
                       {module.topics && Array.isArray(module.topics) && module.topics.length > 0 ? (
-                        module.topics.map((top: any, tIdx: number) => (
-                          <div key={top.id || tIdx} className="space-y-1.5">
-                            {top.title && (
-                              <p className="text-xs font-bold text-[#17223d] dark:text-white/90 px-1 pt-1">
-                                {top.title}
-                              </p>
-                            )}
-                            {(top.subtopics && top.subtopics.length > 0
-                              ? top.subtopics
-                              : [{ id: top.id, title: top.title || `Lesson ${tIdx + 1}`, duration: "15 min", type: "Video" }]
-                            ).map((sub: any, sIdx: number) => (
-                              <Link
-                                href={enrolled ? createSecureUrl("/learn", { courseId: course.id, lessonId: sub.id }) : createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
-                                key={sub.id || sIdx}
-                                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-[#f0f3fb] dark:hover:bg-white/5 transition"
-                              >
-                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[#9aa4bc] dark:bg-white/10 shadow-2xs">
-                                  {sub.type === "Quiz" ? (
-                                    <CircleHelp className="h-3 w-3 text-amber-500" />
-                                  ) : sub.type === "Assignment" ? (
-                                    <FileText className="h-3 w-3 text-violet-500" />
-                                  ) : (
-                                    <Play className="h-3 w-3 text-[#3157e8]" />
-                                  )}
-                                </span>
-                                <span className="flex-1 text-xs font-semibold text-[#5f6c8c] dark:text-white/70">
-                                  {sub.title}
-                                </span>
-                                <span className="text-[10px] text-[#9aa4bc] shrink-0">{sub.duration || "15 min"}</span>
-                              </Link>
-                            ))}
-                          </div>
-                        ))
+                        module.topics.map((top: any, tIdx: number) => {
+                          const displayTopicTitle = cleanTopicTitle(top.title);
+                          const showTopicHeader = Boolean(displayTopicTitle && displayTopicTitle !== "Topic");
+                          return (
+                            <div key={top.id || tIdx} className="space-y-1.5">
+                              {showTopicHeader && (
+                                <p className="text-xs font-bold text-[#17223d] dark:text-white/90 px-1 pt-1">
+                                  {displayTopicTitle}
+                                </p>
+                              )}
+                              {(top.subtopics && top.subtopics.length > 0
+                                ? top.subtopics
+                                : [{ id: top.id, title: top.title || `Lesson ${tIdx + 1}`, duration: "15 min", type: "Video" }]
+                              ).map((sub: any, sIdx: number) => (
+                                <Link
+                                  href={enrolled ? createSecureUrl("/learn", { courseId: course.id, lessonId: sub.id }) : createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
+                                  key={sub.id || sIdx}
+                                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-[#f0f3fb] dark:hover:bg-white/5 transition"
+                                >
+                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[#9aa4bc] dark:bg-white/10 shadow-2xs">
+                                    {sub.type === "Quiz" ? (
+                                      <CircleHelp className="h-3 w-3 text-amber-500" />
+                                    ) : sub.type === "Assignment" ? (
+                                      <FileText className="h-3 w-3 text-violet-500" />
+                                    ) : (
+                                      <Play className="h-3 w-3 text-[#3157e8]" />
+                                    )}
+                                  </span>
+                                  <span className="flex-1 text-xs font-semibold text-[#5f6c8c] dark:text-white/70">
+                                    {cleanLessonTitle(sub.title) || `Lesson ${sIdx + 1}`}
+                                  </span>
+                                  <span className="text-[10px] text-[#9aa4bc] shrink-0">{sub.duration || "15 min"}</span>
+                                </Link>
+                              ))}
+                            </div>
+                          );
+                        })
                       ) : (
                         Array.from({ length: Math.min(module.lessons || 4, 6) }).map((_, lessonIndex) => (
                           <Link
@@ -3808,33 +3812,41 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
     if (rawMods.length === 0) return [];
 
     return rawMods.map((mod: any, mIdx: number) => {
-      const modTitle = mod.title || `Module ${mIdx + 1}`;
+      const modTitle = cleanLessonTitle(mod.title) || `Module ${mIdx + 1}`;
       const modId = String(mod.id || `mod_${mIdx}`);
 
       let rawLessons: any[] = [];
       if (Array.isArray(mod.topics) && mod.topics.length > 0) {
         mod.topics.forEach((top: any, tIdx: number) => {
+          const rawTopTitle = top.title || "";
+          const cleanedTopTitle = cleanTopicTitle(rawTopTitle);
           if (Array.isArray(top.subtopics) && top.subtopics.length > 0) {
             top.subtopics.forEach((sub: any, sIdx: number) => {
+              const cleanedSubTitle = cleanLessonTitle(sub.title) || `Lesson ${sIdx + 1}`;
               rawLessons.push({
                 ...sub,
-                topicTitle: top.title,
+                title: cleanedSubTitle,
+                topicTitle: cleanedTopTitle,
                 subtopicIndex: sIdx,
                 topicIndex: tIdx,
               });
             });
           } else {
+            const cleanedTopLessonTitle = cleanLessonTitle(rawTopTitle) || `Lesson ${tIdx + 1}`;
             rawLessons.push({
               id: top.id || `top_${modId}_${tIdx}`,
-              title: top.title || `Topic ${tIdx + 1}`,
+              title: cleanedTopLessonTitle,
               duration: top.duration || "15 mins",
               type: top.type || "Video",
-              topicTitle: top.title,
+              topicTitle: cleanedTopTitle,
             });
           }
         });
       } else if (Array.isArray(mod.lessons) && mod.lessons.length > 0) {
-        rawLessons = [...mod.lessons];
+        rawLessons = mod.lessons.map((l: any) => ({
+          ...l,
+          title: cleanLessonTitle(l.title),
+        }));
       } else {
         rawLessons = [
           { id: `${modId}_les_0`, title: `${modTitle} Overview`, duration: "10 mins", type: "Video" },
@@ -3845,7 +3857,7 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
 
       const lessons = rawLessons.map((les: any, lIdx: number) => {
         const lesId = String(les.id || `mod_${mIdx}_les_${lIdx}`);
-        const lesTitle = les.title || `Lesson ${lIdx + 1}`;
+        const lesTitle = cleanLessonTitle(les.title) || `Lesson ${lIdx + 1}`;
 
         // Match recording by course and topic/title/module
         const matchingRecording = recordings.find((r) => {
