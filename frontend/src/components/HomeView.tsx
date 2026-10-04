@@ -3708,6 +3708,7 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
+  const [isMobileCurriculumOpen, setIsMobileCurriculumOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const videoContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -3961,6 +3962,43 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
       null;
     return defaultLesson;
   }, [activeLessonId, allLessons]);
+
+  const currentLessonIndex = useMemo(() => {
+    if (!activeLesson) return -1;
+    return allLessons.findIndex((l) => l.id === activeLesson.id || l.uniqueKey === activeLesson.uniqueKey);
+  }, [allLessons, activeLesson]);
+
+  const prevLesson = useMemo(() => {
+    if (currentLessonIndex > 0) return allLessons[currentLessonIndex - 1];
+    return null;
+  }, [allLessons, currentLessonIndex]);
+
+  const nextLesson = useMemo(() => {
+    if (currentLessonIndex >= 0 && currentLessonIndex < allLessons.length - 1) {
+      return allLessons[currentLessonIndex + 1];
+    }
+    return null;
+  }, [allLessons, currentLessonIndex]);
+
+  const handleSelectLesson = useCallback((lesson: any) => {
+    if (!lesson) return;
+    if (!lesson.isCompletedByInstructor) {
+      toast.info("This lesson will be unlocked once your instructor completes and uploads the session.");
+      return;
+    }
+    setActiveLessonId(lesson.id);
+    setIsMobileCurriculumOpen(false);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(
+        null,
+        "",
+        createSecureUrl("/learn", {
+          courseId: activeCourse?.id || "dsa",
+          lessonId: lesson.id,
+        })
+      );
+    }
+  }, [activeCourse?.id]);
 
   // 4. Student Progress Persistence
   const courseStorageKey = useMemo(() => `lms_completed_lessons_${activeCourse?.id || "default"}`, [activeCourse?.id]);
@@ -4335,81 +4373,217 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
     });
   }, [assignments, activeCourse, activeLesson]);
 
+  const renderCurriculumList = () => (
+    <div className="space-y-2">
+      {normalizedModules.map((mod) => {
+        const isOpen = Boolean(moduleOpenMap[mod.moduleIndex]);
+        const modCompletedLessons = mod.lessons.filter(
+          (l) => completedLessonIds.has(l.id) || completedLessonIds.has(l.uniqueKey)
+        ).length;
+
+        return (
+          <div
+            key={mod.id}
+            className="overflow-hidden rounded-xl border border-[#edf0f6] bg-white dark:border-white/10 dark:bg-white/5"
+          >
+            {/* Module Accordion Header */}
+            <button
+              type="button"
+              onClick={() =>
+                setModuleOpenMap((prev) => ({
+                  ...prev,
+                  [mod.moduleIndex]: !prev[mod.moduleIndex],
+                }))
+              }
+              className="flex w-full items-center gap-2 px-3.5 py-3 text-left transition hover:bg-[#f8faff] dark:hover:bg-white/5"
+            >
+              <ChevronDown
+                className={cx(
+                  "h-3.5 w-3.5 text-[#9aa4bc] transition-transform duration-200 shrink-0",
+                  isOpen && "rotate-180"
+                )}
+              />
+              <span className="flex-1 text-xs font-bold text-[#17223d] dark:text-white line-clamp-1">
+                {mod.title}
+              </span>
+              <span className="text-[10px] font-medium text-[#9aa4bc] shrink-0">
+                {modCompletedLessons}/{mod.totalCount}
+              </span>
+            </button>
+
+            {/* Lessons List when open */}
+            {isOpen && (
+              <div className="border-t border-[#edf0f6] p-1.5 dark:border-white/10 space-y-0.5">
+                {mod.lessons.map((lesson) => {
+                  const isActive =
+                    activeLesson?.id === lesson.id || activeLesson?.uniqueKey === lesson.uniqueKey;
+                  const isStudentCompleted =
+                    completedLessonIds.has(lesson.id) || completedLessonIds.has(lesson.uniqueKey);
+
+                  if (!lesson.isCompletedByInstructor) {
+                    // Locked / Disabled Lesson
+                    return (
+                      <div
+                        key={lesson.uniqueKey}
+                        onClick={() =>
+                          toast.info(
+                            "This lesson will be unlocked once your instructor completes and uploads the session."
+                          )
+                        }
+                        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-xs text-[#9aa4bc] opacity-50 cursor-not-allowed select-none transition hover:bg-slate-100/50 dark:hover:bg-white/5"
+                        title="Locked by instructor"
+                      >
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f1f3f8] text-[#aab3c5] dark:bg-white/10">
+                          <Lock className="h-3 w-3" />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                        <span className="text-[9px] text-[#aab3c5] shrink-0">{lesson.duration}</span>
+                      </div>
+                    );
+                  }
+
+                  // Unlocked / Completed by Instructor Lesson
+                  return (
+                    <button
+                      key={lesson.uniqueKey}
+                      type="button"
+                      onClick={() => handleSelectLesson(lesson)}
+                      className={cx(
+                        "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-xs text-left transition",
+                        isActive
+                          ? "bg-[#eaf0ff] text-[#3157e8] dark:bg-[#3157e8]/25 dark:text-[#7ba2ff] font-bold shadow-2xs"
+                          : "text-[#52617f] hover:bg-[#f5f7fb] dark:text-white/80 dark:hover:bg-white/5"
+                      )}
+                    >
+                      {/* Check Circle Icon */}
+                      <span
+                        className={cx(
+                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition",
+                          isStudentCompleted
+                            ? "bg-[#e4f8ee] text-[#23a26d] dark:bg-emerald-500/20 dark:text-emerald-400"
+                            : "bg-[#f1f3f8] text-[#aab3c5] dark:bg-white/10"
+                        )}
+                      >
+                        <Check className="h-3 w-3 stroke-[2.5]" />
+                      </span>
+
+                      {/* Lesson Title */}
+                      <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+
+                      {/* Active Play Icon or Duration Badge */}
+                      {isActive ? (
+                        <Play className="h-3 w-3 fill-current text-[#3157e8] dark:text-[#7ba2ff] shrink-0" />
+                      ) : (
+                        <span className="text-[9px] text-[#9aa4bc] shrink-0">{lesson.duration}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <div className="-mx-4 -mt-7 lg:-mx-8">
+    <div className="-mx-4 -mt-7 sm:-mx-6 lg:-mx-8">
       {/* Top Breadcrumb & Lesson Header Banner */}
-      <div className="border-b border-[#e5e8f0] bg-[#fbfcff] px-4 py-4 dark:border-white/10 dark:bg-[#10172b] sm:px-6 lg:px-8">
+      <div className="border-b border-[#e5e8f0] bg-[#fbfcff] px-3.5 py-3.5 sm:px-6 sm:py-4 dark:border-white/10 dark:bg-[#10172b] lg:px-8">
         <Link
           href={getSecureHref("/my-courses")}
-          className="inline-flex items-center gap-2 text-xs font-bold text-[#7c87a4] hover:text-[#3157e8] transition"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7c87a4] hover:text-[#3157e8] transition"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to my learning
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to my learning
         </Link>
-        <div className="mt-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#3157e8]">
+        <div className="mt-3 sm:mt-4 flex flex-col justify-between gap-3.5 md:flex-row md:items-end">
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-[#3157e8] truncate">
               {activeCourse?.title || "Course"} · {activeLesson?.moduleTitle || "Module"}
             </p>
-            <h1 className="mt-1 font-display text-xl font-bold tracking-[-0.04em] text-[#17223d] dark:text-white sm:text-2xl">
+            <h1 className="mt-1 font-display text-lg sm:text-xl md:text-2xl font-bold tracking-[-0.03em] text-[#17223d] dark:text-white leading-tight">
               {activeLesson?.title || "Lesson"}
             </h1>
-            <p className="mt-1 text-xs text-[#9aa4bc]">
-              Lesson {((activeLesson?.lessonIndex ?? 0) + 1).toString().padStart(2, "0")} of{" "}
-              {((normalizedModules[activeLesson?.moduleIndex ?? 0]?.totalCount ?? 6)).toString().padStart(2, "0")} ·{" "}
-              {activeLesson?.duration || "15 mins"}
-            </p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-[#9aa4bc]">
+              <span>
+                Lesson {((activeLesson?.lessonIndex ?? 0) + 1).toString().padStart(2, "0")} of{" "}
+                {((normalizedModules[activeLesson?.moduleIndex ?? 0]?.totalCount ?? 6)).toString().padStart(2, "0")}
+              </span>
+              <span>·</span>
+              <span>{activeLesson?.duration || "15 mins"}</span>
+              <span>·</span>
+              <span className="font-semibold text-[#3157e8]">
+                {completionStats.percentage}% finished
+              </span>
+            </div>
           </div>
-          <button
-            onClick={handleToggleComplete}
-            className={cx(
-              "flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition shadow-sm",
-              isLessonCompletedByStudent
-                ? "bg-[#e4f8ee] text-[#23a26d] border border-[#23a26d]/20 hover:bg-[#d8f5e6]"
-                : "bg-[#3157e8] text-white shadow-[0_7px_16px_rgba(49,87,232,0.25)] hover:bg-[#2546cc]"
-            )}
-          >
-            {isLessonCompletedByStudent ? (
-              <>
-                <CheckCircle2 className="h-4 w-4" /> Completed
-              </>
-            ) : (
-              <>
-                <Check className="h-4 w-4" /> Mark as complete
-              </>
-            )}
-          </button>
+
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            {/* Mobile Curriculum Toggle Drawer Button */}
+            <button
+              type="button"
+              onClick={() => setIsMobileCurriculumOpen(true)}
+              className="inline-flex lg:hidden items-center justify-center gap-1.5 rounded-xl border border-[#dfe5f3] bg-white px-3 py-2 text-xs font-bold text-[#17223d] shadow-sm hover:bg-[#f8faff] dark:border-white/10 dark:bg-white/5 dark:text-white"
+            >
+              <BookOpen className="h-3.5 w-3.5 text-[#3157e8]" />
+              <span>Curriculum ({completionStats.percentage}%)</span>
+            </button>
+
+            {/* Mark as Complete Button */}
+            <button
+              type="button"
+              onClick={handleToggleComplete}
+              className={cx(
+                "inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 sm:px-4 py-2 text-xs font-bold transition shadow-sm",
+                isLessonCompletedByStudent
+                  ? "bg-[#e4f8ee] text-[#23a26d] border border-[#23a26d]/20 hover:bg-[#d8f5e6] dark:bg-emerald-500/10 dark:text-emerald-400"
+                  : "bg-[#3157e8] text-white shadow-[0_4px_14px_rgba(49,87,232,0.25)] hover:bg-[#2546cc]"
+              )}
+            >
+              {isLessonCompletedByStudent ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4" /> Completed
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" /> Mark as complete
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main Classroom Layout: Player/Tabs Left + Sidebar Right */}
-      <div className="grid min-h-[620px] lg:grid-cols-[minmax(0,1fr)_350px]">
+      <div className="grid min-h-[600px] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
         {/* Left Column: Video Frame + Bottom Tabs */}
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="p-3.5 sm:p-5 md:p-6 lg:p-7 space-y-5 sm:space-y-6 min-w-0">
           {/* Video Player Box */}
           <div
             ref={videoContainerRef}
-            className="video-frame relative flex aspect-video min-h-[270px] w-full items-center justify-center overflow-hidden rounded-[22px] bg-[#111a33] shadow-[0_18px_36px_rgba(23,34,61,0.18)] sm:min-h-[420px]"
+            className="video-frame relative flex aspect-video min-h-[200px] xs:min-h-[240px] sm:min-h-[340px] md:min-h-[420px] lg:min-h-[460px] w-full items-center justify-center overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-[22px] bg-[#0c1324] shadow-xl border border-slate-900/10 dark:border-white/10"
           >
             {!activeLesson?.isCompletedByInstructor ? (
               // Locked State Video Frame: Shows clear locked notification
-              <div className="relative flex h-full w-full flex-col items-center justify-center p-6 text-center">
+              <div className="relative flex h-full w-full flex-col items-center justify-center p-4 sm:p-6 text-center">
                 <div
                   className="absolute inset-0 opacity-25"
                   style={{
                     backgroundImage: `radial-gradient(circle at 30% 30%, #3157e8, transparent 35%), radial-gradient(circle at 70% 70%, #7f5af0, transparent 32%)`,
                   }}
                 />
-                <div className="relative z-10 flex flex-col items-center max-w-md">
-                  <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10 text-amber-400 shadow-[0_12px_30px_rgba(0,0,0,0.22)] border border-amber-400/20 backdrop-blur-md">
-                    <Lock className="h-7 w-7" />
+                <div className="relative z-10 flex flex-col items-center max-w-md px-2">
+                  <span className="mb-3 sm:mb-4 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-amber-500/10 text-amber-400 shadow-[0_12px_30px_rgba(0,0,0,0.22)] border border-amber-400/20 backdrop-blur-md">
+                    <Lock className="h-5 w-5 sm:h-7 sm:w-7" />
                   </span>
-                  <p className="text-base font-bold text-white sm:text-lg">
+                  <p className="text-sm font-bold text-white sm:text-lg">
                     {activeLesson?.title || "Lesson Locked"}
                   </p>
-                  <p className="mt-2 text-xs leading-relaxed text-white/70">
+                  <p className="mt-1.5 sm:mt-2 text-xs leading-relaxed text-white/70">
                     This lesson will be unlocked once your instructor completes and uploads the session.
                   </p>
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/20 px-3.5 py-1 text-[11px] font-semibold text-amber-300">
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-500/20 px-3 py-1 text-[10px] sm:text-[11px] font-semibold text-amber-300">
                     <Clock3 className="h-3.5 w-3.5" />
                     <span>Scheduled Session · {activeLesson?.duration || "15m"}</span>
                   </div>
@@ -4441,10 +4615,10 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                 />
 
                 {/* Video Controls Overlay */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-5 pb-4 pt-10 transition-opacity">
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 sm:px-5 pb-3 sm:pb-4 pt-8 sm:pt-10 transition-opacity">
                   {/* Seek Bar */}
                   <div
-                    className="mb-3 h-1.5 w-full cursor-pointer overflow-hidden rounded-full bg-white/20 transition-all hover:h-2"
+                    className="mb-2 sm:mb-3 h-1.5 w-full cursor-pointer overflow-hidden rounded-full bg-white/20 transition-all hover:h-2"
                     onClick={(e) => {
                       if (!videoRef.current || !duration) return;
                       const rect = e.currentTarget.getBoundingClientRect();
@@ -4461,8 +4635,9 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                   </div>
 
                   <div className="flex items-center justify-between text-white">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2.5 sm:gap-4">
                       <button
+                        type="button"
                         onClick={handleTogglePlay}
                         className="rounded-lg p-1 hover:bg-white/10 transition"
                         title={isPlaying ? "Pause" : "Play"}
@@ -4473,19 +4648,21 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                           <Play className="h-4 w-4 fill-current" />
                         )}
                       </button>
-                      <span className="text-[11px] font-mono font-medium text-white/80">
+                      <span className="text-[10px] sm:text-[11px] font-mono font-medium text-white/80">
                         {formatTime(currentTime)} / {formatTime(duration || 768)}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <button
+                        type="button"
                         onClick={handleCycleSpeed}
                         className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-bold hover:bg-white/20 transition"
                       >
                         {playbackSpeed}x
                       </button>
                       <button
+                        type="button"
                         onClick={handleToggleFullscreen}
                         className="rounded-lg p-1 hover:bg-white/10 transition"
                         title="Toggle Fullscreen"
@@ -4497,38 +4674,39 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                 </div>
               </div>
             ) : (
-              // Empty State Video Frame: Same clean layout with instructor notification
-              <div className="relative flex h-full w-full flex-col items-center justify-center p-6 text-center">
+              // Empty State Video Frame
+              <div className="relative flex h-full w-full flex-col items-center justify-center p-4 sm:p-6 text-center">
                 <div
                   className="absolute inset-0 opacity-25"
                   style={{
                     backgroundImage: `radial-gradient(circle at 30% 30%, #3157e8, transparent 35%), radial-gradient(circle at 70% 70%, #7f5af0, transparent 32%)`,
                   }}
                 />
-                <div className="relative z-10 flex flex-col items-center max-w-md">
-                  <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)] border border-white/20 backdrop-blur-md">
-                    <Video className="h-7 w-7 text-blue-400" />
+                <div className="relative z-10 flex flex-col items-center max-w-md px-2">
+                  <span className="mb-3 sm:mb-4 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-white/10 text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)] border border-white/20 backdrop-blur-md">
+                    <Video className="h-5 w-5 sm:h-7 sm:w-7 text-blue-400" />
                   </span>
-                  <p className="text-base font-bold text-white sm:text-lg">
+                  <p className="text-sm font-bold text-white sm:text-lg">
                     {activeLesson?.title || "Lesson Recording"}
                   </p>
-                  <p className="mt-2 text-xs leading-relaxed text-white/70">
+                  <p className="mt-1.5 sm:mt-2 text-xs leading-relaxed text-white/70">
                     The recorded session for this lesson will appear here once uploaded by your instructor.
                   </p>
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/20 px-3.5 py-1 text-[11px] font-semibold text-blue-300">
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-1.5 rounded-full border border-blue-400/30 bg-blue-500/20 px-3 py-1 text-[10px] sm:text-[11px] font-semibold text-blue-300">
                     <Clock3 className="h-3.5 w-3.5" />
                     <span>Scheduled Session · {activeLesson?.duration || "15m"}</span>
                   </div>
                 </div>
 
                 {/* Placeholder Bottom Bar */}
-                <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
-                  <div className="mb-3 h-1 overflow-hidden rounded-full bg-white/15">
+                <div className="absolute bottom-0 left-0 right-0 px-3 sm:px-5 pb-3 sm:pb-4">
+                  <div className="mb-2 sm:mb-3 h-1 overflow-hidden rounded-full bg-white/15">
                     <span className="block h-full w-[0%] rounded-full bg-[#ffca63]" />
                   </div>
                   <div className="flex items-center justify-between text-white/55">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
                       <button
+                        type="button"
                         onClick={() =>
                           toast.info(
                             "The recording will play here automatically once uploaded by your instructor."
@@ -4539,7 +4717,7 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
                       </button>
                       <span className="text-[10px]">00:00 / {activeLesson?.duration || "15m"}</span>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
                       <span className="text-[10px] font-bold">1x</span>
                       <Settings2 className="h-4 w-4 opacity-50" />
                     </div>
@@ -4549,16 +4727,42 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
             )}
           </div>
 
+          {/* Quick Previous & Next Navigation Bar */}
+          <div className="flex items-center justify-between gap-2 pt-0.5">
+            <button
+              type="button"
+              onClick={() => prevLesson && handleSelectLesson(prevLesson)}
+              disabled={!prevLesson}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#e5e8f0] bg-white px-3 py-2 text-xs font-bold text-[#52617f] transition hover:bg-[#f8faff] disabled:opacity-40 disabled:pointer-events-none dark:border-white/10 dark:bg-white/5 dark:text-white/80 shadow-2xs"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Previous Lesson</span>
+              <span className="sm:hidden">Prev</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => nextLesson && handleSelectLesson(nextLesson)}
+              disabled={!nextLesson}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#e5e8f0] bg-white px-3.5 py-2 text-xs font-bold text-[#3157e8] transition hover:bg-[#f8faff] disabled:opacity-40 disabled:pointer-events-none dark:border-white/10 dark:bg-white/5 dark:text-[#7ba2ff] shadow-2xs"
+            >
+              <span className="hidden sm:inline">Next Lesson</span>
+              <span className="sm:hidden">Next</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
           {/* Tab Navigation */}
-          <div className="mt-6 flex gap-1 overflow-x-auto border-b border-[#e5e8f0] dark:border-white/10 no-scrollbar">
+          <div className="flex gap-1 sm:gap-2 overflow-x-auto border-b border-[#e5e8f0] dark:border-white/10 no-scrollbar pb-0.5">
             {(["Notes", "Resources", "Practice problems", "Assignments", "Discussion"] as const).map((item) => (
               <button
                 key={item}
+                type="button"
                 onClick={() => setTab(item)}
                 className={cx(
-                  "whitespace-nowrap border-b-2 px-3 pb-3 text-xs font-bold transition",
+                  "whitespace-nowrap border-b-2 px-3 sm:px-4 pb-2.5 sm:pb-3 text-xs sm:text-sm font-bold transition",
                   tab === item
-                    ? "border-[#3157e8] text-[#3157e8]"
+                    ? "border-[#3157e8] text-[#3157e8] dark:text-[#7ba2ff]"
                     : "border-transparent text-[#9aa4bc] hover:text-[#17223d] dark:hover:text-white"
                 )}
               >
@@ -4568,579 +4772,495 @@ function PlayerPage({ courseId = "", initialLessonId = "" }: { courseId?: string
           </div>
 
           {/* Tab Content Panes */}
-          <div className="pt-6">
+          <div className="pt-2 sm:pt-4">
             {!activeLesson?.isCompletedByInstructor ? (
-              <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-8 text-center dark:border-white/10 dark:bg-white/5 space-y-2">
+              <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-6 sm:p-8 text-center dark:border-white/10 dark:bg-white/5 space-y-2">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
                   <Lock className="h-6 w-6" />
                 </div>
                 <h3 className="font-display text-sm font-bold text-[#17223d] dark:text-white">
                   Lesson Materials Locked
                 </h3>
-                <p className="mx-auto max-w-md text-xs text-[#9aa4bc]">
+                <p className="mx-auto max-w-md text-xs text-[#9aa4bc] leading-relaxed">
                   Notes, downloadable resources, practice problems, and assignments for this lesson will unlock as soon as your instructor marks this session as completed.
                 </p>
               </div>
             ) : (
               <>
                 {/* 1. Notes Tab */}
-            {tab === "Notes" && (
-              <div className="max-w-2xl space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
-                      Lesson Concept & Invariant
-                    </h2>
-                    <p className="text-xs text-[#9aa4bc] mt-0.5">
-                      Curated mental model and code pattern for {activeLesson?.title}
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleDownloadNotes}
-                    className="flex items-center gap-2 text-xs font-bold text-[#3157e8] hover:underline"
-                  >
-                    <Download className="h-3.5 w-3.5" /> Download Notes
-                  </button>
-                </div>
-
-                <p className="text-sm leading-7 text-[#5f6c8c] dark:text-white/75">
-                  {activeLesson?.description}
-                </p>
-
-                {/* Real Instructor Notes / Invariant Box if provided */}
-                {activeLesson?.notes ? (
-                  <div className="rounded-2xl border border-[#dfe5f3] bg-[#f8faff] p-5 dark:border-white/10 dark:bg-white/5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <BookOpen className="h-4 w-4 text-[#3157e8]" />
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#3157e8]">
-                        Instructor Key Takeaways & Logic Invariant
-                      </span>
-                    </div>
-                    <div className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-[#17223d] dark:text-white/90">
-                      {activeLesson.notes}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-4 text-xs text-[#7c87a4] dark:border-white/10 dark:bg-white/5">
-                    <Info className="h-4 w-4 text-[#3157e8] shrink-0" />
-                    <span>
-                      Official instructor code invariants have not been attached to this specific lesson yet. You can jot down personal takeaways below!
-                    </span>
-                  </div>
-                )}
-
-                {/* Student Saved Notes History */}
-                {savedNotes.length > 0 && (
-                  <div className="space-y-2.5">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#7c87a4]">
-                      My Private Notes ({savedNotes.length})
-                    </h3>
-                    <div className="space-y-2">
-                      {savedNotes.map((sn) => (
-                        <div
-                          key={sn.id}
-                          className="rounded-xl border border-[#e5e8f0] bg-white p-3.5 text-xs text-[#17223d] dark:border-white/10 dark:bg-white/5 dark:text-white"
-                        >
-                          <p className="leading-relaxed">{sn.text}</p>
-                          <p className="mt-2 text-[10px] text-[#9aa4bc] font-medium">{sn.createdAt}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Add Private Note Editor */}
-                <div>
-                  <textarea
-                    value={studentNoteInput}
-                    onChange={(e) => setStudentNoteInput(e.target.value)}
-                    placeholder={`Add a private note for ${activeLesson?.title || "this lesson"}...`}
-                    className="min-h-[110px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-4 text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
-                  />
-                  <div className="mt-3 flex justify-end">
-                    <button onClick={handleSaveStudentNote} className="button-secondary">
-                      <Plus className="h-4 w-4" /> Save note
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 2. Resources Tab */}
-            {tab === "Resources" && (
-              <div className="max-w-2xl space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
-                      Downloadable Resources
-                    </h2>
-                    <p className="text-xs text-[#9aa4bc]">
-                      Session slides, starter templates, and cheatsheets for this lesson.
-                    </p>
-                  </div>
-                </div>
-
-                {activeLesson?.resources && activeLesson.resources.length > 0 ? (
-                  <div className="space-y-3">
-                    {activeLesson.resources.map((res: any, rIdx: number) => (
-                      <div
-                        key={rIdx}
-                        className="flex items-center justify-between gap-4 rounded-2xl border border-[#edf0f6] bg-white p-4 dark:border-white/10 dark:bg-white/5"
+                {tab === "Notes" && (
+                  <div className="max-w-3xl space-y-5 sm:space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div>
+                        <h2 className="font-display text-base sm:text-lg font-bold text-[#17223d] dark:text-white">
+                          Lesson Concept & Invariant
+                        </h2>
+                        <p className="text-xs text-[#9aa4bc] mt-0.5">
+                          Curated mental model and code pattern for {activeLesson?.title}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDownloadNotes}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#3157e8] hover:underline self-start sm:self-auto"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
-                            <FileText className="h-5 w-5" />
+                        <Download className="h-3.5 w-3.5" /> Download Notes
+                      </button>
+                    </div>
+
+                    <p className="text-xs sm:text-sm leading-relaxed sm:leading-7 text-[#5f6c8c] dark:text-white/75">
+                      {activeLesson?.description}
+                    </p>
+
+                    {/* Instructor Notes / Invariant Box */}
+                    {activeLesson?.notes ? (
+                      <div className="rounded-xl sm:rounded-2xl border border-[#dfe5f3] bg-[#f8faff] p-4 sm:p-5 dark:border-white/10 dark:bg-white/5">
+                        <div className="flex items-center gap-2 mb-2.5 sm:mb-3">
+                          <BookOpen className="h-4 w-4 text-[#3157e8] shrink-0" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-[#3157e8]">
+                            Instructor Key Takeaways & Logic Invariant
                           </span>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
-                              {res.name || res.title || `Resource ${rIdx + 1}`}
-                            </p>
-                            <p className="text-xs text-[#9aa4bc]">
-                              {res.size || "Resource"} · {res.type || "Attached Material"}
-                            </p>
-                          </div>
                         </div>
+                        <div className="whitespace-pre-wrap font-mono text-xs sm:text-[13px] leading-relaxed text-[#17223d] dark:text-white/90 overflow-x-auto">
+                          {activeLesson.notes}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 rounded-xl sm:rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-4 text-xs text-[#7c87a4] dark:border-white/10 dark:bg-white/5">
+                        <Info className="h-4 w-4 text-[#3157e8] shrink-0" />
+                        <span>
+                          Official instructor code invariants have not been attached to this specific lesson yet. You can jot down personal takeaways below!
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Student Saved Notes History */}
+                    {savedNotes.length > 0 && (
+                      <div className="space-y-2.5">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-[#7c87a4]">
+                          My Private Notes ({savedNotes.length})
+                        </h3>
+                        <div className="space-y-2">
+                          {savedNotes.map((sn) => (
+                            <div
+                              key={sn.id}
+                              className="rounded-xl border border-[#e5e8f0] bg-white p-3.5 text-xs text-[#17223d] dark:border-white/10 dark:bg-white/5 dark:text-white shadow-2xs"
+                            >
+                              <p className="leading-relaxed">{sn.text}</p>
+                              <p className="mt-2 text-[10px] text-[#9aa4bc] font-medium">{sn.createdAt}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Add Private Note Editor */}
+                    <div className="space-y-2.5">
+                      <textarea
+                        value={studentNoteInput}
+                        onChange={(e) => setStudentNoteInput(e.target.value)}
+                        placeholder={`Add a private note for ${activeLesson?.title || "this lesson"}...`}
+                        className="min-h-[100px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-white p-3.5 sm:p-4 text-xs sm:text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white shadow-2xs"
+                      />
+                      <div className="flex justify-end">
                         <button
-                          onClick={() => {
-                            if (res.url) {
-                              window.open(res.url, "_blank");
-                            } else {
-                              toast.success(`Accessing "${res.name || res.title}"`);
-                            }
-                          }}
-                          className="button-secondary !py-1.5 !px-3.5 !text-xs shrink-0 inline-flex items-center gap-1.5"
+                          type="button"
+                          onClick={handleSaveStudentNote}
+                          className="button-secondary !py-2 !px-4 !text-xs inline-flex items-center gap-1.5"
                         >
-                          {res.url?.startsWith("http") ? (
-                            <>
-                              <ExternalLink className="h-3.5 w-3.5" /> Open Link
-                            </>
-                          ) : (
-                            <>
-                              <Download className="h-3.5 w-3.5" /> Download
-                            </>
-                          )}
+                          <Plus className="h-3.5 w-3.5" /> Save note
                         </button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-8 text-center dark:border-white/10 dark:bg-white/5">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
-                      <FolderOpen className="h-6 w-6" />
                     </div>
-                    <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No Attached Resources</h3>
-                    <p className="mt-1 text-xs text-[#9aa4bc] max-w-sm mx-auto">
-                      There are no downloadable slides, starter templates, or files attached to this specific lesson yet.
-                    </p>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* 3. Practice Problems Tab */}
-            {tab === "Practice problems" && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
-                      Curated Practice Challenges ({filteredProblems.length})
-                    </h2>
-                    <p className="text-xs text-[#9aa4bc]">
-                      Hands-on coding problems mapped to {activeLesson?.moduleTitle || "this module"}.
-                    </p>
-                  </div>
-                  <Link
-                    href={getSecureHref("/practice")}
-                    className="text-xs font-bold text-[#3157e8] hover:underline inline-flex items-center gap-1"
-                  >
-                    All Problems <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
+                {/* 2. Resources Tab */}
+                {tab === "Resources" && (
+                  <div className="max-w-3xl space-y-4">
+                    <div>
+                      <h2 className="font-display text-base sm:text-lg font-bold text-[#17223d] dark:text-white">
+                        Downloadable Resources
+                      </h2>
+                      <p className="text-xs text-[#9aa4bc] mt-0.5">
+                        Session slides, starter templates, and cheatsheets for this lesson.
+                      </p>
+                    </div>
 
-                {filteredProblems.length > 0 ? (
-                  <div className="space-y-3">
-                    {filteredProblems.map((prob) => (
-                      <div
-                        key={String(prob.id)}
-                        className="rounded-2xl border border-[#edf0f6] bg-white p-4.5 dark:border-white/10 dark:bg-white/5 flex items-center justify-between gap-4 transition hover:border-[#3157e8]/30"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span
-                            className={cx(
-                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold",
-                              prob.solved
-                                ? "bg-[#e4f8ee] text-[#23a26d]"
-                                : "bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white"
-                            )}
+                    {activeLesson?.resources && activeLesson.resources.length > 0 ? (
+                      <div className="space-y-3">
+                        {activeLesson.resources.map((res: any, rIdx: number) => (
+                          <div
+                            key={rIdx}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-xl sm:rounded-2xl border border-[#edf0f6] bg-white p-4 dark:border-white/10 dark:bg-white/5 shadow-2xs"
                           >
-                            <Code2 className="h-4 w-4" />
-                          </span>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="truncate text-sm font-bold text-[#17223d] dark:text-white">
-                                {prob.title}
-                              </p>
-                              {prob.solved && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
-                                  <CheckCircle2 className="h-3 w-3" /> Solved
-                                </span>
-                              )}
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
+                                <FileText className="h-5 w-5" />
+                              </span>
+                              <div className="min-w-0">
+                                <p className="truncate text-xs sm:text-sm font-bold text-[#17223d] dark:text-white">
+                                  {res.name || res.title || `Resource ${rIdx + 1}`}
+                                </p>
+                                <p className="text-[11px] text-[#9aa4bc] mt-0.5">
+                                  {res.size || "Resource"} · {res.type || "Attached Material"}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 mt-0.5 text-xs text-[#9aa4bc]">
-                              <span>{prob.category || prob.topic}</span>
-                              <span>·</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (res.url) {
+                                  window.open(res.url, "_blank");
+                                } else {
+                                  toast.success(`Accessing "${res.name || res.title}"`);
+                                }
+                              }}
+                              className="button-secondary !py-2 !px-3.5 !text-xs shrink-0 inline-flex items-center justify-center gap-1.5 w-full sm:w-auto"
+                            >
+                              {res.url?.startsWith("http") ? (
+                                <>
+                                  <ExternalLink className="h-3.5 w-3.5" /> Open Link
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="h-3.5 w-3.5" /> Download
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-8 text-center dark:border-white/10 dark:bg-white/5">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
+                          <FolderOpen className="h-6 w-6" />
+                        </div>
+                        <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No Attached Resources</h3>
+                        <p className="mt-1 text-xs text-[#9aa4bc] max-w-sm mx-auto leading-relaxed">
+                          There are no downloadable slides, starter templates, or files attached to this specific lesson yet.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. Practice Problems Tab */}
+                {tab === "Practice problems" && (
+                  <div className="max-w-3xl space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h2 className="font-display text-base sm:text-lg font-bold text-[#17223d] dark:text-white">
+                          Curated Practice Challenges ({filteredProblems.length})
+                        </h2>
+                        <p className="text-xs text-[#9aa4bc] mt-0.5">
+                          Hands-on coding problems mapped to {activeLesson?.moduleTitle || "this module"}.
+                        </p>
+                      </div>
+                      <Link
+                        href={getSecureHref("/practice")}
+                        className="text-xs font-bold text-[#3157e8] hover:underline inline-flex items-center gap-1 self-start sm:self-auto"
+                      >
+                        All Problems <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+
+                    {filteredProblems.length > 0 ? (
+                      <div className="space-y-3">
+                        {filteredProblems.map((prob) => (
+                          <div
+                            key={String(prob.id)}
+                            className="rounded-xl sm:rounded-2xl border border-[#edf0f6] bg-white p-4 sm:p-4.5 dark:border-white/10 dark:bg-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 transition hover:border-[#3157e8]/30 shadow-2xs"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
                               <span
                                 className={cx(
-                                  "font-bold",
-                                  prob.difficulty === "Easy"
-                                    ? "text-emerald-600"
-                                    : prob.difficulty === "Medium"
-                                    ? "text-amber-600"
-                                    : "text-rose-600"
+                                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold",
+                                  prob.solved
+                                    ? "bg-[#e4f8ee] text-[#23a26d]"
+                                    : "bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-white"
                                 )}
                               >
-                                {prob.difficulty}
+                                <Code2 className="h-4 w-4" />
                               </span>
-                              <span>·</span>
-                              <span>{prob.acceptance || "80%"} acceptance</span>
-                            </div>
-                          </div>
-                        </div>
-                        <Link
-                          href={getSecureHref("/practice", {
-                            slug: prob.slug || String(prob.id),
-                          })}
-                          className="button-primary !py-1.5 !px-3.5 !text-xs shrink-0 inline-flex items-center gap-1.5"
-                        >
-                          {prob.solved ? "Review Arena" : "Solve in Arena"} <ArrowRight className="h-3 w-3" />
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-8 text-center dark:border-white/10 dark:bg-white/5">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
-                      <Code2 className="h-6 w-6" />
-                    </div>
-                    <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No Mapped Practice Problems</h3>
-                    <p className="mt-1 text-xs text-[#9aa4bc] max-w-sm mx-auto">
-                      There are currently no specific problem challenges mapped to this topic. You can explore all algorithms in the Code Arena.
-                    </p>
-                    <div className="mt-4">
-                      <Link href={getSecureHref("/practice")} className="button-primary !py-2 !px-4 !text-xs inline-flex items-center gap-2">
-                        <Code2 className="h-3.5 w-3.5" /> Explore All Problems <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 4. Assignments Tab */}
-            {tab === "Assignments" && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
-                      Course Assignments ({filteredAssignments.length})
-                    </h2>
-                    <p className="text-xs text-[#9aa4bc]">
-                      Graded hands-on assignments and capstone submissions.
-                    </p>
-                  </div>
-                  <Link
-                    href={getSecureHref("/assignments")}
-                    className="text-xs font-bold text-[#3157e8] hover:underline inline-flex items-center gap-1"
-                  >
-                    Full Workspace <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
-                {filteredAssignments.length > 0 ? (
-                  <div className="space-y-3">
-                    {filteredAssignments.map((a) => {
-                      const isSubmitted = Boolean(a.userSubmission);
-                      return (
-                        <div
-                          key={a.id}
-                          className="rounded-2xl border border-[#edf0f6] bg-white p-5 dark:border-white/10 dark:bg-white/5"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">
-                                  {a.module || a.course}
-                                </span>
-                                {isSubmitted && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                                    <CheckCircle2 className="h-3 w-3" /> Submitted
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="truncate text-xs sm:text-sm font-bold text-[#17223d] dark:text-white">
+                                    {prob.title}
+                                  </p>
+                                  {prob.solved && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 shrink-0">
+                                      <CheckCircle2 className="h-3 w-3" /> Solved
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1 text-[11px] sm:text-xs text-[#9aa4bc]">
+                                  <span>{prob.category || prob.topic}</span>
+                                  <span>·</span>
+                                  <span
+                                    className={cx(
+                                      "font-bold",
+                                      prob.difficulty === "Easy"
+                                        ? "text-emerald-600"
+                                        : prob.difficulty === "Medium"
+                                        ? "text-amber-600"
+                                        : "text-rose-600"
+                                    )}
+                                  >
+                                    {prob.difficulty}
                                   </span>
-                                )}
+                                  <span>·</span>
+                                  <span>{prob.acceptance || "80%"} acceptance</span>
+                                </div>
                               </div>
-                              <h3 className="mt-2 text-sm font-bold text-[#17223d] dark:text-white">{a.title}</h3>
-                              <p className="mt-1 text-xs text-[#7c87a4]">{a.description}</p>
                             </div>
-                            <span className="shrink-0 text-xs font-bold text-[#3157e8]">{a.totalMarks} pts</span>
-                          </div>
-                          <div className="mt-4 flex items-center justify-between border-t border-[#edf0f6] pt-3 text-xs dark:border-white/10">
-                            <span className="text-[11px] text-amber-600 font-semibold">{a.dueDate}</span>
-                            <Link href={getSecureHref("/assignments")} className="button-primary !py-1.5 !px-3 !text-xs">
-                              {isSubmitted ? "View Submission" : "Open & Submit"}
+                            <Link
+                              href={getSecureHref("/practice", {
+                                slug: prob.slug || String(prob.id),
+                              })}
+                              className="button-primary !py-2 !px-3.5 !text-xs shrink-0 inline-flex items-center justify-center gap-1.5 w-full sm:w-auto"
+                            >
+                              {prob.solved ? "Review Arena" : "Solve in Arena"} <ArrowRight className="h-3 w-3" />
                             </Link>
                           </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-8 text-center dark:border-white/10 dark:bg-white/5">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
+                          <Code2 className="h-6 w-6" />
                         </div>
-                      );
-                    })}
+                        <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No Mapped Practice Problems</h3>
+                        <p className="mt-1 text-xs text-[#9aa4bc] max-w-sm mx-auto leading-relaxed">
+                          There are currently no specific problem challenges mapped to this topic. You can explore all algorithms in the Code Arena.
+                        </p>
+                        <div className="mt-4">
+                          <Link href={getSecureHref("/practice")} className="button-primary !py-2 !px-4 !text-xs inline-flex items-center gap-2">
+                            <Code2 className="h-3.5 w-3.5" /> Explore All Problems <ArrowRight className="h-3.5 w-3.5" />
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-8 text-center dark:border-white/10 dark:bg-white/5">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
-                      <FileText className="h-6 w-6" />
-                    </div>
-                    <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No Module Assignments</h3>
-                    <p className="mt-1 text-xs text-[#9aa4bc] max-w-sm mx-auto">
-                      There are no active graded assignments or submissions required for this specific lesson. Check the assignments hub for global capstones.
-                    </p>
-                    <div className="mt-4">
-                      <Link href={getSecureHref("/assignments")} className="button-primary !py-2 !px-4 !text-xs inline-flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5" /> View Assignments Workspace <ArrowRight className="h-3.5 w-3.5" />
+                )}
+
+                {/* 4. Assignments Tab */}
+                {tab === "Assignments" && (
+                  <div className="max-w-3xl space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h2 className="font-display text-base sm:text-lg font-bold text-[#17223d] dark:text-white">
+                          Course Assignments ({filteredAssignments.length})
+                        </h2>
+                        <p className="text-xs text-[#9aa4bc] mt-0.5">
+                          Graded hands-on assignments and capstone submissions.
+                        </p>
+                      </div>
+                      <Link
+                        href={getSecureHref("/assignments")}
+                        className="text-xs font-bold text-[#3157e8] hover:underline inline-flex items-center gap-1 self-start sm:self-auto"
+                      >
+                        Full Workspace <ArrowRight className="h-3 w-3" />
                       </Link>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
 
-            {/* 5. Discussion Tab */}
-            {tab === "Discussion" && (
-              <div className="max-w-2xl space-y-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-display text-lg font-bold text-[#17223d] dark:text-white">
-                      Classroom Q&A Discussion ({discussions.length})
-                    </h2>
-                    <p className="text-xs text-[#9aa4bc]">
-                      Ask doubts, discuss algorithmic invariants, and collaborate with your cohort.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Ask a Question Input */}
-                <div className="rounded-2xl border border-[#edf0f6] bg-white p-4 dark:border-white/10 dark:bg-white/5 space-y-3">
-                  <textarea
-                    value={discussionInput}
-                    onChange={(e) => setDiscussionInput(e.target.value)}
-                    placeholder="Ask a question about this lesson or share your insights..."
-                    className="min-h-[85px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-[#fbfcff] p-3 text-xs outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
-                  />
-                  <div className="flex justify-end">
-                    <button
-                      onClick={handlePostDiscussion}
-                      disabled={isPostingDiscussion || !discussionInput.trim()}
-                      className="button-primary !py-1.5 !px-4 !text-xs disabled:opacity-50"
-                    >
-                      <Send className="h-3.5 w-3.5" /> {isPostingDiscussion ? "Posting..." : "Post Question"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Discussion Thread List */}
-                {discussions.length > 0 ? (
-                  <div className="space-y-3">
-                    {discussions.map((d) => (
-                      <div
-                        key={d.id}
-                        className="rounded-2xl border border-[#edf0f6] bg-white p-4.5 dark:border-white/10 dark:bg-white/5"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#eef2ff] text-xs font-bold text-[#3157e8] dark:bg-[#3157e8]/20 dark:text-blue-300">
-                              {d.author.charAt(0)}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-[#17223d] dark:text-white">{d.author}</span>
-                                <span
-                                  className={cx(
-                                    "rounded px-1.5 py-0.2 text-[9px] font-bold",
-                                    d.role === "Instructor"
-                                      ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
-                                      : "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
-                                  )}
-                                >
-                                  {d.role}
-                                </span>
+                    {filteredAssignments.length > 0 ? (
+                      <div className="space-y-3">
+                        {filteredAssignments.map((a) => {
+                          const isSubmitted = Boolean(a.userSubmission);
+                          return (
+                            <div
+                              key={a.id}
+                              className="rounded-xl sm:rounded-2xl border border-[#edf0f6] bg-white p-4 sm:p-5 dark:border-white/10 dark:bg-white/5 shadow-2xs"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-[#3157e8] dark:bg-[#3157e8]/20">
+                                      {a.module || a.course}
+                                    </span>
+                                    {isSubmitted && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                        <CheckCircle2 className="h-3 w-3" /> Submitted
+                                      </span>
+                                    )}
+                                  </div>
+                                  <h3 className="mt-2 text-xs sm:text-sm font-bold text-[#17223d] dark:text-white">{a.title}</h3>
+                                  <p className="mt-1 text-xs text-[#7c87a4] line-clamp-2">{a.description}</p>
+                                </div>
+                                <span className="shrink-0 text-xs font-bold text-[#3157e8] self-start">{a.totalMarks} pts</span>
                               </div>
-                              <p className="text-[10px] text-[#9aa4bc]">{d.time}</p>
+                              <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between border-t border-[#edf0f6] pt-3 text-xs dark:border-white/10 gap-2.5">
+                                <span className="text-[11px] text-amber-600 font-semibold">{a.dueDate}</span>
+                                <Link href={getSecureHref("/assignments")} className="button-primary !py-1.5 !px-3.5 !text-xs inline-flex items-center justify-center w-full sm:w-auto">
+                                  {isSubmitted ? "View Submission" : "Open & Submit"}
+                                </Link>
+                              </div>
                             </div>
-                          </div>
-                          <button
-                            onClick={() => handleToggleLikeDiscussion(d.id)}
-                            className={cx(
-                              "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition",
-                              d.hasLiked
-                                ? "bg-blue-50 text-[#3157e8] dark:bg-[#3157e8]/20"
-                                : "text-[#9aa4bc] hover:bg-[#f5f7fb] dark:hover:bg-white/5"
-                            )}
-                          >
-                            <ThumbsUp className={cx("h-3.5 w-3.5", d.hasLiked && "fill-current")} />
-                            <span>{d.likes}</span>
-                          </button>
-                        </div>
-                        <p className="mt-3 text-xs leading-relaxed text-[#5f6c8c] dark:text-white/80">{d.text}</p>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-6 text-center dark:border-white/10 dark:bg-white/5">
-                    <p className="text-xs text-[#9aa4bc]">No discussions yet for this lesson. Post your question above to start the thread!</p>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-8 text-center dark:border-white/10 dark:bg-white/5">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#3157e8] dark:bg-[#3157e8]/20">
+                          <FileText className="h-6 w-6" />
+                        </div>
+                        <h3 className="mt-3 text-sm font-bold text-[#17223d] dark:text-white">No Module Assignments</h3>
+                        <p className="mt-1 text-xs text-[#9aa4bc] max-w-sm mx-auto leading-relaxed">
+                          There are no active graded assignments or submissions required for this specific lesson. Check the assignments hub for global capstones.
+                        </p>
+                        <div className="mt-4">
+                          <Link href={getSecureHref("/assignments")} className="button-primary !py-2 !px-4 !text-xs inline-flex items-center gap-2">
+                            <FileText className="h-3.5 w-3.5" /> View Assignments Workspace <ArrowRight className="h-3.5 w-3.5" />
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
+
+                {/* 5. Discussion Tab */}
+                {tab === "Discussion" && (
+                  <div className="max-w-3xl space-y-5">
+                    <div>
+                      <h2 className="font-display text-base sm:text-lg font-bold text-[#17223d] dark:text-white">
+                        Classroom Q&A Discussion ({discussions.length})
+                      </h2>
+                      <p className="text-xs text-[#9aa4bc] mt-0.5">
+                        Ask doubts, discuss algorithmic invariants, and collaborate with your cohort.
+                      </p>
+                    </div>
+
+                    {/* Ask a Question Input */}
+                    <div className="rounded-xl sm:rounded-2xl border border-[#edf0f6] bg-white p-3.5 sm:p-4 dark:border-white/10 dark:bg-white/5 space-y-3 shadow-2xs">
+                      <textarea
+                        value={discussionInput}
+                        onChange={(e) => setDiscussionInput(e.target.value)}
+                        placeholder="Ask a question about this lesson or share your insights..."
+                        className="min-h-[80px] w-full resize-none rounded-xl border border-[#e5e8f0] bg-[#fbfcff] p-3 text-xs sm:text-sm outline-none focus:border-[#9db3ff] focus:ring-4 focus:ring-[#3157e8]/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handlePostDiscussion}
+                          disabled={isPostingDiscussion || !discussionInput.trim()}
+                          className="button-primary !py-2 !px-4 !text-xs disabled:opacity-50 inline-flex items-center gap-1.5"
+                        >
+                          <Send className="h-3.5 w-3.5" /> {isPostingDiscussion ? "Posting..." : "Post Question"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Discussion Thread List */}
+                    {discussions.length > 0 ? (
+                      <div className="space-y-3">
+                        {discussions.map((d) => (
+                          <div
+                            key={d.id}
+                            className="rounded-xl sm:rounded-2xl border border-[#edf0f6] bg-white p-4 dark:border-white/10 dark:bg-white/5 shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3157e8]/10 text-xs font-bold text-[#3157e8]">
+                                  {d.author.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="truncate text-xs font-bold text-[#17223d] dark:text-white">{d.author}</span>
+                                    <span
+                                      className={cx(
+                                        "rounded px-1.5 py-0.5 text-[9px] font-bold shrink-0",
+                                        d.role === "Instructor"
+                                          ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                                          : "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
+                                      )}
+                                    >
+                                      {d.role}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-[#9aa4bc] mt-0.5">{d.time}</p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleLikeDiscussion(d.id)}
+                                className={cx(
+                                  "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition shrink-0",
+                                  d.hasLiked
+                                    ? "bg-blue-50 text-[#3157e8] dark:bg-[#3157e8]/20"
+                                    : "text-[#9aa4bc] hover:bg-[#f5f7fb] dark:hover:bg-white/5"
+                                )}
+                              >
+                                <ThumbsUp className={cx("h-3.5 w-3.5", d.hasLiked && "fill-current")} />
+                                <span>{d.likes}</span>
+                              </button>
+                            </div>
+                            <p className="mt-3 text-xs sm:text-sm leading-relaxed text-[#5f6c8c] dark:text-white/80">{d.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-[#dfe5f3] bg-[#f8faff] p-6 text-center dark:border-white/10 dark:bg-white/5">
+                        <p className="text-xs text-[#9aa4bc]">No discussions yet for this lesson. Post your question above to start the thread!</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
         </div>
 
-        {/* Right Column: Course Curriculum Sidebar (Exact Reference Match) */}
-        <aside className="border-t border-[#e5e8f0] bg-[#fbfcff] dark:border-white/10 dark:bg-[#10172b] lg:border-l lg:border-t-0">
+        {/* Right Column: Desktop Course Curriculum Sidebar */}
+        <aside className="hidden lg:block border-l border-[#e5e8f0] bg-[#fbfcff] dark:border-white/10 dark:bg-[#10172b] lg:sticky lg:top-16 lg:self-start lg:max-h-[calc(100vh-4.5rem)] lg:overflow-y-auto custom-scrollbar">
           {/* Sidebar Header */}
           <div className="flex items-center justify-between border-b border-[#e5e8f0] px-5 py-4 dark:border-white/10">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#3157e8]">
                 Course contents
               </p>
-              <p className="mt-1 text-sm font-bold text-[#17223d] dark:text-white">
+              <p className="mt-1 text-sm font-bold text-[#17223d] dark:text-white line-clamp-1">
                 {activeCourse?.title || "DSA Foundations"}
               </p>
             </div>
-            <span className="text-xs font-bold text-[#3157e8]">{completionStats.percentage}%</span>
+            <span className="text-xs font-bold text-[#3157e8] shrink-0">{completionStats.percentage}%</span>
           </div>
 
           {/* Module Accordions List */}
-          <div className="max-h-[680px] overflow-y-auto custom-scrollbar p-3 space-y-2">
-            {normalizedModules.map((mod) => {
-              const isOpen = Boolean(moduleOpenMap[mod.moduleIndex]);
-              const modCompletedLessons = mod.lessons.filter(
-                (l) => completedLessonIds.has(l.id) || completedLessonIds.has(l.uniqueKey)
-              ).length;
-
-              return (
-                <div
-                  key={mod.id}
-                  className="overflow-hidden rounded-xl border border-[#edf0f6] bg-white dark:border-white/10 dark:bg-white/5"
-                >
-                  {/* Module Accordion Header */}
-                  <button
-                    onClick={() =>
-                      setModuleOpenMap((prev) => ({
-                        ...prev,
-                        [mod.moduleIndex]: !prev[mod.moduleIndex],
-                      }))
-                    }
-                    className="flex w-full items-center gap-2 px-3.5 py-3 text-left transition hover:bg-[#f8faff] dark:hover:bg-white/5"
-                  >
-                    <ChevronDown
-                      className={cx(
-                        "h-3.5 w-3.5 text-[#9aa4bc] transition-transform duration-200",
-                        isOpen && "rotate-180"
-                      )}
-                    />
-                    <span className="flex-1 text-xs font-bold text-[#17223d] dark:text-white">
-                      {mod.title}
-                    </span>
-                    <span className="text-[10px] font-medium text-[#9aa4bc]">
-                      {modCompletedLessons}/{mod.totalCount}
-                    </span>
-                  </button>
-
-                  {/* Lessons List when open */}
-                  {isOpen && (
-                    <div className="border-t border-[#edf0f6] p-1.5 dark:border-white/10 space-y-0.5">
-                      {mod.lessons.map((lesson) => {
-                        const isActive =
-                          activeLesson?.id === lesson.id || activeLesson?.uniqueKey === lesson.uniqueKey;
-                        const isStudentCompleted =
-                          completedLessonIds.has(lesson.id) || completedLessonIds.has(lesson.uniqueKey);
-
-                        if (!lesson.isCompletedByInstructor) {
-                          // Locked / Disabled Lesson
-                          return (
-                            <div
-                              key={lesson.uniqueKey}
-                              onClick={() =>
-                                toast.info(
-                                  "This lesson will be unlocked once your instructor completes and uploads the session."
-                                )
-                              }
-                              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-xs text-[#9aa4bc] opacity-50 cursor-not-allowed select-none transition hover:bg-slate-100/50 dark:hover:bg-white/5"
-                              title="Locked by instructor"
-                            >
-                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f1f3f8] text-[#aab3c5] dark:bg-white/10">
-                                <Lock className="h-3 w-3" />
-                              </span>
-                              <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
-                              <span className="text-[9px] text-[#aab3c5] shrink-0">{lesson.duration}</span>
-                            </div>
-                          );
-                        }
-
-                        // Unlocked / Completed by Instructor Lesson
-                        return (
-                          <button
-                            key={lesson.uniqueKey}
-                            onClick={() => {
-                              setActiveLessonId(lesson.id);
-                              if (typeof window !== "undefined") {
-                                window.history.replaceState(
-                                  null,
-                                  "",
-                                  createSecureUrl("/learn", {
-                                    courseId: activeCourse?.id || "dsa",
-                                    lessonId: lesson.id,
-                                  })
-                                );
-                              }
-                            }}
-                            className={cx(
-                              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-xs text-left transition",
-                              isActive
-                                ? "bg-[#eaf0ff] text-[#3157e8] dark:bg-[#3157e8]/25 dark:text-[#7ba2ff] font-bold"
-                                : "text-[#52617f] hover:bg-[#f5f7fb] dark:text-white/80 dark:hover:bg-white/5"
-                            )}
-                          >
-                            {/* Check Circle Icon */}
-                            <span
-                              className={cx(
-                                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition",
-                                isStudentCompleted
-                                  ? "bg-[#e4f8ee] text-[#23a26d] dark:bg-emerald-500/20 dark:text-emerald-400"
-                                  : "bg-[#f1f3f8] text-[#aab3c5] dark:bg-white/10"
-                              )}
-                            >
-                              <Check className="h-3 w-3 stroke-[2.5]" />
-                            </span>
-
-                            {/* Lesson Title */}
-                            <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
-
-                            {/* Active Play Icon or Duration Badge */}
-                            {isActive ? (
-                              <Play className="h-3 w-3 fill-current text-[#3157e8] dark:text-[#7ba2ff] shrink-0" />
-                            ) : (
-                              <span className="text-[9px] text-[#9aa4bc] shrink-0">{lesson.duration}</span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="p-3">
+            {renderCurriculumList()}
           </div>
         </aside>
       </div>
+
+      {/* Mobile Curriculum Slide-over Drawer */}
+      {isMobileCurriculumOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex justify-end">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileCurriculumOpen(false)}
+          />
+          <div className="relative z-10 flex h-full w-full max-w-sm flex-col bg-white shadow-2xl dark:bg-[#10172b] animate-in slide-in-from-right duration-200">
+            <div className="flex items-center justify-between border-b border-[#e5e8f0] px-4 py-3.5 dark:border-white/10">
+              <div className="flex items-center gap-2 min-w-0">
+                <BookOpen className="h-4 w-4 text-[#3157e8] shrink-0" />
+                <span className="text-sm font-bold text-[#17223d] dark:text-white truncate">Course Curriculum</span>
+                <span className="text-xs font-bold text-[#3157e8] shrink-0">({completionStats.percentage}%)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileCurriculumOpen(false)}
+                className="rounded-lg p-1.5 text-[#9aa4bc] hover:bg-[#f5f7fb] hover:text-[#17223d] dark:hover:bg-white/10 shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+              {renderCurriculumList()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
