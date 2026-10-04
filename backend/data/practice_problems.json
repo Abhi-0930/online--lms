@@ -4,94 +4,65 @@
     "title": "Two Sum",
     "category": "Arrays",
     "difficulty": "Easy",
-    "acceptance": "84.2%",
-    "submissions": 452,
-    "testCases": 5,
+    "acceptance": "0.0%",
+    "submissions": 4,
+    "testCases": 0,
     "status": "Live",
-    "description": "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.\n\nYou may assume that each input would have **exactly one solution**, and you may not use the same element twice.\n\nYou can return the answer in any order.",
-    "sampleInput": "nums = [2,7,11,15], target = 9",
+    "description": "Given an array of integers nums and an integer target, return the indices of the two numbers such that they add up to the target.\nYou may assume that each input has exactly one solution, and you may not use the same element twice.\nReturn the answer in any order.",
+    "sampleInput": "nums = [2,7,11,15]\ntarget = 9",
     "sampleOutput": "[0,1]",
-    "constraints": "2 <= nums.length <= 10^4\n-10^9 <= nums[i] <= 10^9\n-10^9 <= target <= 10^9\nOnly one valid answer exists.",
+    "constraints": "2 <= nums.length <= 10^4\n\n-10^9 <= nums[i] <= 10^9\n\n-10^9 <= target <= 10^9\n\nExactly one valid answer exists.",
     "hints": [
-      "A brute force approach would search all pairs, taking O(N^2) time. Can we do better using a hash table?",
-      "Can we iterate through the array once and check if the complement (target - nums[i]) has already been seen?",
-      "Store each number's value and index in a hash map as you traverse."
+      "Can you avoid checking every possible pair?",
+      "Store previously seen numbers while traversing the array.",
+      "For each element x, check if target - x already exists."
     ],
     "starterCode": {
-      "python": "class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        # Write your code here\n        pass\n",
-      "javascript": "/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nvar twoSum = function(nums, target) {\n    // Write your code here\n};\n",
-      "typescript": "function twoSum(nums: number[], target: number): number[] {\n    // Write your code here\n    return [];\n}\n",
-      "java": "class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your code here\n        return new int[]{};\n    }\n}\n",
-      "cpp": "#include <vector>\n#include <unordered_map>\nusing namespace std;\n\nclass Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        // Write your code here\n        return {};\n    }\n};\n"
+      "python": "",
+      "javascript": "",
+      "typescript": "",
+      "java": "",
+      "cpp": ""
     },
     "tags": [
       "Array",
-      "Hash Table",
-      "Two Pointers",
-      "Optimization"
+      "Hash Map",
+      "Brute Force",
+      "Lookup",
+      "Optimization",
+      "Binary Search"
     ],
-    "companies": "Google, Meta, Amazon, Microsoft, Apple, Bloomberg, Uber",
+    "companies": "Google, Amazon, Microsoft, Meta, Netflix, Accenture",
     "examples": [
       {
         "id": "ex-1",
-        "input": "nums = [2,7,11,15], target = 9",
+        "input": "nums = [2,7,11,15]\ntarget = 9",
         "output": "[0,1]",
-        "explanation": "Because nums[0] + nums[1] == 9, we return [0, 1]."
+        "explanation": "nums[0] + nums[1] = 2 + 7 = 9  Therefore return [0,1]."
       },
       {
-        "id": "ex-2",
-        "input": "nums = [3,2,4], target = 6",
+        "id": "ex-1790623231201",
+        "input": "nums = [3,2,4]\ntarget = 6",
         "output": "[1,2]",
-        "explanation": "Because nums[1] + nums[2] == 6, we return [1, 2]."
-      },
-      {
-        "id": "ex-3",
-        "input": "nums = [3,3], target = 6",
-        "output": "[0,1]",
-        "explanation": "Because nums[0] + nums[1] == 6, we return [0, 1]."
+        "explanation": "nums[1] + nums[2] = 2 + 4 = 6  Therefore return [1,2]."
       }
     ],
-    "editorialApproach": "We can solve this in linear time O(N) using a Hash Map.\n1. Create a hash map `seen` to store mapping of `number -> index`.\n2. Iterate through the array `nums` with index `i`.\n3. Compute `complement = target - nums[i]`.\n4. If `complement` exists in `seen`, return `[seen[complement], i]`.\n5. Otherwise, insert `nums[i]: i` into `seen`.\nThis avoids nested loops and runs in a single pass.",
-    "editorialAlgorithm": "1. Initialize `seen = {}` (empty map).\n2. For `i, num` in enumerate(nums):\n     complement = target - num\n     if complement in seen:\n         return [seen[complement], i]\n     seen[num] = i\n3. Return empty list if no pair found.",
-    "timeComplexity": "O(N)",
-    "spaceComplexity": "O(N)",
-    "testCasesList": [
-      {
-        "id": "tc-1",
-        "input": "nums = [2,7,11,15], target = 9",
-        "output": "[0,1]",
-        "isHidden": false
-      },
-      {
-        "id": "tc-2",
-        "input": "nums = [3,2,4], target = 6",
-        "output": "[1,2]",
-        "isHidden": false
-      },
-      {
-        "id": "tc-3",
-        "input": "nums = [3,3], target = 6",
-        "output": "[0,1]",
-        "isHidden": true
-      },
-      {
-        "id": "tc-4",
-        "input": "nums = [-1,-2,-3,-4,-5], target = -8",
-        "output": "[2,4]",
-        "isHidden": true
-      }
-    ],
+    "editorialApproach": "Use a Hash Map to store previously visited numbers and their indices.\nFor every number:\n1. Calculate complement = target - current number\n2. Check whether complement already exists in hash map\n3. If yes, return both indices\n4. Otherwise store current number and index",
+    "editorialAlgorithm": "Initialize empty hash map\n\nFor each index i:\n\n    complement = target - nums[i]\n\n    If complement exists:\n        return stored index and i\n\n    Store nums[i] in map\n\nReturn result",
+    "timeComplexity": "O(n)",
+    "spaceComplexity": "O(n)",
+    "testCasesList": [],
     "referenceSolution": {
-      "python": "class Solution:\n    def twoSum(self, nums: list[int], target: int) -> list[int]:\n        seen = {}\n        for i, num in enumerate(nums):\n            complement = target - num\n            if complement in seen:\n                return [seen[complement], i]\n            seen[num] = i\n        return []",
-      "javascript": "var twoSum = function(nums, target) {\n    const map = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n        map.set(nums[i], i);\n    }\n    return [];\n};",
-      "typescript": "function twoSum(nums: number[], target: number): number[] {\n    const map = new Map<number, number>();\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n        if (map.has(complement)) {\n            return [map.get(complement)!, i];\n        }\n        map.set(nums[i], i);\n    }\n    return [];\n}",
-      "java": "class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        HashMap<Integer, Integer> map = new HashMap<>();\n        for (int i = 0; i < nums.length; i++) {\n            int complement = target - nums[i];\n            if (map.containsKey(complement)) {\n                return new int[]{map.get(complement), i};\n            }\n            map.put(nums[i], i);\n        }\n        return new int[]{};\n    }\n}",
-      "cpp": "class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        unordered_map<int, int> seen;\n        for (int i = 0; i < nums.size(); i++) {\n            int comp = target - nums[i];\n            if (seen.count(comp)) {\n                return {seen[comp], i};\n            }\n            seen[nums[i]] = i;\n        }\n        return {};\n    }\n};"
+      "python": "class Solution:\n    def twoSum(self, nums, target):\n        seen = {}\n\n        for i, num in enumerate(nums):\n            complement = target - num\n\n            if complement in seen:\n                return [seen[complement], i]\n\n            seen[num] = i",
+      "javascript": "var twoSum = function(nums, target) {\n    const map = new Map();\n\n    for(let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n\n        if(map.has(complement)) {\n            return [map.get(complement), i];\n        }\n\n        map.set(nums[i], i);\n    }\n};",
+      "typescript": "function twoSum(nums: number[], target: number): number[] {\n    const map = new Map<number, number>();\n\n    for(let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n\n        if(map.has(complement)) {\n            return [map.get(complement)!, i];\n        }\n\n        map.set(nums[i], i);\n    }\n\n    return [];\n}",
+      "java": "class Solution {\n    public int[] twoSum(int[] nums, int target) {\n\n        HashMap<Integer, Integer> map = new HashMap<>();\n\n        for(int i = 0; i < nums.length; i++) {\n\n            int complement = target - nums[i];\n\n            if(map.containsKey(complement)) {\n                return new int[]{map.get(complement), i};\n            }\n\n            map.put(nums[i], i);\n        }\n\n        return new int[]{};\n    }\n}",
+      "cpp": "class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n\n        unordered_map<int,int> mp;\n\n        for(int i = 0; i < nums.size(); i++) {\n\n            int complement = target - nums[i];\n\n            if(mp.find(complement) != mp.end()) {\n                return {mp[complement], i};\n            }\n\n            mp[nums[i]] = i;\n        }\n\n        return {};\n    }\n};"
     },
     "estimatedSolveTime": "15 minutes",
     "visibility": "Public",
     "slug": "two-sum",
     "createdAt": "2026-09-28T19:22:29.654Z",
-    "updatedAt": "2026-09-29T06:25:34.142Z"
+    "updatedAt": "2026-10-04T17:07:04.066Z"
   }
 ]
