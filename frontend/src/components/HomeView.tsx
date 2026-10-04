@@ -74,6 +74,7 @@ import {
   LockKeyhole,
   LogOut,
   Maximize,
+  Megaphone,
   Menu,
   MessageSquare,
   MessageCircle,
@@ -745,8 +746,59 @@ function Dashboard() {
     return "0m today";
   }, [liveSecondsToday, formatMinutes]);
 
+  const { announcements } = useAnnouncements();
+  const latestAnnouncement = announcements.length > 0 ? announcements[0] : null;
+
   return (
     <>
+      {/* Spotlight Announcement Banner */}
+      {latestAnnouncement && (
+        <div className="mb-6 w-full">
+          <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-hidden rounded-2xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/90 via-white to-blue-50/80 p-4 sm:p-5 shadow-xs dark:border-indigo-900/40 dark:bg-gradient-to-r dark:from-indigo-950/40 dark:via-[#10172b] dark:to-blue-950/30">
+            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-600/25">
+                <Megaphone className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md bg-indigo-100 dark:bg-indigo-900/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                    {latestAnnouncement.category || "Notice"}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-400">
+                    {latestAnnouncement.date || "Recent"}
+                  </span>
+                </div>
+                <h3 className="mt-1 text-sm font-bold text-slate-900 dark:text-white truncate">
+                  {latestAnnouncement.title}
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400 line-clamp-1">
+                  {latestAnnouncement.content}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              {latestAnnouncement.ctaLabel && latestAnnouncement.ctaUrl ? (
+                <a
+                  href={latestAnnouncement.ctaUrl.startsWith("http") ? latestAnnouncement.ctaUrl : getSecureHref(latestAnnouncement.ctaUrl)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-xs font-bold text-white shadow-sm transition cursor-pointer"
+                >
+                  <span>{latestAnnouncement.ctaLabel}</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </a>
+              ) : (
+                <Link
+                  href={getSecureHref("/announcements")}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 px-4 py-2 text-xs font-bold text-slate-700 dark:text-white transition shadow-xs cursor-pointer"
+                >
+                  <span>View Notice</span>
+                  <ArrowRight className="h-3.5 w-3.5 text-indigo-500" />
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Welcome Banner */}
       <div className="mb-7 w-full">
         <section className="relative min-h-[230px] overflow-hidden rounded-[24px] bg-[#17223d] p-6 text-white shadow-[0_18px_34px_rgba(23,34,61,0.16)] sm:p-8">

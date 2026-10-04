@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "id": "ANN-2587",
+    "title": "🚀 Live System Design Clinic with FAANG Staff Engineer",
+    "content": "Join us this Thursday at 7:30 PM IST for an exclusive interactive breakdown of distributed caching, Kafka event streaming, and real-world system architecture. Bring your questions for open Q&A!",
+    "category": "Live Session",
+    "targetAudience": "All Students",
+    "publishedAt": "2026-10-04T18:32:57.075Z",
+    "date": "Just now",
+    "isPinned": false,
+    "status": "Published",
+    "ctaLabel": "Join Live Room",
+    "ctaUrl": "/announcements"
+  }
+]

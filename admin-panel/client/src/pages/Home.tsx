@@ -5783,13 +5783,21 @@ export default function Home() {
       return next;
     });
 
-    try {
-      await fetch(`${API_BASE_URL}/api/v1/admin/announcements`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ann),
-      });
-    } catch {}
+    const urls = [
+      `${API_BASE_URL}/api/v1/admin/announcements`,
+      `http://localhost:4000/api/v1/admin/announcements`,
+    ];
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(ann),
+        });
+        if (res.ok) break;
+      } catch {}
+    }
   };
 
   const handleDeleteAnnouncement = async (id: string | number) => {
@@ -5803,11 +5811,19 @@ export default function Home() {
     });
     onToast("Announcement deleted");
 
-    try {
-      await fetch(`${API_BASE_URL}/api/v1/admin/announcements/${id}`, {
-        method: "DELETE",
-      });
-    } catch {}
+    const urls = [
+      `${API_BASE_URL}/api/v1/admin/announcements/${id}`,
+      `http://localhost:4000/api/v1/admin/announcements/${id}`,
+    ];
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          method: "DELETE",
+        });
+        if (res.ok) break;
+      } catch {}
+    }
   };
 
   const [dialog, setDialog] = useState<DialogState>(null);

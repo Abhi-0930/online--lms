@@ -413,19 +413,20 @@ export default function PostAnnouncementModal({
     onToast("Announcement draft discarded");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveOrBroadcast = async (targetStatus: "Published" | "Draft") => {
     if (!title.trim()) {
       onToast("Please enter an announcement title");
+      setActiveTab("edit");
       return;
     }
     if (!body.trim()) {
       onToast("Please enter announcement message content");
+      setActiveTab("edit");
       return;
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
       const newAnnouncement: AnnouncementItem = {
         id: announcementToEdit?.id || `ANN-${Date.now().toString().slice(-4)}`,
         title: title.trim(),
@@ -438,22 +439,33 @@ export default function PostAnnouncementModal({
         ctaLabel: hasCta && ctaLabel.trim() ? ctaLabel.trim() : undefined,
         ctaUrl: hasCta && ctaUrl.trim() ? ctaUrl.trim() : undefined,
         isPinned,
-        status,
+        status: targetStatus,
       };
 
       // Clear draft on successful broadcast
       clearDraft("announcement");
       setHasDraft(false);
-      setIsSubmitting(false);
 
-      onSuccess(newAnnouncement);
+      if (onSuccess) {
+        await onSuccess(newAnnouncement);
+      }
+
       onToast(
-        status === "Published"
+        targetStatus === "Published"
           ? `🚀 Announcement broadcasted to ${cohort} via ${newAnnouncement.channels.join(", ")}!`
           : `Saved announcement draft successfully`
       );
       onClose();
-    }, 350);
+    } catch (err: any) {
+      onToast("Error saving announcement");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSaveOrBroadcast("Published");
   };
 
   if (!isOpen) return null;
@@ -886,14 +898,9 @@ export default function PostAnnouncementModal({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                setStatus("Draft");
-                setTimeout(() => {
-                  const form = document.getElementById("announcement-form") as HTMLFormElement;
-                  if (form) form.requestSubmit();
-                }, 10);
-              }}
-              className="px-4 py-2 text-xs font-bold rounded-xl border border-[var(--app-line)] hover:bg-[var(--hover-bg)] text-[var(--foreground)] flex items-center gap-1.5 transition-colors"
+              disabled={isSubmitting}
+              onClick={() => handleSaveOrBroadcast("Draft")}
+              className="px-4 py-2 text-xs font-bold rounded-xl border border-[var(--app-line)] hover:bg-[var(--hover-bg)] text-[var(--foreground)] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
             >
               <Save className="h-3.5 w-3.5" />
               Save Draft
@@ -902,21 +909,15 @@ export default function PostAnnouncementModal({
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => {
-                setStatus("Published");
-                setTimeout(() => {
-                  const form = document.getElementById("announcement-form") as HTMLFormElement;
-                  if (form) form.requestSubmit();
-                }, 10);
-              }}
-              className="px-5 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all disabled:opacity-50"
+              onClick={() => handleSaveOrBroadcast("Published")}
+              className="px-5 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
             >
               {isSubmitting ? (
                 <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
               ) : (
                 <Send className="h-3.5 w-3.5" />
               )}
-              {status === "Draft" ? "Save Announcement" : "Broadcast Announcement"}
+              Broadcast Announcement
             </button>
           </div>
         </div>
