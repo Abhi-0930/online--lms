@@ -33,8 +33,8 @@ export const env = {
   FRONTEND_URL: process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' ? 'https://www.preppath.net' : 'http://localhost:3000'),
 
   // Razorpay
-  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || 'rzp_test_TjTmBMa68YS2ki',
-  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || 'UH123kXTQC7cq5kraIO8zCYm',
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || 'rzp_live_TkKBcSlPyvRXQ3',
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || '8Wh5O84lUqAv9j7V9gqic145',
 };
 
 // Validate required environment variables
