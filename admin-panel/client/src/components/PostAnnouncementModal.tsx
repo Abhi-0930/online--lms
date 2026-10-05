@@ -37,6 +37,7 @@ import {
   clearDraft,
   formatTimeAgo,
 } from "@/lib/draftManager";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export interface AnnouncementItem {
   id: string | number;
@@ -61,6 +62,7 @@ interface PostAnnouncementModalProps {
   onSuccess: (announcement: AnnouncementItem) => void;
   onToast: (msg: string) => void;
   announcementToEdit?: AnnouncementItem | null;
+  courses?: any[];
 }
 
 interface CustomSelectProps {
@@ -196,16 +198,6 @@ const CATEGORIES = [
   { value: "General", label: "General", badge: "Notice", badgeColor: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700" },
 ];
 
-const COHORTS = [
-  "All Cohorts & Learners",
-  "DSA Placement Program 2026",
-  "Full Stack Web Dev (Spring)",
-  "System Design Masterclass",
-  "Placement Screening Cohort",
-  "Frontend Advanced Batch",
-  "AI & ML Foundations",
-];
-
 const PRESET_TEMPLATES = [
   {
     icon: "🚀",
@@ -223,11 +215,11 @@ const PRESET_TEMPLATES = [
     name: "48h Coding Sprint",
     title: "📢 Weekend Dynamic Programming Marathon is Live!",
     category: "Contest & Sprint",
-    cohort: "DSA Placement Program 2026",
+    cohort: "All Cohorts & Learners",
     channels: ["In-App Notice", "Portal Banner", "Discord / Telegram"],
     ctaLabel: "Start Solving",
     ctaUrl: "/practice-problems",
-    body: "The 48-hour DP Coding Marathon has officially begun! 12 hand-picked interview challenges from Google & Amazon are unlocked in the Practice Arena. Solve them to climb the batch leaderboard.",
+    body: "The 48-hour DP Coding Marathon has officially begun! Hand-picked interview challenges from Google & Amazon are unlocked in the Practice Arena. Solve them to climb the batch leaderboard.",
   },
   {
     icon: "🛠️",
@@ -238,14 +230,14 @@ const PRESET_TEMPLATES = [
     channels: ["Email Digest", "Portal Banner"],
     ctaLabel: "Status Page",
     ctaUrl: "/announcements",
-    body: "Skillforge servers will undergo scheduled infrastructure optimization this Sunday from 2:00 AM to 4:00 AM IST. Practice arenas and coding sandboxes may be briefly unavailable during this window.",
+    body: "PrepPath servers will undergo scheduled infrastructure optimization this Sunday from 2:00 AM to 4:00 AM IST. Practice arenas and coding sandboxes may be briefly unavailable during this window.",
   },
   {
     icon: "📝",
     name: "Assignment Due",
     title: "📝 Assignment Checkpoint: Graph Algorithms & DFS/BFS",
     category: "Assignment & Milestone",
-    cohort: "DSA Placement Program 2026",
+    cohort: "All Cohorts & Learners",
     channels: ["Email Digest", "In-App Notice"],
     ctaLabel: "Submit Solution",
     ctaUrl: "/assignments",
@@ -256,7 +248,7 @@ const PRESET_TEMPLATES = [
     name: "Mock Interviews",
     title: "💼 1-on-1 Mock Interview Booking Window is Open",
     category: "Career & Placement",
-    cohort: "Placement Screening Cohort",
+    cohort: "All Cohorts & Learners",
     channels: ["Email Digest", "In-App Notice", "Portal Banner"],
     ctaLabel: "Book 45m Slot",
     ctaUrl: "/announcements",
@@ -270,6 +262,7 @@ export default function PostAnnouncementModal({
   onSuccess,
   onToast,
   announcementToEdit,
+  courses,
 }: PostAnnouncementModalProps) {
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [title, setTitle] = useState("");
@@ -290,7 +283,76 @@ export default function PostAnnouncementModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
 
+  const [dynamicCourses, setDynamicCourses] = useState<any[]>(courses || []);
+  const [dynamicCohorts, setDynamicCohorts] = useState<any[]>([]);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load real courses and cohorts from API whenever modal is opened
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Fetch live courses
+    fetch(`${API_BASE_URL}/api/v1/admin/courses`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setDynamicCourses(data);
+        }
+      })
+      .catch(() => {});
+
+    // Fetch live cohorts if any
+    fetch(`${API_BASE_URL}/api/v1/cohorts`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setDynamicCohorts(data);
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
+
+  const cohortOptions = useMemo(() => {
+    const opts: Array<{ value: string; label: string; badge?: string; badgeColor?: string }> = [
+      {
+        value: "All Cohorts & Learners",
+        label: "All Cohorts & Learners",
+        badge: "All Learners",
+        badgeColor:
+          "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
+      },
+    ];
+
+    const sourceCourses = dynamicCourses.length > 0 ? dynamicCourses : courses || [];
+    sourceCourses.forEach((c: any) => {
+      const title = c.title || c.name;
+      if (title && !opts.some((o) => o.value === title)) {
+        opts.push({
+          value: title,
+          label: title,
+          badge: "Live Course",
+          badgeColor:
+            "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+        });
+      }
+    });
+
+    dynamicCohorts.forEach((ch: any) => {
+      const name = ch.name || ch.title;
+      if (name && !opts.some((o) => o.value === name)) {
+        opts.push({
+          value: name,
+          label: name,
+          badge: "Cohort",
+          badgeColor:
+            "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+        });
+      }
+    });
+
+    return opts;
+  }, [dynamicCourses, dynamicCohorts, courses]);
 
   // Initialize or restore draft
   useEffect(() => {
@@ -615,7 +677,7 @@ export default function PostAnnouncementModal({
                   <CustomSelect
                     value={cohort}
                     onChange={setCohort}
-                    options={COHORTS}
+                    options={cohortOptions}
                     icon={<Users className="h-3.5 w-3.5 text-[var(--muted)] shrink-0" />}
                   />
                 </div>
