@@ -6750,6 +6750,7 @@ export default function Home() {
           onSuccess={handleSaveAnnouncement}
           onToast={onToast}
           announcementToEdit={editingAnnouncementData}
+          courses={liveCourses}
         />
 
         {dialog && (
