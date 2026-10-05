@@ -122,7 +122,7 @@ export default function RootLayout({
                     "Structured software engineering placement preparation, curated DSA patterns, live interactive cohorts, and 1:1 mentorship.",
                   sameAs: [
                     "https://x.com/PrepPath",
-                    "https://www.linkedin.com/company/preppath",
+                    "https://www.linkedin.com/company/prepppath",
                     "https://www.instagram.com/preppath.nett?stkn=d3M4bGZwdGU2dGI4",
                   ],
                   offers: {
