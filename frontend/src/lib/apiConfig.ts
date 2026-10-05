@@ -1,3 +1,10 @@
+const isStaleOrLocalUrl = (url?: string) =>
+  !url ||
+  url.includes("localhost") ||
+  url.includes("127.0.0.1") ||
+  url.includes("code.run") ||
+  url.includes("online-lms-v11c");
+
 export const API_BASE_URL = (() => {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== "undefined") {
@@ -14,11 +21,16 @@ export const API_BASE_URL = (() => {
     if (isLocal) {
       return `http://${hostname}:4000`;
     }
-    if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
+    if (isStaleOrLocalUrl(envUrl)) {
       return "https://preppath-e80f.onrender.com";
     }
   }
-  return (envUrl || "http://localhost:4000").replace(/\/$/, "");
+  if (isStaleOrLocalUrl(envUrl)) {
+    return process.env.NODE_ENV === "production"
+      ? "https://preppath-e80f.onrender.com"
+      : "http://localhost:4000";
+  }
+  return (envUrl || "https://preppath-e80f.onrender.com").replace(/\/$/, "");
 })();
 
 export const WS_BASE_URL = (() => {
@@ -37,6 +49,11 @@ export const WS_BASE_URL = (() => {
     if (isLocal) {
       return `ws://${hostname}:4000`;
     }
+  }
+  if (isStaleOrLocalUrl(envWs)) {
+    return API_BASE_URL.startsWith("https://")
+      ? API_BASE_URL.replace("https://", "wss://")
+      : API_BASE_URL.replace("http://", "ws://");
   }
   return (
     envWs ||
