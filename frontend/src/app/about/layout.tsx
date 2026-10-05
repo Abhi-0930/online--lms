@@ -51,7 +51,7 @@ export default function AboutLayout({
       logo: "https://www.preppath.net/favicon.ico",
       sameAs: [
         "https://x.com/PrepPath",
-        "https://www.linkedin.com/company/preppath",
+        "https://www.linkedin.com/company/prepppath",
         "https://www.instagram.com/preppath.nett?stkn=d3M4bGZwdGU2dGI4"
       ],
       address: {
