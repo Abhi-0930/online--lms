@@ -148,7 +148,7 @@ export function ContactSection() {
             {/* Social Icon Buttons */}
             <div className="flex items-center gap-3 pt-2">
               <a
-                href="https://www.linkedin.com/company/preppath"
+                href="https://www.linkedin.com/company/prepppath"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="LinkedIn"
