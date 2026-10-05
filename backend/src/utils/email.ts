@@ -290,3 +290,216 @@ export async function sendContactFormEmail(params: {
   }
 }
 
+export async function sendAnnouncementEmail(params: {
+  to: string | string[];
+  title: string;
+  body: string;
+  category?: string;
+  cohort?: string;
+  author?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  meetingLink?: string;
+  instructor?: string;
+}): Promise<{ sent: number; total: number; success: boolean }> {
+  const {
+    to,
+    title,
+    body,
+    category = 'General',
+    cohort = 'All Cohorts & Learners',
+    author = 'Admin Team',
+    ctaLabel,
+    ctaUrl,
+    meetingLink,
+    instructor,
+  } = params;
+
+  const recipientList = Array.isArray(to) ? to : [to];
+  const uniqueRecipients = Array.from(
+    new Set(
+      recipientList
+        .map((e) => (typeof e === 'string' ? e.trim().toLowerCase() : ''))
+        .filter((e): e is string => Boolean(e && e.includes('@') && !e.includes('example.com')))
+    )
+  );
+
+  if (uniqueRecipients.length === 0) {
+    logger.warn('sendAnnouncementEmail: No valid recipients found to send announcement email');
+    return { sent: 0, total: 0, success: false };
+  }
+
+  logger.info(
+    { count: uniqueRecipients.length, title, category, cohort },
+    'Processing announcement email broadcast via Resend'
+  );
+
+  // Convert body text to formatted HTML
+  const formattedBody = (body || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n\n')
+    .map((paragraph) => {
+      let p = paragraph.trim();
+      if (!p) return '';
+      // Markdown-like bold: **text**
+      p = p.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      // Markdown-like code: `code`
+      p = p.replace(
+        /`([^`]+)`/g,
+        '<code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:13px;color:#0f172a;">$1</code>'
+      );
+      // Markdown-like links: [text](url)
+      p = p.replace(
+        /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,
+        '<a href="$2" style="color:#2563eb;text-decoration:underline;">$1</a>'
+      );
+      // Bullet list lines: "- item" or "* item"
+      if (p.startsWith('- ') || p.startsWith('* ')) {
+        const items = p
+          .split('\n')
+          .map((line) => line.replace(/^[-*]\s*/, '').trim())
+          .filter(Boolean)
+          .map((item) => `<li style="margin-bottom:6px;">${item}</li>`)
+          .join('');
+        return `<ul style="margin: 12px 0; padding-left: 20px; color: #334155; font-size: 14px; line-height: 1.6;">${items}</ul>`;
+      }
+      return `<p style="margin: 0 0 14px 0; color: #334155; font-size: 14px; line-height: 1.6;">${p.replace(/\n/g, '<br/>')}</p>`;
+    })
+    .filter(Boolean)
+    .join('');
+
+  const frontendUrl = env.FRONTEND_URL || 'https://www.preppath.net';
+  const targetActionUrl = ctaUrl
+    ? (ctaUrl.startsWith('http') ? ctaUrl : `${frontendUrl}${ctaUrl.startsWith('/') ? '' : '/'}${ctaUrl}`)
+    : (meetingLink || `${frontendUrl}/announcements`);
+  const targetActionLabel = ctaLabel || (meetingLink ? 'Join Live Room' : 'View on PrepPath');
+
+  const categoryColorMap: Record<string, { bg: string; text: string; border: string }> = {
+    'Live Session': { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
+    'Live Class': { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
+    'Practice & Arena': { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
+    'Assignment & Milestone': { bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
+    'Contest & Sprint': { bg: '#faf5ff', text: '#7e22ce', border: '#e9d5ff' },
+    'Platform Notice': { bg: '#eef2ff', text: '#4338ca', border: '#c7d2fe' },
+    'Career & Placement': { bg: '#ecfeff', text: '#0e7490', border: '#a5f3fc' },
+  };
+
+  const badgeStyle = categoryColorMap[category] || { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' };
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${title}</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 24px 12px; }
+        .container { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 20px; padding: 32px; border: 1px solid #e2e8f0; box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05); }
+        .badges { margin-bottom: 16px; }
+        .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 6px; }
+        .title { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.35; margin: 0 0 16px 0; }
+        .author-info { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+        .content-box { background: #fafbfc; border: 1px solid #edf2f7; border-radius: 14px; padding: 20px; margin-bottom: 24px; }
+        .btn { display: inline-block; background: #2563eb; color: #ffffff !important; font-size: 14px; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 12px; text-align: center; box-shadow: 0 4px 14px rgba(37,99,235,0.25); }
+        .footer { font-size: 12px; color: #94a3b8; text-align: center; margin-top: 28px; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div style="font-size: 11px; font-weight: 800; color: #2563eb; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px;">
+          PREPPATH ANNOUNCEMENT
+        </div>
+        
+        <div class="badges">
+          <span class="badge" style="background: ${badgeStyle.bg}; color: ${badgeStyle.text}; border: 1px solid ${badgeStyle.border};">
+            ${category}
+          </span>
+          ${
+            cohort && cohort !== 'All Cohorts & Learners'
+              ? `
+          <span class="badge" style="background: #fdf4ff; color: #9333ea; border: 1px solid #f0abfc;">
+            ${cohort}
+          </span>
+          `
+              : `
+          <span class="badge" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">
+            All Learners
+          </span>
+          `
+          }
+        </div>
+
+        <h1 class="title">${title}</h1>
+
+        <div class="author-info">
+          <span>Posted by <strong>${instructor || author}</strong></span>
+          <span> • </span>
+          <span>${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+        </div>
+
+        <div class="content-box">
+          ${formattedBody}
+        </div>
+
+        ${
+          targetActionUrl
+            ? `
+        <div style="text-align: center; margin: 28px 0 12px 0;">
+          <a href="${targetActionUrl}" class="btn" target="_blank">
+            ${targetActionLabel} &rarr;
+          </a>
+        </div>
+        `
+            : ''
+        }
+
+        <div class="footer">
+          You received this email because you are enrolled on <strong>PrepPath</strong>.<br/>
+          To view all updates and live classrooms, visit <a href="${frontendUrl}/announcements" style="color: #2563eb;">PrepPath Announcements</a>.<br/>
+          &copy; ${new Date().getFullYear()} PrepPath Inc. All rights reserved.
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  if (!resend || !env.RESEND_API_KEY || env.RESEND_API_KEY.startsWith('re_123456789')) {
+    logger.info(
+      { recipients: uniqueRecipients.length, title },
+      'Announcement email broadcast simulated (Resend API key is placeholder)'
+    );
+    return { sent: uniqueRecipients.length, total: uniqueRecipients.length, success: true };
+  }
+
+  // Send to recipients in parallel batches of 10
+  let sentCount = 0;
+  const batchSize = 10;
+  for (let i = 0; i < uniqueRecipients.length; i += batchSize) {
+    const chunk = uniqueRecipients.slice(i, i + batchSize);
+    await Promise.all(
+      chunk.map(async (recipientEmail) => {
+        try {
+          const { error } = await resend.emails.send({
+            from: getSenderEmail(),
+            to: [recipientEmail],
+            subject: `📢 ${title} - PrepPath`,
+            html: htmlContent,
+          });
+          if (error) {
+            logger.error({ error, recipientEmail }, 'Failed to send announcement email to recipient');
+          } else {
+            sentCount++;
+          }
+        } catch (sendErr) {
+          logger.error({ sendErr, recipientEmail }, 'Error sending announcement email');
+        }
+      })
+    );
+  }
+
+  logger.info({ sentCount, total: uniqueRecipients.length, title }, 'Announcement email broadcast complete');
+  return { sent: sentCount, total: uniqueRecipients.length, success: sentCount > 0 };
+}
+
+
