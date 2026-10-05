@@ -6,22 +6,14 @@ import { motion, useInView } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
-  GraduationCap,
   Star,
-  Award,
-  Users,
-  Building,
-  CheckCircle2,
   Sparkles,
-  BookOpen,
   Code2,
-  Cpu,
-  ShieldCheck,
   Server,
   BrainCircuit,
   MessageSquare,
-  HelpCircle,
-  ExternalLink,
+  CheckCircle2,
+  Quote,
   ChevronDown
 } from "lucide-react";
 import { Footer } from "@/landing/Footer";
@@ -88,8 +80,6 @@ export interface DetailedInstructor {
   id: string;
   name: string;
   role: string;
-  currentCompany: string;
-  companyLogo: string;
   avatar: string;
   experience: string;
   studentsTaught: string;
@@ -97,45 +87,65 @@ export interface DetailedInstructor {
   reviewsCount: number;
   bio: string;
   specialties: string[];
-  pastCompanies: string[];
-  coursesTaught: string[];
-  highlight: string;
+  highlights?: string[];
+  teachingPhilosophy?: string;
 }
 
 const INSTRUCTORS_DATA: DetailedInstructor[] = [
   {
     id: "inst-1",
-    name: "Dr. Sandeep Kulkarni",
-    role: "Ex-Staff Software Engineer",
-    currentCompany: "Google",
-    companyLogo: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg",
-    avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80",
-    experience: "14+ Years",
+    name: "Abhishek Jujjuvarapu",
+    role: "Founder & Lead Instructor @ PrepPath",
+    avatar: "/instructors/abhishek.png",
+    experience: "3+ Years",
     studentsTaught: "3,800+",
-    rating: 4.97,
-    reviewsCount: 1420,
-    bio: "Former Google Search infrastructure architect and competitive programming Grandmaster. Specializes in transforming complex algorithmic problems into intuitive mental models and pattern archetypes.",
-    specialties: ["Advanced Dynamic Programming", "Graph Theory & Network Flows", "Competitive Programming", "High-Throughput DSA"],
-    pastCompanies: ["Google", "Meta", "Directi"],
-    coursesTaught: ["Data Structures & Algorithmic Patterns Masterclass", "Competitive Coding & Olympiad Problem Solving"],
-    highlight: "Authored data structure optimizations used across billion-user search pipelines at Google."
+    rating: 4.98,
+    reviewsCount: 1450,
+    bio: "Full-stack developer, cybersecurity professional, and educator passionate about helping students build strong problem-solving skills and industry-ready technical expertise. Focused on making complex concepts simple through practical learning, real-world projects, and structured mentorship.",
+    specialties: [
+      "Software Engineering",
+      "Data Structures & Algorithms",
+      "Full-Stack Development",
+      "System Design",
+      "Cybersecurity",
+      "AI Applications",
+      "Technical Interview Preparation",
+      "Career Mentorship"
+    ],
+    highlights: [
+      "Founder of PrepPath and CodeLoom",
+      "Trained hundreds of students in Python, DSA, Web Development, and Interview Preparation",
+      "Conducted live workshops, bootcamps, and placement-focused mentorship programs",
+      "Helped learners secure opportunities in leading product and service-based companies",
+      "Built real-world applications using modern web technologies and cloud platforms"
+    ],
+    teachingPhilosophy: "Learning should focus on understanding, not memorization. Every concept is taught from first principles with practical examples, hands-on coding, and interview-focused problem solving."
   },
   {
     id: "inst-2",
     name: "Natasha Romanov",
     role: "Principal AI Research Scientist",
-    currentCompany: "Meta AI",
-    companyLogo: "https://upload.wikimedia.org/wikipedia/commons/7/7b/Meta_Platforms_Inc._logo.svg",
     avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
     experience: "11+ Years",
     studentsTaught: "3,200+",
     rating: 4.95,
     reviewsCount: 980,
-    bio: "Specializes in LLM optimization, multimodal vision architectures, and autonomous agent frameworks. Led core machine learning infrastructure teams and research papers at NeurIPS.",
-    specialties: ["Generative AI & LLMs", "PyTorch Distributed Training", "Vector Databases & RAG", "Autonomous Agent Systems"],
-    pastCompanies: ["Meta AI", "OpenAI Contributor", "Stanford AI Lab"],
-    coursesTaught: ["Production Generative AI & Autonomous Agents", "Deep Learning & Neural Network Foundations"],
-    highlight: "Co-authored pioneering papers in low-latency LLM quantization and multimodal alignment."
+    bio: "Specializes in LLM optimization, multimodal vision architectures, and autonomous agent frameworks. Led core machine learning infrastructure teams and research papers at top AI conferences.",
+    specialties: [
+      "Generative AI & LLMs",
+      "PyTorch Distributed Training",
+      "Vector Databases & RAG",
+      "Autonomous Agent Systems",
+      "High-Scale ML Systems",
+      "Neural Architecture Search"
+    ],
+    highlights: [
+      "Published leading research papers on low-latency LLM quantization and multimodal models",
+      "Architected distributed training pipelines handling petabyte-scale training datasets",
+      "Mentored thousands of engineers in cutting-edge GenAI and neural network deployment",
+      "Active contributor to major open-source deep learning repositories"
+    ],
+    teachingPhilosophy: "Deep learning mastery comes from implementing architectures from scratch, understanding gradient flow intimately, and verifying mathematical intuition through code."
   }
 ];
 
@@ -154,7 +164,7 @@ export default function InstructorsPage() {
       target: 2,
       suffix: "",
       label: "Industry Mentors",
-      detail: "Staff & Principal Engineers from top tech giants"
+      detail: "Experienced instructors with hands-on production depth"
     },
     {
       target: 4.96,
@@ -203,7 +213,7 @@ export default function InstructorsPage() {
   const instructorFaqs = [
     {
       question: "Who are the instructors at PrepPath?",
-      answer: "All PrepPath instructors are active Staff, Principal, and Lead Software Engineers at premier tech firms like Google and Meta. We do not employ full-time generic educators; our mentors build high-scale production systems daily."
+      answer: "All PrepPath instructors are active practitioners and technical leaders with real-world engineering background. We focus on hands-on practical depth, line-by-line coding, and personalized mentorship."
     },
     {
       question: "How do 1:1 mentorship and doubt-clearing sessions work?",
@@ -273,7 +283,7 @@ export default function InstructorsPage() {
           </h1>
 
           <p className="text-slate-600 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto font-normal">
-            Our mentors are Staff and Principal Engineers from Google and Meta. They teach the exact mental models, system architectures, and coding standards used to build products for billions.
+            Our mentors are seasoned technical leaders and practitioners. They teach the exact mental models, system architectures, and coding standards used to build industry-ready products.
           </p>
         </section>
 
@@ -310,7 +320,7 @@ export default function InstructorsPage() {
 
         {/* Instructor Cards Grid (2 Mentors) */}
         <section className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-start">
             {INSTRUCTORS_DATA.map((instructor, idx) => (
               <motion.div
                 key={instructor.id}
@@ -322,47 +332,45 @@ export default function InstructorsPage() {
               >
                 <div className="p-6 sm:p-8 space-y-6">
                   
-                  {/* Top Header: Avatar + Company Logo */}
+                  {/* Top Header: Avatar + Experience */}
                   <div className="flex items-start justify-between">
                     <div className="relative">
                       <img
                         src={instructor.avatar}
                         alt={instructor.name}
-                        className="w-22 h-22 rounded-2xl object-cover ring-4 ring-slate-100 shadow-sm group-hover:scale-105 transition-transform duration-300"
+                        className="w-24 h-24 rounded-2xl object-cover ring-4 ring-slate-100 shadow-sm group-hover:scale-105 transition-transform duration-300 bg-slate-100"
                       />
-                      <span className="absolute -bottom-2 -right-1 px-2 py-0.5 rounded-md bg-slate-950 text-white text-[10px] font-bold shadow-xs">
+                      <span className="absolute -bottom-2 -right-1 px-2.5 py-0.5 rounded-md bg-slate-950 text-white text-[10px] font-bold shadow-xs tracking-wide">
                         {instructor.experience}
                       </span>
                     </div>
-
-                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center max-w-[90px] h-10">
-                      <img
-                        src={instructor.companyLogo}
-                        alt={instructor.currentCompany}
-                        className="h-5 w-auto object-contain"
-                      />
-                    </div>
                   </div>
 
-                  {/* Name, Role & Company */}
-                  <div>
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 mb-1">
-                      <span>{instructor.role}</span>
-                      <span>•</span>
-                      <span>{instructor.currentCompany}</span>
+                  {/* Name & Role */}
+                  <div className="space-y-1">
+                    <div className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">
+                      {instructor.role}
                     </div>
-                    <h3 className="text-2xl font-bold text-slate-950">{instructor.name}</h3>
-                  </div>
-
-                  {/* Highlight Quote */}
-                  <div className="p-3.5 rounded-xl bg-slate-50/90 border border-slate-100 text-xs sm:text-sm text-slate-700 italic leading-relaxed">
-                    &ldquo;{instructor.highlight}&rdquo;
+                    <h3 className="text-2xl font-bold text-slate-950 tracking-tight">{instructor.name}</h3>
                   </div>
 
                   {/* Bio */}
                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                     {instructor.bio}
                   </p>
+
+                  {/* Teaching Philosophy */}
+                  {instructor.teachingPhilosophy && (
+                    <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/60 space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+                        <Quote className="w-3.5 h-3.5 text-amber-700 fill-amber-700/20" />
+                        <span>Teaching Philosophy</span>
+                      </div>
+                      <p className="text-xs text-amber-950/90 italic leading-relaxed">
+                        &ldquo;{instructor.teachingPhilosophy}&rdquo;
+                      </p>
+                    </div>
+                  )}
 
                   {/* Core Expertise Tags */}
                   <div className="space-y-2">
@@ -371,7 +379,7 @@ export default function InstructorsPage() {
                       {instructor.specialties.map((spec, sIdx) => (
                         <span
                           key={sIdx}
-                          className="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium"
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 text-xs font-medium border border-slate-200/60"
                         >
                           {spec}
                         </span>
@@ -379,15 +387,20 @@ export default function InstructorsPage() {
                     </div>
                   </div>
 
-                  {/* Past Companies Pedigree */}
-                  <div className="pt-2">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                      Career Pedigree
-                    </p>
-                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                      {instructor.pastCompanies.join("  →  ")}
+                  {/* Professional Highlights */}
+                  {instructor.highlights && instructor.highlights.length > 0 && (
+                    <div className="space-y-2.5 pt-2 border-t border-slate-100">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Professional Highlights</p>
+                      <ul className="space-y-2">
+                        {instructor.highlights.map((item, hIdx) => (
+                          <li key={hIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Card Footer: Rating & Stats */}
