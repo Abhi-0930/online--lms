@@ -12,23 +12,44 @@ export async function POST(req: Request) {
       );
     }
 
-    const backendUrl =
-      process.env.NEXT_PUBLIC_API_URL ||
-      process.env.API_URL ||
-      "https://site--preppath-backend--x9gt4y7zlzhr.code.run";
+    const candidateUrls = [
+      process.env.INTERNAL_API_URL,
+      process.env.API_URL,
+      process.env.NEXT_PUBLIC_API_URL,
+      "http://localhost:4000",
+      "http://127.0.0.1:4000",
+      "https://online-lms-v11c.onrender.com",
+      "https://site--preppath-backend--x9gt4y7zlzhr.code.run",
+    ].filter(Boolean) as string[];
 
-    // Forward securely to backend contact endpoint (backend holds all private email credentials)
-    const backendRes = await fetch(`${backendUrl}/contact`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, email, message, phone }),
-    });
+    let lastError: any = null;
+    let backendRes: Response | null = null;
 
-    if (backendRes.ok) {
-      const data = await backendRes.json();
-      return NextResponse.json(data);
+    for (const baseUrl of candidateUrls) {
+      const cleanBase = baseUrl.replace(/\/api\/v1\/?$/, "").replace(/\/+$/, "");
+      const targetEndpoints = [`${cleanBase}/contact`, `${cleanBase}/api/v1/contact`];
+
+      for (const endpoint of targetEndpoints) {
+        try {
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name, email, message, phone }),
+            signal: AbortSignal.timeout(6000),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            return NextResponse.json(data);
+          } else if (res.status !== 404 && res.status !== 502) {
+            backendRes = res;
+          }
+        } catch (err) {
+          lastError = err;
+        }
+      }
     }
 
     const errorData = await backendRes.json().catch(() => ({}));
