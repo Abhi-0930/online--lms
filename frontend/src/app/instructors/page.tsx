@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,7 +13,6 @@ import {
   Building,
   CheckCircle2,
   Sparkles,
-  Search,
   BookOpen,
   Code2,
   Cpu,
@@ -92,7 +91,6 @@ export interface DetailedInstructor {
   currentCompany: string;
   companyLogo: string;
   avatar: string;
-  domain: "All" | "Algorithms & DSA" | "System Design & Cloud" | "AI & Machine Learning" | "Full Stack & Web" | "Cyber Security";
   experience: string;
   studentsTaught: string;
   rating: number;
@@ -112,9 +110,8 @@ const INSTRUCTORS_DATA: DetailedInstructor[] = [
     currentCompany: "Google",
     companyLogo: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg",
     avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80",
-    domain: "Algorithms & DSA",
     experience: "14+ Years",
-    studentsTaught: "32,000+",
+    studentsTaught: "3,800+",
     rating: 4.97,
     reviewsCount: 1420,
     bio: "Former Google Search infrastructure architect and competitive programming Grandmaster. Specializes in transforming complex algorithmic problems into intuitive mental models and pattern archetypes.",
@@ -130,9 +127,8 @@ const INSTRUCTORS_DATA: DetailedInstructor[] = [
     currentCompany: "Meta AI",
     companyLogo: "https://upload.wikimedia.org/wikipedia/commons/7/7b/Meta_Platforms_Inc._logo.svg",
     avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
-    domain: "AI & Machine Learning",
     experience: "11+ Years",
-    studentsTaught: "21,500+",
+    studentsTaught: "3,200+",
     rating: 4.95,
     reviewsCount: 980,
     bio: "Specializes in LLM optimization, multimodal vision architectures, and autonomous agent frameworks. Led core machine learning infrastructure teams and research papers at NeurIPS.",
@@ -140,106 +136,11 @@ const INSTRUCTORS_DATA: DetailedInstructor[] = [
     pastCompanies: ["Meta AI", "OpenAI Contributor", "Stanford AI Lab"],
     coursesTaught: ["Production Generative AI & Autonomous Agents", "Deep Learning & Neural Network Foundations"],
     highlight: "Co-authored pioneering papers in low-latency LLM quantization and multimodal alignment."
-  },
-  {
-    id: "inst-3",
-    name: "Karthik Sundaram",
-    role: "VP of Engineering & Cloud Fellow",
-    currentCompany: "Amazon AWS",
-    companyLogo: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-    domain: "System Design & Cloud",
-    experience: "16+ Years",
-    studentsTaught: "28,000+",
-    rating: 4.98,
-    reviewsCount: 1650,
-    bio: "Architected mission-critical telemetry, multi-region database sharding, and serverless compute infrastructure at AWS. Mentored over 500+ engineers into Staff and Principal roles.",
-    specialties: ["High-Level System Design (HLD)", "Distributed Caching & Kafka", "Kubernetes & Multi-Cloud", "Low-Latency Microservices"],
-    pastCompanies: ["Amazon", "Uber", "Salesforce"],
-    coursesTaught: ["Distributed Systems Engineering for Extreme Scale", "AWS Cloud Architect & Infrastructure Masterclass"],
-    highlight: "Led distributed system architectures processing 10M+ transactions/sec with 99.999% uptime."
-  },
-  {
-    id: "inst-4",
-    name: "Vikram Malhotra",
-    role: "Staff Infrastructure Architect",
-    currentCompany: "Uber",
-    companyLogo: "https://upload.wikimedia.org/wikipedia/commons/c/cc/Uber_logo_2018.png",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
-    domain: "System Design & Cloud",
-    experience: "12+ Years",
-    studentsTaught: "18,400+",
-    rating: 4.94,
-    reviewsCount: 790,
-    bio: "Leads real-time marketplace routing engines and geospatial distributed databases. Expert at low-level concurrency, memory management, and high-frequency stream processing in Go and Rust.",
-    specialties: ["Microservice Resiliency", "Geospatial Indexing", "Go & Rust Backend Systems", "Distributed Consensus (Raft/Paxos)"],
-    pastCompanies: ["Uber", "Lyft", "Oracle"],
-    coursesTaught: ["High-Performance Backend Engineering with Go & Rust", "Real-Time Event Streaming with Apache Kafka"],
-    highlight: "Designed global dispatch routing engine scaling across 70+ countries in real-time."
-  },
-  {
-    id: "inst-5",
-    name: "Aanya Sharma",
-    role: "Staff Frontend Architect",
-    currentCompany: "Microsoft",
-    companyLogo: "https://upload.wikimedia.org/wikipedia/commons/9/96/Microsoft_logo_%282012%29.svg",
-    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80",
-    domain: "Full Stack & Web",
-    experience: "10+ Years",
-    studentsTaught: "24,100+",
-    rating: 4.96,
-    reviewsCount: 1120,
-    bio: "Specializes in modern React compiler internals, WebGL 3D user experiences, state machines, and micro-frontend architecture at enterprise scale.",
-    specialties: ["Next.js & React Internals", "Three.js & WebGL Performance", "Core Web Vitals & Profiling", "Full Stack TypeScript"],
-    pastCompanies: ["Microsoft", "Airbnb", "Adobe"],
-    coursesTaught: ["Full Stack Modern Web Development & Next.js", "Creative Frontend & 3D Interactive Web Experiences"],
-    highlight: "Built web performance frameworks adopted across millions of daily active desktop users."
-  },
-  {
-    id: "inst-6",
-    name: "Rohan Varma",
-    role: "Director of Application Security",
-    currentCompany: "CrowdStrike",
-    companyLogo: "https://upload.wikimedia.org/wikipedia/commons/6/60/Crowdstrike_logo.svg",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80",
-    domain: "Cyber Security",
-    experience: "13+ Years",
-    studentsTaught: "15,200+",
-    rating: 4.93,
-    reviewsCount: 640,
-    bio: "Renowned ethical hacker and offensive security veteran. Discovered critical zero-day vulnerabilities in enterprise auth layers and cloud orchestration platforms.",
-    specialties: ["Penetration Testing & Red Teaming", "Cloud & Zero-Trust Security", "Reverse Engineering", "OWASP Top 10 Exploitation"],
-    pastCompanies: ["CrowdStrike", "Palo Alto Networks", "Cisco"],
-    coursesTaught: ["Offensive & Defensive Web Application Security", "Cloud Security & Zero-Trust Infrastructure"],
-    highlight: "Top-ranked bug bounty researcher with Hall of Fame acknowledgments from Apple, Google, and Microsoft."
   }
 ];
 
-const DOMAIN_TABS = [
-  "All",
-  "Algorithms & DSA",
-  "System Design & Cloud",
-  "AI & Machine Learning",
-  "Full Stack & Web",
-  "Cyber Security"
-] as const;
-
 export default function InstructorsPage() {
-  const [selectedDomain, setSelectedDomain] = useState<string>("All");
-  const [searchQuery, setSearchQuery] = useState<string>("");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-
-  const filteredInstructors = INSTRUCTORS_DATA.filter((instructor) => {
-    const matchesDomain = selectedDomain === "All" || instructor.domain === selectedDomain;
-    const matchesSearch =
-      searchQuery.trim() === "" ||
-      instructor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      instructor.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      instructor.currentCompany.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      instructor.specialties.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    return matchesDomain && matchesSearch;
-  });
 
   const stats: Array<{
     target: number;
@@ -250,8 +151,8 @@ export default function InstructorsPage() {
     detail: string;
   }> = [
     {
-      target: 50,
-      suffix: "+",
+      target: 2,
+      suffix: "",
       label: "Industry Mentors",
       detail: "Staff & Principal Engineers from top tech giants"
     },
@@ -260,10 +161,10 @@ export default function InstructorsPage() {
       decimals: 2,
       suffix: " / 5.0",
       label: "Average Mentorship Rating",
-      detail: "Verified by 45,000+ student session reviews"
+      detail: "Verified by student session reviews"
     },
     {
-      target: 65000,
+      target: 7000,
       suffix: "+",
       label: "Learners Mentored",
       detail: "Across live cohorts, masterclasses & mock rounds"
@@ -302,7 +203,7 @@ export default function InstructorsPage() {
   const instructorFaqs = [
     {
       question: "Who are the instructors at PrepPath?",
-      answer: "All PrepPath instructors are active Staff, Principal, and Lead Software Engineers at premier tech firms like Google, Meta, Amazon, Microsoft, and Uber. We do not employ full-time generic educators; our mentors build high-scale production systems daily."
+      answer: "All PrepPath instructors are active Staff, Principal, and Lead Software Engineers at premier tech firms like Google and Meta. We do not employ full-time generic educators; our mentors build high-scale production systems daily."
     },
     {
       question: "How do 1:1 mentorship and doubt-clearing sessions work?",
@@ -372,7 +273,7 @@ export default function InstructorsPage() {
           </h1>
 
           <p className="text-slate-600 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto font-normal">
-            Our mentors are Staff, Principal, and Lead Engineers from Google, Meta, Amazon, Microsoft, and Uber. They teach the exact mental models, system architectures, and coding standards used to build products for billions.
+            Our mentors are Staff and Principal Engineers from Google and Meta. They teach the exact mental models, system architectures, and coding standards used to build products for billions.
           </p>
         </section>
 
@@ -407,154 +308,102 @@ export default function InstructorsPage() {
           ))}
         </section>
 
-        {/* Filter Tabs & Search Bar */}
+        {/* Instructor Cards Grid (2 Mentors) */}
         <section className="space-y-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-200 pb-6">
-            
-            {/* Domain Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
-              {DOMAIN_TABS.map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setSelectedDomain(tab)}
-                  className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer ${
-                    selectedDomain === tab
-                      ? "bg-slate-950 text-white shadow-sm"
-                      : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-
-            {/* Search Input */}
-            <div className="relative w-full md:w-72">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search mentors, companies, skills..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9.5 pr-4 py-2 bg-white border border-slate-200 rounded-full text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-slate-950 transition-all shadow-xs"
-              />
-            </div>
-          </div>
-
-          {/* Instructor Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            <AnimatePresence mode="popLayout">
-              {filteredInstructors.length > 0 ? (
-                filteredInstructors.map((instructor, idx) => (
-                  <motion.div
-                    key={instructor.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ duration: 0.3, delay: idx * 0.05 }}
-                    className="bg-white rounded-3xl border border-slate-200/90 shadow-xs hover:shadow-xl hover:shadow-slate-200/60 transition-all duration-300 flex flex-col justify-between overflow-hidden group"
-                  >
-                    <div className="p-6 sm:p-7 space-y-5">
-                      
-                      {/* Top Header: Avatar + Company Logo */}
-                      <div className="flex items-start justify-between">
-                        <div className="relative">
-                          <img
-                            src={instructor.avatar}
-                            alt={instructor.name}
-                            className="w-20 h-20 rounded-2xl object-cover ring-4 ring-slate-100 shadow-sm group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <span className="absolute -bottom-2 -right-1 px-2 py-0.5 rounded-md bg-slate-950 text-white text-[10px] font-bold shadow-xs">
-                            {instructor.experience}
-                          </span>
-                        </div>
-
-                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center max-w-[90px] h-10">
-                          <img
-                            src={instructor.companyLogo}
-                            alt={instructor.currentCompany}
-                            className="h-5 w-auto object-contain"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Name, Role & Domain */}
-                      <div>
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 mb-1">
-                          <span>{instructor.role}</span>
-                          <span>•</span>
-                          <span>{instructor.currentCompany}</span>
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-950">{instructor.name}</h3>
-                      </div>
-
-                      {/* Highlight Quote */}
-                      <div className="p-3 rounded-xl bg-slate-50/90 border border-slate-100 text-xs text-slate-700 italic leading-relaxed">
-                        &ldquo;{instructor.highlight}&rdquo;
-                      </div>
-
-                      {/* Bio */}
-                      <p className="text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-3">
-                        {instructor.bio}
-                      </p>
-
-                      {/* Core Expertise Tags */}
-                      <div className="space-y-1.5">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Core Expertise</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {instructor.specialties.map((spec, sIdx) => (
-                            <span
-                              key={sIdx}
-                              className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-medium"
-                            >
-                              {spec}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Past Companies Pedigree */}
-                      <div className="pt-2">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                          Career Pedigree
-                        </p>
-                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                          {instructor.pastCompanies.join("  →  ")}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Card Footer: Rating & Action */}
-                    <div className="p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1 text-amber-500 font-bold">
-                        <Star className="w-4 h-4 fill-current" />
-                        <span className="text-slate-900">{instructor.rating}</span>
-                        <span className="text-slate-400 font-normal">({instructor.reviewsCount})</span>
-                      </div>
-
-                      <span className="text-slate-600 font-medium">
-                        {instructor.studentsTaught} mentored
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            {INSTRUCTORS_DATA.map((instructor, idx) => (
+              <motion.div
+                key={instructor.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.4, delay: idx * 0.1 }}
+                className="bg-white rounded-3xl border border-slate-200/90 shadow-xs hover:shadow-xl hover:shadow-slate-200/60 transition-all duration-300 flex flex-col justify-between overflow-hidden group"
+              >
+                <div className="p-6 sm:p-8 space-y-6">
+                  
+                  {/* Top Header: Avatar + Company Logo */}
+                  <div className="flex items-start justify-between">
+                    <div className="relative">
+                      <img
+                        src={instructor.avatar}
+                        alt={instructor.name}
+                        className="w-22 h-22 rounded-2xl object-cover ring-4 ring-slate-100 shadow-sm group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <span className="absolute -bottom-2 -right-1 px-2 py-0.5 rounded-md bg-slate-950 text-white text-[10px] font-bold shadow-xs">
+                        {instructor.experience}
                       </span>
                     </div>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="col-span-full py-16 text-center space-y-3">
-                  <p className="text-base font-semibold text-slate-800">No mentors match your search criteria.</p>
-                  <p className="text-xs text-slate-500">Try searching for a different skill, technology, or clear your filters.</p>
-                  <button
-                    onClick={() => {
-                      setSelectedDomain("All");
-                      setSearchQuery("");
-                    }}
-                    className="px-4 py-2 rounded-full bg-slate-950 text-white text-xs font-bold hover:bg-slate-800 transition-colors"
-                  >
-                    Reset Filters
-                  </button>
+
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center max-w-[90px] h-10">
+                      <img
+                        src={instructor.companyLogo}
+                        alt={instructor.currentCompany}
+                        className="h-5 w-auto object-contain"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Name, Role & Company */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 mb-1">
+                      <span>{instructor.role}</span>
+                      <span>•</span>
+                      <span>{instructor.currentCompany}</span>
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-950">{instructor.name}</h3>
+                  </div>
+
+                  {/* Highlight Quote */}
+                  <div className="p-3.5 rounded-xl bg-slate-50/90 border border-slate-100 text-xs sm:text-sm text-slate-700 italic leading-relaxed">
+                    &ldquo;{instructor.highlight}&rdquo;
+                  </div>
+
+                  {/* Bio */}
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    {instructor.bio}
+                  </p>
+
+                  {/* Core Expertise Tags */}
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Core Expertise</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {instructor.specialties.map((spec, sIdx) => (
+                        <span
+                          key={sIdx}
+                          className="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium"
+                        >
+                          {spec}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Past Companies Pedigree */}
+                  <div className="pt-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                      Career Pedigree
+                    </p>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                      {instructor.pastCompanies.join("  →  ")}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </AnimatePresence>
+
+                {/* Card Footer: Rating & Stats */}
+                <div className="p-5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-amber-500 font-bold">
+                    <Star className="w-4 h-4 fill-current" />
+                    <span className="text-slate-900 font-semibold">{instructor.rating} Rating</span>
+                    <span className="text-slate-400 font-normal">({instructor.reviewsCount} reviews)</span>
+                  </div>
+
+                  <span className="text-slate-600 font-medium">
+                    {instructor.studentsTaught} students mentored
+                  </span>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </section>
 
