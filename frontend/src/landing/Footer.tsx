@@ -71,7 +71,7 @@ export function Footer() {
               <ul className="space-y-2.5 text-xs sm:text-sm text-slate-600">
                 <li>
                   <a
-                    href="https://www.linkedin.com/company/preppath"
+                    href="https://www.linkedin.com/company/prepppath"
                     target="_blank"
                     rel="noreferrer"
                     className="hover:text-slate-950 transition-colors"
