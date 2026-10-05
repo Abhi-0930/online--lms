@@ -13,7 +13,7 @@ export const env = {
   DIRECT_URL: process.env.DIRECT_URL || '',
 
   // JWT
-  JWT_SECRET: process.env.JWT_SECRET || 'super-secret-jwt-key-replace-in-production',
+  JWT_SECRET: process.env.JWT_SECRET || '',
 
   // Device Limits
   MAX_CONCURRENT_DEVICES_PER_USER: parseInt(process.env.MAX_CONCURRENT_DEVICES_PER_USER || '1', 10),
@@ -33,8 +33,8 @@ export const env = {
   FRONTEND_URL: process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' ? 'https://www.preppath.net' : 'http://localhost:3000'),
 
   // Razorpay
-  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || 'rzp_live_TkKBcSlPyvRXQ3',
-  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || '8Wh5O84lUqAv9j7V9gqic145',
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || '',
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || '',
 };
 
 // Validate required environment variables
