@@ -1,17 +1,22 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { API_BASE_URL, WS_BASE_URL } from "@/lib/apiConfig";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { API_BASE_URL } from "@/lib/apiConfig";
 import { sharedWs } from "@/lib/sharedWebSocket";
+import { useAuth } from "./useAuth";
+import { useEnrollments } from "./useEnrollments";
 
 export interface AnnouncementItem {
-  id: string;
+  id: string | number;
   title: string;
   content?: string;
   body?: string;
   description?: string;
   category?: string;
+  cohort?: string;
   targetAudience?: string;
+  author?: string;
+  channels?: string[];
   publishedAt?: string;
   date?: string;
   isPinned?: boolean;
@@ -76,7 +81,10 @@ const getApiBaseUrl = () => {
 };
 
 export function useAnnouncements() {
-  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(() =>
+  const { user } = useAuth();
+  const { enrollments } = useEnrollments();
+
+  const [rawAnnouncements, setRawAnnouncements] = useState<AnnouncementItem[]>(() =>
     readCachedAnnouncements()
   );
   const [loading, setLoading] = useState<boolean>(() => readCachedAnnouncements().length === 0);
@@ -116,7 +124,7 @@ export function useAnnouncements() {
         const items = Array.isArray(fetchedData) ? fetchedData : fetchedData?.data || [];
         if (Array.isArray(items) && isMountedRef.current) {
           const liveItems = items.filter((a: any) => a && a.status !== "Draft");
-          setAnnouncements(liveItems);
+          setRawAnnouncements(liveItems);
           writeCachedAnnouncements(liveItems);
           setError(null);
         }
@@ -124,7 +132,7 @@ export function useAnnouncements() {
         if (isMountedRef.current) {
           const cached = readCachedAnnouncements();
           if (cached.length > 0) {
-            setAnnouncements(cached);
+            setRawAnnouncements(cached);
           }
         }
       }
@@ -132,7 +140,7 @@ export function useAnnouncements() {
       if (isMountedRef.current) {
         const cached = readCachedAnnouncements();
         if (cached.length > 0) {
-          setAnnouncements(cached);
+          setRawAnnouncements(cached);
         }
       }
     } finally {
@@ -174,7 +182,7 @@ export function useAnnouncements() {
           const publicAnnouncements = msg.data.announcements.filter(
             (a: any) => a.status !== "Draft"
           );
-          setAnnouncements(publicAnnouncements);
+          setRawAnnouncements(publicAnnouncements);
           writeCachedAnnouncements(publicAnnouncements);
         } else {
           fetchAnnouncements();
@@ -207,10 +215,65 @@ export function useAnnouncements() {
     };
   }, [fetchAnnouncements]);
 
-  const unreadCount = announcements.length;
+  // Audience Filtering Logic:
+  // - Admins/Instructors see all announcements.
+  // - "All Cohorts & Learners" / "All Learners" / "all" / empty targets -> visible to ALL learners.
+  // - Specific target course / cohort -> only visible if student is enrolled in that course/cohort.
+  const visibleAnnouncements = useMemo(() => {
+    if (!Array.isArray(rawAnnouncements)) return [];
+
+    if (user?.role === "ADMIN" || user?.role === "INSTRUCTOR") {
+      return rawAnnouncements;
+    }
+
+    return rawAnnouncements.filter((item) => {
+      const targetCohort = (item.cohort || item.targetAudience || "").trim();
+
+      // Universal announcement
+      if (
+        !targetCohort ||
+        targetCohort === "All Cohorts & Learners" ||
+        targetCohort === "All Learners" ||
+        targetCohort === "All Enrolled Students" ||
+        targetCohort.toLowerCase() === "all" ||
+        targetCohort.toLowerCase() === "all cohorts & learners" ||
+        targetCohort.toLowerCase() === "all learners"
+      ) {
+        return true;
+      }
+
+      // If targeted to a specific course / cohort, user must be enrolled in it
+      if (!enrollments || enrollments.length === 0) {
+        return false;
+      }
+
+      const targetLower = targetCohort.toLowerCase();
+      const courseFieldLower = (item.course || "").toLowerCase().trim();
+
+      return enrollments.some((enr: any) => {
+        const title = (enr.course?.title || enr.courseTitle || "").toLowerCase().trim();
+        const slug = (enr.course?.slug || enr.courseSlug || "").toLowerCase().trim();
+        const courseId = (enr.courseId || enr.course?.id || "").toLowerCase().trim();
+        const cohortName = (enr.cohort?.name || enr.cohortName || "").toLowerCase().trim();
+        const cohortId = (enr.cohortId || enr.cohort?.id || "").toLowerCase().trim();
+
+        return (
+          (title && (targetLower === title || targetLower.includes(title) || title.includes(targetLower))) ||
+          (slug && targetLower === slug) ||
+          (courseId && targetLower === courseId) ||
+          (cohortName && targetLower === cohortName) ||
+          (cohortId && targetLower === cohortId) ||
+          (courseFieldLower && (courseFieldLower === title || courseFieldLower === slug || courseFieldLower === courseId))
+        );
+      });
+    });
+  }, [rawAnnouncements, user?.role, enrollments]);
+
+  const unreadCount = visibleAnnouncements.length;
 
   return {
-    announcements,
+    announcements: visibleAnnouncements,
+    allAnnouncements: rawAnnouncements,
     unreadCount,
     loading,
     error,
