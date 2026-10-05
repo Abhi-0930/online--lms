@@ -4,6 +4,7 @@ import path from 'path';
 import { AuthService } from '../auth/auth.service';
 import { OnboardingService } from '../onboarding/onboarding.service';
 import { AdminWsBroadcaster } from './admin.ws';
+import { sendAnnouncementEmail } from '../../utils/email';
 
 export function cleanLessonTitle(str: any): string {
   if (!str || typeof str !== 'string') return '';
@@ -26,9 +27,17 @@ export function cleanTopicTitle(str: any): string {
   return cleaned;
 }
 
-export function cleanCourseModules(modules: any[]): any[] {
+export function cleanCourseModules(modules: any[], customOverrides?: Map<string, any>): any[] {
   if (!Array.isArray(modules)) return [];
-  const overrides = AdminService.fallbackContentOverrides || AdminService.loadContentOverridesFromFile();
+  let overrides = customOverrides;
+  if (!overrides) {
+    try {
+      overrides = (AdminService as any)?.fallbackContentOverrides;
+    } catch {
+      overrides = new Map();
+    }
+  }
+  if (!overrides) overrides = new Map();
 
   const findOverride = (idCandidates: (string | undefined)[], titleCandidate?: string) => {
     for (const cand of idCandidates) {
@@ -4167,7 +4176,122 @@ export class AdminService {
     };
     AdminService.fallbackAnnouncements.set(id, annObj);
     AdminService.saveAnnouncementsToFile();
+
+    // If delivery channels include Email Alert / Email Digest and status is Published, dispatch emails
+    const hasEmailChannel =
+      Array.isArray(annObj.channels) &&
+      annObj.channels.some(
+        (c: string) =>
+          typeof c === 'string' &&
+          (c.toLowerCase().includes('email') ||
+            c.toLowerCase().includes('mail') ||
+            c === 'Email Digest' ||
+            c === 'Email Alert')
+      );
+
+    if (hasEmailChannel && annObj.status === 'Published') {
+      this.dispatchAnnouncementEmails(annObj).catch((err) => {
+        console.error('Error dispatching announcement email alerts:', err);
+      });
+    }
+
     return annObj;
+  }
+
+  private async dispatchAnnouncementEmails(annObj: any) {
+    try {
+      const target = (annObj.cohort || annObj.targetAudience || '').trim();
+      const isUniversal =
+        !target ||
+        target === 'All Cohorts & Learners' ||
+        target === 'All Learners' ||
+        target === 'All Students' ||
+        target === 'All Enrolled Students' ||
+        target.toLowerCase() === 'all' ||
+        target.toLowerCase() === 'all cohorts & learners' ||
+        target.toLowerCase() === 'all learners';
+
+      let recipientEmails: string[] = [];
+
+      if (isUniversal) {
+        // Broadcast to all active users
+        const users = await this.prisma.user.findMany({
+          select: { email: true },
+        });
+        recipientEmails = users.map((u) => u.email).filter(Boolean);
+      } else {
+        // Query courses matching title or id or slug
+        const matchingCourses = await this.prisma.course.findMany({
+          where: {
+            OR: [
+              { title: { contains: target, mode: 'insensitive' } },
+              { slug: { equals: target, mode: 'insensitive' } },
+              { id: target },
+            ],
+          },
+          select: { id: true },
+        });
+        const courseIds = matchingCourses.map((c) => c.id);
+
+        // Query cohorts matching name or id
+        const matchingCohorts = await this.prisma.cohort.findMany({
+          where: {
+            OR: [
+              { name: { contains: target, mode: 'insensitive' } },
+              { id: target },
+            ],
+          },
+          select: { id: true },
+        });
+        const cohortIds = matchingCohorts.map((ch) => ch.id);
+
+        if (courseIds.length > 0) {
+          const enrollments = await this.prisma.enrollment.findMany({
+            where: { courseId: { in: courseIds } },
+            include: { user: { select: { email: true } } },
+          });
+          recipientEmails.push(
+            ...(enrollments.map((e) => e.user?.email).filter(Boolean) as string[])
+          );
+        }
+
+        if (cohortIds.length > 0) {
+          const cohortEnrollments = await this.prisma.cohortEnrollment.findMany({
+            where: { cohortId: { in: cohortIds } },
+            include: { user: { select: { email: true } } },
+          });
+          recipientEmails.push(
+            ...(cohortEnrollments.map((ce) => ce.user?.email).filter(Boolean) as string[])
+          );
+        }
+
+        // Fallback: If no enrollments exist yet for this specific course, also include admin users
+        if (recipientEmails.length === 0) {
+          const admins = await this.prisma.user.findMany({
+            where: { role: 'ADMIN' },
+            select: { email: true },
+          });
+          recipientEmails.push(...admins.map((a) => a.email).filter(Boolean));
+        }
+      }
+
+      if (recipientEmails.length > 0) {
+        await sendAnnouncementEmail({
+          to: recipientEmails,
+          title: annObj.title,
+          body: annObj.body || annObj.content || annObj.description || '',
+          category: annObj.category,
+          cohort: annObj.cohort,
+          author: annObj.author,
+          ctaLabel: annObj.ctaLabel,
+          ctaUrl: annObj.ctaUrl,
+          meetingLink: annObj.meetingLink,
+          instructor: annObj.instructor,
+        });
+      }
+    } catch (emailErr) {
+      console.error('Failed to dispatch announcement email alerts:', emailErr);
+    }
   }
 
   async deleteAnnouncement(id: string) {
