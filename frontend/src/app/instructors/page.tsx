@@ -101,7 +101,7 @@ const INSTRUCTORS_DATA: DetailedInstructor[] = [
     studentsTaught: "3,800+",
     rating: 4.98,
     reviewsCount: 1450,
-    bio: "Full-stack developer, cybersecurity professional, and educator passionate about helping students build strong problem-solving skills and industry-ready technical expertise. Focused on making complex concepts simple through practical learning, real-world projects, and structured mentorship.",
+    bio: "Software engineer, cybersecurity professional, and educator dedicated to helping students master problem-solving, software development, and interview preparation through practical, industry-focused learning.",
     specialties: [
       "Software Engineering",
       "Data Structures & Algorithms",
@@ -109,43 +109,45 @@ const INSTRUCTORS_DATA: DetailedInstructor[] = [
       "System Design",
       "Cybersecurity",
       "AI Applications",
-      "Technical Interview Preparation",
-      "Career Mentorship"
+      "Technical Interview Preparation"
     ],
     highlights: [
-      "Founder of PrepPath and CodeLoom",
-      "Trained hundreds of students in Python, DSA, Web Development, and Interview Preparation",
-      "Conducted live workshops, bootcamps, and placement-focused mentorship programs",
-      "Helped learners secure opportunities in leading product and service-based companies",
-      "Built real-world applications using modern web technologies and cloud platforms"
+      "Founder of PrepPath & CodeLoom",
+      "3+ Years of Industry Experience",
+      "3,800+ Students Mentored",
+      "4.98 Instructor Rating",
+      "Hands-on Project-Based Learning"
     ],
-    teachingPhilosophy: "Learning should focus on understanding, not memorization. Every concept is taught from first principles with practical examples, hands-on coding, and interview-focused problem solving."
+    teachingPhilosophy: "Focus on understanding concepts deeply, applying them practically, and developing the confidence to solve real-world problems independently."
   },
   {
     id: "inst-2",
-    name: "Natasha Romanov",
-    role: "Principal AI Research Scientist",
-    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
-    experience: "11+ Years",
+    name: "Bharath Beerappa",
+    role: "Senior Technical Mentor & Instructor",
+    avatar: "/instructors/bharat.png",
+    experience: "5+ Years",
     studentsTaught: "3,200+",
-    rating: 4.95,
-    reviewsCount: 980,
-    bio: "Specializes in LLM optimization, multimodal vision architectures, and autonomous agent frameworks. Led core machine learning infrastructure teams and research papers at top AI conferences.",
+    rating: 4.96,
+    reviewsCount: 1120,
+    bio: "Technology leader and engineering mentor with 5+ years of experience across software engineering, cloud computing, DevOps, AI/ML, blockchain, and modern application architecture. Passionate about helping learners understand complex technologies through practical implementation and real-world use cases.",
     specialties: [
-      "Generative AI & LLMs",
-      "PyTorch Distributed Training",
-      "Vector Databases & RAG",
-      "Autonomous Agent Systems",
-      "High-Scale ML Systems",
-      "Neural Architecture Search"
+      "Cloud Computing & AWS",
+      "DevOps & Platform Engineering",
+      "Artificial Intelligence & Machine Learning",
+      "Blockchain Development",
+      "Software Engineering",
+      "System Design & Distributed Systems",
+      "Full-Stack Development",
+      "Data Engineering & Analytics"
     ],
     highlights: [
-      "Published leading research papers on low-latency LLM quantization and multimodal models",
-      "Architected distributed training pipelines handling petabyte-scale training datasets",
-      "Mentored thousands of engineers in cutting-edge GenAI and neural network deployment",
-      "Active contributor to major open-source deep learning repositories"
+      "5+ Years of Industry Experience",
+      "Expertise Across Multiple Technology Domains",
+      "Mentored Students and Professionals Across Diverse Skill Levels",
+      "Hands-on Experience Building Scalable Systems",
+      "Strong Focus on Industry-Relevant Learning"
     ],
-    teachingPhilosophy: "Deep learning mastery comes from implementing architectures from scratch, understanding gradient flow intimately, and verifying mathematical intuition through code."
+    teachingPhilosophy: "Technology is best learned by building. Focus on understanding fundamentals, applying concepts in real-world scenarios, and continuously adapting to emerging technologies."
   }
 ];
 

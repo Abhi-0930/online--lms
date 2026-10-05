@@ -15,7 +15,7 @@ export const API_BASE_URL = (() => {
       return `http://${hostname}:4000`;
     }
     if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
-      return "https://site--preppath-backend--x9gt4y7zlzhr.code.run";
+      return "https://preppath-e80f.onrender.com";
     }
   }
   return (envUrl || "http://localhost:4000").replace(/\/$/, "");

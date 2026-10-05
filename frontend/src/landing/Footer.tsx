@@ -65,52 +65,42 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Col 3: Socials */}
-          <div className="space-y-3.5">
-            <h4 className="text-sm font-bold text-slate-950">Socials</h4>
-            <ul className="space-y-2.5 text-xs sm:text-sm text-slate-600">
-              <li>
-                <a
-                  href="https://facebook.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-slate-950 transition-colors"
-                >
-                  Facebook
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://instagram.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-slate-950 transition-colors"
-                >
-                  Instagram
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://twitter.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-slate-950 transition-colors"
-                >
-                  Twitter
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://linkedin.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-slate-950 transition-colors"
-                >
-                  LinkedIn
-                </a>
-              </li>
-            </ul>
-          </div>
+            {/* Col 3: Socials */}
+            <div className="space-y-3.5">
+              <h4 className="text-sm font-bold text-slate-950">Socials</h4>
+              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-600">
+                <li>
+                  <a
+                    href="https://www.linkedin.com/company/preppath"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-slate-950 transition-colors"
+                  >
+                    LinkedIn
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://x.com/PrepPath"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-slate-950 transition-colors"
+                  >
+                    X (Twitter)
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://www.instagram.com/preppath.nett?stkn=d3M4bGZwdGU2dGI4"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-slate-950 transition-colors"
+                  >
+                    Instagram
+                  </a>
+                </li>
+              </ul>
+            </div>
 
           {/* Col 4: Legal & Policies */}
           <div className="space-y-3.5">

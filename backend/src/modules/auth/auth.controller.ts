@@ -62,7 +62,7 @@ export default async function authController(fastify: FastifyInstance) {
       return env.GOOGLE_CALLBACK_URL;
     }
     if (isProd || process.env.RENDER === 'true') {
-      return 'https://online-lms-v11c.onrender.com/api/v1/auth/google/callback';
+      return 'https://preppath-e80f.onrender.com/api/v1/auth/google/callback';
     }
     return env.GOOGLE_CALLBACK_URL || 'http://localhost:4000/api/v1/auth/google/callback';
   };

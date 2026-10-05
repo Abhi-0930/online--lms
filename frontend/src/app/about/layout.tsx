@@ -50,9 +50,9 @@ export default function AboutLayout({
       url: "https://www.preppath.net",
       logo: "https://www.preppath.net/favicon.ico",
       sameAs: [
-        "https://twitter.com/preppath",
-        "https://linkedin.com/company/preppath",
-        "https://instagram.com/preppath"
+        "https://x.com/PrepPath",
+        "https://www.linkedin.com/company/preppath",
+        "https://www.instagram.com/preppath.nett?stkn=d3M4bGZwdGU2dGI4"
       ],
       address: {
         "@type": "PostalAddress",

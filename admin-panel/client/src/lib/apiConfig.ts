@@ -16,7 +16,7 @@ export const API_BASE_URL = (() => {
     if (isLocal) {
       return `http://${hostname}:4000`;
     }
-    return "https://site--preppath-backend--x9gt4y7zlzhr.code.run";
+    return "https://preppath-e80f.onrender.com";
   }
   return "http://localhost:4000";
 })().replace(/\/$/, "");
@@ -38,7 +38,7 @@ export const WS_BASE_URL = (() => {
     if (isLocal) {
       return `ws://${hostname}:4000`;
     }
-    return "wss://site--preppath-backend--x9gt4y7zlzhr.code.run";
+    return "wss://preppath-e80f.onrender.com";
   }
   return "ws://localhost:4000";
 })().replace(/\/$/, "");

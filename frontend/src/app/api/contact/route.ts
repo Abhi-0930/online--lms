@@ -18,8 +18,7 @@ export async function POST(req: Request) {
       process.env.NEXT_PUBLIC_API_URL,
       "http://localhost:4000",
       "http://127.0.0.1:4000",
-      "https://online-lms-v11c.onrender.com",
-      "https://site--preppath-backend--x9gt4y7zlzhr.code.run",
+      "https://preppath-e80f.onrender.com",
     ].filter(Boolean) as string[];
 
     let lastError: any = null;
