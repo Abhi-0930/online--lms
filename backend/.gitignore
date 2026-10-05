@@ -12,8 +12,16 @@ build/
 
 # Environment variables
 .env
+.env.*
 .env.local
-.env.*.local
+.env.production
+.env.production.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+*.env
+*.env.local
 
 # IDE
 .vscode/
