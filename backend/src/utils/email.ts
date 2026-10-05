@@ -8,7 +8,7 @@ function getSenderEmail(): string {
   if (env.EMAIL_FROM && !env.EMAIL_FROM.includes('yourdomain.com')) {
     return env.EMAIL_FROM;
   }
-  return 'PrepPath <onboarding@resend.dev>';
+  return 'PrepPath <hello@preppath.net>';
 }
 
 export async function sendPasswordResetLinkEmail(params: {
