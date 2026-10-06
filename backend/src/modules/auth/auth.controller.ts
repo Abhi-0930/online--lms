@@ -327,7 +327,7 @@ export default async function authController(fastify: FastifyInstance) {
   }, async (request, reply) => {
     const user = request.user as any;
     let dbUser: any = null;
-
+    let isDbHealthy = false;
     try {
       dbUser = await fastify.prisma.user.findUnique({
         where: { id: user.id },
@@ -351,9 +351,20 @@ export default async function authController(fastify: FastifyInstance) {
           },
         },
       });
-    } catch {}
+      isDbHealthy = true;
+    } catch {
+      isDbHealthy = false;
+    }
 
-    if (!dbUser) {
+    if (!dbUser && isDbHealthy) {
+      clearAuthCookie(reply);
+      if (user?.email) {
+        AuthService.deleteUserByEmail(user.email);
+      }
+      return reply.status(401).send({ error: 'Unauthorized', code: 'USER_NOT_FOUND', message: 'User account has been deleted' });
+    }
+
+    if (!dbUser && !isDbHealthy) {
       for (const u of AuthService.fallbackUsers.values()) {
         if (u.id === user.id || u.email === user.email) {
           dbUser = u;
@@ -362,19 +373,9 @@ export default async function authController(fastify: FastifyInstance) {
       }
     }
 
-    // If still not found in memory, construct from verified token payload
-    if (!dbUser && user?.email) {
-      dbUser = {
-        id: user.id,
-        email: user.email,
-        fullName: user.email.split('@')[0],
-        role: user.role || 'STUDENT',
-        isEmailVerified: false,
-      };
-    }
-
     if (!dbUser) {
-      return reply.status(401).send({ error: 'Unauthorized', message: 'User not found' });
+      clearAuthCookie(reply);
+      return reply.status(401).send({ error: 'Unauthorized', code: 'USER_NOT_FOUND', message: 'User not found' });
     }
 
     let rawName = (dbUser.fullName || dbUser.name || dbUser.onboarding?.primaryGoal || '').trim();
