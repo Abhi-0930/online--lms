@@ -126,10 +126,10 @@ export class PaymentService {
 
         if (course) {
           return {
-            ...course,
             ...meta,
-            price: meta.price !== undefined && meta.price !== null ? Number(meta.price) : Number(course.price || 0),
-            discountPrice: meta.discountPrice !== undefined && meta.discountPrice !== null ? Number(meta.discountPrice) : 0,
+            ...course,
+            price: course.price !== undefined && course.price !== null ? Number(course.price) : (meta.price !== undefined ? Number(meta.price) : 0),
+            discountPrice: course.discountPrice !== undefined && course.discountPrice !== null ? Number(course.discountPrice) : (meta.discountPrice !== undefined ? Number(meta.discountPrice) : 0),
           };
         }
 
