@@ -101,6 +101,51 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
         });
       }
 
+      // Check if user still exists in database when DB is healthy
+      if (decoded?.id || decoded?.email) {
+        try {
+          const dbUser = await fastify.prisma.user.findFirst({
+            where: {
+              OR: [
+                ...(decoded.id ? [{ id: decoded.id }] : []),
+                ...(decoded.email ? [{ email: decoded.email.toLowerCase() }] : []),
+              ],
+            },
+            select: { id: true, email: true },
+          });
+
+          if (!dbUser) {
+            // User was deleted from DB! Invalidate session immediately
+            AuthService.revokeSession(clientSessionToken);
+            if (decoded.email) {
+              AuthService.deleteUserByEmail(decoded.email);
+            }
+            const isProd = env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+            reply.setCookie('access_token', '', {
+              path: '/',
+              httpOnly: true,
+              secure: isProd,
+              sameSite: isProd ? 'none' : 'lax',
+              expires: new Date(0),
+              maxAge: 0,
+            });
+            reply.clearCookie('access_token', {
+              path: '/',
+              httpOnly: true,
+              secure: isProd,
+              sameSite: isProd ? 'none' : 'lax',
+            });
+            return reply.status(401).send({
+              error: 'Unauthorized',
+              code: 'USER_DELETED',
+              message: 'User account has been deleted. Please log in or register.',
+            });
+          }
+        } catch {
+          // DB temporarily unreachable - proceed with session
+        }
+      }
+
       // Touch active timestamp in memory and DB
       AuthService.touchSession(clientSessionToken);
       fastify.prisma.userDevice.update({
