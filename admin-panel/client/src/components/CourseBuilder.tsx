@@ -1955,6 +1955,29 @@ export default function CourseBuilder({
     setIsSaving(false);
   };
 
+  const handleSaveAndPublish = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const dataToSubmit = prepareFinalFormData();
+      const finalData: CourseBuilderData = {
+        ...dataToSubmit,
+        courseStatus: dataToSubmit.courseStatus === "Draft" ? "Draft" : "Published",
+      };
+      setFormData(finalData);
+      if (onContinue) {
+        await onContinue(finalData);
+      } else if (onSaveDraft) {
+        await onSaveDraft(finalData);
+      }
+      clearDraft("course");
+      setIsRestoredFromDraft(false);
+      setLastSavedTime(null);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleContinue = async () => {
     if (isSubmitting) return;
     if (currentStep === 1) {
@@ -1968,19 +1991,7 @@ export default function CourseBuilder({
     } else if (currentStep === 3) {
       setCurrentStep(4);
     } else if (currentStep === 4) {
-      if (onContinue) {
-        setIsSubmitting(true);
-        try {
-          const dataToSubmit = prepareFinalFormData();
-          setFormData(dataToSubmit);
-          await onContinue(dataToSubmit);
-          clearDraft("course");
-          setIsRestoredFromDraft(false);
-          setLastSavedTime(null);
-        } finally {
-          setIsSubmitting(false);
-        }
-      }
+      await handleSaveAndPublish();
     }
   };
 
@@ -2008,15 +2019,38 @@ export default function CourseBuilder({
         >
           <ArrowLeft className="h-4 w-4" /> Back to courses
         </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition cursor-pointer"
-          title="Close course builder"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-3">
+          {formData.id && (
+            <button
+              type="button"
+              onClick={handleSaveAndPublish}
+              disabled={isSubmitting}
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-xs sm:text-[13px] font-bold text-white shadow-sm shadow-indigo-500/20 transition cursor-pointer disabled:opacity-75"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-0.5" />
+                  <span>Save Changes</span>
+                </>
+              )}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition cursor-pointer"
+            title="Close course builder"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
+
 
       {/* Draft Auto-save / Restoration Banner */}
       {!formData.id && (formData.title.trim() || formData.modules.length > 0 || isRestoredFromDraft) && (
@@ -3640,6 +3674,26 @@ export default function CourseBuilder({
                 >
                   ← Back
                 </button>
+                {formData.id && currentStep < 4 && (
+                  <button
+                    type="button"
+                    onClick={handleSaveAndPublish}
+                    disabled={isSubmitting}
+                    className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 text-xs sm:text-[13px] font-bold text-white shadow-sm shadow-emerald-500/20 transition cursor-pointer disabled:opacity-75"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-0.5" />
+                        <span>Save Changes Now</span>
+                      </>
+                    )}
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -3649,12 +3703,12 @@ export default function CourseBuilder({
                     isSubmitting ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                        <span>Creating course...</span>
+                        <span>{formData.id ? "Saving changes..." : "Creating course..."}</span>
                       </>
                     ) : (
                       <>
                         <Check className="h-4 w-4 mr-0.5" />
-                        <span>Create course</span>
+                        <span>{formData.id ? "Save & Publish Changes" : "Create course"}</span>
                       </>
                     )
                   ) : (
@@ -3663,6 +3717,7 @@ export default function CourseBuilder({
                 </button>
               </div>
             </div>
+
           </form>
         </div>
       </div>
