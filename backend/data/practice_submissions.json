@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "id": "sub-1791319443851",
+    "problemId": "520d3d43-c421-4a4b-a9ed-db50c924e9db",
+    "problemSlug": "two-sum",
+    "problemTitle": "Two Sum",
+    "userId": "bd1108a5-084e-4d99-8351-9e3becb761cc",
+    "student": "Abhishek",
+    "studentEmail": "abhishek.j3094@gmail.com",
+    "avatar": "https://lh3.googleusercontent.com/a/ACg8ocKI4Nf8ZZLf_gw2dTod78HhWF2oTPeKY_pkTudIeycL7T1iZWpR=s96-c",
+    "designation": "Working Professional",
+    "language": "Python",
+    "code": "class Solution:\n    def twoSum(self, nums, target):\n        seen = {}\n\n        for i, num in enumerate(nums):\n            complement = target - num\n\n            if complement in seen:\n                return [seen[complement], i]\n\n            seen[num] = i",
+    "runtime": "50 ms",
+    "memory": "15.7 MB",
+    "time": "50 ms",
+    "attempt": "1st Attempt",
+    "status": "Approved",
+    "submitted": "Just now",
+    "submittedAt": "2026-10-06T20:44:03.861Z",
+    "reviewedAt": "2026-10-06T20:44:22.747Z"
+  }
+]

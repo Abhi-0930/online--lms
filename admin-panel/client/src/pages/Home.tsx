@@ -1089,6 +1089,32 @@ function StudentsView({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [selectedStudentForProgress, setSelectedStudentForProgress] = useState<StudentItem | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<StudentItem | null>(null);
+  const [isDeletingStudent, setIsDeletingStudent] = useState(false);
+
+  const handleConfirmDeleteStudent = async () => {
+    if (!studentToDelete || isDeletingStudent) return;
+    setIsDeletingStudent(true);
+    const targetId = studentToDelete.id;
+    const targetName = studentToDelete.name || studentToDelete.email;
+
+    try {
+      if (liveData.deleteStudent) {
+        await liveData.deleteStudent(targetId);
+      } else {
+        await fetch(`${API_BASE_URL}/api/v1/admin/students/${encodeURIComponent(String(targetId))}`, {
+          method: "DELETE",
+        });
+      }
+      onToast(`Student "${targetName}" and associated submissions deleted`);
+      refresh();
+    } catch (err: any) {
+      onToast(`Error deleting student: ${err?.message || "Network error"}`);
+    } finally {
+      setIsDeletingStudent(false);
+      setStudentToDelete(null);
+    }
+  };
 
   const filtered = students.filter((learner) => {
     const matchesFilter = filter === "All" || learner.status === filter;
@@ -1212,15 +1238,25 @@ function StudentsView({
                     <StatusBadge>{learner.status}</StatusBadge>
                   </td>
                   <td className="px-4 py-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStudentForProgress(learner)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/70 hover:bg-indigo-100/90 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-[11px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
-                      title="Manage completed lessons & checklist"
-                    >
-                      <ListChecks className="h-3.5 w-3.5" />
-                      <span>Checklist</span>
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStudentForProgress(learner)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/70 hover:bg-indigo-100/90 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-[11px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
+                        title="Manage completed lessons & checklist"
+                      >
+                        <ListChecks className="h-3.5 w-3.5" />
+                        <span>Checklist</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStudentToDelete(learner)}
+                        className="inline-flex items-center justify-center p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/40 bg-rose-50/60 hover:bg-rose-100/80 dark:bg-rose-950/30 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 text-[11px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
+                        title="Delete student and remove submissions"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1248,6 +1284,43 @@ function StudentsView({
         }}
         onToast={onToast}
       />
+
+      {studentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-[#121620] border border-slate-200 dark:border-white/10 p-6 shadow-2xl">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-rose-100 dark:bg-rose-950/50">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Delete Student Account?</h3>
+                <p className="text-xs text-slate-500">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="mt-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Are you sure you want to delete <span className="font-bold text-slate-900 dark:text-white">{studentToDelete.name || studentToDelete.email}</span>? All their assignment submissions, problem code attempts, and enrollment history will be permanently deleted.
+            </p>
+            <div className="mt-6 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setStudentToDelete(null)}
+                disabled={isDeletingStudent}
+                className="secondary-button"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteStudent}
+                disabled={isDeletingStudent}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs px-4 py-2 shadow-sm transition active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                {isDeletingStudent ? "Deleting..." : "Delete student & submissions"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

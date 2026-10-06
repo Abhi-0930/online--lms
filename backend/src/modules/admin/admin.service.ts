@@ -1090,6 +1090,112 @@ export class AdminService {
     });
   }
 
+  async deleteStudent(idOrEmail: string) {
+    const rawTarget = String(idOrEmail || '').trim();
+    if (!rawTarget) return { success: false, error: 'Student ID or email is required' };
+
+    let student: any = null;
+    try {
+      student = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: rawTarget },
+            { email: { equals: rawTarget, mode: 'insensitive' } },
+          ],
+        },
+      });
+    } catch {}
+
+    const studentId = student ? student.id : rawTarget;
+    const studentEmail = (student?.email || rawTarget).toLowerCase();
+
+    // 1. Reassign any courses/cohorts where student might be instructorId to Admin
+    try {
+      const adminUser = await this.prisma.user.findFirst({ where: { role: 'ADMIN' }, select: { id: true } });
+      if (adminUser) {
+        await (this.prisma as any).course.updateMany({
+          where: { instructorId: studentId },
+          data: { instructorId: adminUser.id },
+        }).catch(() => {});
+        await (this.prisma as any).cohort.updateMany({
+          where: { instructorId: studentId },
+          data: { instructorId: adminUser.id },
+        }).catch(() => {});
+      }
+    } catch {}
+
+    // 2. Cascade delete Prisma relational child records (including assignment submissions)
+    try {
+      await (this.prisma as any).userDevice.deleteMany({ where: { userId: studentId } }).catch(() => {});
+      await (this.prisma as any).userOnboarding.deleteMany({ where: { userId: studentId } }).catch(() => {});
+      await (this.prisma as any).lessonProgress.deleteMany({ where: { userId: studentId } }).catch(() => {});
+      await (this.prisma as any).activityLog.deleteMany({ where: { userId: studentId } }).catch(() => {});
+      await (this.prisma as any).userRoadmapProgress.deleteMany({ where: { userId: studentId } }).catch(() => {});
+      await (this.prisma as any).cohortEnrollment.deleteMany({ where: { userId: studentId } }).catch(() => {});
+      await (this.prisma as any).enrollment.deleteMany({ where: { userId: studentId } }).catch(() => {});
+      await (this.prisma as any).assignmentSubmission.deleteMany({ where: { userId: studentId } }).catch(() => {});
+      await (this.prisma as any).payment.deleteMany({ where: { userId: studentId } }).catch(() => {});
+      await (this.prisma as any).user.deleteMany({ where: { id: studentId } }).catch(() => {});
+    } catch (err) {
+      console.warn('Error deleting student Prisma records:', err);
+    }
+
+    // 3. Remove from in-memory / fallback users & sessions
+    AuthService.fallbackUsers.delete(studentEmail);
+    AuthService.fallbackUsers.delete(studentId);
+    for (const [token, sess] of AuthService.activeSessions.entries()) {
+      if (sess.userId === studentId) {
+        AuthService.activeSessions.delete(token);
+      }
+    }
+
+    // 4. Delete user's practice problem submissions from practice_submissions.json & memory
+    AdminService.fallbackPracticeSubmissions = AdminService.loadPracticeSubmissionsFromFile();
+    const practiceKeysToDelete: string[] = [];
+    for (const [key, sub] of AdminService.fallbackPracticeSubmissions.entries()) {
+      const subUserId = String(sub?.userId || '').trim();
+      const subUserEmail = String(sub?.studentEmail || sub?.userEmail || sub?.email || sub?.authorEmail || '').trim().toLowerCase();
+      if (
+        subUserId === studentId ||
+        subUserEmail === studentEmail ||
+        (student?.email && subUserEmail === student.email.toLowerCase())
+      ) {
+        practiceKeysToDelete.push(key);
+      }
+    }
+    for (const k of practiceKeysToDelete) {
+      AdminService.fallbackPracticeSubmissions.delete(k);
+    }
+    AdminService.savePracticeSubmissionsToFile();
+
+    // 4b. Sync practice problem submission counts in memory, file, and Prisma DB
+    AdminService.fallbackProblems = AdminService.loadProblemsFromFile();
+    const allRemainingSubs = Array.from(AdminService.fallbackPracticeSubmissions.values());
+    for (const [pId, p] of AdminService.fallbackProblems.entries()) {
+      const pIdStr = String(p.id || '').toLowerCase();
+      const pSlugStr = String(p.slug || '').toLowerCase();
+      const probSubs = allRemainingSubs.filter((s) => {
+        const spId = String(s.problemId || '').toLowerCase();
+        const spSlug = String(s.problemSlug || '').toLowerCase();
+        return spId === pIdStr || spSlug === pIdStr || (pSlugStr && (spId === pSlugStr || spSlug === pSlugStr));
+      });
+      p.submissions = probSubs.length;
+      AdminService.fallbackProblems.set(pId, p);
+      try {
+        await (this.prisma as any).practiceProblem.update({
+          where: { id: String(p.id) },
+          data: { submissions: probSubs.length },
+        }).catch(() => {});
+      } catch {}
+    }
+    AdminService.saveProblemsToFile();
+
+    // 5. Broadcast real-time update
+    AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
+
+    return { success: true, id: studentId };
+  }
+
   async getAllCourses() {
     AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
     AdminService.deletedCoursesIds = AdminService.loadDeletedCoursesFromFile();
@@ -3068,7 +3174,7 @@ export class AdminService {
         return sProblemId === probIdStr || sProblemSlug === probIdStr || (probSlugStr && (sProblemId === probSlugStr || sProblemSlug === probSlugStr));
       });
 
-      const realSubmissionsCount = Math.max(matchingSubs.length, typeof prob.submissions === 'number' ? prob.submissions : 0);
+      const realSubmissionsCount = matchingSubs.length;
       const approvedSubs = matchingSubs.filter((s) => {
         const st = String(s.status || '').toLowerCase();
         return st === 'approved' || st === 'accepted' || st === 'pass' || st === 'passed';
@@ -3076,7 +3182,21 @@ export class AdminService {
 
       const acceptanceRate = matchingSubs.length > 0
         ? `${Math.round((approvedSubs.length / matchingSubs.length) * 100)}%`
-        : (prob.acceptance || '0.0%');
+        : '0%';
+
+      const uniqueAttemptsCount = matchingSubs.length > 0
+        ? new Set(matchingSubs.map((s: any) => s.userId || s.studentEmail || s.email || s.authorEmail || s.id)).size
+        : 0;
+
+      const viewsCount = typeof prob.views === 'number' ? prob.views : (typeof prob.viewsCount === 'number' ? prob.viewsCount : 0);
+
+      const avgMinutes = matchingSubs.length > 0
+        ? Math.round(matchingSubs.reduce((sum: number, s: any) => {
+            const t = String(s.runtime || s.time || '15 min');
+            const num = parseFloat(t.replace(/[^0-9.]/g, '')) || 15;
+            return sum + num;
+          }, 0) / matchingSubs.length)
+        : 0;
 
       return {
         id,
@@ -3086,6 +3206,9 @@ export class AdminService {
         difficulty,
         acceptance: acceptanceRate,
         submissions: realSubmissionsCount,
+        attempts: uniqueAttemptsCount,
+        views: viewsCount,
+        avgTime: avgMinutes > 0 ? `${avgMinutes} min` : '0 min',
         testCases: typeof prob.testCases === 'number' ? prob.testCases : examples.length,
         status: prob.status === 'Draft' || prob.status === 'DRAFT' ? 'Draft' : 'Live',
         description: prob.description || '',

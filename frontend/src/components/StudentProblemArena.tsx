@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { API_BASE_URL, getAuthHeaders } from "@/lib/apiConfig";
 import {
   ArrowLeft,
@@ -484,18 +484,34 @@ export default function StudentProblemArena({
     setCode(defaultCodes[language] || defaultCodes.python);
   }, [language, defaultCodes]);
 
+  // User-scoped submissions storage helper
+  const getUserSubmissionsStorageKey = useCallback((u?: any, pId?: string | number) => {
+    const uKey = u?.id || u?.email ? String(u.id || u.email).toLowerCase().trim() : "";
+    return uKey ? `lms_submissions_${uKey}_${pId}` : "";
+  }, []);
+
   // Load user submissions from localStorage
   useEffect(() => {
     try {
-      const storageKey = `lms_submissions_${problem.id || problem.slug}`;
-      const savedSubs = localStorage.getItem(storageKey);
-      if (savedSubs) {
-        setMySubmissions(JSON.parse(savedSubs));
-      } else {
-        setMySubmissions([]);
+      // Clean up legacy non-user-scoped storage key if present
+      const legacyKey = `lms_submissions_${problem.id || problem.slug}`;
+      if (typeof window !== "undefined") {
+        try { localStorage.removeItem(legacyKey); } catch {}
       }
-    } catch {}
-  }, [problem.id, problem.slug]);
+
+      const storageKey = getUserSubmissionsStorageKey(user, problem.id || problem.slug);
+      if (storageKey) {
+        const savedSubs = localStorage.getItem(storageKey);
+        if (savedSubs) {
+          setMySubmissions(JSON.parse(savedSubs));
+          return;
+        }
+      }
+      setMySubmissions([]);
+    } catch {
+      setMySubmissions([]);
+    }
+  }, [problem.id, problem.slug, user?.id, user?.email, getUserSubmissionsStorageKey]);
 
   // Examples parser from API problem
   const exampleCases = useMemo(() => {
@@ -650,20 +666,24 @@ export default function StudentProblemArena({
             setCommunitySolutions(mapped);
 
             // Synchronize and track all personal student submissions (preserves full submission history)
+            const userEmailLower = (user?.email || "").toLowerCase().trim();
+            const userIdStr = user?.id ? String(user.id).trim() : "";
+
             const userSubmissionsFromBackend = data.filter((sub: any) => {
-              const matchesEmail =
-                user?.email &&
-                sub.studentEmail &&
-                sub.studentEmail.toLowerCase() === user.email.toLowerCase();
-              const matchesId = user?.id && sub.userId && String(sub.userId) === String(user.id);
-              return matchesEmail || matchesId;
+              const subEmail = String(sub.studentEmail || sub.userEmail || sub.email || sub.authorEmail || "").toLowerCase().trim();
+              const subUid = String(sub.userId || "").trim();
+              const matchesEmail = userEmailLower && subEmail && subEmail === userEmailLower;
+              const matchesId = userIdStr && subUid && subUid === userIdStr;
+              return Boolean(matchesEmail || matchesId);
             });
+
+            const storageKey = getUserSubmissionsStorageKey(user, problem.id || problem.slug);
 
             if (userSubmissionsFromBackend.length > 0) {
               const mappedUserSubs = userSubmissionsFromBackend.map((sub: any) => {
                 const rawStatus = (sub.status || "").toLowerCase();
                 let normalizedStatus: "Accepted" | "Pending Review" | "Needs Improvement" | "Rejected" | "Wrong Answer" = "Pending Review";
-                if (rawStatus.includes("approved") || rawStatus.includes("accepted")) {
+                if (rawStatus.includes("approved") || rawStatus.includes("accepted") || rawStatus.includes("pass")) {
                   normalizedStatus = "Accepted";
                 } else if (rawStatus.includes("improve") || rawStatus.includes("needs")) {
                   normalizedStatus = "Needs Improvement";
@@ -685,65 +705,20 @@ export default function StudentProblemArena({
                 };
               });
 
-              setMySubmissions((prev) => {
-                const backendIds = new Set(mappedUserSubs.map((s) => s.id));
-                const pendingLocal = prev.filter(
-                  (p) => !backendIds.has(p.id) && String(p.id).startsWith("local-")
-                );
-                const combined = [...mappedUserSubs, ...pendingLocal];
+              setMySubmissions(mappedUserSubs);
+              if (storageKey) {
                 try {
-                  localStorage.setItem(
-                    `lms_submissions_${problem.id || problem.slug}`,
-                    JSON.stringify(combined)
-                  );
+                  localStorage.setItem(storageKey, JSON.stringify(mappedUserSubs));
                 } catch {}
-                return combined;
-              });
+              }
             } else {
-              // Fallback sync for offline/local submissions by exact ID
-              setMySubmissions((prev) => {
-                let changed = false;
-                const updated = prev.map((mySub) => {
-                  const match = data.find((sub: any) => String(sub.id) === String(mySub.id));
-                  if (match) {
-                    const rawStatus = (match.status || "").toLowerCase();
-                    let normalizedStatus: "Accepted" | "Pending Review" | "Needs Improvement" | "Rejected" | "Wrong Answer" = "Pending Review";
-                    if (rawStatus.includes("approved") || rawStatus.includes("accepted")) {
-                      normalizedStatus = "Accepted";
-                    } else if (rawStatus.includes("improve") || rawStatus.includes("needs")) {
-                      normalizedStatus = "Needs Improvement";
-                    } else if (rawStatus.includes("reject") || rawStatus.includes("wrong")) {
-                      normalizedStatus = "Rejected";
-                    } else {
-                      normalizedStatus = "Pending Review";
-                    }
-
-                    const feedback = match.feedback || match.reviewNotes || "";
-                    if (mySub.status !== normalizedStatus || (mySub.feedback || "") !== feedback) {
-                      changed = true;
-                      return {
-                        ...mySub,
-                        status: normalizedStatus,
-                        feedback,
-                        runtime: match.runtime || mySub.runtime,
-                        memory: match.memory || mySub.memory,
-                      };
-                    }
-                  }
-                  return mySub;
-                });
-
-                if (changed) {
-                  try {
-                    localStorage.setItem(
-                      `lms_submissions_${problem.id || problem.slug}`,
-                      JSON.stringify(updated)
-                    );
-                  } catch {}
-                  return updated;
-                }
-                return prev;
-              });
+              // User has zero submissions on backend (deleted by admin, brand new user, or no submissions yet)
+              setMySubmissions([]);
+              if (storageKey) {
+                try {
+                  localStorage.removeItem(storageKey);
+                } catch {}
+              }
             }
             return;
           }
@@ -1002,12 +977,12 @@ export default function StudentProblemArena({
           codeSnippet: code,
         };
         const updatedSubs = [newSubmission, ...withoutExactSameId];
-        try {
-          localStorage.setItem(
-            `lms_submissions_${problem.id || problem.slug}`,
-            JSON.stringify(updatedSubs)
-          );
-        } catch {}
+        const storageKey = getUserSubmissionsStorageKey(user, problem.id || problem.slug);
+        if (storageKey) {
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(updatedSubs));
+          } catch {}
+        }
         return updatedSubs;
       });
     } catch (err) {
@@ -1025,12 +1000,12 @@ export default function StudentProblemArena({
       setMySubmissions((prev) => {
         const withoutExactSameId = prev.filter((s) => s.id !== subId);
         const updatedSubs = [newSubmission, ...withoutExactSameId];
-        try {
-          localStorage.setItem(
-            `lms_submissions_${problem.id || problem.slug}`,
-            JSON.stringify(updatedSubs)
-          );
-        } catch {}
+        const storageKey = getUserSubmissionsStorageKey(user, problem.id || problem.slug);
+        if (storageKey) {
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(updatedSubs));
+          } catch {}
+        }
         return updatedSubs;
       });
     }

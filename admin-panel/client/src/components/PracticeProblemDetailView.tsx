@@ -329,10 +329,71 @@ export default function PracticeProblemDetailView({
   };
 
   // Dynamic Metric Counts from Real Submissions
-  const totalSubmissionsCount = submissionsList.length > 0 ? submissionsList.length : (typeof problem.submissions === "number" ? problem.submissions : 0);
+  const totalSubmissionsCount = submissionsList.length;
+  const uniqueLearnersCount = new Set(
+    submissionsList.map((s) => s.studentEmail || s.student || s.id)
+  ).size;
   const pendingCount = submissionsList.filter((s) => (s.status || "").toLowerCase().includes("pending")).length;
-  const approvedCount = submissionsList.filter((s) => (s.status || "approved").toLowerCase().includes("approved") || (s.status || "").toLowerCase().includes("accepted")).length;
+  const approvedCount = submissionsList.filter((s) => (s.status || "").toLowerCase().includes("approved") || (s.status || "").toLowerCase().includes("accepted") || (s.status || "").toLowerCase().includes("pass")).length;
   const needsImprovementCount = submissionsList.filter((s) => (s.status || "").toLowerCase().includes("improvement") || (s.status || "").toLowerCase().includes("wrong") || (s.status || "").toLowerCase().includes("reject")).length;
+
+  const realSuccessRate = submissionsList.length > 0
+    ? `${Math.round((approvedCount / submissionsList.length) * 100)}%`
+    : "0%";
+
+  const realAvgMinutes = submissionsList.length > 0
+    ? Math.round(
+        submissionsList.reduce((acc, s) => {
+          const t = String(s.runtime || s.time || "15 min");
+          const num = parseFloat(t.replace(/[^0-9.]/g, "")) || 15;
+          return acc + num;
+        }, 0) / submissionsList.length
+      )
+    : 0;
+  const realAvgTimeDisplay = realAvgMinutes > 0 ? `${realAvgMinutes} min` : "0 min";
+  const realViewsCount = problem.views !== undefined ? Number(problem.views) : (typeof (problem as any).viewsCount === "number" ? Number((problem as any).viewsCount) : 0);
+
+  const dailyAttemptsData = useMemo(() => {
+    const days: { day: string; val: number; height: string }[] = [];
+    const now = new Date();
+    const dayCounts = new Map<string, number>();
+
+    for (let i = 9; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const key = d.toISOString().split("T")[0];
+      dayCounts.set(key, 0);
+    }
+
+    submissionsList.forEach((s) => {
+      const dateStr = s.submittedAt || s.submitted;
+      if (dateStr) {
+        const d = new Date(dateStr);
+        if (!isNaN(d.getTime())) {
+          const key = d.toISOString().split("T")[0];
+          if (dayCounts.has(key)) {
+            dayCounts.set(key, (dayCounts.get(key) || 0) + 1);
+          }
+        }
+      }
+    });
+
+    const counts = Array.from(dayCounts.values());
+    const maxVal = Math.max(...counts, 1);
+
+    for (const [key, count] of dayCounts.entries()) {
+      const d = new Date(key);
+      const dayLabel = d.toLocaleDateString("en-US", { weekday: "short" });
+      const pct = submissionsList.length === 0 ? 0 : Math.round((count / maxVal) * 100);
+      days.push({
+        day: dayLabel,
+        val: count,
+        height: `${submissionsList.length === 0 ? 4 : Math.max(pct, count > 0 ? 16 : 4)}%`,
+      });
+    }
+
+    return days;
+  }, [submissionsList]);
 
   const filteredSubmissions = useMemo(() => {
     if (submissionFilter === "All") return submissionsList;
@@ -730,7 +791,7 @@ export default function PracticeProblemDetailView({
               Total views
             </p>
             <p className="text-xl font-bold font-display text-slate-900 dark:text-white mt-1">
-              1,248
+              {realViewsCount.toLocaleString()}
             </p>
           </div>
 
@@ -739,7 +800,7 @@ export default function PracticeProblemDetailView({
               Attempts
             </p>
             <p className="text-xl font-bold font-display text-slate-900 dark:text-white mt-1">
-              856
+              {uniqueLearnersCount.toLocaleString()}
             </p>
           </div>
 
@@ -757,7 +818,7 @@ export default function PracticeProblemDetailView({
               Success rate
             </p>
             <p className="text-xl font-bold font-display text-emerald-600 dark:text-emerald-400 mt-1">
-              {problem.acceptance || "74%"}
+              {realSuccessRate}
             </p>
           </div>
 
@@ -766,7 +827,7 @@ export default function PracticeProblemDetailView({
               Average time
             </p>
             <p className="text-xl font-bold font-display text-indigo-600 dark:text-indigo-400 mt-1">
-              22 min
+              {realAvgTimeDisplay}
             </p>
           </div>
         </div>
@@ -1670,7 +1731,7 @@ export default function PracticeProblemDetailView({
                       Total views
                     </p>
                     <p className="text-xl font-bold font-display text-slate-900 dark:text-white mt-1">
-                      1,248
+                      {realViewsCount.toLocaleString()}
                     </p>
                   </div>
                   <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4">
@@ -1678,7 +1739,7 @@ export default function PracticeProblemDetailView({
                       Total attempts
                     </p>
                     <p className="text-xl font-bold font-display text-slate-900 dark:text-white mt-1">
-                      856
+                      {uniqueLearnersCount.toLocaleString()}
                     </p>
                   </div>
                   <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4">
@@ -1686,7 +1747,7 @@ export default function PracticeProblemDetailView({
                       Total submissions
                     </p>
                     <p className="text-xl font-bold font-display text-slate-900 dark:text-white mt-1">
-                      642
+                      {totalSubmissionsCount.toLocaleString()}
                     </p>
                   </div>
                   <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4">
@@ -1694,7 +1755,7 @@ export default function PracticeProblemDetailView({
                       Success rate
                     </p>
                     <p className="text-xl font-bold font-display text-emerald-600 dark:text-emerald-400 mt-1">
-                      74%
+                      {realSuccessRate}
                     </p>
                   </div>
                   <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4">
@@ -1702,7 +1763,7 @@ export default function PracticeProblemDetailView({
                       Average time
                     </p>
                     <p className="text-xl font-bold font-display text-indigo-600 dark:text-indigo-400 mt-1">
-                      22 min
+                      {realAvgTimeDisplay}
                     </p>
                   </div>
                   <div className="rounded-xl border border-slate-200/80 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01] p-4">
@@ -1710,7 +1771,7 @@ export default function PracticeProblemDetailView({
                       Discussion count
                     </p>
                     <p className="text-xl font-bold font-display text-purple-600 dark:text-purple-400 mt-1">
-                      24
+                      {discussions.length.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -1729,21 +1790,11 @@ export default function PracticeProblemDetailView({
 
                   {/* Histogram Chart Bars */}
                   <div className="h-36 flex items-end justify-between gap-2.5 pt-4 px-2">
-                    {[
-                      { day: "Day 1", val: 30, height: "30%" },
-                      { day: "Day 2", val: 45, height: "45%" },
-                      { day: "Day 3", val: 40, height: "40%" },
-                      { day: "Day 4", val: 65, height: "65%" },
-                      { day: "Day 5", val: 55, height: "55%" },
-                      { day: "Day 6", val: 80, height: "80%" },
-                      { day: "Day 7", val: 75, height: "75%" },
-                      { day: "Day 8", val: 92, height: "92%" },
-                      { day: "Day 9", val: 85, height: "85%" },
-                      { day: "Day 10", val: 100, height: "100%" },
-                    ].map((bar, i) => (
+                    {dailyAttemptsData.map((bar, i) => (
                       <div
                         key={i}
                         className="flex-1 flex flex-col items-center gap-1 group relative"
+                        title={`${bar.day}: ${bar.val} attempt${bar.val === 1 ? "" : "s"}`}
                       >
                         <div
                           style={{ height: bar.height }}
@@ -1818,14 +1869,14 @@ export default function PracticeProblemDetailView({
                 <div className="flex items-center justify-between py-1 border-b border-slate-50 dark:border-white/[0.02]">
                   <span className="text-slate-400 font-medium">Views</span>
                   <span className="font-bold text-slate-800 dark:text-slate-200">
-                    1,248
+                    {realViewsCount.toLocaleString()}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between py-1 border-b border-slate-50 dark:border-white/[0.02]">
                   <span className="text-slate-400 font-medium">Attempts</span>
                   <span className="font-bold text-slate-800 dark:text-slate-200">
-                    856
+                    {uniqueLearnersCount.toLocaleString()}
                   </span>
                 </div>
 
@@ -1839,7 +1890,7 @@ export default function PracticeProblemDetailView({
                 <div className="flex items-center justify-between py-1">
                   <span className="text-slate-400 font-medium">Success rate</span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    {problem.acceptance || "74%"}
+                    {realSuccessRate}
                   </span>
                 </div>
               </div>

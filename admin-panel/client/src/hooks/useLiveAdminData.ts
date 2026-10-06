@@ -109,6 +109,9 @@ export interface PracticeProblem {
   difficulty: "Easy" | "Medium" | "Hard";
   acceptance: string;
   submissions: number;
+  views?: number;
+  attempts?: number;
+  avgTime?: string;
   testCases: number;
   status: "Live" | "Draft";
   description?: string;
@@ -355,8 +358,51 @@ export function useLiveAdminData() {
   };
 
   const updateStudents = (data: StudentItem[]) => {
-    setStudents(data);
-    writeCache(CACHE_KEYS.STUDENTS, data);
+    const list = Array.isArray(data) ? data : [];
+    setStudents(list);
+    writeCache(CACHE_KEYS.STUDENTS, list);
+    setStats((prev) => {
+      const next = { ...prev, totalStudents: list.length, activeStudents: list.length };
+      writeCache(CACHE_KEYS.STATS, next);
+      return next;
+    });
+  };
+
+  const fetchStudents = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/students`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          updateStudents(data);
+        }
+      }
+    } catch {}
+  };
+
+  const deleteStudent = async (id: string | number) => {
+    const targetId = String(id).trim();
+    setStudents((prev) => {
+      const updated = prev.filter(
+        (s) => String(s.id).trim() !== targetId && String(s.email || "").trim().toLowerCase() !== targetId.toLowerCase()
+      );
+      writeCache(CACHE_KEYS.STUDENTS, updated);
+      setStats((s) => {
+        const nextStats = { ...s, totalStudents: updated.length, activeStudents: updated.length };
+        writeCache(CACHE_KEYS.STATS, nextStats);
+        return nextStats;
+      });
+      return updated;
+    });
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/students/${encodeURIComponent(targetId)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        await Promise.all([fetchStudents(), fetchInitialSnapshot()]);
+      }
+    } catch {}
   };
 
   const updateAssignments = (data: any[]) => {
@@ -392,6 +438,9 @@ export function useLiveAdminData() {
         difficulty: prob.difficulty || "Medium",
         acceptance: prob.acceptance || "0.0%",
         submissions: typeof prob.submissions === "number" ? prob.submissions : 0,
+        views: typeof prob.views === "number" ? prob.views : (typeof prob.viewsCount === "number" ? prob.viewsCount : 0),
+        attempts: typeof prob.attempts === "number" ? prob.attempts : 0,
+        avgTime: prob.avgTime || "0 min",
         testCases: typeof prob.testCases === "number" ? prob.testCases : (prob.testCasesList?.length || 0),
         status: prob.status === "Draft" || prob.status === "DRAFT" ? "Draft" : "Live",
         description: prob.description || "",
@@ -953,6 +1002,7 @@ export function useLiveAdminData() {
     isLoading,
     isWsConnected,
     refresh,
+    deleteStudent,
     upsertCourse,
     deleteCourse,
     setCourses: updateCourses,

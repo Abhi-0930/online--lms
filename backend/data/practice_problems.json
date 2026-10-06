@@ -4,8 +4,9 @@
     "title": "Two Sum",
     "category": "Arrays",
     "difficulty": "Easy",
-    "acceptance": "60%",
-    "submissions": 13,
+    "acceptance": "0%",
+    "submissions": 1,
+    "views": 0,
     "testCases": 0,
     "status": "Live",
     "description": "Given an array of integers nums and an integer target, return the indices of the two numbers such that they add up to the target.\nYou may assume that each input has exactly one solution, and you may not use the same element twice.\nReturn the answer in any order.",
@@ -63,6 +64,6 @@
     "visibility": "Public",
     "slug": "two-sum",
     "createdAt": "2026-09-28T19:22:29.654Z",
-    "updatedAt": "2026-10-06T19:16:30.810Z"
+    "updatedAt": "2026-10-06T20:44:03.863Z"
   }
 ]

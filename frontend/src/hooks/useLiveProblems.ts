@@ -47,8 +47,31 @@ export interface PublicProblem {
   attempts?: number;
 }
 
-const SOLVED_KEY = "lms_user_solved_problems";
 const CACHE_KEY = "lms_user_cached_problems_v4";
+
+function getSolvedStorageKey(): string {
+  if (typeof window === "undefined") return "lms_user_solved_problems";
+  try {
+    const rawUser = localStorage.getItem("lms_user_profile") || sessionStorage.getItem("lms_user");
+    if (rawUser) {
+      const u = JSON.parse(rawUser);
+      const uKey = u?.id || u?.email ? String(u.id || u.email).toLowerCase().trim() : "";
+      if (uKey) return `lms_user_solved_problems_${uKey}`;
+    }
+  } catch {}
+  return "lms_user_solved_problems_guest";
+}
+
+function readSolvedIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    try { localStorage.removeItem("lms_user_solved_problems"); } catch {}
+    const stored = localStorage.getItem(getSolvedStorageKey());
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
 
 export const DEFAULT_PROBLEMS: PublicProblem[] = [];
 
@@ -141,15 +164,7 @@ function readCachedProblems(): PublicProblem[] {
 
 export function useLiveProblems() {
   const [rawProblems, setRawProblems] = useState<PublicProblem[]>(() => readCachedProblems());
-  const [solvedIds, setSolvedIds] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const stored = localStorage.getItem(SOLVED_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [solvedIds, setSolvedIds] = useState<string[]>(() => readSolvedIds());
   const [isLoading, setIsLoading] = useState<boolean>(() => readCachedProblems().length === 0);
   const [error, setError] = useState<string | null>(null);
 
@@ -226,6 +241,13 @@ export function useLiveProblems() {
     };
     window.addEventListener("visibilitychange", handleVisibility);
 
+    // Sync solvedIds on auth change (login / logout / account switch)
+    const handleAuthChange = () => {
+      setSolvedIds(readSolvedIds());
+      fetchProblems();
+    };
+    window.addEventListener("lms:auth-change", handleAuthChange);
+
     // Setup WebSocket live sync with backend
     const unsubscribe = sharedWs.subscribe((msg) => {
       if (Array.isArray(msg?.data?.practiceProblems) && msg.data.practiceProblems.length > 0) {
@@ -255,6 +277,7 @@ export function useLiveProblems() {
     return () => {
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("lms:auth-change", handleAuthChange);
       window.removeEventListener("lms:practice-problems-updated", handleCustomUpdate);
       unsubscribe();
     };
@@ -277,7 +300,7 @@ export function useLiveProblems() {
     setSolvedIds((prev) => {
       const updated = prev.includes(idOrSlug) ? prev : [...prev, idOrSlug];
       try {
-        localStorage.setItem(SOLVED_KEY, JSON.stringify(updated));
+        localStorage.setItem(getSolvedStorageKey(), JSON.stringify(updated));
       } catch {}
       return updated;
     });

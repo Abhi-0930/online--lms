@@ -20,6 +20,17 @@ export default async function adminController(fastify: FastifyInstance) {
     return adminService.getAllStudents();
   });
 
+  fastify.delete('/students/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await adminService.deleteStudent(id);
+      AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
+      return reply.send(result);
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || 'Failed to delete student' });
+    }
+  });
+
   // Student course progress & curriculum checklist
   fastify.get('/students/:userId/courses/:courseId/progress', async (request, reply) => {
     const { userId, courseId } = request.params as { userId: string; courseId: string };
