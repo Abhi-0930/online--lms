@@ -6237,6 +6237,13 @@ export default function Home() {
           ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, "")) || 0
           : 0;
 
+      let statusVal: "DRAFT" | "PUBLISHED" | "ARCHIVED" = "PUBLISHED";
+      if (data.courseStatus === "Draft") {
+        statusVal = "DRAFT";
+      } else if (data.courseStatus === "Archived") {
+        statusVal = "ARCHIVED";
+      }
+
       const res = await fetch(`${API_BASE_URL}/api/v1/admin/courses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -6263,7 +6270,7 @@ export default function Home() {
           subscriptionCycle: data.subscriptionCycle,
           enrollmentLimit: data.enrollmentLimit,
           courseVisibility: data.courseVisibility,
-          status: "DRAFT",
+          status: statusVal,
           modules: data.modules,
           instructorName: data.instructorName,
           skillsCovered: data.skillsCovered,
@@ -6285,14 +6292,19 @@ export default function Home() {
         if (savedData) {
           upsertCourse(savedData);
         }
-        onToast("Course draft saved successfully!");
+        if (typeof window !== "undefined") {
+          localStorage.setItem("lms_course_change_signal", Date.now().toString());
+          window.dispatchEvent(new CustomEvent("lms:courses-updated"));
+        }
+        onToast(data.id ? "Course changes saved successfully!" : "Course draft saved successfully!");
         refresh();
+        handleCloseCourseBuilder();
       } else {
         const err = await res.json().catch(() => ({}));
-        onToast(err.error || "Failed to save course draft");
+        onToast(err.error || "Failed to save course");
       }
     } catch (err: any) {
-      onToast(err?.message || "Failed to save course draft");
+      onToast(err?.message || "Failed to save course");
     }
   };
 
@@ -6306,7 +6318,6 @@ export default function Home() {
         data.discountPrice !== undefined && data.discountPrice !== ""
           ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, "")) || 0
           : 0;
-
 
       let statusVal: "DRAFT" | "PUBLISHED" | "ARCHIVED" = "PUBLISHED";
       if (data.courseStatus === "Draft") {
@@ -6363,9 +6374,13 @@ export default function Home() {
         if (savedData) {
           upsertCourse(savedData);
         }
+        if (typeof window !== "undefined") {
+          localStorage.setItem("lms_course_change_signal", Date.now().toString());
+          window.dispatchEvent(new CustomEvent("lms:courses-updated"));
+        }
         onToast(
           statusVal === "PUBLISHED"
-            ? "Course published successfully!"
+            ? (data.id ? "Course changes published successfully!" : "Course published successfully!")
             : "Course created successfully!"
         );
         refresh();
