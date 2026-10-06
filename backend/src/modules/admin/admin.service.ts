@@ -1584,13 +1584,30 @@ export class AdminService {
     }
 
     // If not in DB or DB update had issue, update fallback metadata directly
-    if (data.id && (AdminService.fallbackCourses.has(String(data.id)) || AdminService.fallbackCourses.has(String(slug)))) {
-      const existingFallback = AdminService.fallbackCourses.get(String(data.id)) ||
-                               AdminService.fallbackCourses.get(String(slug)) || {};
+    const foundFallbackKey = data.id
+      ? AdminService.fallbackCourses.has(String(data.id))
+        ? String(data.id)
+        : AdminService.fallbackCourses.has(String(slug))
+        ? String(slug)
+        : Array.from(AdminService.fallbackCourses.keys()).find((k) => {
+            const c = AdminService.fallbackCourses.get(k);
+            return (
+              c &&
+              (c.id === data.id ||
+                c.slug === data.id ||
+                c.slug === slug ||
+                (data.title && String(c.title || '').trim().toLowerCase() === data.title.trim().toLowerCase()))
+            );
+          })
+      : null;
+
+    if (foundFallbackKey) {
+      const existingFallback = AdminService.fallbackCourses.get(foundFallbackKey) || {};
       const fullUpdated = {
         ...existingFallback,
         ...data,
-        id: data.id,
+        id: data.id || existingFallback.id || foundFallbackKey,
+        slug: data.id || existingFallback.slug || slug,
         title: data.title || existingFallback.title || 'Untitled Course',
         subtitle: data.subtitle !== undefined ? data.subtitle : existingFallback.subtitle,
         description: data.description || existingFallback.description || '',
@@ -1634,7 +1651,10 @@ export class AdminService {
             : 'Review',
         updatedAt: new Date(),
       };
-      AdminService.fallbackCourses.set(String(data.id), fullUpdated);
+      AdminService.fallbackCourses.set(String(fullUpdated.id), fullUpdated);
+      if (foundFallbackKey !== String(fullUpdated.id)) {
+        AdminService.fallbackCourses.set(String(foundFallbackKey), fullUpdated);
+      }
       AdminService.saveMetaToFile();
       AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
       return fullUpdated;
