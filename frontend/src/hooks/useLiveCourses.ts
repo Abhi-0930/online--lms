@@ -50,7 +50,7 @@ export interface LiveCourseItem {
 const DEFAULT_COVER =
   "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=85";
 
-const USER_COURSES_CACHE_KEY = "lms_user_cached_courses";
+const USER_COURSES_CACHE_KEY = "lms_user_cached_courses_v3";
 
 function deduplicateCourses(items: LiveCourseItem[]): LiveCourseItem[] {
   const seenIds = new Set<string>();
@@ -416,9 +416,13 @@ export function useLiveCourses() {
 
   const fetchCourses = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/courses`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/courses?_t=${Date.now()}`, {
         method: "GET",
-        headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
         cache: "no-store",
       });
 
