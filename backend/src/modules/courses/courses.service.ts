@@ -11,7 +11,7 @@ export class CoursesService {
     status?: string;
     level?: string;
     search?: string;
-  }) {
+  } = {}) {
     const { page = 1, limit = 20, status, level, search } = params;
     const skip = (page - 1) * limit;
 
