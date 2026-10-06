@@ -230,7 +230,7 @@ export class PaymentService {
         finalAmount = options.amount;
       } else {
         const baseCoursePrice = Number(targetCourse.price) || 1499;
-        const platformFee = 10;
+        const platformFee = 0;
         finalAmount = baseCoursePrice + platformFee;
       }
     } else if (type === 'COHORT_ENROLLMENT' && cohortId) {

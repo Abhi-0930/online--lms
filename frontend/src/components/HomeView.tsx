@@ -3167,7 +3167,7 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
   const course = courses.find((item) => item.id === courseId || item.slug === courseId);
   const enrolled = isEnrolled(course?.id || "") || isEnrolled(course?.slug || "");
   const basePriceNumber = course?.rawPrice ?? 0;
-  const platformFee = basePriceNumber > 0 ? 10 : 0;
+  const platformFee = 0;
   const totalAmountNumber = basePriceNumber + platformFee;
 
   // Pre-load Razorpay checkout SDK & pre-warm instance in background on page load
@@ -3415,10 +3415,12 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
                 <span className="font-semibold text-[#059669] dark:text-emerald-400">{formattedDiscountSavings}</span>
               </div>
             )}
-            <div className="flex items-center justify-between text-[#64748b] dark:text-slate-400">
-              <span>Platform Fee</span>
-              <span className="font-semibold text-[#0f172a] dark:text-white">{platformFee === 0 ? "₹ 0" : "₹ 10"}</span>
-            </div>
+            {platformFee > 0 && (
+              <div className="flex items-center justify-between text-[#64748b] dark:text-slate-400">
+                <span>Platform Fee</span>
+                <span className="font-semibold text-[#0f172a] dark:text-white">₹ {platformFee}</span>
+              </div>
+            )}
           </div>
 
           {/* Dotted divider */}
