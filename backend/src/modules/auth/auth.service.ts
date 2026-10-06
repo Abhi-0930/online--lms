@@ -80,6 +80,7 @@ export class AuthService {
 
   private async findUser(email: string, googleId?: string): Promise<any | null> {
     const normalizedEmail = email.toLowerCase().trim();
+    let isDbHealthy = false;
     try {
       let user: any = null;
       if (googleId) {
@@ -93,20 +94,27 @@ export class AuthService {
           include: { onboarding: true },
         });
       }
+      isDbHealthy = true;
       if (user) {
         AuthService.fallbackUsers.set(normalizedEmail, user);
         return user;
+      } else {
+        AuthService.deleteUserByEmail(normalizedEmail);
+        return null;
       }
     } catch (err: any) {
+      isDbHealthy = false;
       logger.warn({ err: err.message }, 'Database unreachable, checking memory store');
     }
 
-    const cached = AuthService.fallbackUsers.get(normalizedEmail);
-    if (cached) return cached;
+    if (!isDbHealthy) {
+      const cached = AuthService.fallbackUsers.get(normalizedEmail);
+      if (cached) return cached;
 
-    if (googleId) {
-      for (const u of AuthService.fallbackUsers.values()) {
-        if (u.googleId === googleId) return u;
+      if (googleId) {
+        for (const u of AuthService.fallbackUsers.values()) {
+          if (u.googleId === googleId) return u;
+        }
       }
     }
 
