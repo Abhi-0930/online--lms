@@ -50,8 +50,6 @@ export interface LiveCourseItem {
 const DEFAULT_COVER =
   "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=85";
 
-const USER_COURSES_CACHE_KEY = "lms_user_cached_courses_v3";
-
 function deduplicateCourses(items: LiveCourseItem[]): LiveCourseItem[] {
   const seenIds = new Set<string>();
   const seenSlugs = new Set<string>();
@@ -71,26 +69,6 @@ function deduplicateCourses(items: LiveCourseItem[]): LiveCourseItem[] {
   }
 
   return unique;
-}
-
-function readCachedCourses(): LiveCourseItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(USER_COURSES_CACHE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return deduplicateCourses(parsed);
-    }
-  } catch {}
-  return [];
-}
-
-function writeCachedCourses(items: LiveCourseItem[]) {
-  if (typeof window === "undefined") return;
-  try {
-    const deduped = deduplicateCourses(items);
-    localStorage.setItem(USER_COURSES_CACHE_KEY, JSON.stringify(deduped));
-  } catch {}
 }
 
 function inferCategory(title: string = "", description: string = ""): string {
@@ -409,10 +387,21 @@ export function broadcastCoursesUpdate() {
 }
 
 export function useLiveCourses() {
-  const [courses, setCourses] = useState<LiveCourseItem[]>(() => readCachedCourses());
-  const [loading, setLoading] = useState(() => readCachedCourses().length === 0);
+  const [courses, setCourses] = useState<LiveCourseItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+
+  // Clear legacy local storage keys if present
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("lms_user_cached_courses");
+        localStorage.removeItem("lms_user_cached_courses_v2");
+        localStorage.removeItem("lms_user_cached_courses_v3");
+      } catch {}
+    }
+  }, []);
 
   const fetchCourses = useCallback(async () => {
     try {
@@ -432,12 +421,11 @@ export function useLiveCourses() {
         const transformed = deduplicateCourses(rawList.map(transformDbCourse));
         if (isMountedRef.current) {
           setCourses(transformed);
-          writeCachedCourses(transformed);
           setError(null);
         }
       }
     } catch {
-      // Backend offline fallback - keep cache
+      // Backend offline
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
@@ -454,7 +442,7 @@ export function useLiveCourses() {
     };
 
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === "lms_course_change_signal" || e.key === USER_COURSES_CACHE_KEY) {
+      if (e.key === "lms_course_change_signal") {
         fetchCourses();
       }
     };
