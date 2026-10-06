@@ -6232,9 +6232,10 @@ export default function Home() {
         data.courseType === "Free"
           ? 0
           : parseFloat(String(data.price || "0").replace(/[^0-9.]/g, "")) || 0;
-      const discountNum = data.discountPrice
-        ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, "")) || 0
-        : undefined;
+      const discountNum =
+        data.discountPrice !== undefined && data.discountPrice !== ""
+          ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, "")) || 0
+          : 0;
 
       const res = await fetch(`${API_BASE_URL}/api/v1/admin/courses`, {
         method: "POST",
@@ -6301,9 +6302,11 @@ export default function Home() {
         data.courseType === "Free"
           ? 0
           : parseFloat(String(data.price || "0").replace(/[^0-9.]/g, "")) || 0;
-      const discountNum = data.discountPrice
-        ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, "")) || 0
-        : undefined;
+      const discountNum =
+        data.discountPrice !== undefined && data.discountPrice !== ""
+          ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, "")) || 0
+          : 0;
+
 
       let statusVal: "DRAFT" | "PUBLISHED" | "ARCHIVED" = "PUBLISHED";
       if (data.courseStatus === "Draft") {
