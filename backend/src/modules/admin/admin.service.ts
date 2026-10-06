@@ -800,6 +800,7 @@ export class AdminService {
 
   async getDashboardStats() {
     let dbUsers: any[] = [];
+    let isDbHealthy = false;
     try {
       dbUsers = await this.prisma.user.findMany({
         where: { role: 'STUDENT' },
@@ -817,22 +818,26 @@ export class AdminService {
         },
         orderBy: { createdAt: 'desc' },
       });
+      isDbHealthy = true;
     } catch {
+      isDbHealthy = false;
       dbUsers = Array.from(AuthService.fallbackUsers.values()).filter((u) => (u.role || 'STUDENT') === 'STUDENT');
     }
 
-    // Merge in-memory fallback users if any
+    // Merge in-memory fallback users ONLY if DB is unreachable
     const userMap = new Map<string, any>();
     for (const u of dbUsers) {
       userMap.set(u.email.toLowerCase(), u);
     }
-    for (const u of AuthService.fallbackUsers.values()) {
-      if (!userMap.has(u.email.toLowerCase())) {
-        userMap.set(u.email.toLowerCase(), u);
-      } else {
-        const existing = userMap.get(u.email.toLowerCase());
-        if (u.lastActiveAt) existing.lastActiveAt = u.lastActiveAt;
-        if (u.lastLoginAt) existing.lastLoginAt = u.lastLoginAt;
+    if (!isDbHealthy) {
+      for (const u of AuthService.fallbackUsers.values()) {
+        if (!userMap.has(u.email.toLowerCase())) {
+          userMap.set(u.email.toLowerCase(), u);
+        } else {
+          const existing = userMap.get(u.email.toLowerCase());
+          if (u.lastActiveAt) existing.lastActiveAt = u.lastActiveAt;
+          if (u.lastLoginAt) existing.lastLoginAt = u.lastLoginAt;
+        }
       }
     }
 
@@ -906,6 +911,7 @@ export class AdminService {
 
   async getAllStudents() {
     let dbUsers: any[] = [];
+    let isDbHealthy = false;
     try {
       dbUsers = await this.prisma.user.findMany({
         where: { role: 'STUDENT' },
@@ -929,7 +935,9 @@ export class AdminService {
         },
         orderBy: { createdAt: 'desc' },
       });
+      isDbHealthy = true;
     } catch {
+      isDbHealthy = false;
       dbUsers = Array.from(AuthService.fallbackUsers.values()).filter((u) => (u.role || 'STUDENT') === 'STUDENT');
     }
 
@@ -937,13 +945,16 @@ export class AdminService {
     for (const u of dbUsers) {
       userMap.set(u.email.toLowerCase(), u);
     }
-    for (const u of AuthService.fallbackUsers.values()) {
-      if (!userMap.has(u.email.toLowerCase())) {
-        userMap.set(u.email.toLowerCase(), u);
-      } else {
-        const existing = userMap.get(u.email.toLowerCase());
-        if (u.lastActiveAt) existing.lastActiveAt = u.lastActiveAt;
-        if (u.lastLoginAt) existing.lastLoginAt = u.lastLoginAt;
+    // Only merge fallback users if DB was unreachable
+    if (!isDbHealthy) {
+      for (const u of AuthService.fallbackUsers.values()) {
+        if (!userMap.has(u.email.toLowerCase())) {
+          userMap.set(u.email.toLowerCase(), u);
+        } else {
+          const existing = userMap.get(u.email.toLowerCase());
+          if (u.lastActiveAt) existing.lastActiveAt = u.lastActiveAt;
+          if (u.lastLoginAt) existing.lastLoginAt = u.lastLoginAt;
+        }
       }
     }
 
@@ -4432,10 +4443,10 @@ export class AdminService {
       if (
         u &&
         u.email &&
-        (u.role === 'ADMIN' || u.role === 'INSTRUCTOR' || u.email.toLowerCase() === 'abhishek.j3094@gmail.com')
+        (u.role === 'ADMIN' || u.role === 'INSTRUCTOR' || u.email.toLowerCase() === 'admin@lms.com')
       ) {
         if (!userMap.has(u.email.toLowerCase())) {
-          const cleaned = cleanNameStr(u.fullName || u.name) || 'Abhishek J';
+          const cleaned = cleanNameStr(u.fullName || u.name) || 'Admin User';
           userMap.set(u.email.toLowerCase(), {
             id: u.id || `admin_${Date.now()}`,
             fullName: cleaned,
@@ -4452,7 +4463,7 @@ export class AdminService {
         const anyAdmin = await this.prisma.user.findFirst({
           where: {
             OR: [
-              { email: 'abhishek.j3094@gmail.com' },
+              { email: 'admin@lms.com' },
               { role: { in: ['ADMIN', 'INSTRUCTOR'] } },
             ],
           },
@@ -4465,7 +4476,7 @@ export class AdminService {
           },
         });
         if (anyAdmin && anyAdmin.email) {
-          const cleaned = cleanNameStr(anyAdmin.fullName) || 'Abhishek J';
+          const cleaned = cleanNameStr(anyAdmin.fullName) || 'Admin User';
           userMap.set(anyAdmin.email.toLowerCase(), {
             id: anyAdmin.id,
             fullName: cleaned,
@@ -4482,8 +4493,8 @@ export class AdminService {
       return [
         {
           id: 'admin_primary',
-          fullName: 'Abhishek J',
-          email: 'abhishek.j3094@gmail.com',
+          fullName: 'Admin User',
+          email: 'admin@lms.com',
           role: 'ADMIN',
           avatarUrl: null,
         },
