@@ -93,7 +93,10 @@ export class CoursesService {
     for (const c of courses) {
       if (isDeleted(c)) continue;
       const meta = AdminService.fallbackCourses.get(String(c.id)) ||
-                   AdminService.fallbackCourses.get(String(c.slug)) || {};
+                   AdminService.fallbackCourses.get(String(c.slug)) ||
+                   Array.from(AdminService.fallbackCourses.values()).find(
+                     (f: any) => f.id === c.id || f.slug === c.slug || (c.title && f.title && String(f.title).toLowerCase() === String(c.title).toLowerCase())
+                   ) || {};
       const merged = {
         ...c,
         ...meta,
@@ -138,18 +141,17 @@ export class CoursesService {
       courseMap.set(String(c.id), merged);
     }
 
-    if (courses.length === 0) {
-      for (const meta of AdminService.fallbackCourses.values()) {
-        if (isDeleted(meta)) continue;
-        const canonicalId = String(meta.id || '');
-        const metaSlug = String(meta.slug || '');
-        const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
-          (metaSlug && Array.from(courseMap.values()).some((c: any) => c.slug === metaSlug || c.id === canonicalId));
-        if (!alreadyExists && canonicalId) {
-          courseMap.set(canonicalId, meta);
-        }
+    for (const meta of AdminService.fallbackCourses.values()) {
+      if (isDeleted(meta)) continue;
+      const canonicalId = String(meta.id || '');
+      const metaSlug = String(meta.slug || '');
+      const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
+        (metaSlug && Array.from(courseMap.values()).some((c: any) => c.slug === metaSlug || c.id === canonicalId));
+      if (!alreadyExists && canonicalId) {
+        courseMap.set(canonicalId, meta);
       }
     }
+
 
     const mergedCourses = Array.from(courseMap.values());
 
