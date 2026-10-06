@@ -402,6 +402,12 @@ function transformDbCourse(c: any): LiveCourseItem {
   };
 }
 
+export function broadcastCoursesUpdate() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("lms:courses-updated"));
+  }
+}
+
 export function useLiveCourses() {
   const [courses, setCourses] = useState<LiveCourseItem[]>(() => readCachedCourses());
   const [loading, setLoading] = useState(() => readCachedCourses().length === 0);
@@ -412,7 +418,8 @@ export function useLiveCourses() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/courses`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+        cache: "no-store",
       });
 
       if (res.ok) {
@@ -424,15 +431,9 @@ export function useLiveCourses() {
           writeCachedCourses(transformed);
           setError(null);
         }
-      } else {
-        if (isMountedRef.current) {
-          // Keep existing cache
-        }
       }
     } catch {
-      if (isMountedRef.current) {
-        // Backend offline fallback - keep cache
-      }
+      // Backend offline fallback - keep cache
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
@@ -444,6 +445,16 @@ export function useLiveCourses() {
     isMountedRef.current = true;
     fetchCourses();
 
+    const handleCoursesUpdate = () => {
+      fetchCourses();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("lms:courses-updated", handleCoursesUpdate);
+      window.addEventListener("lms:enrollments-updated", handleCoursesUpdate);
+      window.addEventListener("focus", handleCoursesUpdate);
+    }
+
     const unsubscribe = sharedWs.subscribe((payload) => {
       if (payload?.type === "INITIAL_DATA" || payload?.type === "DATA_UPDATE") {
         fetchCourses();
@@ -453,6 +464,11 @@ export function useLiveCourses() {
     return () => {
       isMountedRef.current = false;
       unsubscribe();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("lms:courses-updated", handleCoursesUpdate);
+        window.removeEventListener("lms:enrollments-updated", handleCoursesUpdate);
+        window.removeEventListener("focus", handleCoursesUpdate);
+      }
     };
   }, [fetchCourses]);
 
@@ -463,3 +479,4 @@ export function useLiveCourses() {
     refreshCourses: fetchCourses,
   };
 }
+
