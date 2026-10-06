@@ -36,13 +36,34 @@ function loadCachedEnrollments(): EnrollmentItem[] {
   return [];
 }
 
-export function broadcastEnrollmentUpdate(enrollments?: EnrollmentItem[]) {
+export function broadcastEnrollmentUpdate(data?: any) {
   if (typeof window === "undefined") return;
   try {
-    if (enrollments && Array.isArray(enrollments)) {
-      localStorage.setItem(ENROLLMENTS_CACHE_KEY, JSON.stringify(enrollments));
+    if (Array.isArray(data)) {
+      localStorage.setItem(ENROLLMENTS_CACHE_KEY, JSON.stringify(data));
+    } else if (data && typeof data === "object") {
+      const current = loadCachedEnrollments();
+      let updated = [...current];
+      const newEnr = data.enrollment || (data.courseId ? data : null);
+      if (newEnr) {
+        const item: EnrollmentItem = {
+          id: newEnr.id || `enr_${Date.now()}`,
+          courseId: newEnr.courseId || newEnr.course?.id,
+          status: newEnr.status || "ACTIVE",
+          progressPct: newEnr.progressPct ?? 0,
+          enrolledAt: newEnr.enrolledAt || new Date().toISOString(),
+          course: data.course || newEnr.course,
+        };
+        const exists = updated.some(
+          (e) => e.id === item.id || e.courseId === item.courseId || (item.courseId && e.course?.id === item.courseId)
+        );
+        if (!exists) {
+          updated = [item, ...updated];
+        }
+        localStorage.setItem(ENROLLMENTS_CACHE_KEY, JSON.stringify(updated));
+      }
     }
-    window.dispatchEvent(new CustomEvent(ENROLLMENTS_UPDATED_EVENT, { detail: enrollments }));
+    window.dispatchEvent(new CustomEvent(ENROLLMENTS_UPDATED_EVENT, { detail: data }));
   } catch {}
 }
 
@@ -89,7 +110,34 @@ export function useEnrollments() {
 
   // Real-time synchronization across all component instances & tabs
   useEffect(() => {
-    const handleUpdate = () => {
+    const handleUpdate = (event?: any) => {
+      const detail = event?.detail;
+      if (detail) {
+        if (Array.isArray(detail)) {
+          setEnrollments(detail);
+        } else if (detail.enrollment || detail.courseId) {
+          const newEnr = detail.enrollment || detail;
+          setEnrollments((prev) => {
+            const item: EnrollmentItem = {
+              id: newEnr.id || `enr_${Date.now()}`,
+              courseId: newEnr.courseId || newEnr.course?.id,
+              status: newEnr.status || "ACTIVE",
+              progressPct: newEnr.progressPct ?? 0,
+              enrolledAt: newEnr.enrolledAt || new Date().toISOString(),
+              course: detail.course || newEnr.course,
+            };
+            const exists = prev.some(
+              (e) => e.id === item.id || e.courseId === item.courseId || (item.courseId && e.course?.id === item.courseId)
+            );
+            if (exists) return prev;
+            const updated = [item, ...prev];
+            try {
+              localStorage.setItem(ENROLLMENTS_CACHE_KEY, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        }
+      }
       fetchEnrollments();
     };
 
@@ -101,6 +149,29 @@ export function useEnrollments() {
       window.removeEventListener("storage", handleUpdate);
     };
   }, [fetchEnrollments]);
+
+  const addEnrollmentOptimistically = useCallback((newEnr: Partial<EnrollmentItem> & { courseId: string; course?: any }) => {
+    const item: EnrollmentItem = {
+      id: newEnr.id || `enr_${Date.now()}`,
+      courseId: newEnr.courseId,
+      status: newEnr.status || "ACTIVE",
+      progressPct: newEnr.progressPct ?? 0,
+      enrolledAt: newEnr.enrolledAt || new Date().toISOString(),
+      course: newEnr.course,
+    };
+    setEnrollments((prev) => {
+      const exists = prev.some(
+        (e) => e.id === item.id || e.courseId === item.courseId || (item.courseId && e.course?.id === item.courseId)
+      );
+      if (exists) return prev;
+      const updated = [item, ...prev];
+      try {
+        localStorage.setItem(ENROLLMENTS_CACHE_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    broadcastEnrollmentUpdate(item);
+  }, []);
 
   const isEnrolled = useCallback(
     (courseIdentifier: string) => {
@@ -118,9 +189,10 @@ export function useEnrollments() {
     enrollments,
     loading,
     isEnrolled,
-    refreshEnrollments: () => {
+    addEnrollmentOptimistically,
+    refreshEnrollments: async () => {
       broadcastEnrollmentUpdate();
-      return fetchEnrollments();
+      return await fetchEnrollments();
     },
   };
 }

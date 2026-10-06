@@ -3161,7 +3161,7 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
   const router = useRouter();
   const { user } = useAuth();
   const { courses, loading } = useLiveCourses();
-  const { isEnrolled, refreshEnrollments } = useEnrollments();
+  const { isEnrolled, refreshEnrollments, addEnrollmentOptimistically } = useEnrollments();
   const [isProcessing, setIsProcessing] = useState(false);
 
   const course = courses.find((item) => item.id === courseId || item.slug === courseId);
@@ -3246,15 +3246,28 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
       onOpen: () => {
         setIsProcessing(false);
       },
-      onSuccess: () => {
+      onSuccess: async (verifyData: any) => {
         setIsProcessing(false);
-        refreshEnrollments();
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("lms:enrollments-updated"));
+        if (course) {
+          addEnrollmentOptimistically({
+            id: verifyData?.enrollment?.id || `enr_${Date.now()}`,
+            courseId: course.id,
+            status: "ACTIVE",
+            progressPct: 0,
+            enrolledAt: new Date().toISOString(),
+            course: {
+              id: course.id,
+              slug: course.slug || course.id,
+              title: course.title,
+              subtitle: course.subtitle,
+              price: course.rawPrice || 0,
+              coverImageUrl: (course as any).coverImageUrl || course.image || undefined,
+              level: course.level,
+            },
+          });
         }
-        setTimeout(() => {
-          router.push(getSecureHref("/my-courses"));
-        }, 800);
+        await refreshEnrollments().catch(() => {});
+        router.push(getSecureHref("/my-courses"));
       },
       onError: () => {
         setIsProcessing(false);
@@ -3500,8 +3513,9 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
 }
 
 function MyCoursesPage() {
-  const { enrollments } = useEnrollments();
-  const { courses, loading } = useLiveCourses();
+  const { enrollments, loading: enrollmentsLoading } = useEnrollments();
+  const { courses, loading: coursesLoading } = useLiveCourses();
+  const loading = enrollmentsLoading || coursesLoading;
   const { assignments } = useAssignments();
   const { getStreakData } = useUserActivity();
   const { streak } = useMemo(() => getStreakData(), [getStreakData]);

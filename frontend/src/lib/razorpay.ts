@@ -143,7 +143,12 @@ function createRazorpayOptions({
           preloadedCheckouts.delete(cacheKey);
           toast.success(`🎉 Enrolled successfully in ${courseTitle}!`);
           if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("lms:enrollments-updated", { detail: verifyData }));
+            try {
+              const { broadcastEnrollmentUpdate } = require("@/hooks/useEnrollments");
+              broadcastEnrollmentUpdate(verifyData);
+            } catch {
+              window.dispatchEvent(new CustomEvent("lms:enrollments-updated", { detail: verifyData }));
+            }
             window.dispatchEvent(new CustomEvent("lms:activity-updated"));
           }
           callbacksRef.current.onSuccess?.(verifyData);
