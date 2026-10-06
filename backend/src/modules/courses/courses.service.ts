@@ -34,7 +34,6 @@ export class CoursesService {
 
     let courses: any[] = [];
     let total = 0;
-    let isDbHealthy = false;
     try {
       [courses, total] = await Promise.all([
         this.prisma.course.findMany({
@@ -68,11 +67,9 @@ export class CoursesService {
         }),
         this.prisma.course.count({ where }),
       ]);
-      isDbHealthy = true;
     } catch {
       courses = [];
       total = 0;
-      isDbHealthy = false;
     }
 
     const courseMap = new Map<string, any>();
