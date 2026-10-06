@@ -1153,26 +1153,26 @@ export class AdminService {
       const fallback = AdminService.fallbackCourses.get(String(course.id)) ||
                        AdminService.fallbackCourses.get(String(course.slug)) || {};
       const merged = {
-        ...course,
         ...fallback,
+        ...course,
         id: String(course.id),
         slug: course.slug || fallback.slug || String(course.id),
-        title: fallback.title || course.title,
-        subtitle: fallback.subtitle !== undefined ? fallback.subtitle : (course.subtitle || ''),
-        description: fallback.description || course.description || '',
-        price: fallback.price !== undefined && fallback.price !== null ? Number(fallback.price) : (course.price !== undefined ? Number(course.price) : 0),
-        discountPrice: fallback.discountPrice !== undefined && fallback.discountPrice !== null ? Number(fallback.discountPrice) : 0,
+        title: course.title || fallback.title,
+        subtitle: (course.subtitle !== undefined && course.subtitle !== null) ? course.subtitle : (fallback.subtitle || ''),
+        description: course.description || fallback.description || '',
+        price: (course.price !== undefined && course.price !== null) ? Number(course.price) : (fallback.price !== undefined ? Number(fallback.price) : 0),
+        discountPrice: (course.discountPrice !== undefined && course.discountPrice !== null) ? Number(course.discountPrice) : (fallback.discountPrice !== undefined ? Number(fallback.discountPrice) : 0),
         currency: fallback.currency || 'INR ₹',
-        coverImageUrl: fallback.coverImageUrl || fallback.thumbnailPreview || course.coverImageUrl || null,
-        thumbnailPreview: fallback.thumbnailPreview || fallback.coverImageUrl || course.coverImageUrl || null,
-        level: fallback.level || (course.level ? String(course.level).charAt(0) + String(course.level).slice(1).toLowerCase().replace(/_/g, ' ') : 'Beginner'),
-        status: fallback.status || (course.status === 'PUBLISHED' ? 'Published' : course.status === 'DRAFT' ? 'Draft' : 'Review'),
+        coverImageUrl: course.coverImageUrl || fallback.coverImageUrl || fallback.thumbnailPreview || null,
+        thumbnailPreview: course.coverImageUrl || fallback.thumbnailPreview || fallback.coverImageUrl || null,
+        level: course.level ? String(course.level).charAt(0) + String(course.level).slice(1).toLowerCase().replace(/_/g, ' ') : (fallback.level || 'Beginner'),
+        status: course.status === 'PUBLISHED' ? 'Published' : course.status === 'DRAFT' ? 'Draft' : (fallback.status || 'Review'),
         category: fallback.category || 'Development',
         language: fallback.language || 'English',
-        modules: (fallback.modules && fallback.modules.length > 0) ? fallback.modules : (course.modules || []),
+        modules: (course.modules && course.modules.length > 0) ? course.modules : (fallback.modules || []),
         instructor: fallback.instructor || { fullName: course.instructor?.fullName || 'Platform Admin', email: course.instructor?.email || 'admin@learnhub.com' },
         instructorName: fallback.instructorName || course.instructor?.fullName || 'Platform Admin',
-        updatedAt: fallback.updatedAt || course.updatedAt || new Date().toISOString(),
+        updatedAt: course.updatedAt || fallback.updatedAt || new Date().toISOString(),
       };
       courseMap.set(String(course.id), merged);
     }
@@ -1475,6 +1475,11 @@ export class AdminService {
 
     if (existingDbCourse) {
       try {
+        const discountNumber =
+          data.discountPrice !== undefined && data.discountPrice !== null
+            ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, '')) || 0
+            : (existingDbCourse.discountPrice !== undefined && existingDbCourse.discountPrice !== null ? Number(existingDbCourse.discountPrice) : 0);
+
         const updated = await this.prisma.course.update({
           where: { id: existingDbCourse.id },
           data: {
@@ -1483,6 +1488,7 @@ export class AdminService {
             description: data.description !== undefined ? data.description : existingDbCourse.description,
             coverImageUrl: coverImage !== null ? coverImage : existingDbCourse.coverImageUrl,
             price: data.price !== undefined ? priceNumber : Number(existingDbCourse.price),
+            discountPrice: discountNumber,
             level: data.level ? levelEnum : existingDbCourse.level,
             status: data.status ? statusVal : existingDbCourse.status,
           },
@@ -1717,6 +1723,11 @@ export class AdminService {
     } : undefined;
 
     try {
+      const discountNumber =
+        data.discountPrice !== undefined && data.discountPrice !== null
+          ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, '')) || 0
+          : 0;
+
       const course = await this.prisma.course.create({
         data: {
           slug,
@@ -1725,6 +1736,7 @@ export class AdminService {
           description: data.description || '',
           coverImageUrl: coverImage,
           price: priceNumber,
+          discountPrice: discountNumber,
           level: levelEnum,
           status: statusVal,
           instructorId: instructor?.id || '80bb4d0d-098b-4826-a0ed-9b8488123e1c',
