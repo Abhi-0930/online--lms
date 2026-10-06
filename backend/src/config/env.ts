@@ -31,6 +31,7 @@ export const env = {
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
   GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' ? 'https://preppath-e80f.onrender.com/api/v1/auth/google/callback' : 'http://localhost:4000/api/v1/auth/google/callback'),
   FRONTEND_URL: process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' ? 'https://www.preppath.net' : 'http://localhost:3000'),
+  ADMIN_URL: process.env.ADMIN_URL || (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' ? 'https://online-lms-coral.vercel.app' : 'http://localhost:5173'),
 
   // Razorpay
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || '',

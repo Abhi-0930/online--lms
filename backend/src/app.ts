@@ -30,11 +30,26 @@ export async function createApp() {
   });
 
   // Register CORS (with credentials for secure cookies)
+  const allowedOrigins = new Set([
+    'https://www.preppath.net',
+    'https://preppath.net',
+    'https://online-lms-coral.vercel.app',
+    env.FRONTEND_URL?.replace(/\/+$/, ''),
+    env.ADMIN_URL?.replace(/\/+$/, ''),
+  ].filter(Boolean));
+
   await fastify.register(cors, {
     origin: (origin, cb) => {
-      if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1') || origin === env.FRONTEND_URL) {
-        cb(null, true);
-        return;
+      if (!origin) return cb(null, true);
+      const cleanOrigin = origin.replace(/\/+$/, '');
+      if (
+        cleanOrigin.includes('localhost') ||
+        cleanOrigin.includes('127.0.0.1') ||
+        cleanOrigin.includes('preppath.net') ||
+        cleanOrigin.includes('vercel.app') ||
+        allowedOrigins.has(cleanOrigin)
+      ) {
+        return cb(null, true);
       }
       cb(null, true);
     },
