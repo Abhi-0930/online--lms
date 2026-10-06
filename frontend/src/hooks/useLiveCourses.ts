@@ -449,14 +449,28 @@ export function useLiveCourses() {
       fetchCourses();
     };
 
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "lms_course_change_signal" || e.key === USER_COURSES_CACHE_KEY) {
+        fetchCourses();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        fetchCourses();
+      }
+    };
+
     if (typeof window !== "undefined") {
       window.addEventListener("lms:courses-updated", handleCoursesUpdate);
       window.addEventListener("lms:enrollments-updated", handleCoursesUpdate);
       window.addEventListener("focus", handleCoursesUpdate);
+      window.addEventListener("storage", handleStorage);
+      document.addEventListener("visibilitychange", handleVisibilityChange);
     }
 
     const unsubscribe = sharedWs.subscribe((payload) => {
-      if (payload?.type === "INITIAL_DATA" || payload?.type === "DATA_UPDATE") {
+      if (payload?.type === "INITIAL_DATA" || payload?.type === "DATA_UPDATE" || payload?.type === "COURSES_UPDATE") {
         fetchCourses();
       }
     });
@@ -468,6 +482,8 @@ export function useLiveCourses() {
         window.removeEventListener("lms:courses-updated", handleCoursesUpdate);
         window.removeEventListener("lms:enrollments-updated", handleCoursesUpdate);
         window.removeEventListener("focus", handleCoursesUpdate);
+        window.removeEventListener("storage", handleStorage);
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
       }
     };
   }, [fetchCourses]);
