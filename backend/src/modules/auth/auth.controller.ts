@@ -48,47 +48,58 @@ export default async function authController(fastify: FastifyInstance) {
   };
 
   const resolveGoogleCallbackUrl = (request: any, parsedState?: any): string => {
-    if (parsedState?.callbackUrl && typeof parsedState.callbackUrl === 'string' && !parsedState.callbackUrl.includes('localhost')) {
-      return parsedState.callbackUrl;
+    // 1. If parsedState already contains the callbackUrl that was used to create the authorization URL, reuse it
+    if (parsedState?.callbackUrl && typeof parsedState.callbackUrl === 'string') {
+      const u = parsedState.callbackUrl.trim();
+      if (!u.includes('accounts.google') && !u.includes('googleapis.com')) {
+        return u;
+      }
     }
+    // 2. If request has host header (e.g. on Render with x-forwarded-proto/host)
     if (request) {
       const host = (request.headers['x-forwarded-host'] || request.headers.host || '').toString();
       const proto = (request.headers['x-forwarded-proto'] || (request.socket?.encrypted ? 'https' : 'http')).toString();
-      if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+      if (host && !host.includes('accounts.google') && !host.includes('googleapis.com')) {
         return `${proto}://${host}/api/v1/auth/google/callback`;
       }
     }
-    if (env.GOOGLE_CALLBACK_URL && !env.GOOGLE_CALLBACK_URL.includes('localhost')) {
+    // 3. Environment or default
+    if (env.GOOGLE_CALLBACK_URL) {
       return env.GOOGLE_CALLBACK_URL;
     }
     if (isProd || process.env.RENDER === 'true') {
       return 'https://preppath-e80f.onrender.com/api/v1/auth/google/callback';
     }
-    return env.GOOGLE_CALLBACK_URL || 'http://localhost:4000/api/v1/auth/google/callback';
+    return 'http://localhost:4000/api/v1/auth/google/callback';
   };
 
   const resolveTargetFrontendUrl = (request: any, parsedState?: any): string => {
-    if (parsedState?.frontendUrl && typeof parsedState.frontendUrl === 'string' && !parsedState.frontendUrl.includes('localhost')) {
-      return parsedState.frontendUrl;
+    // 1. Use the frontendUrl preserved in state from when the user initiated Google Login
+    if (parsedState?.frontendUrl && typeof parsedState.frontendUrl === 'string') {
+      const cleanUrl = parsedState.frontendUrl.trim().replace(/\/+$/, '');
+      const lower = cleanUrl.toLowerCase();
+      if (!lower.includes('accounts.google') && !lower.includes('googleapis.com')) {
+        return cleanUrl;
+      }
     }
+    // 2. If request referer is from our own frontend (NOT Google accounts)
     if (request?.headers?.referer) {
       try {
         const origin = new URL(request.headers.referer).origin;
-        if (origin && !origin.includes('localhost')) {
-          return origin;
+        const lower = origin.toLowerCase();
+        if (!lower.includes('accounts.google') && !lower.includes('googleapis.com')) {
+          return origin.replace(/\/+$/, '');
         }
       } catch {}
     }
-    if (parsedState?.frontendUrl && typeof parsedState.frontendUrl === 'string') {
-      return parsedState.frontendUrl;
-    }
-    if (env.FRONTEND_URL && !env.FRONTEND_URL.includes('localhost')) {
-      return env.FRONTEND_URL;
+    // 3. Fallback to configured FRONTEND_URL or environment default
+    if (env.FRONTEND_URL) {
+      return env.FRONTEND_URL.replace(/\/+$/, '');
     }
     if (isProd || process.env.RENDER === 'true') {
       return 'https://www.preppath.net';
     }
-    return env.FRONTEND_URL || 'http://localhost:3000';
+    return 'http://localhost:3000';
   };
 
   const handleGoogleCallback = async (request: any, reply: any) => {
@@ -184,7 +195,10 @@ export default async function authController(fastify: FastifyInstance) {
     let detectedFrontendUrl = query?.frontendUrl;
     if (!detectedFrontendUrl && request.headers.referer) {
       try {
-        detectedFrontendUrl = new URL(request.headers.referer).origin;
+        const origin = new URL(request.headers.referer).origin;
+        if (!origin.includes('accounts.google') && !origin.includes('googleapis.com')) {
+          detectedFrontendUrl = origin;
+        }
       } catch {}
     }
 
