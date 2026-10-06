@@ -94,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionStorage.removeItem("lms_manual_logout");
         } catch {}
       }
+      setLoading(false);
       setUserState((prev) => {
         let nextUser = typeof newUserOrFn === "function" ? newUserOrFn(prev) : newUserOrFn;
         if (nextUser && typeof nextUser === "object") {
