@@ -2,6 +2,7 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { env } from '../../config/env';
+import { AdminService } from '../admin/admin.service';
 import { AdminWsBroadcaster } from '../admin/admin.ws';
 import logger from '../../utils/logger';
 
@@ -69,7 +70,6 @@ export const CATALOG_COURSES = [
 
 export class PaymentService {
   private razorpay: Razorpay;
-  private static courseCache = new Map<string, any>();
 
   constructor(private prisma: PrismaClient) {
     this.razorpay = new Razorpay({
@@ -106,15 +106,16 @@ export class PaymentService {
   }
 
   /**
-   * Ensure default/catalog course exists in Neon PostgreSQL
+   * Ensure default/catalog course exists in Neon PostgreSQL and merges live meta prices
    */
   async ensureCourse(identifier: string) {
-    // 0. Fast in-memory cache lookup
-    if (PaymentService.courseCache.has(identifier)) {
-      return PaymentService.courseCache.get(identifier);
-    }
-
     try {
+      AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
+      const meta = AdminService.fallbackCourses.get(String(identifier)) ||
+                   Array.from(AdminService.fallbackCourses.values()).find(
+                     (c: any) => c.slug === identifier || c.id === identifier
+                   ) || {};
+
       return await this.withDbRetry(async () => {
         // 1. Try finding by ID or Slug in DB
         let course = await this.prisma.course.findFirst({
@@ -124,9 +125,12 @@ export class PaymentService {
         });
 
         if (course) {
-          PaymentService.courseCache.set(course.id, course);
-          if (course.slug) PaymentService.courseCache.set(course.slug, course);
-          return course;
+          return {
+            ...course,
+            ...meta,
+            price: meta.price !== undefined && meta.price !== null ? Number(meta.price) : Number(course.price || 0),
+            discountPrice: meta.discountPrice !== undefined && meta.discountPrice !== null ? Number(meta.discountPrice) : 0,
+          };
         }
 
         // 2. Check if it matches known catalog
@@ -155,17 +159,17 @@ export class PaymentService {
           });
         }
 
-        const title = catalogItem?.title || identifier.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-        const price = catalogItem ? catalogItem.price : 1499;
+        const title = meta.title || catalogItem?.title || identifier.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+        const price = meta.price !== undefined && meta.price !== null ? Number(meta.price) : (catalogItem ? catalogItem.price : 1499);
 
         course = await this.prisma.course.create({
           data: {
-            id: catalogItem?.id || undefined,
-            slug: catalogItem?.slug || identifier,
+            id: meta.id || catalogItem?.id || undefined,
+            slug: meta.slug || catalogItem?.slug || identifier,
             title,
-            subtitle: catalogItem?.subtitle || 'Master the essential skills for modern software engineering.',
-            description: catalogItem?.description || `Complete hands-on curriculum for ${title}.`,
-            coverImageUrl: catalogItem?.coverImageUrl || 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=85',
+            subtitle: meta.subtitle || catalogItem?.subtitle || 'Master the essential skills for modern software engineering.',
+            description: meta.description || catalogItem?.description || `Complete hands-on curriculum for ${title}.`,
+            coverImageUrl: meta.coverImageUrl || catalogItem?.coverImageUrl || 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=85',
             price,
             status: 'PUBLISHED',
             level: catalogItem?.level || 'BEGINNER',
@@ -173,15 +177,16 @@ export class PaymentService {
           },
         });
 
-        if (course) {
-          PaymentService.courseCache.set(course.id, course);
-          if (course.slug) PaymentService.courseCache.set(course.slug, course);
-        }
-
-        return course;
+        return {
+          ...course,
+          ...meta,
+          price: meta.price !== undefined && meta.price !== null ? Number(meta.price) : Number(course.price || 0),
+          discountPrice: meta.discountPrice !== undefined && meta.discountPrice !== null ? Number(meta.discountPrice) : 0,
+        };
       });
     } catch (dbErr: any) {
       logger.warn({ err: dbErr?.message, identifier }, 'Database unavailable in ensureCourse, using in-memory catalog fallback');
+      const meta = AdminService.fallbackCourses?.get(String(identifier)) || {};
       const catalogItem = CATALOG_COURSES.find(
         (c) => c.id === identifier || c.slug === identifier
       ) || {
@@ -193,9 +198,12 @@ export class PaymentService {
         price: 1499,
         level: 'BEGINNER',
       };
-      PaymentService.courseCache.set(catalogItem.id, catalogItem);
-      if (catalogItem.slug) PaymentService.courseCache.set(catalogItem.slug, catalogItem);
-      return catalogItem;
+      return {
+        ...catalogItem,
+        ...meta,
+        price: meta.price !== undefined && meta.price !== null ? Number(meta.price) : Number(catalogItem.price || 0),
+        discountPrice: meta.discountPrice !== undefined && meta.discountPrice !== null ? Number(meta.discountPrice) : 0,
+      };
     }
   }
 
@@ -226,12 +234,22 @@ export class PaymentService {
         });
       }).catch(() => null);
 
-      if (options.amount && options.amount > 0) {
+      if (options.amount !== undefined && options.amount > 0) {
         finalAmount = options.amount;
       } else {
-        const baseCoursePrice = Number(targetCourse.price) || 1499;
-        const platformFee = 0;
-        finalAmount = baseCoursePrice + platformFee;
+        const p1 = Number(targetCourse?.price) || 0;
+        const p2 = Number(targetCourse?.discountPrice) || 0;
+        let baseCoursePrice = 0;
+        if (p1 > 0 && p2 > 0) {
+          baseCoursePrice = Math.min(p1, p2);
+        } else if (p2 > 0) {
+          baseCoursePrice = p2;
+        } else if (p1 > 0) {
+          baseCoursePrice = p1;
+        } else {
+          baseCoursePrice = 1499;
+        }
+        finalAmount = baseCoursePrice;
       }
     } else if (type === 'COHORT_ENROLLMENT' && cohortId) {
       targetCohort = await this.withDbRetry(async () => {
@@ -243,11 +261,12 @@ export class PaymentService {
     }
 
     if (finalAmount <= 0) {
-      finalAmount = 1499;
+      finalAmount = 1;
     }
 
-    const amountInPaise = Math.round(finalAmount * 100);
+    const amountInPaise = Math.max(100, Math.round(finalAmount * 100));
     const receipt = options.receipt || `rcpt_${Date.now()}_${userId.slice(0, 6)}`;
+
 
     // Configure Razorpay order parameters
     const orderNotes: Record<string, string | number> = {
