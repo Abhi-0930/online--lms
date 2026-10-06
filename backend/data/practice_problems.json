@@ -29,9 +29,10 @@
       "Hash Map",
       "Brute Force",
       "Lookup",
-      "Optimization"
+      "Optimization",
+      "Binary Search"
     ],
-    "companies": "Google, Amazon, Microsoft, Meta, Netflix",
+    "companies": "Google, Amazon, Microsoft, Meta, Netflix, Salesforce, Apple",
     "examples": [
       {
         "id": "ex-1",
@@ -62,6 +63,6 @@
     "visibility": "Public",
     "slug": "two-sum",
     "createdAt": "2026-09-28T19:22:29.654Z",
-    "updatedAt": "2026-10-04T19:11:26.399Z"
+    "updatedAt": "2026-10-06T19:16:30.810Z"
   }
 ]

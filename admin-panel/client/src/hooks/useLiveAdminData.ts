@@ -264,8 +264,14 @@ export function useLiveAdminData() {
   const wsRef = useRef<WebSocket | null>(null);
 
   const updateCourses = (data: Course[]) => {
-    setCoursesList(data);
-    writeCache(CACHE_KEYS.COURSES, data);
+    const list = Array.isArray(data) ? data : [];
+    setCoursesList(list);
+    writeCache(CACHE_KEYS.COURSES, list);
+    setStats((prev) => {
+      const next = { ...prev, coursesCount: list.length };
+      writeCache(CACHE_KEYS.STATS, next);
+      return next;
+    });
   };
 
   const upsertCourse = (course: any) => {
@@ -334,6 +340,11 @@ export function useLiveAdminData() {
         updated = [formatted, ...prev];
       }
       writeCache(CACHE_KEYS.COURSES, updated);
+      setStats((prevStats) => {
+        const next = { ...prevStats, coursesCount: updated.length };
+        writeCache(CACHE_KEYS.STATS, next);
+        return next;
+      });
       return updated;
     });
   };
@@ -463,6 +474,11 @@ export function useLiveAdminData() {
         (c) => String(c.id).trim() !== targetId && String(c.slug || "").trim() !== targetId
       );
       writeCache(CACHE_KEYS.COURSES, updated);
+      setStats((prevStats) => {
+        const next = { ...prevStats, coursesCount: updated.length };
+        writeCache(CACHE_KEYS.STATS, next);
+        return next;
+      });
       return updated;
     });
 

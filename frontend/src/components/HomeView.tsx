@@ -921,7 +921,7 @@ function Dashboard() {
       </div>
 
       {/* Main Content Area */}
-      {enrolledCourses.length > 0 ? (
+      {activeDisplayCourses.length > 0 ? (
         (() => {
           const hasSessions = upcomingSessions.length > 0;
           const hasAssignments = assignments.length > 0;
@@ -934,7 +934,7 @@ function Dashboard() {
             )}>
               <section className="min-w-0 max-w-full w-full">
                 <SectionTitle
-                  title="Continue your learning"
+                  title={enrolledCourses.length > 0 ? "Continue your learning" : "Explore available courses"}
                   link={courses.length > 0 ? "Browse all" : undefined}
                   href={getSecureHref("/courses")}
                 />
@@ -960,6 +960,22 @@ function Dashboard() {
                     </div>
                   )}
                 </div>
+                {enrolledCourses.length > 0 && courses.filter((c) => !enrolledCourses.some((ec) => ec.id === c.id || ec.slug === c.slug)).length > 0 && (
+                  <div className="mt-8">
+                    <SectionTitle
+                      title="Explore more courses"
+                      link="Browse catalog"
+                      href={getSecureHref("/courses")}
+                    />
+                    <div className="flex w-full max-w-full min-w-0 gap-4 overflow-x-auto pb-1 pt-1 scroll-smooth snap-x snap-mandatory overscroll-x-contain no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {courses.filter((c) => !enrolledCourses.some((ec) => ec.id === c.id || ec.slug === c.slug)).map((c) => (
+                        <div key={c.id} className="w-[270px] sm:w-[300px] shrink-0 snap-start">
+                          <CourseProgressCard key={c.id} course={c} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </section>
               {showAside && (
                 <aside className="space-y-8 mt-8 xl:mt-0">

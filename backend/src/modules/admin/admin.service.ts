@@ -855,14 +855,10 @@ export class AdminService {
 
     let totalCourses = 0;
     try {
-      const dbCourseIds = (await this.prisma.course.findMany({ select: { id: true } })).map((c) => String(c.id));
-      const allCourseIds = new Set(dbCourseIds);
-      for (const id of AdminService.fallbackCourses.keys()) {
-        allCourseIds.add(String(id));
-      }
-      totalCourses = allCourseIds.size;
+      const allLiveCourses = await this.getAllCourses();
+      totalCourses = allLiveCourses.length;
     } catch {
-      totalCourses = AdminService.fallbackCourses.size;
+      totalCourses = 0;
     }
 
     // Recent activity items based on true last active timestamps
@@ -1336,6 +1332,7 @@ export class AdminService {
 
   async saveCourseDraft(data: {
     id?: string;
+    slug?: string;
     title?: string;
     subtitle?: string;
     description?: string;
@@ -1430,6 +1427,14 @@ export class AdminService {
       AdminService.deletedCoursesIds.delete(String(data.id).trim());
       AdminService.deletedCoursesIds.delete(String(data.id).trim().toLowerCase());
     }
+    if (data.slug) {
+      AdminService.deletedCoursesIds.delete(String(data.slug).trim());
+      AdminService.deletedCoursesIds.delete(String(data.slug).trim().toLowerCase());
+    }
+    if (slug) {
+      AdminService.deletedCoursesIds.delete(String(slug).trim());
+      AdminService.deletedCoursesIds.delete(String(slug).trim().toLowerCase());
+    }
     if (data.title) {
       AdminService.deletedCoursesIds.delete(data.title.trim().toLowerCase());
     }
@@ -1477,35 +1482,90 @@ export class AdminService {
     }
 
     if (existingDbCourse) {
-      try {
-        const discountNumber =
-          data.discountPrice !== undefined && data.discountPrice !== null
-            ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, '')) || 0
-            : (existingDbCourse.discountPrice !== undefined && existingDbCourse.discountPrice !== null ? Number(existingDbCourse.discountPrice) : 0);
+      const existingFallback = AdminService.fallbackCourses.get(String(existingDbCourse.id)) ||
+                               AdminService.fallbackCourses.get(String(data.id)) ||
+                               AdminService.fallbackCourses.get(String(existingDbCourse.slug)) || {};
 
-        const updated = await this.prisma.course.update({
-          where: { id: existingDbCourse.id },
-          data: {
-            title: data.title !== undefined ? data.title : existingDbCourse.title,
-            subtitle: data.subtitle !== undefined ? data.subtitle : existingDbCourse.subtitle,
-            description: data.description !== undefined ? data.description : existingDbCourse.description,
-            coverImageUrl: coverImage !== null ? coverImage : existingDbCourse.coverImageUrl,
-            price: data.price !== undefined ? priceNumber : Number(existingDbCourse.price),
-            discountPrice: discountNumber,
-            level: data.level ? levelEnum : existingDbCourse.level,
-            status: data.status ? statusVal : existingDbCourse.status,
-          },
-          include: {
-            instructor: true,
-            modules: {
-              include: { lessons: true },
+      const fullUpdated = {
+        ...existingFallback,
+        ...data,
+        id: String(existingDbCourse.id),
+        slug: data.slug || existingDbCourse.slug || existingFallback.slug || slug,
+        title: data.title !== undefined ? data.title : (existingDbCourse.title || existingFallback.title || 'Untitled Course'),
+        subtitle: data.subtitle !== undefined ? data.subtitle : (existingDbCourse.subtitle || existingFallback.subtitle || ''),
+        description: data.description !== undefined ? data.description : (existingDbCourse.description || existingFallback.description || ''),
+        price: data.price !== undefined ? priceNumber : (Number(existingDbCourse.price) || 0),
+        discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : (existingFallback.discountPrice || 0),
+        currency: data.currency || existingFallback.currency || 'INR ₹',
+        courseType: data.courseType || (priceNumber > 0 ? 'Paid' : 'Free'),
+        accessType: data.accessType || existingFallback.accessType || 'Lifetime Access',
+        durationCycleMode: data.durationCycleMode || existingFallback.durationCycleMode || 'Date Range',
+        startDate: data.startDate || existingFallback.startDate,
+        endDate: data.endDate || existingFallback.endDate,
+        durationValue: data.durationValue || existingFallback.durationValue || '90',
+        durationUnit: data.durationUnit || existingFallback.durationUnit || 'Days',
+        subscriptionCycle: data.subscriptionCycle || existingFallback.subscriptionCycle || 'Monthly',
+        enrollmentLimit: data.enrollmentLimit || existingFallback.enrollmentLimit || 'Unlimited',
+        courseVisibility: data.courseVisibility || existingFallback.courseVisibility || 'Public',
+        learningOutcomes: data.learningOutcomes || existingFallback.learningOutcomes || [],
+        prerequisites: data.prerequisites !== undefined ? data.prerequisites : (existingFallback.prerequisites || ''),
+        requirements: data.requirements || existingFallback.requirements || [],
+        targetAudience: data.targetAudience !== undefined ? data.targetAudience : (existingFallback.targetAudience || ''),
+        targetLearners: data.targetLearners || existingFallback.targetLearners || [],
+        skillsCovered: data.skillsCovered || data.tags || existingFallback.skillsCovered || [],
+        tags: data.tags || data.skillsCovered || existingFallback.tags || [],
+        modules: cleanCourseModules(Array.isArray(data.modules) ? data.modules : (existingFallback.modules || [])),
+        instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
+        instructorName: instructorDisplayName,
+        coverImageUrl: coverImage !== null ? coverImage : (existingDbCourse.coverImageUrl || existingFallback.coverImageUrl || null),
+        thumbnailPreview: coverImage !== null ? coverImage : (existingFallback.thumbnailPreview || existingDbCourse.coverImageUrl || null),
+        level: data.level || existingFallback.level || 'Beginner',
+        category: data.category || existingFallback.category || 'Development',
+        language: data.language || existingFallback.language || 'English',
+        estimatedDuration: data.estimatedDuration || existingFallback.estimatedDuration || '12 Weeks',
+        certificateAvailable: data.certificateAvailable !== undefined ? data.certificateAvailable : (existingFallback.certificateAvailable !== undefined ? existingFallback.certificateAvailable : true),
+        seoTitle: data.seoTitle !== undefined ? data.seoTitle : (existingFallback.seoTitle || ''),
+        seoDescription: data.seoDescription !== undefined ? data.seoDescription : (existingFallback.seoDescription || ''),
+        status:
+          statusVal === 'PUBLISHED' || statusVal === 'Published'
+            ? 'Published'
+            : statusVal === 'DRAFT' || statusVal === 'Draft'
+            ? 'Draft'
+            : 'Review',
+        updatedAt: new Date(),
+      };
+
+      // Persist immediately in memory and file
+      AdminService.fallbackCourses.set(String(existingDbCourse.id), fullUpdated);
+      if (data.id && String(data.id) !== String(existingDbCourse.id)) {
+        AdminService.fallbackCourses.set(String(data.id), fullUpdated);
+      }
+      AdminService.saveMetaToFile();
+      AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
+
+      // Asynchronously sync to PostgreSQL without blocking response
+      const syncToPostgres = async () => {
+        try {
+          const discountNumber =
+            data.discountPrice !== undefined && data.discountPrice !== null
+              ? parseFloat(String(data.discountPrice).replace(/[^0-9.]/g, '')) || 0
+              : (existingDbCourse.discountPrice !== undefined && existingDbCourse.discountPrice !== null ? Number(existingDbCourse.discountPrice) : 0);
+
+          await this.prisma.course.update({
+            where: { id: existingDbCourse.id },
+            data: {
+              title: data.title !== undefined ? data.title : existingDbCourse.title,
+              subtitle: data.subtitle !== undefined ? data.subtitle : existingDbCourse.subtitle,
+              description: data.description !== undefined ? data.description : existingDbCourse.description,
+              coverImageUrl: coverImage !== null ? coverImage : existingDbCourse.coverImageUrl,
+              price: data.price !== undefined ? priceNumber : Number(existingDbCourse.price),
+              discountPrice: discountNumber,
+              level: data.level ? levelEnum : existingDbCourse.level,
+              status: data.status ? statusVal : existingDbCourse.status,
             },
-          },
-        });
+          });
 
-        // Re-sync modules & lessons directly in PostgreSQL
-        if (Array.isArray(data.modules)) {
-          try {
+          if (Array.isArray(data.modules)) {
             const oldModules = await this.prisma.module.findMany({
               where: { courseId: existingDbCourse.id },
               select: { id: true },
@@ -1528,7 +1588,6 @@ export class AdminService {
             for (let mIdx = 0; mIdx < data.modules.length; mIdx++) {
               const mod = data.modules[mIdx];
               const modLessons = buildPrismaLessonsFromModule(mod, mIdx);
-
               await this.prisma.module.create({
                 data: {
                   courseId: existingDbCourse.id,
@@ -1539,68 +1598,16 @@ export class AdminService {
                 },
               });
             }
-          } catch (syncErr) {
-            console.error('Module sync error during course update:', syncErr);
           }
+        } catch (syncErr) {
+          console.error('Background DB sync error during course update:', syncErr);
         }
+      };
 
-        const existingFallback = AdminService.fallbackCourses.get(String(existingDbCourse.id)) ||
-                                 AdminService.fallbackCourses.get(String(data.id)) ||
-                                 AdminService.fallbackCourses.get(String(existingDbCourse.slug)) || {};
-        const fullUpdated = {
-          ...existingFallback,
-          ...updated,
-          ...data,
-          id: updated.id,
-          slug: updated.slug || existingDbCourse.slug || existingFallback.slug,
-          title: data.title !== undefined ? data.title : updated.title,
-          subtitle: data.subtitle !== undefined ? data.subtitle : updated.subtitle,
-          description: data.description !== undefined ? data.description : updated.description,
-          price: data.price !== undefined ? priceNumber : Number(updated.price),
-          discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : 0,
-          currency: data.currency || existingFallback.currency || 'INR ₹',
-          courseType: data.courseType || (priceNumber > 0 ? 'Paid' : 'Free'),
-          accessType: data.accessType || existingFallback.accessType || 'Lifetime Access',
-          durationCycleMode: data.durationCycleMode || existingFallback.durationCycleMode || 'Date Range',
-          startDate: data.startDate || existingFallback.startDate,
-          endDate: data.endDate || existingFallback.endDate,
-          durationValue: data.durationValue || existingFallback.durationValue || '90',
-          durationUnit: data.durationUnit || existingFallback.durationUnit || 'Days',
-          subscriptionCycle: data.subscriptionCycle || existingFallback.subscriptionCycle || 'Monthly',
-          enrollmentLimit: data.enrollmentLimit || existingFallback.enrollmentLimit || 'Unlimited',
-          courseVisibility: data.courseVisibility || existingFallback.courseVisibility || 'Public',
-          learningOutcomes: data.learningOutcomes || existingFallback.learningOutcomes || [],
-          prerequisites: data.prerequisites !== undefined ? data.prerequisites : (existingFallback.prerequisites || ''),
-          requirements: data.requirements || existingFallback.requirements || [],
-          targetAudience: data.targetAudience !== undefined ? data.targetAudience : (existingFallback.targetAudience || ''),
-          targetLearners: data.targetLearners || existingFallback.targetLearners || [],
-          skillsCovered: data.skillsCovered || data.tags || existingFallback.skillsCovered || [],
-          tags: data.tags || data.skillsCovered || existingFallback.tags || [],
-          modules: cleanCourseModules(Array.isArray(data.modules) ? data.modules : (existingFallback.modules || [])),
-          instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
-          instructorName: instructorDisplayName,
-          estimatedDuration: data.estimatedDuration || existingFallback.estimatedDuration || '12 Weeks',
-          certificateAvailable: data.certificateAvailable !== undefined ? data.certificateAvailable : (existingFallback.certificateAvailable !== undefined ? existingFallback.certificateAvailable : true),
-          seoTitle: data.seoTitle !== undefined ? data.seoTitle : (existingFallback.seoTitle || ''),
-          seoDescription: data.seoDescription !== undefined ? data.seoDescription : (existingFallback.seoDescription || ''),
-          status:
-            statusVal === 'PUBLISHED' || statusVal === 'Published'
-              ? 'Published'
-              : statusVal === 'DRAFT' || statusVal === 'Draft'
-              ? 'Draft'
-              : 'Review',
-          updatedAt: new Date(),
-        };
-        AdminService.fallbackCourses.set(String(updated.id), fullUpdated);
-        if (data.id && String(data.id) !== String(updated.id)) {
-          AdminService.fallbackCourses.delete(String(data.id));
-        }
-        AdminService.saveMetaToFile();
-        AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
-        return fullUpdated;
-      } catch (updateErr) {
-        console.error('Course update DB error:', updateErr);
-      }
+      // Fire DB sync in background so client receives instant response
+      syncToPostgres().catch((err) => console.error('Course DB sync uncaught:', err));
+
+      return fullUpdated;
     }
 
     // If not in DB or DB update had issue, update fallback metadata directly
@@ -2010,6 +2017,7 @@ export class AdminService {
     // 4. Save deleted courses tombstone file & clean metadata
     AdminService.saveDeletedCoursesToFile();
     AdminService.saveMetaToFile();
+    AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
 
     return { success: true, id };
   }

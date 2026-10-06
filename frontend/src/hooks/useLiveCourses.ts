@@ -409,8 +409,6 @@ export function useLiveCourses() {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          Pragma: "no-cache",
         },
         cache: "no-store",
       });
@@ -423,9 +421,11 @@ export function useLiveCourses() {
           setCourses(transformed);
           setError(null);
         }
+      } else {
+        console.warn("Failed to fetch courses, status:", res.status);
       }
-    } catch {
-      // Backend offline
+    } catch (err: any) {
+      console.error("Error fetching courses from API:", err);
     } finally {
       if (isMountedRef.current) {
         setLoading(false);

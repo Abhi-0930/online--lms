@@ -775,11 +775,16 @@ function CoursesView({
 
   const publishedCount = rows.filter((c) => c.status === "Published").length;
   const reviewCount = rows.filter((c) => c.status === "Review").length;
+  const draftCount = rows.filter((c) => c.status === "Draft").length;
   const totalEnrolled = rows.reduce((acc, c) => acc + (c.students || 0), 0);
   const avgCompletion =
     rows.length > 0
       ? Math.round(rows.reduce((acc, c) => acc + (c.completion || 0), 0) / rows.length)
       : 0;
+  const totalCatalogRevenue = rows.reduce((acc, c) => {
+    const rev = typeof c.revenue === "number" ? c.revenue : parseFloat(String(c.revenue || "0").replace(/[^0-9.]/g, "")) || 0;
+    return acc + rev;
+  }, 0);
 
   const handleStatusChange = async (course: Course, newStatus: CourseStatus) => {
     const updated = rows.map((item) =>
@@ -910,12 +915,12 @@ function CoursesView({
           {
             label: "Published courses",
             value: publishedCount.toString(),
-            change: `${publishedCount} active in catalog`,
+            change: `${publishedCount} of ${rows.length} published`,
           },
           {
-            label: "In review",
-            value: reviewCount.toString(),
-            change: reviewCount > 0 ? `${reviewCount} need review` : "0 pending review",
+            label: "Drafts & in review",
+            value: (draftCount + reviewCount).toString(),
+            change: reviewCount > 0 ? `${reviewCount} need review` : `${draftCount} drafts saved`,
             tone: reviewCount > 0 ? "text-amber-600" : "text-slate-500",
           },
           {
@@ -925,9 +930,9 @@ function CoursesView({
           },
           {
             label: "Catalog revenue",
-            value: "₹0",
-            change: "₹0 earned",
-            tone: "text-slate-500",
+            value: `₹${totalCatalogRevenue.toLocaleString("en-IN")}`,
+            change: totalCatalogRevenue > 0 ? `₹${totalCatalogRevenue.toLocaleString("en-IN")} earned` : "₹0 earned",
+            tone: totalCatalogRevenue > 0 ? "text-emerald-600" : "text-slate-500",
           },
         ]}
       />

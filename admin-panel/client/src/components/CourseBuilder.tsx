@@ -1834,12 +1834,51 @@ export default function CourseBuilder({
     }
     const reader = new FileReader();
     reader.onload = () => {
-      setFormData((prev) => ({
-        ...prev,
-        thumbnail: file,
-        thumbnailPreview: reader.result as string,
-      }));
-      setErrors((prev) => ({ ...prev, thumbnail: false }));
+      const rawDataUrl = reader.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const maxWidth = 960;
+        const maxHeight = 540;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.82);
+          setFormData((prev) => ({
+            ...prev,
+            thumbnail: file,
+            thumbnailPreview: compressedDataUrl,
+          }));
+          setErrors((prev) => ({ ...prev, thumbnail: false }));
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            thumbnail: file,
+            thumbnailPreview: rawDataUrl,
+          }));
+          setErrors((prev) => ({ ...prev, thumbnail: false }));
+        }
+      };
+      img.onerror = () => {
+        setFormData((prev) => ({
+          ...prev,
+          thumbnail: file,
+          thumbnailPreview: rawDataUrl,
+        }));
+        setErrors((prev) => ({ ...prev, thumbnail: false }));
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   };
