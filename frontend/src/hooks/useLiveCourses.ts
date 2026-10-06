@@ -366,9 +366,7 @@ function transformDbCourse(c: any): LiveCourseItem {
     description: c.description || "",
     instructor: c.instructorName || c.instructor?.fullName || "Platform Admin",
     instructorRole: "Lead Instructor • Mentor",
-    instructorAvatar:
-      c.instructor?.avatarUrl ||
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+    instructorAvatar: c.instructor?.avatarUrl || "",
     students: studentsStr,
     duration: c.estimatedDuration || (c.durationValue ? `${c.durationValue} ${c.durationUnit || 'Days'}` : "12 Weeks"),
     lessons: lessonsStr,
