@@ -1113,6 +1113,7 @@ export class AdminService {
     };
 
     let dbCourses: any[] = [];
+    let isDbHealthy = false;
     try {
       dbCourses = await this.prisma.course.findMany({
         include: {
@@ -1125,8 +1126,10 @@ export class AdminService {
         },
         orderBy: { createdAt: 'desc' },
       });
+      isDbHealthy = true;
     } catch {
       dbCourses = [];
+      isDbHealthy = false;
     }
 
     let completedPayments: any[] = [];
@@ -1177,7 +1180,7 @@ export class AdminService {
       courseMap.set(String(course.id), merged);
     }
 
-    if (dbCourses.length === 0) {
+    if (!isDbHealthy && dbCourses.length === 0) {
       for (const fallback of AdminService.fallbackCourses.values()) {
         if (isDeleted(fallback)) continue;
         const canonicalId = String(fallback.id || '');

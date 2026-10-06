@@ -34,6 +34,7 @@ export class CoursesService {
 
     let courses: any[] = [];
     let total = 0;
+    let isDbHealthy = false;
     try {
       [courses, total] = await Promise.all([
         this.prisma.course.findMany({
@@ -67,9 +68,11 @@ export class CoursesService {
         }),
         this.prisma.course.count({ where }),
       ]);
+      isDbHealthy = true;
     } catch {
       courses = [];
       total = 0;
+      isDbHealthy = false;
     }
 
     AdminService.fallbackCourses = AdminService.loadCoursesMetaFromFile();
@@ -141,17 +144,19 @@ export class CoursesService {
       courseMap.set(String(c.id), merged);
     }
 
-    for (const meta of AdminService.fallbackCourses.values()) {
-      if (isDeleted(meta)) continue;
-      const canonicalId = String(meta.id || '');
-      const metaSlug = String(meta.slug || '');
-      const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
-        (metaSlug && Array.from(courseMap.values()).some((c: any) => c.slug === metaSlug || c.id === canonicalId));
-      if (!alreadyExists && canonicalId) {
-        courseMap.set(canonicalId, meta);
+    // Only inject fallback disk courses if the database is down/unreachable
+    if (!isDbHealthy) {
+      for (const meta of AdminService.fallbackCourses.values()) {
+        if (isDeleted(meta)) continue;
+        const canonicalId = String(meta.id || '');
+        const metaSlug = String(meta.slug || '');
+        const alreadyExists = (canonicalId && courseMap.has(canonicalId)) ||
+          (metaSlug && Array.from(courseMap.values()).some((c: any) => c.slug === metaSlug || c.id === canonicalId));
+        if (!alreadyExists && canonicalId) {
+          courseMap.set(canonicalId, meta);
+        }
       }
     }
-
 
     const mergedCourses = Array.from(courseMap.values());
 
@@ -174,6 +179,7 @@ export class CoursesService {
     }
 
     let course: any = null;
+    let isDbHealthy = false;
     try {
       course = await this.prisma.course.findFirst({
         where: {
@@ -198,8 +204,14 @@ export class CoursesService {
           resources: true,
         },
       });
+      isDbHealthy = true;
     } catch {
       course = null;
+      isDbHealthy = false;
+    }
+
+    if (isDbHealthy && !course) {
+      throw new Error('Course not found');
     }
 
     if (course && (AdminService.deletedCoursesIds.has(String(course.id)) || AdminService.deletedCoursesIds.has(String(course.slug)))) {
