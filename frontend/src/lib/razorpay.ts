@@ -35,6 +35,12 @@ interface PreloadedCheckoutState {
 // Map of cacheKey -> PreloadedCheckoutState
 const preloadedCheckouts = new Map<string, PreloadedCheckoutState>();
 
+if (typeof window !== "undefined") {
+  window.addEventListener("lms:courses-updated", () => {
+    preloadedCheckouts.clear();
+  });
+}
+
 /**
  * Dynamically load Razorpay standard checkout script (cached singleton)
  */
