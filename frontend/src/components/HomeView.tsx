@@ -3343,12 +3343,16 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
               Instructor
             </p>
             <div className="mt-3 flex items-center gap-3.5">
-              <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 border-white bg-[#eff6ff] shadow-sm dark:border-slate-800">
-                <img
-                  src={course.instructorAvatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80"}
-                  alt={course.instructor || "Platform Admin"}
-                  className="h-full w-full object-cover"
-                />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-sm border-2 border-white shadow-xs dark:border-slate-800 dark:bg-blue-950/60 dark:text-blue-300">
+                {course.instructorAvatar && !course.instructorAvatar.includes("unsplash.com") ? (
+                  <img
+                    src={course.instructorAvatar}
+                    alt={course.instructor || "Instructor"}
+                    className="h-full w-full object-cover rounded-full"
+                  />
+                ) : (
+                  <span>{((course.instructor || "Platform Admin").split(" ").map((n: string) => n[0]).join("").slice(0, 2)).toUpperCase()}</span>
+                )}
               </div>
               <div>
                 <p className="flex items-center gap-1.5 text-sm font-bold text-[#0f172a] dark:text-white">
