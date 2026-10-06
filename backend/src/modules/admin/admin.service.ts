@@ -914,6 +914,10 @@ export class AdminService {
           enrollments: {
             include: { course: true },
           },
+          payments: {
+            where: { status: 'COMPLETED' },
+            include: { course: true },
+          },
           devices: {
             orderBy: { lastActiveAt: 'desc' },
             take: 1,
@@ -975,28 +979,48 @@ export class AdminService {
 
       // Determine course / track and progress
       const hasEnrollments = Array.isArray(u.enrollments) && u.enrollments.length > 0;
+      const completedPayments = Array.isArray(u.payments) ? u.payments.filter((p: any) => p.status === 'COMPLETED') : [];
+      const hasPaid = completedPayments.length > 0;
+
       let courseName = 'Not enrolled';
       let progress = 0;
       let status = 'Not enrolled';
 
-      if (hasEnrollments) {
-        const enrolledTitles = u.enrollments
-          .map((e: any) => e.course?.title || e.courseTitle || '')
-          .filter(Boolean);
-        courseName = enrolledTitles.join(', ') || (u.enrollments[0]?.course?.title || 'Enrolled Course');
+      if (hasEnrollments || hasPaid) {
+        const enrolledTitles: string[] = [];
+        if (hasEnrollments) {
+          for (const e of u.enrollments) {
+            const title = e.course?.title || e.courseTitle;
+            if (title && !enrolledTitles.includes(title)) {
+              enrolledTitles.push(title);
+            }
+          }
+        }
+        if (enrolledTitles.length === 0 && hasPaid) {
+          for (const p of completedPayments) {
+            const title = p.course?.title || (p.metadata as any)?.courseTitle;
+            if (title && !enrolledTitles.includes(title)) {
+              enrolledTitles.push(title);
+            }
+          }
+        }
 
-        const firstEnrollment = u.enrollments[0];
-        if (typeof firstEnrollment?.progress === 'number') {
-          progress = firstEnrollment.progress;
+        courseName = enrolledTitles.join(', ') || (u.enrollments?.[0]?.course?.title || 'Enrolled Course');
+
+        const firstEnrollment = u.enrollments?.[0];
+        if (typeof firstEnrollment?.progressPct === 'number') {
+          progress = Math.round(firstEnrollment.progressPct);
+        } else if (typeof firstEnrollment?.progress === 'number') {
+          progress = Math.round(firstEnrollment.progress);
         } else if (onboarding?.isCompleted) {
           progress = 100;
         } else if (onboarding?.completedStep) {
           progress = Math.min(100, Math.round((onboarding.completedStep / 4) * 100));
         } else {
-          progress = 25;
+          progress = 0;
         }
 
-        status = progress >= 70 ? 'On track' : progress > 0 ? 'In progress' : 'Enrolled';
+        status = progress >= 70 ? 'On track' : 'In progress';
       }
 
       // Collect all candidate timestamps to determine true last active / login
@@ -1007,6 +1031,12 @@ export class AdminService {
       }
       if (u.activityLogs && u.activityLogs.length > 0 && u.activityLogs[0]?.createdAt) {
         candidateDates.push(new Date(u.activityLogs[0].createdAt).getTime());
+      }
+      if (completedPayments.length > 0) {
+        for (const p of completedPayments) {
+          if (p.createdAt) candidateDates.push(new Date(p.createdAt).getTime());
+          if (p.updatedAt) candidateDates.push(new Date(p.updatedAt).getTime());
+        }
       }
       if (u.lastActiveAt) {
         candidateDates.push(new Date(u.lastActiveAt).getTime());
@@ -1042,7 +1072,7 @@ export class AdminService {
         primaryGoal,
         course: courseName,
         rawEnrollments: u.enrollments || [],
-        enrollmentsCount: Array.isArray(u.enrollments) ? u.enrollments.length : 0,
+        enrollmentsCount: Array.isArray(u.enrollments) ? u.enrollments.length : (hasPaid ? completedPayments.length : 0),
         progress,
         activity: activityStr,
         lastActiveAt: lastActiveIso,
@@ -1086,6 +1116,24 @@ export class AdminService {
       });
     } catch {
       dbCourses = [];
+    }
+
+    let completedPayments: any[] = [];
+    try {
+      completedPayments = await this.prisma.payment.findMany({
+        where: { status: 'COMPLETED' },
+        select: {
+          id: true,
+          courseId: true,
+          amount: true,
+          metadata: true,
+          course: {
+            select: { id: true, slug: true, title: true },
+          },
+        },
+      });
+    } catch {
+      completedPayments = [];
     }
 
     const courseMap = new Map<string, any>();
@@ -1157,7 +1205,20 @@ export class AdminService {
         return hasEnrollmentMatch || cName.includes(courseTitleStr) || (courseTitleStr && courseTitleStr.includes(cName));
       });
 
-      const count = Math.max(directEnrollmentsCount, courseStudents.length);
+      // Find all completed payments matching this course
+      const matchingPayments = completedPayments.filter((p: any) => {
+        const pCourseId = String(p.courseId || p.course?.id || '').toLowerCase();
+        const pSlug = String(p.course?.slug || '').toLowerCase();
+        const pTitle = String(p.course?.title || (p.metadata as any)?.courseTitle || '').toLowerCase().trim();
+        return (
+          (pCourseId && (pCourseId === courseIdStr || (courseSlugStr && pCourseId === courseSlugStr))) ||
+          (pSlug && courseSlugStr && pSlug === courseSlugStr) ||
+          (courseTitleStr && pTitle && (pTitle === courseTitleStr || pTitle.includes(courseTitleStr) || courseTitleStr.includes(pTitle)))
+        );
+      });
+
+      const actualRevenue = matchingPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      const count = Math.max(directEnrollmentsCount, courseStudents.length, matchingPayments.length);
       const avgProgress =
         courseStudents.length > 0
           ? Math.round(courseStudents.reduce((sum, s) => sum + (s.progress || 0), 0) / courseStudents.length)
@@ -1200,8 +1261,8 @@ export class AdminService {
 
       const priceNum = Number(course.price) || 0;
       const priceStr = priceNum > 0 ? String(priceNum) : '0';
-      const totalRevenueNum = priceNum * count;
-      const revenueStr = totalRevenueNum > 0 ? `₹${totalRevenueNum.toLocaleString('en-IN')}` : '₹0';
+      const totalRevenueNum = actualRevenue > 0 ? actualRevenue : (count > 0 ? priceNum * count : 0);
+      const revenueStr = totalRevenueNum > 0 ? `₹${Math.round(totalRevenueNum).toLocaleString('en-IN')}` : '₹0';
 
       return {
         id: String(course.id),
