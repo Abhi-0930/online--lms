@@ -232,49 +232,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // If explicitly session revoked by backend
+        // If explicitly unauthorized or user deleted
         if (res.status === 401 || res.status === 403) {
-          const isManualLogout =
-            isLoggingOutRef.current ||
-            (typeof window !== "undefined" && sessionStorage.getItem("lms_manual_logout") === "true");
-          if (isManualLogout || !resolvedSessionToken) {
-            setUserState(null);
-            return null;
-          }
+          setUserState(null);
+          if (typeof window !== "undefined") {
+            try {
+              sessionStorage.removeItem("lms_session_token");
+              sessionStorage.removeItem("lms_user");
+              sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+              localStorage.removeItem(USER_STORAGE_KEY);
+              localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+              localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+            } catch {}
 
-          const errData = await res.json().catch(() => ({}));
-          const wasRevoked = errData?.code === "SESSION_REVOKED";
+            const errData = await res.json().catch(() => ({}));
+            const wasRevoked = errData?.code === "SESSION_REVOKED" || errData?.code === "USER_DELETED";
 
-          if (wasRevoked && resolvedSessionToken) {
-            setUserState(null);
-            if (typeof window !== "undefined") {
-              try {
-                sessionStorage.removeItem("lms_session_token");
-                sessionStorage.removeItem("lms_user");
-                sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
-                localStorage.removeItem(USER_STORAGE_KEY);
-                localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
-                localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
-              } catch {}
+            const currentPath = window.location.pathname;
+            const isProtected =
+              currentPath !== "/" &&
+              !currentPath.startsWith("/login") &&
+              !currentPath.startsWith("/register") &&
+              !currentPath.startsWith("/forgot-password") &&
+              !currentPath.startsWith("/auth") &&
+              !currentPath.startsWith("/velorah");
 
-              const currentPath = window.location.pathname;
-              const isProtected =
-                currentPath !== "/" &&
-                !currentPath.startsWith("/login") &&
-                !currentPath.startsWith("/register") &&
-                !currentPath.startsWith("/forgot-password") &&
-                !currentPath.startsWith("/auth") &&
-                !currentPath.startsWith("/velorah");
-
-              if (isProtected) {
-                window.location.href = createSecureUrl("/login", {
-                  mode: "login",
-                  error: "SESSION_REVOKED",
-                });
-              }
+            if (isProtected && wasRevoked) {
+              window.location.href = createSecureUrl("/login", {
+                mode: "login",
+                error: errData?.code || "SESSION_REVOKED",
+              });
             }
-            return null;
           }
+          return null;
         }
         return null;
       } catch {
