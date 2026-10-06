@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { API_BASE_URL, getAuthHeaders } from "./apiConfig";
+import { broadcastEnrollmentUpdate } from "@/hooks/useEnrollments";
 
 export interface RazorpayCheckoutOptions {
   courseId: string;
@@ -142,16 +143,25 @@ function createRazorpayOptions({
         if (verifyRes.ok && verifyData.success) {
           preloadedCheckouts.delete(cacheKey);
           toast.success(`🎉 Enrolled successfully in ${courseTitle}!`);
+          try {
+            broadcastEnrollmentUpdate(verifyData);
+          } catch {}
           if (typeof window !== "undefined") {
-            try {
-              const { broadcastEnrollmentUpdate } = require("@/hooks/useEnrollments");
-              broadcastEnrollmentUpdate(verifyData);
-            } catch {
-              window.dispatchEvent(new CustomEvent("lms:enrollments-updated", { detail: verifyData }));
-            }
+            window.dispatchEvent(new CustomEvent("lms:enrollments-updated", { detail: verifyData }));
             window.dispatchEvent(new CustomEvent("lms:activity-updated"));
           }
-          callbacksRef.current.onSuccess?.(verifyData);
+          if (callbacksRef.current.onSuccess) {
+            try {
+              await callbacksRef.current.onSuccess(verifyData);
+            } catch (cbErr) {
+              console.error("[Razorpay] Error in onSuccess callback:", cbErr);
+              if (typeof window !== "undefined") {
+                window.location.href = "/my-courses";
+              }
+            }
+          } else if (typeof window !== "undefined") {
+            window.location.href = "/my-courses";
+          }
         } else {
           const err = verifyData.message || "Payment verification failed";
           toast.error(err);
