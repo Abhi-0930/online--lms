@@ -1537,7 +1537,7 @@ export class AdminService {
           subtitle: data.subtitle !== undefined ? data.subtitle : updated.subtitle,
           description: data.description !== undefined ? data.description : updated.description,
           price: data.price !== undefined ? priceNumber : Number(updated.price),
-          discountPrice: data.discountPrice !== undefined ? data.discountPrice : (existingFallback.discountPrice !== undefined ? existingFallback.discountPrice : 0),
+          discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : 0,
           currency: data.currency || existingFallback.currency || 'INR ₹',
           courseType: data.courseType || (priceNumber > 0 ? 'Paid' : 'Free'),
           accessType: data.accessType || existingFallback.accessType || 'Lifetime Access',
@@ -1576,6 +1576,7 @@ export class AdminService {
           AdminService.fallbackCourses.delete(String(data.id));
         }
         AdminService.saveMetaToFile();
+        AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
         return fullUpdated;
       } catch (updateErr) {
         console.error('Course update DB error:', updateErr);
@@ -1599,7 +1600,7 @@ export class AdminService {
         coverImageUrl: coverImage !== null ? coverImage : existingFallback.coverImageUrl,
         thumbnailPreview: coverImage !== null ? coverImage : existingFallback.thumbnailPreview,
         price: priceNumber,
-        discountPrice: data.discountPrice !== undefined ? data.discountPrice : (existingFallback.discountPrice !== undefined ? existingFallback.discountPrice : 0),
+        discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : 0,
         currency: data.currency || existingFallback.currency || 'INR ₹',
         courseType: data.courseType || (priceNumber > 0 ? 'Paid' : 'Free'),
         accessType: data.accessType || existingFallback.accessType || 'Lifetime Access',
@@ -1635,6 +1636,7 @@ export class AdminService {
       };
       AdminService.fallbackCourses.set(String(data.id), fullUpdated);
       AdminService.saveMetaToFile();
+      AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
       return fullUpdated;
     }
 
@@ -1714,13 +1716,14 @@ export class AdminService {
         instructor: { fullName: instructorDisplayName, email: 'admin@learnhub.com' },
         instructorName: instructorDisplayName,
         price: priceNumber,
-        discountPrice: data.discountPrice || 0,
+        discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : 0,
         currency: data.currency || 'INR ₹',
         status: statusVal === 'PUBLISHED' ? 'Published' : statusVal === 'DRAFT' ? 'Draft' : 'Review',
         updatedAt: new Date(),
       };
       AdminService.fallbackCourses.set(String(course.id), fullCourse);
       AdminService.saveMetaToFile();
+      AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
       return fullCourse;
     } catch (dbErr) {
       console.error('Failed to create course in Prisma:', dbErr);
@@ -1737,7 +1740,7 @@ export class AdminService {
         coverImageUrl: coverImage,
         thumbnailPreview: coverImage,
         price: priceNumber,
-        discountPrice: data.discountPrice || 0,
+        discountPrice: data.discountPrice !== undefined ? Number(data.discountPrice) : 0,
         currency: data.currency || 'INR ₹',
         courseType: data.courseType || (priceNumber > 0 ? 'Paid' : 'Free'),
         accessType: data.accessType || 'Lifetime Access',
@@ -1770,6 +1773,7 @@ export class AdminService {
       };
       AdminService.fallbackCourses.set(String(fallbackId), fallbackCourse);
       AdminService.saveMetaToFile();
+      AdminWsBroadcaster.broadcastUpdate(this.prisma).catch(() => {});
       return fallbackCourse;
     }
   }
@@ -1780,6 +1784,7 @@ export class AdminService {
       status?: string;
       title?: string;
       price?: number;
+      discountPrice?: number;
       description?: string;
       [key: string]: any;
     }
