@@ -88,7 +88,8 @@ export class AuthService {
           where: { googleId },
           include: { onboarding: true },
         });
-      } else {
+      }
+      if (!user && normalizedEmail) {
         user = await this.prisma.user.findUnique({
           where: { email: normalizedEmail },
           include: { onboarding: true },
@@ -99,7 +100,6 @@ export class AuthService {
         AuthService.fallbackUsers.set(normalizedEmail, user);
         return user;
       } else {
-        AuthService.deleteUserByEmail(normalizedEmail);
         return null;
       }
     } catch (err: any) {
@@ -108,14 +108,13 @@ export class AuthService {
     }
 
     if (!isDbHealthy) {
-      const cached = AuthService.fallbackUsers.get(normalizedEmail);
-      if (cached) return cached;
-
       if (googleId) {
         for (const u of AuthService.fallbackUsers.values()) {
           if (u.googleId === googleId) return u;
         }
       }
+      const cached = AuthService.fallbackUsers.get(normalizedEmail);
+      if (cached) return cached;
     }
 
     return null;
@@ -657,13 +656,34 @@ export class AuthService {
       try {
         user = await this.prisma.user.create({
           data: newUserData as any,
+          include: { onboarding: true },
         });
       } catch (err: any) {
-        logger.warn({ err: err.message }, 'Database write deferred, stored Google user in memory');
+        // If user already exists in DB, fetch the real DB record and update it
+        try {
+          const existing = await this.prisma.user.findUnique({
+            where: { email: normalizedEmail },
+            include: { onboarding: true },
+          });
+          if (existing) {
+            user = await this.prisma.user.update({
+              where: { id: existing.id },
+              data: {
+                googleId: existing.googleId || payload.googleId,
+                avatarUrl: existing.avatarUrl || payload.avatarUrl,
+                isEmailVerified: true,
+              },
+              include: { onboarding: true },
+            });
+          }
+        } catch {}
+        logger.warn({ err: err.message }, 'Database write handled, stored Google user');
       }
 
       AuthService.fallbackUsers.set(normalizedEmail, user);
-      sendWelcomeEmail({ to: user.email, name: user.fullName }).catch(() => {});
+      if (isNewUser) {
+        sendWelcomeEmail({ to: user.email, name: user.fullName }).catch(() => {});
+      }
     } else {
       // Update Google ID and avatar if needed
       try {
@@ -674,6 +694,7 @@ export class AuthService {
             avatarUrl: user.avatarUrl || payload.avatarUrl,
             isEmailVerified: true,
           },
+          include: { onboarding: true },
         });
       } catch (err: any) {
         user.googleId = user.googleId || payload.googleId;
