@@ -3267,7 +3267,11 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
           });
         }
         await refreshEnrollments().catch(() => {});
-        router.push(getSecureHref("/my-courses"));
+        if (typeof window !== "undefined") {
+          window.location.href = getSecureHref("/my-courses");
+        } else {
+          router.push(getSecureHref("/my-courses"));
+        }
       },
       onError: () => {
         setIsProcessing(false);
