@@ -8,7 +8,7 @@ export async function generateMetadata({
   params: Promise<{ courseId: string }>;
 }): Promise<Metadata> {
   const { courseId } = await params;
-  const baseUrl = "https://preppath.net";
+  const baseUrl = "https://www.preppath.net";
 
   try {
     const res = await fetch(`${API_BASE_URL}/api/v1/courses/${courseId}`, {
@@ -24,7 +24,7 @@ export async function generateMetadata({
           course.description?.slice(0, 160) ||
           "Master technical skills, algorithmic problem solving, and crack top-tier software engineering interviews with PrepPath.";
         const courseUrl = `${baseUrl}/courses/${course.slug || courseId}`;
-        const image = course.coverImageUrl || "https://preppath.net/login-hero.png";
+        const image = course.coverImageUrl || "https://www.preppath.net/login-hero.png";
 
         return {
           title,
@@ -85,7 +85,7 @@ export default async function CourseDetailPage({
   params: Promise<{ courseId: string }>;
 }) {
   const { courseId } = await params;
-  const baseUrl = "https://preppath.net";
+  const baseUrl = "https://www.preppath.net";
 
   let course: any = null;
   try {
@@ -106,7 +106,7 @@ export default async function CourseDetailPage({
     course?.description ||
     "Master technical problem solving, structured DSA patterns, and placement-ready engineering skills.";
   const courseUrl = `${baseUrl}/courses/${course?.slug || courseId}`;
-  const courseImage = course?.coverImageUrl || "https://preppath.net/login-hero.png";
+  const courseImage = course?.coverImageUrl || "https://www.preppath.net/login-hero.png";
   const instructorName = course?.instructorName || course?.instructor?.fullName || "PrepPath Faculty";
   const rawPrice = course?.discountPrice !== undefined && course?.discountPrice !== null ? Number(course.discountPrice) : Number(course?.price || 0);
 
@@ -150,7 +150,7 @@ export default async function CourseDetailPage({
         coursePrerequisites: course?.prerequisites || "Basic programming knowledge",
         provider: {
           "@type": "EducationalOrganization",
-          "@id": "https://preppath.net/#organization",
+          "@id": "https://www.preppath.net/#organization",
           name: "PrepPath",
           url: baseUrl,
           logo: `${baseUrl}/icon.svg`,
