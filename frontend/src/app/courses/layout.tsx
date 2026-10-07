@@ -14,13 +14,13 @@ export const metadata: Metadata = {
     "Coding Interview Masterclass",
   ],
   alternates: {
-    canonical: "https://preppath.net/courses",
+    canonical: "https://www.preppath.net/courses",
   },
   openGraph: {
     title: "All Courses & Placement Learning Tracks | PrepPath",
     description:
       "Explore industry-curated courses in Python, DSA, Full Stack, and System Design with structured roadmaps, live mentoring, and career certificates.",
-    url: "https://preppath.net/courses",
+    url: "https://www.preppath.net/courses",
     siteName: "PrepPath",
     images: [
       {
@@ -50,25 +50,25 @@ export default function CoursesLayout({
     "@graph": [
       {
         "@type": "BreadcrumbList",
-        "@id": "https://preppath.net/courses#breadcrumb",
+        "@id": "https://www.preppath.net/courses#breadcrumb",
         itemListElement: [
           {
             "@type": "ListItem",
             position: 1,
             name: "Home",
-            item: "https://preppath.net",
+            item: "https://www.preppath.net",
           },
           {
             "@type": "ListItem",
             position: 2,
             name: "Courses",
-            item: "https://preppath.net/courses",
+            item: "https://www.preppath.net/courses",
           },
         ],
       },
       {
         "@type": "ItemList",
-        "@id": "https://preppath.net/courses#itemlist",
+        "@id": "https://www.preppath.net/courses#itemlist",
         name: "PrepPath Courses Catalog",
         description: "Comprehensive software engineering, DSA, and technical placement courses.",
         itemListOrder: "https://schema.org/ItemListOrderDescending",
