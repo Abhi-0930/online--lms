@@ -996,7 +996,7 @@ const DEFAULT_COURSE_FORM_DATA: CourseBuilderData = {
   subtitle: "",
   description: "",
   language: "English",
-  category: "Development",
+  category: "",
   level: "Beginner",
   thumbnail: null,
   thumbnailPreview: null,
@@ -1070,7 +1070,7 @@ export default function CourseBuilder({
         subtitle: initialData.subtitle || "",
         description: initialData.description || "",
         language: initialData.language || "English",
-        category: initialData.category || "Development",
+        category: initialData.category || "",
         level: initialData.level || "Beginner",
         thumbnail: initialData.thumbnail || null,
         thumbnailPreview: initialData.thumbnailPreview || null,
@@ -1147,7 +1147,7 @@ export default function CourseBuilder({
           subtitle: initialData.subtitle || "",
           description: initialData.description || "",
           language: initialData.language || "English",
-          category: initialData.category || "Development",
+          category: initialData.category || "",
           level: initialData.level || "Beginner",
           thumbnail: initialData.thumbnail || null,
           thumbnailPreview: initialData.thumbnailPreview || null,
@@ -2001,7 +2001,7 @@ export default function CourseBuilder({
       const dataToSubmit = prepareFinalFormData();
       const finalData: CourseBuilderData = {
         ...dataToSubmit,
-        courseStatus: dataToSubmit.courseStatus === "Draft" ? "Draft" : "Published",
+        courseStatus: dataToSubmit.courseStatus || "Published",
       };
       setFormData(finalData);
       if (onContinue) {
