@@ -21,7 +21,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://preppath.net"),
+  metadataBase: new URL("https://www.preppath.net"),
   title: {
     default: "PrepPath - Where ambition finds its path",
     template: "%s | PrepPath",
@@ -39,16 +39,16 @@ export const metadata: Metadata = {
     "full stack developer roadmap",
     "LeetCode patterns",
   ],
-  authors: [{ name: "PrepPath Team", url: "https://preppath.net" }],
+  authors: [{ name: "PrepPath Team", url: "https://www.preppath.net" }],
   creator: "PrepPath",
   publisher: "PrepPath",
   alternates: {
-    canonical: "https://preppath.net",
+    canonical: "https://www.preppath.net",
   },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://preppath.net",
+    url: "https://www.preppath.net",
     siteName: "PrepPath",
     title: "PrepPath - Where ambition finds its path",
     description:
@@ -114,10 +114,10 @@ export default function RootLayout({
               "@graph": [
                 {
                   "@type": "EducationalOrganization",
-                  "@id": "https://preppath.net/#organization",
+                  "@id": "https://www.preppath.net/#organization",
                   name: "PrepPath",
-                  url: "https://preppath.net",
-                  logo: "https://preppath.net/icon.svg",
+                  url: "https://www.preppath.net",
+                  logo: "https://www.preppath.net/icon.svg",
                   description:
                     "Structured software engineering placement preparation, curated DSA patterns, live interactive cohorts, and 1:1 mentorship.",
                   sameAs: [
@@ -134,25 +134,25 @@ export default function RootLayout({
                 },
                 {
                   "@type": "WebSite",
-                  "@id": "https://preppath.net/#website",
-                  url: "https://preppath.net",
+                  "@id": "https://www.preppath.net/#website",
+                  url: "https://www.preppath.net",
                   name: "PrepPath",
                   description:
                     "India's premier software engineering and technical placement preparation platform.",
                   publisher: {
-                    "@id": "https://preppath.net/#organization",
+                    "@id": "https://www.preppath.net/#organization",
                   },
                 },
                 {
                   "@type": "Course",
-                  "@id": "https://preppath.net/courses#dsa",
+                  "@id": "https://www.preppath.net/courses#dsa",
                   name: "Data Structures & Algorithms Masterclass",
                   description:
                     "Master algorithmic problem solving, LeetCode patterns, trees, graphs, and dynamic programming for top-tier tech placements.",
                   provider: {
                     "@type": "Organization",
                     name: "PrepPath",
-                    sameAs: "https://preppath.net",
+                    sameAs: "https://www.preppath.net",
                   },
                   offers: {
                     "@type": "Offer",
@@ -168,14 +168,14 @@ export default function RootLayout({
                 },
                 {
                   "@type": "Course",
-                  "@id": "https://preppath.net/courses#fullstack",
+                  "@id": "https://www.preppath.net/courses#fullstack",
                   name: "Full Stack & Distributed SaaS Engineering",
                   description:
                     "Modern full-stack web architecture with Next.js 15, TypeScript, React 19, Node.js, PostgreSQL, Prisma, and Docker microservices.",
                   provider: {
                     "@type": "Organization",
                     name: "PrepPath",
-                    sameAs: "https://preppath.net",
+                    sameAs: "https://www.preppath.net",
                   },
                   offers: {
                     "@type": "Offer",
@@ -191,14 +191,14 @@ export default function RootLayout({
                 },
                 {
                   "@type": "Course",
-                  "@id": "https://preppath.net/courses#aiml",
+                  "@id": "https://www.preppath.net/courses#aiml",
                   name: "Generative AI & Autonomous Agent Systems",
                   description:
                     "From foundational ML to LLM fine-tuning, RAG pipelines, vector databases, and production PyTorch deployments.",
                   provider: {
                     "@type": "Organization",
                     name: "PrepPath",
-                    sameAs: "https://preppath.net",
+                    sameAs: "https://www.preppath.net",
                   },
                   offers: {
                     "@type": "Offer",
@@ -214,31 +214,31 @@ export default function RootLayout({
                 },
                 {
                   "@type": "BreadcrumbList",
-                  "@id": "https://preppath.net/#breadcrumbs",
+                  "@id": "https://www.preppath.net/#breadcrumbs",
                   itemListElement: [
                     {
                       "@type": "ListItem",
                       position: 1,
                       name: "Home",
-                      item: "https://preppath.net",
+                      item: "https://www.preppath.net",
                     },
                     {
                       "@type": "ListItem",
                       position: 2,
                       name: "Courses",
-                      item: "https://preppath.net/courses",
+                      item: "https://www.preppath.net/courses",
                     },
                     {
                       "@type": "ListItem",
                       position: 3,
                       name: "Practice",
-                      item: "https://preppath.net/practice",
+                      item: "https://www.preppath.net/practice",
                     },
                   ],
                 },
                 {
                   "@type": "FAQPage",
-                  "@id": "https://preppath.net/#faq",
+                  "@id": "https://www.preppath.net/#faq",
                   mainEntity: [
                     {
                       "@type": "Question",
