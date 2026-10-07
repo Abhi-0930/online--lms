@@ -179,7 +179,10 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
         return reply.status(401).send({ error: 'Unauthorized', message: 'Authentication required' });
       }
 
-      if (!roles.includes(user.role)) {
+      const userRole = String(user.role || '').toUpperCase();
+      const normalizedRoles = roles.map((r) => r.toUpperCase());
+
+      if (!normalizedRoles.includes(userRole)) {
         return reply.status(403).send({ error: 'Forbidden', message: 'Insufficient permissions' });
       }
     };
