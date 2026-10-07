@@ -160,6 +160,7 @@ model Course {
   level         CourseLevel   @default(BEGINNER)
   instructorId  String
   instructor    User          @relation("InstructorCourses", fields: [instructorId], references: [id])
+  instructorName String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
