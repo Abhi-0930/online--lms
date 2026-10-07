@@ -13,13 +13,13 @@ export const metadata: Metadata = {
     "Hyderabad EdTech",
   ],
   alternates: {
-    canonical: "https://preppath.net/about",
+    canonical: "https://www.preppath.net/about",
   },
   openGraph: {
     title: "About PrepPath - Next-Gen Engineering Education",
     description:
       "Bridging the gap between university theory and high-scale production engineering. Discover our founding vision and learning methodology.",
-    url: "https://preppath.net/about",
+    url: "https://www.preppath.net/about",
     siteName: "PrepPath",
     locale: "en_US",
     type: "website",
@@ -41,14 +41,14 @@ export default function AboutLayout({
     "@context": "https://schema.org",
     "@type": "AboutPage",
     name: "About PrepPath",
-    url: "https://preppath.net/about",
+    url: "https://www.preppath.net/about",
     description:
       "PrepPath is a premier computer science and software engineering learning platform delivering live cohorts, DSA problem arenas, and real-world system design mentorship.",
     mainEntity: {
       "@type": "EducationalOrganization",
       name: "PrepPath",
-      url: "https://preppath.net",
-      logo: "https://preppath.net/icon.svg",
+      url: "https://www.preppath.net",
+      logo: "https://www.preppath.net/icon.svg",
       sameAs: [
         "https://x.com/PrepPath",
         "https://www.linkedin.com/company/prepppath",
