@@ -5,7 +5,7 @@
     "category": "Arrays",
     "difficulty": "Easy",
     "acceptance": "0%",
-    "submissions": 1,
+    "submissions": 2,
     "views": 0,
     "testCases": 0,
     "status": "Live",
@@ -64,6 +64,6 @@
     "visibility": "Public",
     "slug": "two-sum",
     "createdAt": "2026-09-28T19:22:29.654Z",
-    "updatedAt": "2026-10-06T20:44:03.863Z"
+    "updatedAt": "2026-10-07T11:51:08.824Z"
   }
 ]
