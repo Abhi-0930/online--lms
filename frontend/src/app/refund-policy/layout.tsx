@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description:
     "Learn about PrepPath's transparent refund policy, money-back eligibility criteria, and cancellation guidelines for all courses and cohorts.",
   alternates: {
-    canonical: "https://preppath.net/refund-policy",
+    canonical: "https://www.preppath.net/refund-policy",
   },
   robots: {
     index: true,
