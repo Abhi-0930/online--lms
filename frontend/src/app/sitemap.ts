@@ -92,7 +92,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Dynamically fetch and include all public published course URLs
+  let dynamicCourseRoutes: MetadataRoute.Sitemap = [];
+  let dynamicProblemRoutes: MetadataRoute.Sitemap = [];
+
+  // Dynamically fetch and include all published courses
   try {
     const res = await fetch(`${API_BASE_URL}/api/v1/courses`, {
       next: { revalidate: 3600 },
@@ -101,7 +104,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const data = await res.json();
       const courses = data.courses || data;
       if (Array.isArray(courses)) {
-        const courseRoutes: MetadataRoute.Sitemap = courses
+        dynamicCourseRoutes = courses
           .filter((c: any) => c.status !== "Draft" && c.status !== "DRAFT")
           .map((c: any) => ({
             url: `${baseUrl}/courses/${c.slug || c.id}`,
@@ -109,13 +112,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             changeFrequency: "weekly" as const,
             priority: 0.85,
           }));
-
-        return [...staticRoutes, ...courseRoutes];
       }
     }
   } catch (err) {
     console.error("Error generating dynamic sitemap course routes:", err);
   }
 
-  return staticRoutes;
+  // Dynamically fetch and include all live practice problems
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/practice/problems`, {
+      next: { revalidate: 3600 },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const problems = Array.isArray(data) ? data : data.problems || [];
+      if (Array.isArray(problems)) {
+        dynamicProblemRoutes = problems
+          .filter((p: any) => p.status !== "Draft" && p.status !== "Archived")
+          .map((p: any) => {
+            const slug = p.slug || p.title?.toLowerCase().replace(/\s+/g, "-") || p.id;
+            return {
+              url: `${baseUrl}/practice/${slug}`,
+              lastModified: p.updatedAt || currentDate,
+              changeFrequency: "weekly" as const,
+              priority: 0.8,
+            };
+          });
+      }
+    }
+  } catch (err) {
+    console.error("Error generating dynamic sitemap practice problem routes:", err);
+  }
+
+  return [...staticRoutes, ...dynamicCourseRoutes, ...dynamicProblemRoutes];
 }
