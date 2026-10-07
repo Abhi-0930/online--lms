@@ -12,13 +12,13 @@ export const metadata: Metadata = {
     "PrepPath Live Sessions",
   ],
   alternates: {
-    canonical: "https://preppath.net/live-sessions",
+    canonical: "https://www.preppath.net/live-sessions",
   },
   openGraph: {
     title: "Live Interactive Cohorts & Workshops | PrepPath",
     description:
       "Join weekly live interactive cohort sessions led by senior engineers and industry mentors.",
-    url: "https://preppath.net/live-sessions",
+    url: "https://www.preppath.net/live-sessions",
     siteName: "PrepPath",
   },
 };
