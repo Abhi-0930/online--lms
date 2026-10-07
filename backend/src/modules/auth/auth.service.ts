@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import argon2 from 'argon2';
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { env } from '../../config/env';
 import logger from '../../utils/logger';
@@ -829,17 +832,94 @@ export class AuthService {
     };
   }
 
-  // In-memory token store for password reset links
-  private static resetTokenStore = new Map<
-    string,
-    { email: string; expiresAt: number; used?: boolean }
-  >();
+  // Persistent token store for password reset links
+  private static resetTokensFilePath = path.join(process.cwd(), 'data', 'auth_reset_tokens.json');
+  private static otpFilePath = path.join(process.cwd(), 'data', 'auth_otp_store.json');
 
-  // In-memory OTP store for password reset
-  private static otpStore = new Map<
-    string,
-    { otp: string; expiresAt: number; resetToken?: string; verified?: boolean }
-  >();
+  private static loadResetTokenStoreFromFile(): Map<string, { email: string; expiresAt: number; used?: boolean }> {
+    try {
+      if (fs.existsSync(AuthService.resetTokensFilePath)) {
+        const raw = fs.readFileSync(AuthService.resetTokensFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        const map = new Map<string, any>();
+        const now = Date.now();
+        if (parsed && typeof parsed === 'object') {
+          for (const [k, v] of Object.entries(parsed)) {
+            if (v && typeof v === 'object' && (v as any).expiresAt > now && !(v as any).used) {
+              map.set(k, v);
+            }
+          }
+        }
+        return map;
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Failed to load reset token store from file');
+    }
+    return new Map();
+  }
+
+  private static saveResetTokenStoreToFile(): void {
+    try {
+      const dataDir = path.dirname(AuthService.resetTokensFilePath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      const obj: Record<string, any> = {};
+      const now = Date.now();
+      for (const [k, v] of AuthService.resetTokenStore.entries()) {
+        if (v.expiresAt > now && !v.used) {
+          obj[k] = v;
+        }
+      }
+      fs.writeFileSync(AuthService.resetTokensFilePath, JSON.stringify(obj, null, 2), 'utf-8');
+    } catch (err) {
+      logger.warn({ err }, 'Failed to save reset token store to file');
+    }
+  }
+
+  private static loadOtpStoreFromFile(): Map<string, { otp: string; expiresAt: number; resetToken?: string; verified?: boolean; attempts?: number }> {
+    try {
+      if (fs.existsSync(AuthService.otpFilePath)) {
+        const raw = fs.readFileSync(AuthService.otpFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        const map = new Map<string, any>();
+        const now = Date.now();
+        if (parsed && typeof parsed === 'object') {
+          for (const [k, v] of Object.entries(parsed)) {
+            if (v && typeof v === 'object' && (v as any).expiresAt > now) {
+              map.set(k.toLowerCase().trim(), v);
+            }
+          }
+        }
+        return map;
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Failed to load OTP store from file');
+    }
+    return new Map();
+  }
+
+  private static saveOtpStoreToFile(): void {
+    try {
+      const dataDir = path.dirname(AuthService.otpFilePath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      const obj: Record<string, any> = {};
+      const now = Date.now();
+      for (const [k, v] of AuthService.otpStore.entries()) {
+        if (v.expiresAt > now) {
+          obj[k] = v;
+        }
+      }
+      fs.writeFileSync(AuthService.otpFilePath, JSON.stringify(obj, null, 2), 'utf-8');
+    } catch (err) {
+      logger.warn({ err }, 'Failed to save OTP store to file');
+    }
+  }
+
+  private static resetTokenStore = AuthService.loadResetTokenStoreFromFile();
+  private static otpStore = AuthService.loadOtpStoreFromFile();
 
   async requestPasswordResetLink(email: string, portalType: 'admin' | 'learner' = 'admin') {
     const normalizedEmail = email.toLowerCase().trim();
@@ -853,6 +933,7 @@ export class AuthService {
       expiresAt,
       used: false,
     });
+    AuthService.saveResetTokenStoreToFile();
 
     const baseUrl =
       portalType === 'admin'
@@ -861,7 +942,7 @@ export class AuthService {
 
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(normalizedEmail)}`;
 
-    logger.info({ email: normalizedEmail, resetToken, resetUrl }, 'Password reset link generated');
+    logger.info({ email: normalizedEmail, resetToken }, 'Password reset link generated');
 
     // Trigger transactional email via Resend
     sendPasswordResetLinkEmail({
@@ -876,18 +957,21 @@ export class AuthService {
       message: 'Password reset link sent to email',
       email: normalizedEmail,
       userExists: !!user,
-      resetToken,
-      resetUrl,
     };
   }
 
   async verifyResetToken(token: string) {
+    if (!AuthService.resetTokenStore.has(token)) {
+      AuthService.resetTokenStore = AuthService.loadResetTokenStoreFromFile();
+    }
+
     const record = AuthService.resetTokenStore.get(token);
     if (!record || record.used) {
       throw new Error('This password reset link is invalid or has already been used.');
     }
     if (Date.now() > record.expiresAt) {
       AuthService.resetTokenStore.delete(token);
+      AuthService.saveResetTokenStoreToFile();
       throw new Error('This password reset link has expired. Please request a new one.');
     }
     return {
@@ -897,6 +981,10 @@ export class AuthService {
   }
 
   async resetPasswordWithToken(token: string, newPassword: string, email?: string) {
+    if (!AuthService.resetTokenStore.has(token)) {
+      AuthService.resetTokenStore = AuthService.loadResetTokenStoreFromFile();
+    }
+
     const record = AuthService.resetTokenStore.get(token);
     const targetEmail = (email || record?.email || '').toLowerCase().trim();
 
@@ -908,6 +996,7 @@ export class AuthService {
 
     if (record && Date.now() > record.expiresAt) {
       AuthService.resetTokenStore.delete(token);
+      AuthService.saveResetTokenStoreToFile();
       throw new Error('Password reset link has expired. Please request a new one.');
     }
 
@@ -945,6 +1034,7 @@ export class AuthService {
     if (record) {
       record.used = true;
       AuthService.resetTokenStore.delete(token);
+      AuthService.saveResetTokenStoreToFile();
     }
 
     return {
@@ -958,17 +1048,19 @@ export class AuthService {
     const normalizedEmail = email.toLowerCase().trim();
     const user = await this.findUser(normalizedEmail);
 
-    // Generate 6-digit OTP code
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Cryptographically secure 6-digit numeric OTP
+    const otp = crypto.randomInt(100000, 1000000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
 
     AuthService.otpStore.set(normalizedEmail, {
       otp,
       expiresAt,
       verified: false,
+      attempts: 0,
     });
+    AuthService.saveOtpStoreToFile();
 
-    logger.info({ email: normalizedEmail, otp }, 'Password reset OTP generated');
+    logger.info({ email: normalizedEmail }, 'Password reset OTP requested');
 
     // Trigger transactional email via Resend
     sendPasswordResetOtpEmail({
@@ -981,13 +1073,15 @@ export class AuthService {
       message: 'Verification code sent to email',
       email: normalizedEmail,
       userExists: !!user,
-      // Provide OTP in dev for instant testing
-      code: otp,
     };
   }
 
   async verifyPasswordResetOtp(email: string, otp: string) {
     const normalizedEmail = email.toLowerCase().trim();
+    if (!AuthService.otpStore.has(normalizedEmail)) {
+      AuthService.otpStore = AuthService.loadOtpStoreFromFile();
+    }
+
     const record = AuthService.otpStore.get(normalizedEmail);
 
     if (!record) {
@@ -996,11 +1090,21 @@ export class AuthService {
 
     if (Date.now() > record.expiresAt) {
       AuthService.otpStore.delete(normalizedEmail);
+      AuthService.saveOtpStoreToFile();
       throw new Error('Verification code has expired. Please request a new one.');
     }
 
+    // Rate-limit brute-force attempts to max 5 tries
+    record.attempts = (record.attempts || 0) + 1;
+    if (record.attempts > 5) {
+      AuthService.otpStore.delete(normalizedEmail);
+      AuthService.saveOtpStoreToFile();
+      throw new Error('Too many invalid attempts. For security reasons, please request a new verification code.');
+    }
+
     if (record.otp !== otp.trim()) {
-      throw new Error('Invalid 6-digit verification code. Please check and try again.');
+      AuthService.saveOtpStoreToFile();
+      throw new Error(`Invalid 6-digit verification code (${5 - record.attempts} attempts remaining).`);
     }
 
     // Generate a one-time reset token valid for 15 minutes
@@ -1008,6 +1112,7 @@ export class AuthService {
     record.verified = true;
     record.resetToken = resetToken;
     record.expiresAt = Date.now() + 15 * 60 * 1000;
+    AuthService.saveOtpStoreToFile();
 
     logger.info({ email: normalizedEmail }, 'Password reset OTP successfully verified');
 
@@ -1019,6 +1124,10 @@ export class AuthService {
 
   async resetPassword(email: string, resetToken: string, newPassword: string) {
     const normalizedEmail = email.toLowerCase().trim();
+    if (!AuthService.otpStore.has(normalizedEmail)) {
+      AuthService.otpStore = AuthService.loadOtpStoreFromFile();
+    }
+
     const record = AuthService.otpStore.get(normalizedEmail);
 
     if (!record || !record.verified || record.resetToken !== resetToken) {
@@ -1027,6 +1136,7 @@ export class AuthService {
 
     if (Date.now() > record.expiresAt) {
       AuthService.otpStore.delete(normalizedEmail);
+      AuthService.saveOtpStoreToFile();
       throw new Error('Reset session expired. Please request a new code.');
     }
 
@@ -1059,6 +1169,7 @@ export class AuthService {
 
     // Clear reset token record
     AuthService.otpStore.delete(normalizedEmail);
+    AuthService.saveOtpStoreToFile();
 
     return {
       message: 'Password reset successfully',
