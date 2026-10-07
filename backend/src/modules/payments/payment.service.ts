@@ -234,30 +234,26 @@ export class PaymentService {
         });
       }).catch(() => null);
 
-      if (options.amount !== undefined && options.amount > 0) {
-        finalAmount = options.amount;
+      const p1 = Number(targetCourse?.price) || 0;
+      const p2 = Number(targetCourse?.discountPrice) || 0;
+      let baseCoursePrice = 0;
+      if (p1 > 0 && p2 > 0) {
+        baseCoursePrice = Math.min(p1, p2);
+      } else if (p2 > 0) {
+        baseCoursePrice = p2;
+      } else if (p1 > 0) {
+        baseCoursePrice = p1;
       } else {
-        const p1 = Number(targetCourse?.price) || 0;
-        const p2 = Number(targetCourse?.discountPrice) || 0;
-        let baseCoursePrice = 0;
-        if (p1 > 0 && p2 > 0) {
-          baseCoursePrice = Math.min(p1, p2);
-        } else if (p2 > 0) {
-          baseCoursePrice = p2;
-        } else if (p1 > 0) {
-          baseCoursePrice = p1;
-        } else {
-          baseCoursePrice = 1499;
-        }
-        finalAmount = baseCoursePrice;
+        baseCoursePrice = 1499;
       }
+      finalAmount = baseCoursePrice;
     } else if (type === 'COHORT_ENROLLMENT' && cohortId) {
       targetCohort = await this.withDbRetry(async () => {
         return this.prisma.cohort.findUnique({
           where: { id: cohortId },
         });
       }).catch(() => null);
-      finalAmount = options.amount || 2999;
+      finalAmount = targetCohort?.price ? Number(targetCohort.price) : (options.amount && options.amount > 0 ? options.amount : 2999);
     }
 
     if (finalAmount <= 0) {
