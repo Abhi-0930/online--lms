@@ -37,7 +37,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     return all.filter((a: any) => a.status !== 'Draft');
   });
 
-  fastify.post('/api/v1/announcements', async (request, reply) => {
+  fastify.post('/api/v1/announcements', { onRequest: [fastify.authenticate] }, async (request, reply) => {
     const body = request.body as any;
     try {
       const adminService = new AdminService(fastify.prisma);
@@ -49,7 +49,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.delete('/api/v1/announcements/:id', async (request, reply) => {
+  fastify.delete('/api/v1/announcements/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     try {
       const adminService = new AdminService(fastify.prisma);
@@ -71,7 +71,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     return all.filter((r: any) => r.status !== 'Draft');
   });
 
-  fastify.delete('/api/v1/recordings/:id', async (request, reply) => {
+  fastify.delete('/api/v1/recordings/:id', { onRequest: [fastify.authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     try {
       const adminService = new AdminService(fastify.prisma);
