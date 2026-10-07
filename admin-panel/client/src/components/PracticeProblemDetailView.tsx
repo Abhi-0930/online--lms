@@ -381,7 +381,7 @@ export default function PracticeProblemDetailView({
     const counts = Array.from(dayCounts.values());
     const maxVal = Math.max(...counts, 1);
 
-    for (const [key, count] of dayCounts.entries()) {
+    for (const [key, count] of Array.from(dayCounts.entries())) {
       const d = new Date(key);
       const dayLabel = d.toLocaleDateString("en-US", { weekday: "short" });
       const pct = submissionsList.length === 0 ? 0 : Math.round((count / maxVal) * 100);
