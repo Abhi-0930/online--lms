@@ -2,6 +2,24 @@ import { FastifyInstance } from 'fastify';
 import { AdminService } from '../admin/admin.service';
 import { AdminWsBroadcaster } from '../admin/admin.ws';
 
+function getOptionalUser(request: any, fastify: FastifyInstance): { id?: string; email?: string; role?: string; name?: string; fullName?: string; avatarUrl?: string } | null {
+  try {
+    const cookieToken = request.cookies?.access_token;
+    let token = cookieToken;
+    if (!token) {
+      const authHeader = request.headers?.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+    if (token) {
+      const decoded = fastify.jwt.verify<any>(token);
+      return decoded || null;
+    }
+  } catch {}
+  return null;
+}
+
 export default async function practiceController(fastify: FastifyInstance) {
   const adminService = new AdminService(fastify.prisma);
 
@@ -89,24 +107,37 @@ export default async function practiceController(fastify: FastifyInstance) {
     reply.header('Expires', '0');
 
     const { slugOrId } = request.params as { slugOrId: string };
-    const { userId, userEmail, studentEmail } = (request.query || {}) as {
-      userId?: string;
-      userEmail?: string;
-      studentEmail?: string;
-    };
+    const authUser = getOptionalUser(request, fastify);
+    const isPrivileged = authUser && (authUser.role === 'ADMIN' || authUser.role === 'INSTRUCTOR');
+    
+    // Security: Only allow querying own submissions unless privileged admin/instructor
+    const query = (request.query || {}) as { userId?: string; userEmail?: string; studentEmail?: string };
+    const targetUserId = isPrivileged ? query.userId : authUser?.id;
+    const targetUserEmail = isPrivileged ? (query.userEmail || query.studentEmail) : authUser?.email;
+
     return adminService.getPracticeProblemSubmissions(slugOrId, {
-      onlyApproved: !userId && !userEmail && !studentEmail,
-      userId,
-      userEmail: userEmail || studentEmail,
+      onlyApproved: !authUser && !isPrivileged,
+      userId: targetUserId,
+      userEmail: targetUserEmail,
     });
   });
 
-  // Submit code for a practice problem
+  // Submit code for a practice problem (Secure user identity binding)
   fastify.post('/:slugOrId/submissions', async (request, reply) => {
     const { slugOrId } = request.params as { slugOrId: string };
-    const body = request.body as any;
+    const body = (request.body as any) || {};
+    const authUser = getOptionalUser(request, fastify);
+
+    const securePayload = {
+      ...body,
+      userId: authUser ? authUser.id : (typeof body.userId === 'string' && body.userId.startsWith('guest-') ? body.userId : `guest-${Date.now()}`),
+      email: authUser?.email || body.email || undefined,
+      studentEmail: authUser?.email || body.studentEmail || undefined,
+      authorName: authUser ? (authUser.fullName || authUser.name || body.authorName || 'Learner') : (body.authorName || 'Learner'),
+    };
+
     try {
-      const submission = await adminService.savePracticeProblemSubmission(slugOrId, body);
+      const submission = await adminService.savePracticeProblemSubmission(slugOrId, securePayload);
       AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
       return reply.code(201).send(submission);
     } catch (err: any) {
@@ -121,19 +152,36 @@ export default async function practiceController(fastify: FastifyInstance) {
     reply.header('Expires', '0');
 
     const { slugOrId } = request.params as { slugOrId: string };
-    const { userId, userEmail } = request.query as { userId?: string; userEmail?: string };
-    return adminService.getPracticeDiscussions(slugOrId, { onlyApproved: true, userId, userEmail });
+    const authUser = getOptionalUser(request, fastify);
+    const isPrivileged = authUser && (authUser.role === 'ADMIN' || authUser.role === 'INSTRUCTOR');
+    const query = (request.query || {}) as { userId?: string; userEmail?: string };
+
+    return adminService.getPracticeDiscussions(slugOrId, {
+      onlyApproved: true,
+      userId: isPrivileged ? query.userId : authUser?.id,
+      userEmail: isPrivileged ? query.userEmail : authUser?.email,
+    });
   });
 
-  // Post a discussion question / thread for a practice problem (Pending review for admin approval)
+  // Post a discussion question / thread for a practice problem
   fastify.post('/:slugOrId/discussions', async (request, reply) => {
     const { slugOrId } = request.params as { slugOrId: string };
-    const body = request.body as any;
+    const body = (request.body as any) || {};
+    const authUser = getOptionalUser(request, fastify);
+
+    const userRole = authUser?.role ? String(authUser.role).toUpperCase() : 'STUDENT';
+    const isPrivileged = userRole === 'ADMIN' || userRole === 'INSTRUCTOR';
+    const authorRole = isPrivileged ? (userRole === 'ADMIN' ? 'admin' : 'instructor') : 'student';
+
     try {
       const discussion = await adminService.savePracticeDiscussion(slugOrId, {
         ...body,
-        status: 'Pending Review',
-        authorRole: 'student',
+        userId: authUser ? authUser.id : undefined,
+        userEmail: authUser ? authUser.email : body.userEmail,
+        authorName: authUser ? (authUser.fullName || authUser.name || body.authorName || 'Learner') : (body.authorName || 'Learner'),
+        authorAvatar: authUser?.avatarUrl || body.authorAvatar || undefined,
+        status: isPrivileged ? 'Approved' : 'Pending Review',
+        authorRole,
       });
       AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
       return reply.code(201).send(discussion);
@@ -145,8 +193,14 @@ export default async function practiceController(fastify: FastifyInstance) {
   // Upvote / like a discussion
   fastify.post('/discussions/:discussionId/like', async (request, reply) => {
     const { discussionId } = request.params as { discussionId: string };
-    const { delta, userEmail, userId } = (request.body as { delta?: number; userEmail?: string; userId?: string }) || {};
-    const updated = await adminService.likePracticeDiscussion(discussionId, { delta, userEmail, userId });
+    const body = (request.body as { delta?: number; userEmail?: string; userId?: string }) || {};
+    const authUser = getOptionalUser(request, fastify);
+
+    const updated = await adminService.likePracticeDiscussion(discussionId, {
+      delta: body.delta,
+      userEmail: authUser ? authUser.email : body.userEmail,
+      userId: authUser ? authUser.id : body.userId,
+    });
     AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
     return reply.send(updated);
   });
@@ -154,11 +208,20 @@ export default async function practiceController(fastify: FastifyInstance) {
   // Reply to a discussion
   fastify.post('/discussions/:discussionId/replies', async (request, reply) => {
     const { discussionId } = request.params as { discussionId: string };
-    const body = request.body as any;
+    const body = (request.body as any) || {};
+    const authUser = getOptionalUser(request, fastify);
+
+    const userRole = authUser?.role ? String(authUser.role).toUpperCase() : 'STUDENT';
+    const isPrivileged = userRole === 'ADMIN' || userRole === 'INSTRUCTOR';
+    const authorRole = isPrivileged ? (userRole === 'ADMIN' ? 'admin' : 'instructor') : (body.authorRole || 'student');
+
     try {
       const updated = await adminService.replyToPracticeDiscussion(discussionId, {
         ...body,
-        authorRole: body.authorRole || 'student',
+        userId: authUser ? authUser.id : undefined,
+        userEmail: authUser ? authUser.email : body.userEmail,
+        authorName: authUser ? (authUser.fullName || authUser.name || body.authorName || 'Learner') : (body.authorName || 'Learner'),
+        authorRole,
       });
       AdminWsBroadcaster.broadcastUpdate(fastify.prisma).catch(() => {});
       return reply.code(201).send(updated);
