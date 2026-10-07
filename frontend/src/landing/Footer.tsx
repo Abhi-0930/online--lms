@@ -43,9 +43,9 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="#courses" className="hover:text-slate-950 transition-colors">
+                <Link href="/courses" className="hover:text-slate-950 transition-colors">
                   All Courses
-                </a>
+                </Link>
               </li>
               <li>
                 <a href="#stories" className="hover:text-slate-950 transition-colors">
