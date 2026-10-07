@@ -39,7 +39,7 @@ export default function TermsOfServicePage() {
             <section>
               <h2 className="text-lg font-bold text-slate-900 mb-2">1. Agreement to Terms</h2>
               <p>
-                By creating an account, browsing, or purchasing any educational course or cohort on PrepPath (<a href="https://preppath.net" className="text-blue-600 hover:underline">https://preppath.net</a>), you agree to be bound by these Terms of Service. If you do not agree to these terms, please discontinue using the platform.
+                By creating an account, browsing, or purchasing any educational course or cohort on PrepPath (<a href="https://www.preppath.net" className="text-blue-600 hover:underline">https://www.preppath.net</a>), you agree to be bound by these Terms of Service. If you do not agree to these terms, please discontinue using the platform.
               </p>
             </section>
 
@@ -88,7 +88,7 @@ export default function TermsOfServicePage() {
                 <p className="text-slate-600 mt-1">Email: <a href="mailto:hello@preppath.net" className="text-blue-600 hover:underline">hello@preppath.net</a></p>
                 <p className="text-slate-600">Phone: <a href="tel:+916302160783" className="text-blue-600 hover:underline">+91 6302160783</a></p>
                 <p className="text-slate-600">Location: Hyderabad, Telangana, India</p>
-                <p className="text-slate-600">Platform: <a href="https://preppath.net" className="text-blue-600 hover:underline">https://preppath.net</a></p>
+                <p className="text-slate-600">Platform: <a href="https://www.preppath.net" className="text-blue-600 hover:underline">https://www.preppath.net</a></p>
               </div>
             </section>
           </div>
