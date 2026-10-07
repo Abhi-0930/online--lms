@@ -2846,6 +2846,11 @@ function CourseDetail({ courseId }: { courseId: string }) {
             <span className="flex items-center gap-1.5">
               <Clock3 className="h-3.5 w-3.5" /> {course.duration}
             </span>
+            {course.startDate && (
+              <span className="flex items-center gap-1.5 text-emerald-300">
+                <Calendar className="h-3.5 w-3.5 text-emerald-400" /> Starts {new Date(course.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            )}
             <span className="flex items-center gap-1.5">
               <GraduationCap className="h-3.5 w-3.5" /> {course.certificateAvailable !== false ? "Certificate included" : "Self-paced"}
             </span>
