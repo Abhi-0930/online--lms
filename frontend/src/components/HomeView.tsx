@@ -3183,7 +3183,7 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
   const course = courses.find((item) => item.id === courseId || item.slug === courseId);
   const enrolled = isEnrolled(course?.id || "") || isEnrolled(course?.slug || "");
   const basePriceNumber = course?.rawPrice ?? 0;
-  const platformFee = 0;
+  const platformFee = basePriceNumber > 0 ? Math.round(basePriceNumber * 0.10) : 0;
   const totalAmountNumber = basePriceNumber + platformFee;
 
   // Pre-load Razorpay checkout SDK, pre-warm instance & prefetch destination routes on page load
@@ -3472,8 +3472,8 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
             )}
             {platformFee > 0 && (
               <div className="flex items-center justify-between text-[#64748b] dark:text-slate-400">
-                <span>Platform Fee</span>
-                <span className="font-semibold text-[#0f172a] dark:text-white">₹ {platformFee}</span>
+                <span>Platform Fee (10%)</span>
+                <span className="font-semibold text-[#0f172a] dark:text-white">₹ {platformFee.toLocaleString("en-IN")}</span>
               </div>
             )}
           </div>
