@@ -163,6 +163,31 @@ model Course {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  // Additional Course Details
+  category              String?       @default("Development")
+  language              String?       @default("English")
+  courseType            String?       @default("Paid")
+  currency              String?       @default("INR ₹")
+  accessType            String?       @default("Lifetime Access")
+  startDate             String?
+  endDate               String?
+  durationValue         String?
+  durationUnit          String?
+  estimatedDuration     String?       @default("12 Weeks")
+  subscriptionCycle     String?
+  enrollmentLimit       String?       @default("Unlimited")
+  courseVisibility      String?       @default("Public")
+  certificateAvailable  Boolean?      @default(true)
+  prerequisites         String?       @db.Text
+  targetAudience        String?       @db.Text
+  seoTitle              String?
+  seoDescription        String?       @db.Text
+  learningOutcomes      Json?
+  requirements          Json?
+  targetLearners        Json?
+  skillsCovered         Json?
+  tags                  Json?
+
   // Relations
   modules       Module[]
   enrollments   Enrollment[]
@@ -175,6 +200,7 @@ model Course {
   @@index([slug])
   @@index([status, level])
   @@index([instructorId])
+  @@index([category])
 }
 
 model Cohort {
@@ -541,4 +567,47 @@ model LiveSession {
   @@index([status])
   @@index([course])
   @@index([date])
+}
+
+// ------------------------------------------
+// ANNOUNCEMENTS
+// ------------------------------------------
+model Announcement {
+  id             String   @id @default(uuid())
+  title          String
+  content        String?  @db.Text
+  body           String?  @db.Text
+  category       String   @default("General")
+  targetAudience String?  @default("All Students")
+  cohort         String?  @default("All Cohorts & Learners")
+  author         String   @default("Admin Team")
+  publishedAt    DateTime @default(now())
+  date           String?
+  isPinned       Boolean  @default(false)
+  status         String   @default("Published") // "Published" | "Draft" | "Archived"
+  channels       Json?    // array of strings
+  ctaLabel       String?
+  ctaUrl         String?
+  meetingLink    String?
+  platform       String?
+  instructor     String?
+  sessionId      String?
+  sessionData    Json?
+  course         String?
+  module         String?
+  topic          String?
+  startTime      String?
+  endTime        String?
+  timezone       String?
+  hostNotes      String?  @db.Text
+  passcode       String?
+  resources      Json?
+  sessionType    String?
+  description    String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([publishedAt])
 }
