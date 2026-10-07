@@ -113,7 +113,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     };
   };
 
-  const requestPasswordReset = async (emailInput: string): Promise<{ success: boolean; message?: string; resetToken?: string; resetUrl?: string }> => {
+  const requestPasswordReset = async (emailInput: string): Promise<{ success: boolean; message?: string }> => {
     const email = emailInput.trim().toLowerCase();
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password-link`, {
@@ -122,25 +122,19 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, portalType: "admin" }),
       });
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         return {
           success: true,
           message: data?.message || "Reset link sent to your email",
-          resetToken: data?.resetToken,
-          resetUrl: data?.resetUrl,
         };
       }
     } catch {
       // Backend offline fallback
     }
 
-    // Fallback in case backend is offline
-    const mockToken = `mock_token_${Date.now()}`;
     return {
       success: true,
-      message: "Reset link sent to your email address",
-      resetToken: mockToken,
-      resetUrl: `http://localhost:3001/reset-password?token=${mockToken}&email=${encodeURIComponent(email)}`,
+      message: "If an account with this email exists, a password reset link has been sent to your email address.",
     };
   };
 
