@@ -6275,7 +6275,7 @@ export default function Home() {
       courseVisibility: course.courseVisibility || "Public",
       modules: course.modules || [],
       instructorName:
-        course.instructorName || (typeof course.instructor === "string" ? course.instructor : course.instructor?.name || course.instructor?.fullName || ""),
+        course.instructorName || (typeof (course as any).instructor === "string" ? (course as any).instructor : (course as any).instructor?.name || (course as any).instructor?.fullName || ""),
       skillsCovered: course.skillsCovered || course.tags || [],
       prerequisites: course.prerequisites || "",
       estimatedDuration: course.estimatedDuration || "",
@@ -6284,11 +6284,11 @@ export default function Home() {
           ? course.certificateAvailable
           : true,
       courseStatus:
-        course.status === "Published" || course.status === "PUBLISHED"
+        (course.status as string) === "Published" || (course.status as string) === "PUBLISHED"
           ? "Published"
-          : course.status === "Draft" || course.status === "DRAFT"
+          : (course.status as string) === "Draft" || (course.status as string) === "DRAFT"
           ? "Draft"
-          : course.status === "Archived" || course.status === "ARCHIVED"
+          : (course.status as string) === "Archived" || (course.status as string) === "ARCHIVED"
           ? "Archived"
           : "Under Review",
       seoTitle: course.seoTitle || "",
