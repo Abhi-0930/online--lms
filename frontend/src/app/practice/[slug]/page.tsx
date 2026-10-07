@@ -15,7 +15,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const baseUrl = "https://preppath.net";
+  const baseUrl = "https://www.preppath.net";
   const defaultTitle = formatSlugToTitle(slug);
 
   try {
@@ -96,7 +96,7 @@ export default async function PracticeProblemPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const baseUrl = "https://preppath.net";
+  const baseUrl = "https://www.preppath.net";
   const defaultTitle = formatSlugToTitle(slug);
 
   let problem: any = null;
