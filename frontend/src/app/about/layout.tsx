@@ -10,16 +10,16 @@ export const metadata: Metadata = {
     "Computer Science Learning",
     "DSA Problem Solving",
     "Software Engineering Education",
-    "Hyderabad EdTech"
+    "Hyderabad EdTech",
   ],
   alternates: {
-    canonical: "https://www.preppath.net/about",
+    canonical: "https://preppath.net/about",
   },
   openGraph: {
     title: "About PrepPath - Next-Gen Engineering Education",
     description:
       "Bridging the gap between university theory and high-scale production engineering. Discover our founding vision and learning methodology.",
-    url: "https://www.preppath.net/about",
+    url: "https://preppath.net/about",
     siteName: "PrepPath",
     locale: "en_US",
     type: "website",
@@ -41,32 +41,32 @@ export default function AboutLayout({
     "@context": "https://schema.org",
     "@type": "AboutPage",
     name: "About PrepPath",
-    url: "https://www.preppath.net/about",
+    url: "https://preppath.net/about",
     description:
       "PrepPath is a premier computer science and software engineering learning platform delivering live cohorts, DSA problem arenas, and real-world system design mentorship.",
     mainEntity: {
       "@type": "EducationalOrganization",
       name: "PrepPath",
-      url: "https://www.preppath.net",
-      logo: "https://www.preppath.net/favicon.ico",
+      url: "https://preppath.net",
+      logo: "https://preppath.net/icon.svg",
       sameAs: [
         "https://x.com/PrepPath",
         "https://www.linkedin.com/company/prepppath",
-        "https://www.instagram.com/preppath.nett?stkn=d3M4bGZwdGU2dGI4"
+        "https://www.instagram.com/preppath.nett?stkn=d3M4bGZwdGU2dGI4",
       ],
       address: {
         "@type": "PostalAddress",
         addressLocality: "Hyderabad",
         addressRegion: "Telangana",
-        addressCountry: "India"
+        addressCountry: "India",
       },
       contactPoint: {
         "@type": "ContactPoint",
         telephone: "+91-6302160783",
         contactType: "customer support",
-        email: "hello@preppath.net"
-      }
-    }
+        email: "hello@preppath.net",
+      },
+    },
   };
 
   return (
