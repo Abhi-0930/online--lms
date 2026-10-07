@@ -1,25 +1,25 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "All Courses & Learning Tracks",
+  title: "All Courses & Placement Learning Tracks | PrepPath",
   description:
-    "Master Data Structures & Algorithms, Full Stack Engineering, System Design, AI & Machine Learning, and Cloud Architecture with structured roadmaps and 1:1 mentorship.",
+    "Explore industry-curated courses in Python, Data Structures & Algorithms, Full Stack Engineering, System Design, and Technical Placements on PrepPath.",
   keywords: [
     "PrepPath Courses",
     "DSA Course",
+    "Python Programming Masterclass",
     "Full Stack Web Development",
     "System Design Course",
-    "AI Machine Learning Bootcamp",
-    "Cloud Computing AWS",
     "Software Engineering Placement Prep",
+    "Coding Interview Masterclass",
   ],
   alternates: {
     canonical: "https://preppath.net/courses",
   },
   openGraph: {
-    title: "All Courses & Learning Tracks | PrepPath",
+    title: "All Courses & Placement Learning Tracks | PrepPath",
     description:
-      "Master DSA, Full Stack, System Design, AI/ML, and Cloud Architecture with curated roadmaps, live sessions, and 1:1 mentorship.",
+      "Explore industry-curated courses in Python, DSA, Full Stack, and System Design with structured roadmaps, live mentoring, and career certificates.",
     url: "https://preppath.net/courses",
     siteName: "PrepPath",
     images: [
@@ -27,15 +27,15 @@ export const metadata: Metadata = {
         url: "/login-hero.png",
         width: 1200,
         height: 630,
-        alt: "PrepPath Courses & Tracks",
+        alt: "PrepPath Courses & Placement Tracks",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "All Courses & Learning Tracks | PrepPath",
+    title: "All Courses & Placement Learning Tracks | PrepPath",
     description:
-      "Master DSA, Full Stack, System Design, AI/ML, and Cloud Architecture with structured roadmaps.",
+      "Explore industry-curated courses in Python, DSA, Full Stack, and System Design with structured roadmaps.",
     images: ["/login-hero.png"],
   },
 };
@@ -45,5 +45,45 @@ export default function CoursesLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://preppath.net/courses#breadcrumb",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: "https://preppath.net",
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Courses",
+            item: "https://preppath.net/courses",
+          },
+        ],
+      },
+      {
+        "@type": "ItemList",
+        "@id": "https://preppath.net/courses#itemlist",
+        name: "PrepPath Courses Catalog",
+        description: "Comprehensive software engineering, DSA, and technical placement courses.",
+        itemListOrder: "https://schema.org/ItemListOrderDescending",
+        numberOfItems: 10,
+      },
+    ],
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {children}
+    </>
+  );
 }
