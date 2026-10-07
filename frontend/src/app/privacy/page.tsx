@@ -40,7 +40,7 @@ export default function PrivacyPolicyPage() {
               <h2 className="text-lg font-bold text-slate-900 mb-2">1. Overview</h2>
               <p>
                 PrepPath (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy explains how your personal information is collected, used, and disclosed by PrepPath when you access or use our website (
-                <a href="https://preppath.net" className="text-blue-600 hover:underline">https://preppath.net</a>), learning platform, and related educational services.
+                <a href="https://www.preppath.net" className="text-blue-600 hover:underline">https://www.preppath.net</a>), learning platform, and related educational services.
               </p>
             </section>
 
@@ -95,7 +95,7 @@ export default function PrivacyPolicyPage() {
                 <p className="text-slate-600 mt-1">Email: <a href="mailto:hello@preppath.net" className="text-blue-600 hover:underline">hello@preppath.net</a></p>
                 <p className="text-slate-600">Phone: <a href="tel:+916302160783" className="text-blue-600 hover:underline">+91 6302160783</a></p>
                 <p className="text-slate-600">Location: Hyderabad, Telangana, India</p>
-                <p className="text-slate-600">Website: <a href="https://preppath.net" className="text-blue-600 hover:underline">https://preppath.net</a></p>
+                <p className="text-slate-600">Website: <a href="https://www.preppath.net" className="text-blue-600 hover:underline">https://www.preppath.net</a></p>
               </div>
             </section>
           </div>
