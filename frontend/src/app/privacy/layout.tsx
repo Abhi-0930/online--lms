@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description:
     "PrepPath's Privacy Policy describes how we collect, protect, and use your personal information when you use our platform and educational services.",
   alternates: {
-    canonical: "https://preppath.net/privacy",
+    canonical: "https://www.preppath.net/privacy",
   },
   robots: {
     index: true,
