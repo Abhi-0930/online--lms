@@ -3186,9 +3186,13 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
   const platformFee = 0;
   const totalAmountNumber = basePriceNumber + platformFee;
 
-  // Pre-load Razorpay checkout SDK & pre-warm instance in background on page load
+  // Pre-load Razorpay checkout SDK, pre-warm instance & prefetch destination routes on page load
   useEffect(() => {
     loadRazorpayScript();
+    try {
+      router.prefetch(getSecureHref("/my-courses"));
+      router.prefetch(getSecureHref("/learn"));
+    } catch {}
     if (course && totalAmountNumber > 0 && user?.email) {
       preloadCheckoutOrder({
         courseId: course.id,
@@ -3197,7 +3201,7 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
         user,
       });
     }
-  }, [course?.id, course?.title, totalAmountNumber, user]);
+  }, [course?.id, course?.title, totalAmountNumber, user, router]);
 
   if (loading) {
     return (
@@ -3243,13 +3247,30 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
     if (totalAmountNumber === 0) {
       setIsProcessing(true);
       toast.success("Enrolled successfully for free!");
-      refreshEnrollments();
+      if (course) {
+        addEnrollmentOptimistically({
+          id: `enr_${Date.now()}`,
+          courseId: course.id,
+          status: "ACTIVE",
+          progressPct: 0,
+          enrolledAt: new Date().toISOString(),
+          course: {
+            id: course.id,
+            slug: course.slug || course.id,
+            title: course.title,
+            subtitle: course.subtitle,
+            price: 0,
+            coverImageUrl: (course as any).coverImageUrl || course.image || undefined,
+            level: course.level,
+          },
+        });
+      }
+      refreshEnrollments().catch(() => {});
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("lms:enrollments-updated"));
       }
-      setTimeout(() => {
-        router.push(getSecureHref("/my-courses"));
-      }, 800);
+      setIsProcessing(false);
+      router.push(getSecureHref("/my-courses"));
       return;
     }
 
@@ -3282,12 +3303,9 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
             },
           });
         }
-        await refreshEnrollments().catch(() => {});
-        if (typeof window !== "undefined") {
-          window.location.href = getSecureHref("/my-courses");
-        } else {
-          router.push(getSecureHref("/my-courses"));
-        }
+        // Sync with server in background without blocking instant client navigation
+        refreshEnrollments().catch(() => {});
+        router.push(getSecureHref("/my-courses"));
       },
       onError: () => {
         setIsProcessing(false);
