@@ -104,12 +104,12 @@ export async function sendPasswordResetOtpEmail(params: {
 }): Promise<boolean> {
   const { to, code, name } = params;
 
-  logger.info({ to, code }, 'Processing password reset OTP email');
+  logger.info({ to }, 'Processing password reset OTP email');
 
   if (!resend || !env.RESEND_API_KEY || env.RESEND_API_KEY.startsWith('re_123456789')) {
     logger.warn(
-      { to, code },
-      'Resend API key is a placeholder or not provided. OTP logged for development testing.'
+      { to },
+      'Resend API key is a placeholder or not provided. Please set RESEND_API_KEY for live email delivery.'
     );
     return true;
   }
