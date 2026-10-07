@@ -160,9 +160,11 @@ function StatusBadge({ children }: { children: React.ReactNode }) {
     value === "Completed"
       ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300/70 dark:border-emerald-700/60 font-extrabold"
       : value === "Published" || value === "Paid" || value === "Live" || value === "On track" || value === "Responded"
-      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40"
+      : value === "Enrolled" || value === "Active"
+      ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/50 font-semibold"
       : value === "Draft" || value === "Review" || value === "Open" || value === "Upcoming" || value === "New" || value === "Refund requested" || value === "In progress"
-      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/40"
       : value === "Not enrolled"
       ? "bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 border border-slate-200/60 dark:border-white/10"
       : "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300";
@@ -1151,7 +1153,7 @@ function StudentsView({
       <DataCard
         title="Learner directory"
         subtitle={students.length > 0 ? `${filtered.length} of ${students.length} learners registered` : "0 learners currently registered"}
-        toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "On track", "In progress", "Not enrolled"]} />}
+        toolbar={<SearchToolbar query={query} setQuery={setQuery} filter={filter} setFilter={setFilter} filters={["All", "Enrolled", "In progress", "On track", "Completed", "Not enrolled"]} />}
       >
         <div className="overflow-x-auto">
           <table className="w-full min-w-[780px] text-left">
