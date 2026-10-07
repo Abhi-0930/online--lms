@@ -246,7 +246,8 @@ export class PaymentService {
       } else {
         baseCoursePrice = 1499;
       }
-      finalAmount = baseCoursePrice;
+      const platformFee = baseCoursePrice > 0 ? Math.round(baseCoursePrice * 0.10) : 0;
+      finalAmount = baseCoursePrice + platformFee;
     } else if (type === 'COHORT_ENROLLMENT' && cohortId) {
       targetCohort = await this.withDbRetry(async () => {
         return this.prisma.cohort.findUnique({
