@@ -14,13 +14,13 @@ export const metadata: Metadata = {
     "System Design Instructors",
   ],
   alternates: {
-    canonical: "https://preppath.net/instructors",
+    canonical: "https://www.preppath.net/instructors",
   },
   openGraph: {
     title: "Meet Our Lead Instructors & Engineering Mentors | PrepPath",
     description:
       "Active industry practitioners and technical leaders mentoring the next generation of top-tier software engineers.",
-    url: "https://preppath.net/instructors",
+    url: "https://www.preppath.net/instructors",
     siteName: "PrepPath",
     images: [
       {
@@ -50,43 +50,43 @@ export default function InstructorsLayout({
     "@graph": [
       {
         "@type": "BreadcrumbList",
-        "@id": "https://preppath.net/instructors#breadcrumb",
+        "@id": "https://www.preppath.net/instructors#breadcrumb",
         itemListElement: [
           {
             "@type": "ListItem",
             position: 1,
             name: "Home",
-            item: "https://preppath.net",
+            item: "https://www.preppath.net",
           },
           {
             "@type": "ListItem",
             position: 2,
             name: "Instructors",
-            item: "https://preppath.net/instructors",
+            item: "https://www.preppath.net/instructors",
           },
         ],
       },
       {
         "@type": "ProfilePage",
-        "@id": "https://preppath.net/instructors#profilepage",
+        "@id": "https://www.preppath.net/instructors#profilepage",
         name: "PrepPath Instructors & Faculty",
-        url: "https://preppath.net/instructors",
+        url: "https://www.preppath.net/instructors",
         description:
           "Meet the industry mentors and software engineering faculty at PrepPath delivering live masterclasses and 1:1 career guidance.",
         mainEntity: [
           {
             "@type": "Person",
-            "@id": "https://preppath.net/instructors#abhishek",
+            "@id": "https://www.preppath.net/instructors#abhishek",
             name: "Abhishek Jujjuvarapu",
             jobTitle: "Founder & Lead Instructor",
             worksFor: {
               "@type": "EducationalOrganization",
               name: "PrepPath",
-              url: "https://preppath.net",
+              url: "https://www.preppath.net",
             },
             description:
               "Software engineer, cybersecurity professional, and educator dedicated to helping students master problem-solving, software development, and interview preparation.",
-            image: "https://preppath.net/instructors/abhishek.png",
+            image: "https://www.preppath.net/instructors/abhishek.png",
             knowsAbout: [
               "Software Engineering",
               "Data Structures & Algorithms",
@@ -103,17 +103,17 @@ export default function InstructorsLayout({
           },
           {
             "@type": "Person",
-            "@id": "https://preppath.net/instructors#bharath",
+            "@id": "https://www.preppath.net/instructors#bharath",
             name: "Bharath Beerappa",
             jobTitle: "Senior Technical Mentor & Instructor",
             worksFor: {
               "@type": "EducationalOrganization",
               name: "PrepPath",
-              url: "https://preppath.net",
+              url: "https://www.preppath.net",
             },
             description:
               "Technology leader and engineering mentor with 5+ years of experience across software engineering, cloud computing, DevOps, AI/ML, blockchain, and modern application architecture.",
-            image: "https://preppath.net/instructors/bharat.png",
+            image: "https://www.preppath.net/instructors/bharat.png",
             knowsAbout: [
               "Cloud Computing & AWS",
               "DevOps & Platform Engineering",
