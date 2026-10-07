@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 import { API_BASE_URL } from "@/lib/apiConfig";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://preppath.net";
+  const baseUrl = "https://www.preppath.net";
   const currentDate = new Date().toISOString();
 
   const staticRoutes: MetadataRoute.Sitemap = [
