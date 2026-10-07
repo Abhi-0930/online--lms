@@ -91,10 +91,6 @@ export default function Login() {
     try {
       const res = await requestPasswordReset(email);
       if (res.success) {
-        setResetToken(res.resetToken || "token_demo");
-        if (res.resetUrl) {
-          setSimulatedResetUrl(res.resetUrl);
-        }
         setView("reset_link_sent");
         toast.success(`Password reset link sent to ${email}`);
       } else {
@@ -361,7 +357,7 @@ export default function Login() {
             </p>
 
             {/* Back to Login button */}
-            <div className="mt-7 w-full space-y-3">
+            <div className="mt-7 w-full">
               <button
                 type="button"
                 onClick={() => setView("login")}
@@ -369,15 +365,6 @@ export default function Login() {
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 <span>Back to login</span>
-              </button>
-
-              {/* Dev Shortcut to simulate clicking email link immediately */}
-              <button
-                type="button"
-                onClick={() => setView("reset_password")}
-                className="text-[11px] text-[#1a73e8] hover:underline cursor-pointer"
-              >
-                (Dev Shortcut: Open Reset Password screen)
               </button>
             </div>
           </div>
