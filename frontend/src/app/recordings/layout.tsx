@@ -11,13 +11,13 @@ export const metadata: Metadata = {
     "On-demand coding classes",
   ],
   alternates: {
-    canonical: "https://preppath.net/recordings",
+    canonical: "https://www.preppath.net/recordings",
   },
   openGraph: {
     title: "Lecture Recordings & Video Archives | PrepPath",
     description:
       "Access on-demand high-bitrate video recordings with chapter timestamps and downloadable notes.",
-    url: "https://preppath.net/recordings",
+    url: "https://www.preppath.net/recordings",
     siteName: "PrepPath",
   },
 };
