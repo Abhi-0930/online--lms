@@ -310,10 +310,6 @@ export default function ForgotPasswordPage() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         toast.success("Verification code sent to your email!");
-        if (data.code) {
-          // In development, notify the generated OTP
-          toast.info(`Development code: ${data.code}`, { duration: 8000 });
-        }
       } else {
         toast.success("If this email exists, a verification code has been sent.");
       }
@@ -365,19 +361,15 @@ export default function ForgotPasswordPage() {
     if (timer > 0) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
+      await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (data.code) {
-        toast.info(`New development code: ${data.code}`, { duration: 8000 });
-      }
-      toast.success("A fresh verification code has been sent.");
+      toast.success("A fresh verification code has been sent to your email.");
       setTimer(45);
     } catch {
-      toast.success("A fresh verification code has been sent.");
+      toast.success("A fresh verification code has been sent to your email.");
       setTimer(45);
     } finally {
       setIsLoading(false);
