@@ -58,7 +58,7 @@ export default async function adminController(fastify: FastifyInstance) {
     return adminService.getAllCourses();
   });
 
-  fastify.post('/courses', async (request, reply) => {
+  fastify.post('/courses', { bodyLimit: 50 * 1024 * 1024 }, async (request, reply) => {
     const body = request.body as any;
     try {
       const course = await adminService.saveCourseDraft(body);
@@ -69,7 +69,7 @@ export default async function adminController(fastify: FastifyInstance) {
     }
   });
 
-  fastify.patch('/courses/:id', async (request, reply) => {
+  fastify.patch('/courses/:id', { bodyLimit: 50 * 1024 * 1024 }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as any;
     try {
@@ -81,7 +81,7 @@ export default async function adminController(fastify: FastifyInstance) {
     }
   });
 
-  fastify.put('/courses/:id', async (request, reply) => {
+  fastify.put('/courses/:id', { bodyLimit: 50 * 1024 * 1024 }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as any;
     try {
@@ -153,7 +153,7 @@ export default async function adminController(fastify: FastifyInstance) {
     return adminService.getAllContent();
   });
 
-  fastify.post('/content', async (request, reply) => {
+  fastify.post('/content', { bodyLimit: 50 * 1024 * 1024 }, async (request, reply) => {
     const body = request.body as any;
     try {
       const created = await adminService.saveContentItem(body);
@@ -164,7 +164,7 @@ export default async function adminController(fastify: FastifyInstance) {
     }
   });
 
-  fastify.patch('/content/:id', async (request, reply) => {
+  fastify.patch('/content/:id', { bodyLimit: 50 * 1024 * 1024 }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as any;
     try {
@@ -451,7 +451,7 @@ export default async function adminController(fastify: FastifyInstance) {
     return adminService.getAllRecordings();
   });
 
-  fastify.post('/recordings', async (request, reply) => {
+  fastify.post('/recordings', { bodyLimit: 50 * 1024 * 1024 }, async (request, reply) => {
     const body = request.body as any;
     try {
       const recording = await adminService.saveRecording(body);
@@ -462,7 +462,7 @@ export default async function adminController(fastify: FastifyInstance) {
     }
   });
 
-  fastify.patch('/recordings/:id', async (request, reply) => {
+  fastify.patch('/recordings/:id', { bodyLimit: 50 * 1024 * 1024 }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as any;
     try {
