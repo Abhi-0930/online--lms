@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description:
     "Review the Terms and Conditions governing your access and use of PrepPath's technical courses, mentorship, and learning platform.",
   alternates: {
-    canonical: "https://preppath.net/terms",
+    canonical: "https://www.preppath.net/terms",
   },
   robots: {
     index: true,
