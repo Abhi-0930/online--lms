@@ -12,13 +12,13 @@ export const metadata: Metadata = {
     "Coding doubts",
   ],
   alternates: {
-    canonical: "https://preppath.net/community",
+    canonical: "https://www.preppath.net/community",
   },
   openGraph: {
     title: "Student Community & Peer Network | PrepPath",
     description:
       "Connect with ambitious software engineers, peer mock partners, and mentors.",
-    url: "https://preppath.net/community",
+    url: "https://www.preppath.net/community",
     siteName: "PrepPath",
   },
 };
