@@ -3064,37 +3064,73 @@ export default function CourseBuilder({
                   </div>
                 )}
 
-                {/* Row 3: Course Visibility */}
-                <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-slate-800 mb-2">
-                    Course Visibility
-                  </label>
-                  <div className="flex flex-wrap gap-2.5">
-                    {(["Public", "Private", "Unlisted"] as const).map(
-                      (vis) => {
-                        const isSelected = formData.courseVisibility === vis;
-                        return (
-                          <button
-                            key={vis}
-                            type="button"
-                            onClick={() =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                courseVisibility: vis,
-                              }))
-                            }
-                            className={cn(
-                              "rounded-xl px-5 py-2.5 text-xs sm:text-[13px] font-medium transition-all duration-150 cursor-pointer select-none",
-                              isSelected
-                                ? "border-2 border-indigo-400/90 bg-indigo-50/20 font-bold text-indigo-700 shadow-xs"
-                                : "border border-slate-200 bg-white hover:border-slate-300 text-slate-600"
-                            )}
-                          >
-                            {vis}
-                          </button>
-                        );
-                      }
-                    )}
+                {/* Row 3: Course Start Date (Left) & Course Visibility (Right) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 items-start">
+                  {/* Left Column: Course Start Date */}
+                  <div>
+                    <label className="block text-xs sm:text-[13px] font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-indigo-600" />
+                      Course Start Date
+                      <span className="font-normal text-[11px] text-slate-400 ml-1">
+                        (Batch Start)
+                      </span>
+                    </label>
+                    <CustomDatePicker
+                      value={formData.startDate}
+                      placeholder="Select course start date"
+                      onChange={(newStart) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          startDate: newStart,
+                        }));
+                        if (errors.startDate) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            startDate: false,
+                          }));
+                        }
+                      }}
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Scheduled start date for upcoming course batch or live curriculum
+                    </p>
+                  </div>
+
+                  {/* Right Column: Course Visibility */}
+                  <div>
+                    <label className="block text-xs sm:text-[13px] font-bold text-slate-800 mb-2">
+                      Course Visibility
+                    </label>
+                    <div className="flex flex-wrap gap-2.5">
+                      {(["Public", "Private", "Unlisted"] as const).map(
+                        (vis) => {
+                          const isSelected = formData.courseVisibility === vis;
+                          return (
+                            <button
+                              key={vis}
+                              type="button"
+                              onClick={() =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  courseVisibility: vis,
+                                }))
+                              }
+                              className={cn(
+                                "rounded-xl px-5 py-2.5 text-xs sm:text-[13px] font-medium transition-all duration-150 cursor-pointer select-none",
+                                isSelected
+                                  ? "border-2 border-indigo-400/90 bg-indigo-50/20 font-bold text-indigo-700 shadow-xs"
+                                  : "border border-slate-200 bg-white hover:border-slate-300 text-slate-600"
+                              )}
+                            >
+                              {vis}
+                            </button>
+                          );
+                        }
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Control who can discover and enroll in this course
+                    </p>
                   </div>
                 </div>
               </div>
