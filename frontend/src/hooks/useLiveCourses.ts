@@ -45,6 +45,8 @@ export interface LiveCourseItem {
   seoDescription?: string;
   accessType?: string;
   courseVisibility?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 const DEFAULT_COVER =
@@ -377,6 +379,8 @@ function transformDbCourse(c: any): LiveCourseItem {
     seoDescription: c.seoDescription || "",
     accessType: c.accessType || "Lifetime Access",
     courseVisibility: c.courseVisibility || "Public",
+    startDate: c.startDate || "",
+    endDate: c.endDate || "",
   };
 }
 
