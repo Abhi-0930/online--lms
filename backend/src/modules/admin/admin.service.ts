@@ -1062,20 +1062,32 @@ export class AdminService {
 
         courseName = enrolledTitles.join(', ') || (u.enrollments?.[0]?.course?.title || 'Enrolled Course');
 
-        const firstEnrollment = u.enrollments?.[0];
-        if (typeof firstEnrollment?.progressPct === 'number') {
-          progress = Math.round(firstEnrollment.progressPct);
-        } else if (typeof firstEnrollment?.progress === 'number') {
-          progress = Math.round(firstEnrollment.progress);
-        } else if (onboarding?.isCompleted) {
-          progress = 100;
-        } else if (onboarding?.completedStep) {
-          progress = Math.min(100, Math.round((onboarding.completedStep / 4) * 100));
-        } else {
-          progress = 0;
+        let totalProg = 0;
+        let countProg = 0;
+        let anyCompleted = false;
+        for (const e of u.enrollments || []) {
+          if (typeof e.progressPct === 'number') {
+            totalProg += e.progressPct;
+            countProg++;
+          } else if (typeof e.progress === 'number') {
+            totalProg += e.progress;
+            countProg++;
+          }
+          if (e.status === 'COMPLETED' || (typeof e.progressPct === 'number' && e.progressPct >= 100)) {
+            anyCompleted = true;
+          }
         }
+        progress = countProg > 0 ? Math.round(totalProg / countProg) : 0;
 
-        status = progress >= 70 ? 'On track' : 'In progress';
+        if (anyCompleted || progress >= 100) {
+          status = 'Completed';
+        } else if (progress === 0) {
+          status = 'Enrolled';
+        } else if (progress >= 70) {
+          status = 'On track';
+        } else {
+          status = 'In progress';
+        }
       }
 
       // Collect all candidate timestamps to determine true last active / login
