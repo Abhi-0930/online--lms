@@ -10,6 +10,7 @@ import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
 import websocketPlugin from '@fastify/websocket';
+import helmet from '@fastify/helmet';
 import authRoutes from './modules/auth/auth.routes';
 import coursesRoutes from './modules/courses/courses.routes';
 import progressRoutes from './modules/progress/progress.routes';
@@ -26,7 +27,14 @@ import adminRoutes from './modules/admin/admin.routes';
 export async function createApp() {
   const fastify = Fastify({
     logger: logger as any,
-    bodyLimit: 50 * 1024 * 1024, // 50MB payload limit for course assets & base64 thumbnails
+    bodyLimit: 2 * 1024 * 1024, // 2MB safe global default limit to prevent payload flood DoS
+  });
+
+  // Register Helmet for OWASP recommended security headers
+  await fastify.register(helmet, {
+    contentSecurityPolicy: false, // Disabled for API backend to not break Swagger UI or JSON clients
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    hsts: env.NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
   });
 
   // Register CORS (with credentials for secure cookies)
@@ -34,6 +42,11 @@ export async function createApp() {
     'https://www.preppath.net',
     'https://preppath.net',
     'https://online-lms-coral.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:4000',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
     env.FRONTEND_URL?.replace(/\/+$/, ''),
     env.ADMIN_URL?.replace(/\/+$/, ''),
   ].filter(Boolean));
@@ -43,15 +56,12 @@ export async function createApp() {
       if (!origin) return cb(null, true);
       const cleanOrigin = origin.replace(/\/+$/, '');
       if (
-        cleanOrigin.includes('localhost') ||
-        cleanOrigin.includes('127.0.0.1') ||
-        cleanOrigin.includes('preppath.net') ||
-        cleanOrigin.includes('vercel.app') ||
-        allowedOrigins.has(cleanOrigin)
+        allowedOrigins.has(cleanOrigin) ||
+        (env.NODE_ENV === 'development' && (cleanOrigin.includes('localhost') || cleanOrigin.includes('127.0.0.1')))
       ) {
         return cb(null, true);
       }
-      cb(null, true);
+      return cb(new Error('Not allowed by CORS policy'), false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
