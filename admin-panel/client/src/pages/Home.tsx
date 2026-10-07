@@ -6249,7 +6249,7 @@ export default function Home() {
       subtitle: course.subtitle || course.track || "",
       description: course.description || "",
       language: course.language || "English",
-      category: course.category || "Development",
+      category: course.category || "",
       level: course.level || "Beginner",
       thumbnailPreview: course.thumbnailPreview || course.coverImageUrl || null,
       courseType:
@@ -6273,19 +6273,21 @@ export default function Home() {
       courseVisibility: course.courseVisibility || "Public",
       modules: course.modules || [],
       instructorName:
-        course.instructorName || course.instructor || "Platform Admin",
+        course.instructorName || (typeof course.instructor === "string" ? course.instructor : course.instructor?.name || course.instructor?.fullName || ""),
       skillsCovered: course.skillsCovered || course.tags || [],
       prerequisites: course.prerequisites || "",
-      estimatedDuration: course.estimatedDuration || "12 Weeks",
+      estimatedDuration: course.estimatedDuration || "",
       certificateAvailable:
         course.certificateAvailable !== undefined
           ? course.certificateAvailable
           : true,
       courseStatus:
-        course.status === "Published"
+        course.status === "Published" || course.status === "PUBLISHED"
           ? "Published"
-          : course.status === "Draft"
+          : course.status === "Draft" || course.status === "DRAFT"
           ? "Draft"
+          : course.status === "Archived" || course.status === "ARCHIVED"
+          ? "Archived"
           : "Under Review",
       seoTitle: course.seoTitle || "",
       seoDescription: course.seoDescription || "",
