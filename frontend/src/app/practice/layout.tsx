@@ -14,13 +14,13 @@ export const metadata: Metadata = {
     "FAANG coding prep",
   ],
   alternates: {
-    canonical: "https://preppath.net/practice",
+    canonical: "https://www.preppath.net/practice",
   },
   openGraph: {
     title: "Practice Coding & DSA Problems | PrepPath",
     description:
       "Solve 400+ curated algorithmic problems with in-browser multi-language execution, automated test cases, and optimal solution breakdowns.",
-    url: "https://preppath.net/practice",
+    url: "https://www.preppath.net/practice",
     siteName: "PrepPath",
     images: [
       {
