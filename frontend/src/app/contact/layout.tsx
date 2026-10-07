@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description:
     "Get in touch with PrepPath team for admissions guidance, technical doubt support, enterprise partnerships, or billing inquiries.",
   alternates: {
-    canonical: "https://preppath.net/contact",
+    canonical: "https://www.preppath.net/contact",
   },
   robots: {
     index: true,
