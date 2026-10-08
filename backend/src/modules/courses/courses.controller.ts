@@ -17,14 +17,14 @@ export default async function coursesController(fastify: FastifyInstance) {
   fastify.get('/', {
     schema: courseQuerySchema,
   }, async (request, reply) => {
-    reply.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    reply.header('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
     const query = request.query as any;
     return coursesService.getAllCourses(query);
   });
 
   // Public: Get course by slug
   fastify.get('/:slug', async (request, reply) => {
-    reply.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    reply.header('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
     const { slug } = request.params as any;
     return coursesService.getCourseBySlug(slug);
   });
