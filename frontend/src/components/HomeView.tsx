@@ -2625,12 +2625,15 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
   const router = useRouter();
   const { isEnrolled } = useEnrollments();
   const enrolled = isEnrolled(course.id) || isEnrolled(course.slug);
+  const isComingSoon = course.courseVisibility === "Coming Soon" || course.courseVisibility === "Yet to Launch";
 
   const handleEnrollClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (enrolled) {
       router.push(getSecureHref("/learn"));
+    } else if (isComingSoon) {
+      router.push(createSecureUrl("/courses", { courseId: course.id }));
     } else {
       router.push(createSecureUrl("/courses", { courseId: course.id, v: "checkout" }));
     }
@@ -2647,7 +2650,7 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
           />
         </div>
         <div className="p-4 space-y-2.5">
-          {/* Top Row: Category, Level, Discount/Enrolled Badges + Star Rating */}
+          {/* Top Row: Category, Level, Discount/Enrolled/ComingSoon Badges + Star Rating */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-100/80 dark:border-blue-900/40 px-2.5 py-0.5 text-[10.5px] font-bold text-blue-600 dark:text-blue-400">
@@ -2656,7 +2659,12 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
               <span className="rounded-lg bg-slate-100 dark:bg-white/10 px-2.5 py-0.5 text-[10.5px] font-semibold text-slate-600 dark:text-slate-300">
                 {course.level}
               </span>
-              {course.hasDiscount && course.discountPercentage ? (
+              {isComingSoon && (
+                <span className="flex items-center gap-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-900/40 px-2 py-0.5 text-[10.5px] font-bold text-amber-700 dark:text-amber-400">
+                  <Sparkles className="h-3 w-3 text-amber-500" /> Coming Soon
+                </span>
+              )}
+              {course.hasDiscount && course.discountPercentage && !isComingSoon ? (
                 <span className="rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-900/40 px-2 py-0.5 text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400">
                   Save {course.discountPercentage}% OFF
                 </span>
@@ -2710,7 +2718,7 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
               {course.originalPrice}
             </span>
           )}
-          {course.hasDiscount && course.discountPercentage ? (
+          {course.hasDiscount && course.discountPercentage && !isComingSoon ? (
             <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
               Save {course.discountPercentage}%
             </span>
@@ -2722,12 +2730,18 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
             "flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold transition cursor-pointer active:scale-95",
             enrolled
               ? "bg-[#eaf0ff] text-[#3157e8] hover:bg-[#dce6ff] dark:bg-[#3157e8]/20 dark:text-white"
+              : isComingSoon
+              ? "bg-amber-50 text-amber-800 border border-amber-300/80 hover:bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30"
               : "bg-[#0066ff] text-white shadow-sm hover:bg-[#0052cc]"
           )}
         >
           {enrolled ? (
             <>
               <Play className="h-3.5 w-3.5 fill-current" /> Continue
+            </>
+          ) : isComingSoon ? (
+            <>
+              <Clock3 className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> Coming Soon
             </>
           ) : (
             <>
@@ -2779,6 +2793,7 @@ function CourseDetail({ courseId }: { courseId: string }) {
   }
 
   const enrolled = isEnrolled(course.id) || isEnrolled(course.slug);
+  const isComingSoon = course.courseVisibility === "Coming Soon" || course.courseVisibility === "Yet to Launch";
 
   const defaultOutcomes = [
     "Think in patterns instead of memorizing solutions",
@@ -2846,11 +2861,15 @@ function CourseDetail({ courseId }: { courseId: string }) {
             <span className="flex items-center gap-1.5">
               <Clock3 className="h-3.5 w-3.5" /> {course.duration}
             </span>
-            {course.startDate && (
+            {isComingSoon ? (
+              <span className="flex items-center gap-1.5 text-amber-300 font-semibold">
+                <Sparkles className="h-3.5 w-3.5 text-amber-400" /> Yet to Launch · Coming Soon
+              </span>
+            ) : course.startDate ? (
               <span className="flex items-center gap-1.5 text-emerald-300">
                 <Calendar className="h-3.5 w-3.5 text-emerald-400" /> Starts {new Date(course.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
-            )}
+            ) : null}
             <span className="flex items-center gap-1.5">
               <GraduationCap className="h-3.5 w-3.5" /> {course.certificateAvailable !== false ? "Certificate included" : "Self-paced"}
             </span>
@@ -2860,6 +2879,17 @@ function CourseDetail({ courseId }: { courseId: string }) {
               <Link href={getSecureHref("/learn")} className="button-primary">
                 <Play className="h-4 w-4 fill-current" /> Continue learning
               </Link>
+            ) : isComingSoon ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  disabled
+                  className="flex items-center gap-2 rounded-xl bg-amber-500/20 border border-amber-400/40 px-5 py-3 text-sm font-bold text-amber-200 cursor-not-allowed shadow-inner backdrop-blur-sm select-none"
+                >
+                  <Clock3 className="h-4 w-4 text-amber-400" />
+                  Preparing to Launch · Coming Soon
+                </button>
+              </div>
             ) : (
               <div className="flex flex-wrap items-center gap-3">
                 <Link
@@ -3098,15 +3128,28 @@ function CourseDetail({ courseId }: { courseId: string }) {
                 ) : null}
               </div>
               <p className="mt-2 text-xs leading-5 text-[#7c87a4]">
-                Get full access to this course, curriculum modules, assignments, and verified completion certificate.
+                {isComingSoon
+                  ? "This course is currently in preparation. Curriculum modules and syllabus are previewable below."
+                  : "Get full access to this course, curriculum modules, assignments, and verified completion certificate."}
               </p>
-              <Link
-                href={createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
-                className="mt-5 w-full button-primary flex items-center justify-center gap-2 py-3 shadow-[0_8px_20px_rgba(49,87,232,0.3)] transition-all hover:scale-[1.02] active:scale-95 text-center cursor-pointer"
-              >
-                <CreditCard className="h-4 w-4" />
-                {course.rawPrice === 0 ? "Enroll for Free" : "Enroll with Razorpay"}
-              </Link>
+              {isComingSoon ? (
+                <button
+                  type="button"
+                  disabled
+                  className="mt-5 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500/15 border border-amber-300/80 text-amber-800 dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-300 text-xs font-bold shadow-xs cursor-not-allowed text-center select-none"
+                >
+                  <Clock3 className="h-4 w-4 text-amber-500" />
+                  Preparing to Launch · Coming Soon
+                </button>
+              ) : (
+                <Link
+                  href={createSecureUrl("/courses", { courseId: course.id, v: "checkout" })}
+                  className="mt-5 w-full button-primary flex items-center justify-center gap-2 py-3 shadow-[0_8px_20px_rgba(49,87,232,0.3)] transition-all hover:scale-[1.02] active:scale-95 text-center cursor-pointer"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  {course.rawPrice === 0 ? "Enroll for Free" : "Enroll with Razorpay"}
+                </Link>
+              )}
               <div className="mt-5 space-y-2.5 border-t border-[#edf0f6] pt-4 text-[11px] text-[#7c87a4] dark:border-white/10">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-[#3157e8]" />
