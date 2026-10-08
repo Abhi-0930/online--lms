@@ -1,25 +1,26 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "All Courses & Placement Learning Tracks | PrepPath",
+  title: "Best Tech Placement Courses: DSA, System Design & Full Stack | PrepPath",
   description:
-    "Explore industry-curated courses in Python, Data Structures & Algorithms, Full Stack Engineering, System Design, and Technical Placements on PrepPath.",
+    "Crack top-tier software engineering placements. Learn Data Structures & Algorithms, System Design, and Full Stack SaaS with live cohorts, real-world projects, and verified certificates.",
   keywords: [
     "PrepPath Courses",
-    "DSA Course",
-    "Python Programming Masterclass",
-    "Full Stack Web Development",
-    "System Design Course",
+    "DSA Course 2026",
+    "Data Structures and Algorithms Placement Course",
+    "System Design Interview Course India",
+    "Full Stack Web Development SaaS",
     "Software Engineering Placement Prep",
-    "Coding Interview Masterclass",
+    "FAANG Coding Interview Masterclass",
+    "LeetCode Pattern Sheet Course",
   ],
   alternates: {
     canonical: "https://www.preppath.net/courses",
   },
   openGraph: {
-    title: "All Courses & Placement Learning Tracks | PrepPath",
+    title: "Best Tech Placement Courses: DSA, System Design & Full Stack | PrepPath",
     description:
-      "Explore industry-curated courses in Python, DSA, Full Stack, and System Design with structured roadmaps, live mentoring, and career certificates.",
+      "Crack top-tier software engineering placements. Learn DSA, System Design, and Full Stack SaaS with live cohorts, real-world projects, and verified certificates.",
     url: "https://www.preppath.net/courses",
     siteName: "PrepPath",
     images: [
@@ -33,9 +34,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "All Courses & Placement Learning Tracks | PrepPath",
+    title: "Best Tech Placement Courses: DSA, System Design & Full Stack | PrepPath",
     description:
-      "Explore industry-curated courses in Python, DSA, Full Stack, and System Design with structured roadmaps.",
+      "Crack top-tier software engineering placements. Learn DSA, System Design, and Full Stack SaaS with live cohorts, real-world projects, and verified certificates.",
     images: ["/login-hero.png"],
   },
 };
