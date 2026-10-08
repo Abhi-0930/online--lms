@@ -1113,17 +1113,21 @@ function CourseProgressCard({ course }: { course: LiveCourseItem }) {
         <p className="text-[11px] text-[#9aa4bc] line-clamp-1 leading-4 flex-1">
           {course.subtitle}
         </p>
-        <div className="flex items-center justify-between border-t border-[#edf0f6] pt-3 text-[10px] font-bold text-[#7c87a4] dark:border-white/10">
-          <span>{course.lessons}</span>
-          <div className="flex items-baseline gap-1.5">
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#edf0f6] pt-3 text-[10px] font-bold text-[#7c87a4] dark:border-white/10">
+          <span className="truncate max-w-[130px] min-w-0" title={course.lessons}>
+            {course.lessons}
+          </span>
+          <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
             {course.hasDiscount && course.originalPrice && (
-              <span className="text-[10px] text-[#9aa4bc] line-through font-semibold">
+              <span className="text-[10px] text-[#9aa4bc] line-through font-semibold whitespace-nowrap">
                 {course.originalPrice}
               </span>
             )}
-            <span className="text-[#3157e8] font-extrabold">{course.price}</span>
+            <span className="text-[#3157e8] dark:text-[#5d7dfc] font-extrabold whitespace-nowrap">
+              {course.price}
+            </span>
             {course.hasDiscount && course.discountPercentage ? (
-              <span className="rounded bg-emerald-500/10 px-1 py-0.2 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                 {course.discountPercentage}% OFF
               </span>
             ) : null}
@@ -2703,18 +2707,18 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
           </div>
         </div>
       </Link>
-      <div className="mt-auto flex items-center justify-between border-t border-[#edf0f6] p-4 pt-3 dark:border-white/10">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <span className="font-display text-lg font-bold text-[#17223d] dark:text-white">
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#edf0f6] p-4 pt-3 dark:border-white/10">
+        <div className="flex shrink-0 items-baseline gap-2 whitespace-nowrap">
+          <span className="font-display text-lg font-bold text-[#17223d] dark:text-white whitespace-nowrap">
             {course.price}
           </span>
           {course.hasDiscount && course.originalPrice && (
-            <span className="text-xs text-[#9aa4bc] line-through font-semibold">
+            <span className="text-xs text-[#9aa4bc] line-through font-semibold whitespace-nowrap">
               {course.originalPrice}
             </span>
           )}
           {course.hasDiscount && course.discountPercentage && !isComingSoon ? (
-            <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
               Save {course.discountPercentage}%
             </span>
           ) : null}
@@ -3275,10 +3279,10 @@ function EnrollmentCheckoutPage({ courseId }: { courseId: string }) {
     ? originalPriceNumber - basePriceNumber
     : 0;
 
-  const formattedOriginalPrice = `₹ ${originalPriceNumber.toLocaleString("en-IN")}`;
-  const formattedDiscountSavings = `- ₹ ${discountSavingsNumber.toLocaleString("en-IN")}`;
-  const formattedBasePrice = basePriceNumber === 0 ? "Free" : `₹ ${basePriceNumber.toLocaleString("en-IN")}`;
-  const formattedTotalPrice = totalAmountNumber === 0 ? "Free" : `₹ ${totalAmountNumber.toLocaleString("en-IN")}`;
+  const formattedOriginalPrice = `₹\u00A0${originalPriceNumber.toLocaleString("en-IN")}`;
+  const formattedDiscountSavings = `- ₹\u00A0${discountSavingsNumber.toLocaleString("en-IN")}`;
+  const formattedBasePrice = basePriceNumber === 0 ? "Free" : `₹\u00A0${basePriceNumber.toLocaleString("en-IN")}`;
+  const formattedTotalPrice = totalAmountNumber === 0 ? "Free" : `₹\u00A0${totalAmountNumber.toLocaleString("en-IN")}`;
 
   const handleProceedToPay = async () => {
     if (enrolled) {
