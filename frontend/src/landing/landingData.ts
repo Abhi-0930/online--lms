@@ -598,6 +598,24 @@ export const SUCCESS_STORIES: SuccessStory[] = [
     quote: "The focus on practical application and continuous learning helped me build skills that extend beyond theoretical knowledge.",
     story: "Applied practical system engineering concepts to crack the premier TCS Prime recruitment track.",
     linkedin: "https://linkedin.com"
+  },
+  {
+    id: "story-8",
+    name: "Roy Dennis",
+    avatar: "/testimonials/roy-dennis.png",
+    currentRole: "Backend Developer",
+    company: "GlobalLogic",
+    companyLogo: "https://upload.wikimedia.org/wikipedia/commons/e/e5/GlobalLogic_logo.svg",
+    previousRole: "Graduate Engineer",
+    salaryHike: "175%",
+    compensation: "₹21 LPA",
+    prepDuration: "4 Months",
+    brandColor: "#F26522",
+    skills: ["Backend Architecture", "REST APIs", "Data Structures", "System Design"],
+    category: "Product",
+    quote: "The in-depth backend engineering concepts, API architecture, and structured problem-solving sessions gave me the exact technical edge to crack the backend developer role at GlobalLogic.",
+    story: "Mastered scalable backend architecture, core DSA patterns, and system design to secure a Backend Developer role at GlobalLogic.",
+    linkedin: "https://linkedin.com"
   }
 ];
 
