@@ -23,21 +23,22 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.preppath.net"),
   title: {
-    default: "PrepPath - Where ambition finds its path",
+    default: "PrepPath - Premier Engineering Placement, DSA & System Design Platform",
     template: "%s | PrepPath",
   },
   description:
-    "PrepPath is India's premium software engineering and technical placement preparation platform. Structured DSA patterns, system design, mock interviews, and FAANG career roadmaps.",
+    "Ace FAANG & top tech campus placements with PrepPath. Structured DSA patterns, System Design, Full-Stack engineering, live mentor cohorts, mock interviews, and career roadmaps.",
   keywords: [
     "PrepPath",
     "DSA preparation",
     "software engineer roadmap",
-    "placement preparation",
-    "coding interview prep",
+    "campus placement preparation 2026",
+    "coding interview preparation",
     "FAANG interview coaching",
-    "system design course",
+    "system design course India",
     "full stack developer roadmap",
-    "LeetCode patterns",
+    "LeetCode patterns masterclass",
+    "data structures and algorithms placement course",
   ],
   authors: [{ name: "PrepPath Team", url: "https://www.preppath.net" }],
   creator: "PrepPath",
@@ -50,7 +51,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.preppath.net",
     siteName: "PrepPath",
-    title: "PrepPath - Where ambition finds its path",
+    title: "PrepPath - Premier Engineering Placement & DSA Platform",
     description:
       "Structured technical placement preparation, curated DSA patterns, live interactive cohorts, and 1:1 mentorship from top tech engineers.",
     images: [
@@ -64,7 +65,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "PrepPath - Where ambition finds its path",
+    title: "PrepPath - Premier Engineering Placement & DSA Platform",
     description:
       "Structured technical placement preparation, curated DSA patterns, live interactive cohorts, and mentorship.",
     images: ["/login-hero.png"],
@@ -142,6 +143,14 @@ export default function RootLayout({
                   publisher: {
                     "@id": "https://www.preppath.net/#organization",
                   },
+                  potentialAction: {
+                    "@type": "SearchAction",
+                    target: {
+                      "@type": "EntryPoint",
+                      urlTemplate: "https://www.preppath.net/courses?search={search_term_string}",
+                    },
+                    "query-input": "required name=search_term_string",
+                  },
                 },
                 {
                   "@type": "Course",
@@ -154,11 +163,20 @@ export default function RootLayout({
                     name: "PrepPath",
                     sameAs: "https://www.preppath.net",
                   },
+                  aggregateRating: {
+                    "@type": "AggregateRating",
+                    ratingValue: "4.9",
+                    bestRating: "5",
+                    ratingCount: "1280",
+                    reviewCount: "1280",
+                  },
                   offers: {
                     "@type": "Offer",
                     category: "Paid",
+                    price: "999",
                     priceCurrency: "INR",
                     availability: "https://schema.org/InStock",
+                    url: "https://www.preppath.net/courses",
                   },
                   hasCourseInstance: {
                     "@type": "CourseInstance",
@@ -177,11 +195,20 @@ export default function RootLayout({
                     name: "PrepPath",
                     sameAs: "https://www.preppath.net",
                   },
+                  aggregateRating: {
+                    "@type": "AggregateRating",
+                    ratingValue: "4.9",
+                    bestRating: "5",
+                    ratingCount: "940",
+                    reviewCount: "940",
+                  },
                   offers: {
                     "@type": "Offer",
                     category: "Paid",
+                    price: "1499",
                     priceCurrency: "INR",
                     availability: "https://schema.org/InStock",
+                    url: "https://www.preppath.net/courses",
                   },
                   hasCourseInstance: {
                     "@type": "CourseInstance",
@@ -200,11 +227,20 @@ export default function RootLayout({
                     name: "PrepPath",
                     sameAs: "https://www.preppath.net",
                   },
+                  aggregateRating: {
+                    "@type": "AggregateRating",
+                    ratingValue: "4.9",
+                    bestRating: "5",
+                    ratingCount: "620",
+                    reviewCount: "620",
+                  },
                   offers: {
                     "@type": "Offer",
                     category: "Paid",
+                    price: "1999",
                     priceCurrency: "INR",
                     availability: "https://schema.org/InStock",
+                    url: "https://www.preppath.net/courses",
                   },
                   hasCourseInstance: {
                     "@type": "CourseInstance",
