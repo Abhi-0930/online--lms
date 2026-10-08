@@ -207,11 +207,11 @@ function transformDbCourse(c: any): LiveCourseItem {
     }
 
     rawPrice = sellingPrice;
-    formattedPrice = `₹ ${sellingPrice.toLocaleString("en-IN")}`;
+    formattedPrice = `₹\u00A0${sellingPrice.toLocaleString("en-IN")}`;
 
     if (originalPrice > sellingPrice && sellingPrice > 0) {
       hasDiscount = true;
-      originalPriceStr = `₹ ${originalPrice.toLocaleString("en-IN")}`;
+      originalPriceStr = `₹\u00A0${originalPrice.toLocaleString("en-IN")}`;
       discountPercentage = Math.round(((originalPrice - sellingPrice) / originalPrice) * 100);
       rawOriginalPrice = originalPrice;
       rawDiscountPrice = sellingPrice;
@@ -353,7 +353,7 @@ function transformDbCourse(c: any): LiveCourseItem {
     rating: "4.9",
     price: formattedPrice,
     originalPrice: originalPriceStr,
-    discountPrice: hasDiscount ? `₹ ${rawDiscountPrice.toLocaleString("en-IN")}` : undefined,
+    discountPrice: hasDiscount ? `₹\u00A0${rawDiscountPrice.toLocaleString("en-IN")}` : undefined,
     hasDiscount,
     discountPercentage,
     currency: c.currency || "INR ₹",
