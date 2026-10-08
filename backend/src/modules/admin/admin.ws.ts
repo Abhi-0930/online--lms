@@ -5,6 +5,11 @@ import logger from '../../utils/logger';
 export class AdminWsBroadcaster {
   private static clients = new Set<WebSocket>();
   private static broadcastDebounceTimer: any = null;
+  private static cacheInvalidators = new Set<() => void>();
+
+  public static onBroadcast(invalidator: () => void) {
+    this.cacheInvalidators.add(invalidator);
+  }
 
   public static addClient(socket: WebSocket, _prisma: PrismaClient) {
     this.clients.add(socket);
@@ -46,6 +51,10 @@ export class AdminWsBroadcaster {
   }
 
   public static async broadcastUpdate(_prisma?: PrismaClient): Promise<void> {
+    this.cacheInvalidators.forEach((fn) => {
+      try { fn(); } catch {}
+    });
+
     if (this.clients.size === 0) return;
 
     // Debounce rapid successive broadcasts within 150ms
