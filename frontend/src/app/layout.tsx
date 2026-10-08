@@ -119,8 +119,19 @@ export default function RootLayout({
                   name: "PrepPath",
                   url: "https://www.preppath.net",
                   logo: "https://www.preppath.net/icon.svg",
+                  slogan: "Where ambition finds its path",
                   description:
                     "Structured software engineering placement preparation, curated DSA patterns, live interactive cohorts, and 1:1 mentorship.",
+                  knowsAbout: [
+                    "Data Structures and Algorithms (DSA)",
+                    "Software Engineering Campus Placements",
+                    "System Design and Microservices",
+                    "Full Stack SaaS Engineering",
+                    "FAANG Coding Interview Preparation",
+                    "Python Programming",
+                    "Database Engineering & SQL",
+                  ],
+                  educationalCredentialAwarded: "Certificate of Completion in Technical Placement & Software Engineering",
                   sameAs: [
                     "https://x.com/PrepPath",
                     "https://www.linkedin.com/company/prepppath",
