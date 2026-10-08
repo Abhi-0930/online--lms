@@ -384,15 +384,80 @@ function transformDbCourse(c: any): LiveCourseItem {
   };
 }
 
-export function broadcastCoursesUpdate() {
+// Module-level in-memory RAM cache and single-flight promise deduplication
+let memoryCoursesCache: LiveCourseItem[] | null = null;
+let memoryCoursesCacheTimestamp = 0;
+let activeCoursesFetchPromise: Promise<LiveCourseItem[]> | null = null;
+const MEMORY_CACHE_TTL_MS = 60 * 1000; // 60 seconds soft TTL
+const memorySubscribers = new Set<(courses: LiveCourseItem[]) => void>();
+
+export function invalidateCoursesMemoryCache(): void {
+  memoryCoursesCache = null;
+  memoryCoursesCacheTimestamp = 0;
+  activeCoursesFetchPromise = null;
+}
+
+export function broadcastCoursesUpdate(): void {
+  invalidateCoursesMemoryCache();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("lms:courses-updated"));
   }
 }
 
+async function fetchCoursesGlobal(force = false): Promise<LiveCourseItem[]> {
+  const now = Date.now();
+  if (!force && memoryCoursesCache && memoryCoursesCache.length > 0 && (now - memoryCoursesCacheTimestamp < MEMORY_CACHE_TTL_MS)) {
+    return memoryCoursesCache;
+  }
+
+  if (activeCoursesFetchPromise) {
+    return activeCoursesFetchPromise;
+  }
+
+  activeCoursesFetchPromise = (async () => {
+    try {
+      const url = force 
+        ? `${API_BASE_URL}/api/v1/courses?_t=${Date.now()}`
+        : `${API_BASE_URL}/api/v1/courses`;
+        
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const rawList = Array.isArray(data) ? data : data.courses || [];
+        const transformed = deduplicateCourses(rawList.map(transformDbCourse));
+        memoryCoursesCache = transformed;
+        memoryCoursesCacheTimestamp = Date.now();
+        // Synchronously notify all active hook subscribers
+        memorySubscribers.forEach((subscriber) => {
+          try {
+            subscriber(transformed);
+          } catch {}
+        });
+        return transformed;
+      } else {
+        console.warn("Failed to fetch courses, status:", res.status);
+        return memoryCoursesCache || [];
+      }
+    } catch (err: any) {
+      console.error("Error fetching courses from API:", err);
+      return memoryCoursesCache || [];
+    } finally {
+      activeCoursesFetchPromise = null;
+    }
+  })();
+
+  return activeCoursesFetchPromise;
+}
+
 export function useLiveCourses() {
-  const [courses, setCourses] = useState<LiveCourseItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [courses, setCourses] = useState<LiveCourseItem[]>(() => memoryCoursesCache || []);
+  const [loading, setLoading] = useState<boolean>(() => !memoryCoursesCache || memoryCoursesCache.length === 0);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
@@ -407,29 +472,22 @@ export function useLiveCourses() {
     }
   }, []);
 
-  const fetchCourses = useCallback(async () => {
+  const runFetch = useCallback(async (force = false) => {
+    if (!memoryCoursesCache || memoryCoursesCache.length === 0 || force) {
+      if (!memoryCoursesCache || memoryCoursesCache.length === 0) {
+        setLoading(true);
+      }
+    }
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/courses?_t=${Date.now()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const rawList = Array.isArray(data) ? data : data.courses || [];
-        const transformed = deduplicateCourses(rawList.map(transformDbCourse));
-        if (isMountedRef.current) {
-          setCourses(transformed);
-          setError(null);
-        }
-      } else {
-        console.warn("Failed to fetch courses, status:", res.status);
+      const result = await fetchCoursesGlobal(force);
+      if (isMountedRef.current) {
+        setCourses(result);
+        setError(null);
       }
     } catch (err: any) {
-      console.error("Error fetching courses from API:", err);
+      if (isMountedRef.current) {
+        setError(err.message || "Failed to load courses");
+      }
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
@@ -439,21 +497,33 @@ export function useLiveCourses() {
 
   useEffect(() => {
     isMountedRef.current = true;
-    fetchCourses();
+
+    const subscriber = (updated: LiveCourseItem[]) => {
+      if (isMountedRef.current) {
+        setCourses(updated);
+        setLoading(false);
+      }
+    };
+    memorySubscribers.add(subscriber);
+
+    // Initial load / background revalidation
+    runFetch(false);
 
     const handleCoursesUpdate = () => {
-      fetchCourses();
+      invalidateCoursesMemoryCache();
+      runFetch(true);
     };
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "lms_course_change_signal") {
-        fetchCourses();
+        invalidateCoursesMemoryCache();
+        runFetch(true);
       }
     };
 
     const handleVisibilityChange = () => {
       if (typeof document !== "undefined" && !document.hidden) {
-        fetchCourses();
+        runFetch(false);
       }
     };
 
@@ -467,12 +537,14 @@ export function useLiveCourses() {
 
     const unsubscribe = sharedWs.subscribe((payload) => {
       if (payload?.type === "INITIAL_DATA" || payload?.type === "DATA_UPDATE" || payload?.type === "COURSES_UPDATE") {
-        fetchCourses();
+        invalidateCoursesMemoryCache();
+        runFetch(true);
       }
     });
 
     return () => {
       isMountedRef.current = false;
+      memorySubscribers.delete(subscriber);
       unsubscribe();
       if (typeof window !== "undefined") {
         window.removeEventListener("lms:courses-updated", handleCoursesUpdate);
@@ -482,13 +554,13 @@ export function useLiveCourses() {
         document.removeEventListener("visibilitychange", handleVisibilityChange);
       }
     };
-  }, [fetchCourses]);
+  }, [runFetch]);
 
   return {
     courses,
     loading,
     error,
-    refreshCourses: fetchCourses,
+    refreshCourses: () => runFetch(true),
   };
 }
 
