@@ -45,5 +45,44 @@ export default function PracticeLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://www.preppath.net/practice#breadcrumb",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: "https://www.preppath.net",
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Practice",
+            item: "https://www.preppath.net/practice",
+          },
+        ],
+      },
+      {
+        "@type": "ItemList",
+        "@id": "https://www.preppath.net/practice#itemlist",
+        name: "PrepPath Curated DSA Practice Problems",
+        description: "Curated collection of top 400+ algorithmic coding questions for tech placement preparation.",
+        numberOfItems: 400,
+      },
+    ],
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      {children}
+    </>
+  );
 }
