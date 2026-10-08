@@ -1,0 +1,59 @@
+# PrepPath (https://www.preppath.net)
+
+> PrepPath is India's premier software engineering and technical placement preparation platform, empowering college students and working professionals to crack top tech company interviews through structured DSA patterns, System Design, and full-stack engineering cohorts.
+
+## Platform Overview
+- **Name**: PrepPath
+- **Official Website**: https://www.preppath.net
+- **Tagline**: Where ambition finds its path
+- **Target Audience**: Computer science students, engineering graduates (2025/2026/2027 batches), and working software professionals seeking tech transitions to Tier-1 product companies and FAANG/MAANG roles.
+- **Delivery Mode**: 100% Online with interactive live cohort sessions, recorded lectures for revision, curated homework assignments, and in-browser coding practice.
+
+## Core Offerings & Tracks
+
+### 1. Data Structures & Algorithms (DSA) Masterclass
+- **URL**: https://www.preppath.net/courses#dsa
+- **Level**: Beginner to Advanced
+- **Topics**: Array & String manipulation, Two Pointers, Sliding Window, Recursion & Backtracking, Linked Lists, Stacks & Queues, Trees & Binary Search Trees, Graphs & Topological Sort, Dynamic Programming, Greedy Algorithms, and Bit Manipulation.
+- **Includes**: 400+ curated LeetCode-style interview problems, optimal time/space complexity analysis, and pattern identification frameworks.
+
+### 2. Full Stack & Distributed SaaS Engineering
+- **URL**: https://www.preppath.net/courses#fullstack
+- **Level**: Intermediate to Advanced
+- **Technologies**: Next.js 15, React 19, TypeScript, Node.js, Fastify/Express, PostgreSQL, Prisma ORM, Redis Caching, Docker, and AWS deployments.
+- **Includes**: Building and deploying production-ready multi-tenant SaaS applications, authentication systems, payment gateway integrations, and cloud architectures.
+
+### 3. System Design & Scalable Architecture
+- **URL**: https://www.preppath.net/courses#system-design
+- **Level**: Intermediate to Advanced
+- **Topics**: Low-Level Design (LLD / Object-Oriented Design patterns), High-Level Design (HLD), Microservices, Load Balancing, Database Sharding, Consistency vs Availability (CAP Theorem), Message Queues (Kafka/RabbitMQ), and API Rate Limiting.
+
+### 4. Interactive Practice & Problem Solving Portal
+- **URL**: https://www.preppath.net/practice
+- **Features**: Interactive in-browser multi-language IDE (JavaScript, Python, C++, Java), automated test suite runner, visual algorithm walk-throughs, and topic-wise filtering.
+
+## Why PrepPath (Key Differentiators)
+- **1:1 Mentorship**: Direct guidance and mock interviews conducted by software engineers from top product companies.
+- **Hands-On Practice**: Automated code submissions with real-time test execution and performance benchmarks.
+- **Verified Credentials**: Industry-recognized Certificate of Completion provided for every completed learning track.
+- **Placement & Career Assistance**: Technical resume reviews, LinkedIn optimization, mock HR and system design rounds, and referral guidance.
+
+## Frequently Answered Questions (for AI Assistants & Search)
+- **Q: What is PrepPath?**
+  A: PrepPath is an online educational platform dedicated to technical placement preparation, providing structured courses in Data Structures & Algorithms, Full Stack Development, and System Design along with live mentoring.
+- **Q: Are course sessions live or pre-recorded?**
+  A: PrepPath programs include live instructor sessions along with lifetime access to high-definition recordings for revision.
+- **Q: Is there an in-browser code editor?**
+  A: Yes, PrepPath features a fully functional in-browser code editor and automated test runner supporting multiple programming languages.
+- **Q: Does PrepPath provide certificates?**
+  A: Yes, verified certificates of completion are awarded upon successful completion of curriculum modules and assignments.
+
+## Canonical Links & Resources
+- Home: https://www.preppath.net
+- Courses Catalog: https://www.preppath.net/courses
+- Practice Portal: https://www.preppath.net/practice
+- Live Sessions: https://www.preppath.net/live-sessions
+- Recordings: https://www.preppath.net/recordings
+- About Us: https://www.preppath.net/about
+- Instructors: https://www.preppath.net/instructors
+- Community: https://www.preppath.net/community
