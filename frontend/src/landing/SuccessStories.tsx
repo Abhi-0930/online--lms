@@ -199,6 +199,8 @@ function getCompanyDomain(name: string): string {
     capgemini: "capgemini.com",
     infosys: "infosys.com",
     wipro: "wipro.com",
+    globallogic: "globallogic.com",
+    "global logic": "globallogic.com",
   };
   if (map[normalized]) return map[normalized];
   const clean = normalized.replace(/[^a-z0-9]/g, "");
