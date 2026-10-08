@@ -1,8 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 import logger from '../../utils/logger';
 import { AdminService, reconstructTopicsFromLessons, cleanLessonTitle } from '../admin/admin.service';
+import { AdminWsBroadcaster } from '../admin/admin.ws';
 
 export class CoursesService {
+  private static cachedCoursesResponse: { data: any; timestamp: number } | null = null;
+  private static CACHE_TTL_MS = 60 * 1000; // 60 seconds soft TTL
+
+  public static invalidateCache(): void {
+    CoursesService.cachedCoursesResponse = null;
+  }
+
   constructor(private prisma: PrismaClient) {}
 
   async getAllCourses(params: {
@@ -13,9 +21,20 @@ export class CoursesService {
     search?: string;
   } = {}) {
     const { page = 1, limit = 20, status, level, search } = params;
-    const skip = (page - 1) * limit;
+    const isDefaultQuery = (!params.page || params.page === 1) &&
+                           (!params.limit || params.limit >= 20) &&
+                           !params.status &&
+                           !params.level &&
+                           !params.search;
 
-    AdminService.deletedCoursesIds = AdminService.loadDeletedCoursesFromFile();
+    if (isDefaultQuery && CoursesService.cachedCoursesResponse) {
+      const age = Date.now() - CoursesService.cachedCoursesResponse.timestamp;
+      if (age < CoursesService.CACHE_TTL_MS) {
+        return CoursesService.cachedCoursesResponse.data;
+      }
+    }
+
+    const skip = (page - 1) * limit;
 
     const isDeleted = (course: any) => {
       const cId = String(course.id || '').trim();
@@ -179,7 +198,7 @@ export class CoursesService {
       };
     });
 
-    return {
+    const result = {
       courses: mappedCourses,
       pagination: {
         page,
@@ -188,11 +207,18 @@ export class CoursesService {
         totalPages: Math.ceil(Math.max(total, mappedCourses.length) / limit),
       },
     };
+
+    if (isDefaultQuery) {
+      CoursesService.cachedCoursesResponse = {
+        data: result,
+        timestamp: Date.now(),
+      };
+    }
+
+    return result;
   }
 
   async getCourseBySlug(slug: string) {
-    AdminService.deletedCoursesIds = AdminService.loadDeletedCoursesFromFile();
-
     const isDeleted = (course: any) => {
       const cId = String(course.id || '').trim();
       const cSlug = String(course.slug || '').trim();
@@ -328,6 +354,7 @@ export class CoursesService {
   }
 
   async createCourse(data: any, instructorId: string) {
+    CoursesService.invalidateCache();
     const course = await this.prisma.course.create({
       data: {
         ...data,
@@ -350,6 +377,7 @@ export class CoursesService {
   }
 
   async updateCourse(id: string, data: any) {
+    CoursesService.invalidateCache();
     const adminService = new AdminService(this.prisma);
     const full = await adminService.saveCourseDraft({
       ...data,
@@ -362,6 +390,7 @@ export class CoursesService {
   }
 
   async deleteCourse(id: string) {
+    CoursesService.invalidateCache();
     const adminService = new AdminService(this.prisma);
     const result = await adminService.deleteCourse(id);
     logger.info({ courseId: id }, 'Course deleted');
@@ -369,6 +398,7 @@ export class CoursesService {
   }
 
   async createModule(courseId: string, data: any) {
+    CoursesService.invalidateCache();
     const module = await this.prisma.module.create({
       data: {
         ...data,
@@ -382,6 +412,7 @@ export class CoursesService {
   }
 
   async createLesson(moduleId: string, data: any) {
+    CoursesService.invalidateCache();
     const lesson = await this.prisma.lesson.create({
       data: {
         ...data,
@@ -394,3 +425,9 @@ export class CoursesService {
     return lesson;
   }
 }
+
+// Invalidate in-memory courses response whenever real-time admin broadcast occurs
+AdminWsBroadcaster.onBroadcast(() => {
+  CoursesService.invalidateCache();
+});
+
