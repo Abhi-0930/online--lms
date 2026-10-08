@@ -2659,11 +2659,6 @@ function CourseCard({ course }: { course: LiveCourseItem }) {
               <span className="rounded-lg bg-slate-100 dark:bg-white/10 px-2.5 py-0.5 text-[10.5px] font-semibold text-slate-600 dark:text-slate-300">
                 {course.level}
               </span>
-              {isComingSoon && (
-                <span className="flex items-center gap-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-900/40 px-2 py-0.5 text-[10.5px] font-bold text-amber-700 dark:text-amber-400">
-                  <Sparkles className="h-3 w-3 text-amber-500" /> Coming Soon
-                </span>
-              )}
               {course.hasDiscount && course.discountPercentage && !isComingSoon ? (
                 <span className="rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-900/40 px-2 py-0.5 text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400">
                   Save {course.discountPercentage}% OFF
