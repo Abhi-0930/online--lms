@@ -62,7 +62,7 @@ export interface Course {
   durationUnit?: "Days" | "Weeks" | "Months" | "Years";
   subscriptionCycle?: "Monthly" | "Quarterly" | "Yearly";
   enrollmentLimit?: string;
-  courseVisibility?: "Public" | "Private" | "Unlisted";
+  courseVisibility?: "Public" | "Private" | "Unlisted" | "Coming Soon";
   modules?: any[];
   instructorName?: string;
   skillsCovered?: string[];
