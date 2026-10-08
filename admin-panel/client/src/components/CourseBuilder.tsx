@@ -127,7 +127,7 @@ export interface CourseBuilderData {
   durationUnit?: "Days" | "Weeks" | "Months" | "Years";
   subscriptionCycle?: "Monthly" | "Quarterly" | "Yearly";
   enrollmentLimit: string;
-  courseVisibility: "Public" | "Private" | "Unlisted";
+  courseVisibility: "Public" | "Private" | "Unlisted" | "Coming Soon";
 
   // Step 3: Course Curriculum
   modules: CourseModule[];
@@ -535,6 +535,7 @@ function CustomDatePicker({
   minDate,
   maxDate,
   error,
+  disabled,
   className,
 }: {
   value?: string;
@@ -543,6 +544,7 @@ function CustomDatePicker({
   minDate?: string;
   maxDate?: string;
   error?: boolean;
+  disabled?: boolean;
   className?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -710,17 +712,26 @@ function CustomDatePicker({
     <div ref={datePickerRef} className={cn("relative w-full", className)}>
       <button
         type="button"
+        disabled={disabled}
         onClick={() => {
-          setIsOpen((prev) => !prev);
-          setViewMode("days");
+          if (!disabled) {
+            setIsOpen((prev) => !prev);
+            setViewMode("days");
+          }
         }}
         className={cn(
-          "flex w-full items-center justify-between rounded-xl border bg-white px-3.5 py-2.5 text-left text-xs sm:text-[13px] font-medium transition-all duration-150 select-none shadow-xs cursor-pointer",
-          isOpen
+          "flex w-full items-center justify-between rounded-xl border bg-white px-3.5 py-2.5 text-left text-xs sm:text-[13px] font-medium transition-all duration-150 select-none shadow-xs",
+          disabled
+            ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-65"
+            : "cursor-pointer",
+          !disabled && isOpen
             ? "border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs"
-            : error
+            : !disabled && error
             ? "border-rose-400 bg-rose-50/20"
-            : "border-slate-200 hover:border-slate-300 text-slate-800"
+            : !disabled
+            ? "border-slate-200 hover:border-slate-300 text-slate-800"
+            : "",
+          className
         )}
       >
         <span className="flex items-center gap-2 truncate">
@@ -3069,15 +3080,16 @@ export default function CourseBuilder({
                   {/* Left Column: Course Start Date */}
                   <div>
                     <label className="block text-xs sm:text-[13px] font-bold text-slate-800 mb-2 flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 text-indigo-600" />
+                      <Calendar className={cn("h-3.5 w-3.5", formData.courseVisibility === "Coming Soon" ? "text-slate-400" : "text-indigo-600")} />
                       Course Start Date
                       <span className="font-normal text-[11px] text-slate-400 ml-1">
                         (Batch Start)
                       </span>
                     </label>
                     <CustomDatePicker
-                      value={formData.startDate}
-                      placeholder="Select course start date"
+                      value={formData.courseVisibility === "Coming Soon" ? "" : formData.startDate}
+                      disabled={formData.courseVisibility === "Coming Soon"}
+                      placeholder={formData.courseVisibility === "Coming Soon" ? "Start date not finalized (Yet to launch)" : "Select course start date"}
                       onChange={(newStart) => {
                         setFormData((prev) => ({
                           ...prev,
@@ -3091,9 +3103,16 @@ export default function CourseBuilder({
                         }
                       }}
                     />
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Scheduled start date for upcoming course batch or live curriculum
-                    </p>
+                    {formData.courseVisibility === "Coming Soon" ? (
+                      <p className="text-[11px] text-amber-600 font-semibold mt-1.5 flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                        Start date is disabled because this course is set to Coming Soon (Yet to Launch).
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Scheduled start date for upcoming course batch or live curriculum
+                      </p>
+                    )}
                   </div>
 
                   {/* Right Column: Course Visibility */}
@@ -3102,7 +3121,7 @@ export default function CourseBuilder({
                       Course Visibility
                     </label>
                     <div className="flex flex-wrap gap-2.5">
-                      {(["Public", "Private", "Unlisted"] as const).map(
+                      {(["Public", "Private", "Unlisted", "Coming Soon"] as const).map(
                         (vis) => {
                           const isSelected = formData.courseVisibility === vis;
                           return (
@@ -3113,23 +3132,28 @@ export default function CourseBuilder({
                                 setFormData((prev) => ({
                                   ...prev,
                                   courseVisibility: vis,
+                                  startDate: vis === "Coming Soon" ? "" : prev.startDate,
                                 }))
                               }
                               className={cn(
-                                "rounded-xl px-5 py-2.5 text-xs sm:text-[13px] font-medium transition-all duration-150 cursor-pointer select-none",
+                                "rounded-xl px-4 py-2.5 text-xs sm:text-[13px] font-medium transition-all duration-150 cursor-pointer select-none",
                                 isSelected
-                                  ? "border-2 border-indigo-400/90 bg-indigo-50/20 font-bold text-indigo-700 shadow-xs"
+                                  ? vis === "Coming Soon"
+                                    ? "border-2 border-amber-400/90 bg-amber-50/60 font-bold text-amber-800 shadow-xs"
+                                    : "border-2 border-indigo-400/90 bg-indigo-50/20 font-bold text-indigo-700 shadow-xs"
                                   : "border border-slate-200 bg-white hover:border-slate-300 text-slate-600"
                               )}
                             >
-                              {vis}
+                              {vis === "Coming Soon" ? "Coming Soon (Yet to Launch)" : vis}
                             </button>
                           );
                         }
                       )}
                     </div>
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Control who can discover and enroll in this course
+                      {formData.courseVisibility === "Coming Soon"
+                        ? "Course will appear in catalog with 'Coming Soon' badge and disabled enroll button."
+                        : "Control who can discover and enroll in this course"}
                     </p>
                   </div>
                 </div>
